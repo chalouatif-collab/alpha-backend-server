@@ -64,7 +64,6 @@ class UpdateBalanceRequest(BaseModel):
     action: str  
     amount: float
 
-# ميزة جديدة: نموذج تعديل كلمة مرور اللاعب
 class ChangePlayerPasswordRequest(BaseModel):
     admin_username: str
     target_username: str
@@ -110,7 +109,7 @@ async def register_user(req: RegisterRequest):
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
 
-# --- 📊 مسارات الإدارة العامة والتحكم المالي ---
+# --- 📊 مسارات الإدارة العامة والتحكم المالي المطور ---
 
 @app.get("/api/admin/users")
 async def get_all_network_users(admin_username: Optional[str] = None):
@@ -119,23 +118,54 @@ async def get_all_network_users(admin_username: Optional[str] = None):
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest):
     target = req.target_username.lower().strip()
+    admin = req.admin_username.lower().strip()
     amount = float(req.amount)
     db = load_db()
     
+    target_user = None
+    admin_user = None
+    
+    # قراءة الحسابات من قاعدة البيانات
     for u in db:
         if u["username"] == target:
-            if req.action == "charge":
-                u["balance"] += amount
-            elif req.action == "withdraw":
-                if u["balance"] < amount:
-                    raise HTTPException(status_code=400, detail="Solde insuffisant")
-                u["balance"] -= amount
-            save_db(db)
-            return {"status": "success", "balance": u["balance"]}
-            
-    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+            target_user = u
+        if u["username"] == admin:
+            admin_user = u
 
-# ميزة جديدة: مسار تغيير كلمة المرور المباشر من اللوحات
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+    # منظومة الشحن المحمية والمقيدة بالرصيد الفوقي
+    if req.action == "charge":
+        # إذا لم يكن النظام ولم يكن الأونر fethi، نخصم من رصيد المسؤول القائم بالشحن
+        if admin != "system" and admin != "fethi":
+            if not admin_user:
+                raise HTTPException(status_code=404, detail="Admin القائم بالعملية غير موجود")
+            if admin_user["balance"] < amount:
+                raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
+            
+            # خصم الرصيد من الأدمن أو السوبر أدمن الموزع
+            admin_user["balance"] -= amount
+        
+        # إضافة الرصيد للحساب المستهدف
+        target_user["balance"] += amount
+
+    # منظومة السحب المحمية
+    elif req.action == "withdraw":
+        if target_user["balance"] < amount:
+            raise HTTPException(status_code=400, detail="Solde insuffisant chez le compte cible")
+        
+        # سحب الرصيد من الحساب المستهدف
+        target_user["balance"] -= amount
+        
+        # إرجاع الرصيد المسحوب لعداد المسؤول المباشر
+        if admin != "system" and admin != "fethi" and admin_user:
+            admin_user["balance"] += amount
+
+    save_db(db)
+    return {"status": "success", "balance": target_user["balance"]}
+
+# مسار تغيير كلمة المرور المباشر من اللوحات
 @app.post("/api/admin/change-player-password")
 async def change_player_password(req: ChangePlayerPasswordRequest):
     target = req.target_username.lower().strip()
@@ -145,7 +175,7 @@ async def change_player_password(req: ChangePlayerPasswordRequest):
         if u["username"] == target:
             u["password"] = req.new_password
             save_db(db)
-            return {"status": "success", "message": "Mot de passe joueur modifié avec succès"}
+            return {"status": "success", "message": "Mot de passe modifié avec succès"}
             
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
@@ -172,7 +202,6 @@ async def delete_account(admin_username: str, target_username: str):
     raise HTTPException(status_code=404, detail="Non trouvé")
 
 # --- ⚽ مسارات الرهان الرياضي ---
-
 @app.get("/api/sports/live")
 async def get_sports():
     leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
