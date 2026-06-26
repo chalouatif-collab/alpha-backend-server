@@ -20,8 +20,9 @@ app.add_middleware(
 
 API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
 DB_FILE = "network_database.json"
+TICKETS_FILE = "tickets_database.json"  # قاعدة بيانات الأوراق السحابية الجديدة
 
-# دالة الشحن الذكية لقراءة البيانات من الملف لضمان الحفظ الدائم
+# --- دالات الحفظ والقراءة الذكية لبيانات الشبكة والأوراق ---
 def load_db():
     if not os.path.exists(DB_FILE):
         default_db = [
@@ -40,6 +41,22 @@ def load_db():
 def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
+
+def load_tickets_db():
+    if not os.path.exists(TICKETS_FILE):
+        with open(TICKETS_FILE, "w") as f:
+            json.dump([], f)
+        return []
+    try:
+        with open(TICKETS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_tickets_db(data):
+    with open(TICKETS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
 
 # --- النماذج وهياكل البيانات المدخلة (Pydantic Models) ---
 class LoginRequest(BaseModel):
@@ -68,6 +85,17 @@ class ChangePlayerPasswordRequest(BaseModel):
     admin_username: str
     target_username: str
     new_password: str
+
+# هياكل الرهان والربط السحابي الجديدة للسوبر أونر
+class SaveTicketRequest(BaseModel):
+    username: str
+    ticket_data: dict
+
+class UpdateTicketStatusRequest(BaseModel):
+    ticket_id: int
+    status: str
+    amount_paid: float
+
 
 # --- 🔐 مسارات التحقق والحماية ---
 
@@ -109,6 +137,7 @@ async def register_user(req: RegisterRequest):
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
 
+
 # --- 📊 مسارات الإدارة العامة والتحكم المالي المطور ---
 
 @app.get("/api/admin/users")
@@ -125,7 +154,6 @@ async def update_balance(req: UpdateBalanceRequest):
     target_user = None
     admin_user = None
     
-    # قراءة الحسابات من قاعدة البيانات
     for u in db:
         if u["username"] == target:
             target_user = u
@@ -135,37 +163,71 @@ async def update_balance(req: UpdateBalanceRequest):
     if not target_user:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
-    # منظومة الشحن المحمية والمقيدة بالرصيد الفوقي
     if req.action == "charge":
-        # إذا لم يكن النظام ولم يكن الأونر fethi، نخصم من رصيد المسؤول القائم بالشحن
         if admin != "system" and admin != "fethi":
             if not admin_user:
                 raise HTTPException(status_code=404, detail="Admin القائم بالعملية غير موجود")
             if admin_user["balance"] < amount:
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
-            
-            # خصم الرصيد من الأدمن أو السوبر أدمن الموزع
             admin_user["balance"] -= amount
-        
-        # إضافة الرصيد للحساب المستهدف
         target_user["balance"] += amount
 
-    # منظومة السحب المحمية
     elif req.action == "withdraw":
         if target_user["balance"] < amount:
             raise HTTPException(status_code=400, detail="Solde insuffisant chez le compte cible")
-        
-        # سحب الرصيد من الحساب المستهدف
         target_user["balance"] -= amount
-        
-        # إرجاع الرصيد المسحوب لعداد المسؤول المباشر
         if admin != "system" and admin != "fethi" and admin_user:
             admin_user["balance"] += amount
 
     save_db(db)
     return {"status": "success", "balance": target_user["balance"]}
 
-# مسار تغيير كلمة المرور المباشر من اللوحات
+
+# --- 🚀 مسارات إدارة ومزامنة أوراق الرهان الرياضي للسوبر أونر ---
+
+@app.post("/api/admin/save-ticket")
+async def save_player_ticket(req: SaveTicketRequest):
+    tickets_db = load_tickets_db()
+    
+    # ربط التذكرة باسم المستخدم وحفظها سحابياً
+    new_ticket = {
+        "username": req.username.lower().strip(),
+        "ticket_id": req.ticket_data.get("id"),
+        "status": req.ticket_data.get("status", "encours"),
+        "games_count": req.ticket_data.get("gamesCount", 1),
+        "details_list": req.ticket_data.get("detailsList", []),
+        "total_cote": req.ticket_data.get("totalCote", 1.0),
+        "mise": req.ticket_data.get("mise", 0.0),
+        "gain": req.ticket_data.get("gain", 0.0),
+        "date": req.ticket_data.get("date", datetime.now().strftime("%H:%M:%S"))
+    }
+    
+    tickets_db.append(new_ticket)
+    save_tickets_db(tickets_db)
+    return {"status": "success", "message": "Ticket synced with server database successfully"}
+
+@app.post("/api/admin/update-ticket-status")
+async def update_ticket_status(req: UpdateTicketStatusRequest):
+    tickets_db = load_tickets_db()
+    for t in tickets_db:
+        if t["ticket_id"] == req.ticket_id:
+            t["status"] = req.status
+            t["final_cashout_paid"] = req.amount_paid
+            save_tickets_db(tickets_db)
+            return {"status": "success", "message": "Ticket status updated on server"}
+    raise HTTPException(status_code=404, detail="Ticket non trouvé")
+
+# المسار الخاص بجلب أوراق لاعب معين لعرضها فوراً في شاشة السوبر أونر المنبثقة
+@app.get("/api/admin/get-player-tickets")
+async def get_player_tickets(username: str):
+    tickets_db = load_tickets_db()
+    uname = username.lower().strip()
+    player_tickets = [t for t in tickets_db if t["username"] == uname]
+    return player_tickets
+
+
+# --- 🔐 بقية مسارات الإدارة العامة وسحب البيانات الأصلية ---
+
 @app.post("/api/admin/change-player-password")
 async def change_player_password(req: ChangePlayerPasswordRequest):
     target = req.target_username.lower().strip()
@@ -201,7 +263,6 @@ async def delete_account(admin_username: str, target_username: str):
             return {"status": "success", "message": "Supprimé"}
     raise HTTPException(status_code=404, detail="Non trouvé")
 
-# --- ⚽ مسارات الرهان الرياضي ---
 @app.get("/api/sports/live")
 async def get_sports():
     leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
