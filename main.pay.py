@@ -21,12 +21,12 @@ app.add_middleware(
 API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
 DB_FILE = "network_database.json"
 
-# دالة ذكية لشحن الحسابات من ملف ثابت لضمان عدم ضياع البيانات عند إعادة التشغيل
+# دالة الشحن الذكية لقراءة البيانات من الملف لضمان الحفظ الدائم
 def load_db():
     if not os.path.exists(DB_FILE):
         default_db = [
-            {"username": "fethi", "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System"},
-            {"username": "samir", "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi"}
+            {"username": "fethi", "password": "123456", "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System"},
+            {"username": "samir", "password": "123456", "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi"}
         ]
         with open(DB_FILE, "w") as f:
             json.dump(default_db, f)
@@ -41,7 +41,7 @@ def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# --- النماذج وهياكل البيانات المدخلة ---
+# --- النماذج وهياكل البيانات المدخلة (Pydantic Models) ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -64,7 +64,13 @@ class UpdateBalanceRequest(BaseModel):
     action: str  
     amount: float
 
-# --- 🔐 مسارات التحقق وإنشاء الحسابات الثابتة ---
+# ميزة جديدة: نموذج تعديل كلمة مرور اللاعب
+class ChangePlayerPasswordRequest(BaseModel):
+    admin_username: str
+    target_username: str
+    new_password: str
+
+# --- 🔐 مسارات التحقق والحماية ---
 
 @app.post("/api/login")
 async def login_user(req: LoginRequest):
@@ -75,7 +81,7 @@ async def login_user(req: LoginRequest):
         return {"username": "fethi", "role": "owner", "balance": 999999.00}
         
     for u in db:
-        if u["username"] == uname and req.password == "123456":
+        if u["username"] == uname and u.get("password", "123456") == req.password:
             if u["is_blocked"] == 1:
                 raise HTTPException(status_code=403, detail="Ce compte est bloqué")
             return {"username": u["username"], "role": u["role"], "balance": u["balance"]}
@@ -93,6 +99,7 @@ async def register_user(req: RegisterRequest):
             
     new_user = {
         "username": uname,
+        "password": req.password,
         "role": req.role,
         "balance": 0.00,
         "rtp": 50,
@@ -102,6 +109,8 @@ async def register_user(req: RegisterRequest):
     db.append(new_user)
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
+
+# --- 📊 مسارات الإدارة العامة والتحكم المالي ---
 
 @app.get("/api/admin/users")
 async def get_all_network_users(admin_username: Optional[str] = None):
@@ -123,6 +132,20 @@ async def update_balance(req: UpdateBalanceRequest):
                 u["balance"] -= amount
             save_db(db)
             return {"status": "success", "balance": u["balance"]}
+            
+    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+# ميزة جديدة: مسار تغيير كلمة المرور المباشر من اللوحات
+@app.post("/api/admin/change-player-password")
+async def change_player_password(req: ChangePlayerPasswordRequest):
+    target = req.target_username.lower().strip()
+    db = load_db()
+    
+    for u in db:
+        if u["username"] == target:
+            u["password"] = req.new_password
+            save_db(db)
+            return {"status": "success", "message": "Mot de passe joueur modifié avec succès"}
             
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
@@ -148,6 +171,22 @@ async def delete_account(admin_username: str, target_username: str):
             return {"status": "success", "message": "Supprimé"}
     raise HTTPException(status_code=404, detail="Non trouvé")
 
+# --- ⚽ مسارات الرهان الرياضي ---
+
+@app.get("/api/sports/live")
+async def get_sports():
+    leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
+    all_matches = []
+    for league in leagues:
+        url = f"https://api.the-odds-api.com/v4/sports/{league}/odds/?apiKey={API_KEY}&regions=eu&markets=h2h"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                all_matches.extend(response.json())
+        except Exception:
+            pass
+    return all_matches
+
 @app.get("/")
 async def root():
-    return {"status": "Alpha Database Server Running Perfectly"}
+    return {"status": "Alpha Secure Database Backend Running Perfectly"}
