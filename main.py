@@ -1,13 +1,32 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 import requests
 from pydantic import BaseModel
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
+from jose import jwt
+from datetime import datetime, timedelta
 import random
-from datetime import datetime
 import json
 import os
 
+# --- إعدادات الأمان ونظام التوكن ---
+SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" # هذا هو مفتاحك السري (غيره!)
+ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=24)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
 app = FastAPI()
 
 # تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
@@ -104,16 +123,32 @@ async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
     db = load_db()
     
+    # 1. التحقق من بيانات المستخدم
+    user = None
     if uname == "fethi" and req.password == "123456":
-        return {"username": "fethi", "role": "owner", "balance": 999999.00}
-        
-    for u in db:
-        if u["username"] == uname and u.get("password", "123456") == req.password:
-            if u["is_blocked"] == 1:
-                raise HTTPException(status_code=403, detail="Ce compte est bloqué")
-            return {"username": u["username"], "role": u["role"], "balance": u["balance"]}
-            
-    raise HTTPException(status_code=401, detail="Identifiants incorrects")
+        user = {"username": "fethi", "role": "owner", "balance": 999999.00}
+    else:
+        for u in db:
+            if u["username"] == uname and u.get("password") == req.password:
+                if u["is_blocked"] == 1: raise HTTPException(status_code=403, detail="Ce compte est bloqué")
+                user = u
+                break
+    
+    # 2. إذا لم نجد المستخدم
+    if not user:
+        raise HTTPException(status_code=401, detail="Identifiants incorrects")
+    
+    # 3. إصدار الـ Token المشفر
+    access_token = create_access_token(data={"sub": user["username"]})
+    
+    # 4. إرجاع النتيجة مع التوكن
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "username": user["username"], 
+        "role": user.get("role", "user"), 
+        "balance": user.get("balance", 0.0)
+    }
 
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
@@ -145,7 +180,7 @@ async def get_all_network_users(admin_username: Optional[str] = None):
     return load_db()
 
 @app.post("/api/admin/update-balance")
-async def update_balance(req: UpdateBalanceRequest):
+async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_current_user)):
     target = req.target_username.lower().strip()
     admin = req.admin_username.lower().strip()
     amount = float(req.amount)
