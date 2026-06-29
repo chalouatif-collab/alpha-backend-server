@@ -40,7 +40,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+@app.get("/test")
+async def test_route():
+    return {"message": "السيرفر يعمل بنجاح!"}
 API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
 DB_FILE = "network_database.json"
 TICKETS_FILE = "tickets_database.json"  # قاعدة بيانات الأوراق السحابية الجديدة
