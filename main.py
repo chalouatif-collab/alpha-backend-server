@@ -30,10 +30,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 app = FastAPI()
 
 # تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
-# امسح الكود القديم تماماً وضع هذا مكانه:
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://alpha-administration.vercel.app"],
+    allow_origin_regex="https://.*\.vercel\.app", 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
