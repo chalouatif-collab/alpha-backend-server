@@ -9,14 +9,15 @@ from datetime import datetime, timedelta
 import random
 import json
 import os
-@app.get("/test")
-async def test_route():
-    return {"message": "السيرفر يعمل بنجاح!"}
 
 # --- إعدادات الأمان ونظام التوكن ---
 SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" # هذا هو مفتاحك السري (غيره!)
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
+@app.get("/test")
+async def test_route():
+    return {"message": "السيرفر يعمل بنجاح!"}
 
 def create_access_token(data: dict):
     to_encode = data.copy()
