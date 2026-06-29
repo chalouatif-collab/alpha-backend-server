@@ -32,7 +32,10 @@ app = FastAPI()
 # تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex="https://.*\.vercel\.app", 
+    allow_origins=[
+        "https://alpha-administration-cikd.vercel.app", # رابط الإدارة
+        "https://alpha-administration.vercel.app"       # رابط اللاعب
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
