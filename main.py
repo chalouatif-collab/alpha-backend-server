@@ -279,6 +279,18 @@ async def get_player_tickets(username: str):
     uname = username.lower().strip()
     player_tickets = [t for t in tickets_db if t["username"] == uname]
     return player_tickets
+# --- مسار جلب سجل التحويلات المالي والرياضي ---
+@app.get("/api/admin/get-history")
+async def get_history(username: str):
+    # جلب التذاكر الرياضية الخاصة باللاعب
+    tickets_db = load_tickets_db()
+    uname = username.lower().strip()
+    
+    # فلترة التذاكر الخاصة بهذا المستخدم فقط
+    user_history = [t for t in tickets_db if t["username"] == uname]
+    
+    # إرجاع النتائج للواجهة
+    return {"history": user_history}
 
 
 # --- 🔐 بقية مسارات الإدارة العامة وسحب البيانات الأصلية ---
