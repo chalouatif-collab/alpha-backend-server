@@ -185,14 +185,14 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     admin = req.admin_username.lower().strip()
     amount = float(req.amount)
     db = load_db()
-    
+
     target_user = None
     admin_user = None
-    
+
     for u in db:
-        if u["username"] == target:
+        if u.get("username") == target:
             target_user = u
-        if u["username"] == admin:
+        if u.get("username") == admin:
             admin_user = u
 
     if not target_user:
@@ -201,18 +201,38 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     if req.action == "charge":
         if admin != "system" and admin != "fethi":
             if not admin_user:
-                raise HTTPException(status_code=404, detail="Admin القائم بالعملية غير موجود")
-            if admin_user["balance"] < amount:
+                raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
+            if admin_user.get("balance", 0) < amount:
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
             admin_user["balance"] -= amount
-        target_user["balance"] += amount
+
+        # --- 🚀 محرك الـ Cashback الذكي (10%) ---
+        current_balance = target_user.get("balance", 0)
+        daily_deps = target_user.get("daily_deposits", 0)
+
+        # إذا كان رصيد اللاعب منتهي (أقل من 1) وعنده إيداعات سابقة، نفعل الكاش باك!
+        if current_balance < 1.0 and daily_deps > 0:
+            cashback_bonus = daily_deps * 0.10
+            target_user["balance"] = current_balance + cashback_bonus
+            target_user["daily_deposits"] = 0 # تصفير العداد بعد أخذ الهدية
+        
+        # إضافة الشحن الجديد
+        target_user["balance"] = target_user.get("balance", 0) + amount
+        
+        # تسجيل الشحن في عداد الإيداعات (فقط إذا كان الشحن من مسؤول وليس من سيستم الأرباح)
+        if admin != "system":
+            target_user["daily_deposits"] = target_user.get("daily_deposits", 0) + amount
+        # ----------------------------------------
 
     elif req.action == "withdraw":
-        if target_user["balance"] < amount:
-            raise HTTPException(status_code=400, detail="Solde insuffisant chez le compte cible")
+        # 🚀 السماح للسيستم (واللاعبين) بخصم ثمن الورقة بدون أخطاء
+        if target_user.get("balance", 0) < amount:
+            raise HTTPException(status_code=400, detail="Solde insuffisant")
+        
         target_user["balance"] -= amount
+        
         if admin != "system" and admin != "fethi" and admin_user:
-            admin_user["balance"] += amount
+            admin_user["balance"] = admin_user.get("balance", 0) + amount
 
     save_db(db)
     return {"status": "success", "balance": target_user["balance"]}
