@@ -3,4 +3,4 @@ uvicorn
 pydantic
 requests
 python-jose[cryptography]
-pip install passlib bcrypt
+
