@@ -9,6 +9,16 @@ from datetime import datetime, timedelta
 import random
 import json
 import os
+from passlib.context import CryptContext
+
+# إعداد خوارزمية التشفير
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
 # --- إعدادات الأمان ونظام التوكن ---
 SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" # هذا هو مفتاحك السري (غيره!)
@@ -32,17 +42,11 @@ app = FastAPI()
 # تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://alpha-administration-cikd.vercel.app", # رابط الإدارة
-        "https://alpha-administration.vercel.app"       # رابط اللاعب
-    ],
-    allow_credentials=True,
+    allow_origins=["*"], 
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.get("/test")
-async def test_route():
-    return {"message": "السيرفر يعمل بنجاح!"}
+
 API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
 DB_FILE = "network_database.json"
 TICKETS_FILE = "tickets_database.json"  # قاعدة بيانات الأوراق السحابية الجديدة
@@ -129,25 +133,29 @@ async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
     db = load_db()
     
-    # 1. التحقق من بيانات المستخدم
     user = None
+    # تسجيل الدخول الخاص بالمالك (Owner)
     if uname == "fethi" and req.password == "123456":
         user = {"username": "fethi", "role": "owner", "balance": 999999.00}
     else:
+        # البحث عن اللاعبين العاديين والأدمن
         for u in db:
-            if u["username"] == uname and u.get("password") == req.password:
-                if u["is_blocked"] == 1: raise HTTPException(status_code=403, detail="Ce compte est bloqué")
-                user = u
-                break
+            if u["username"] == uname:
+                # نستخدم دالة verify_password للتحقق من التشفير
+                if verify_password(req.password, u.get("password", "")):
+                    if u["is_blocked"] == 1: 
+                        raise HTTPException(status_code=403, detail="Ce compte est bloqué")
+                    user = u
+                    break
     
-    # 2. إذا لم نجد المستخدم
+    # إذا لم نجد المستخدم أو كانت كلمة المرور خاطئة
     if not user:
         raise HTTPException(status_code=401, detail="Identifiants incorrects")
     
-    # 3. إصدار الـ Token المشفر
+    # إصدار الـ Token المشفر
     access_token = create_access_token(data={"sub": user["username"]})
     
-    # 4. إرجاع النتيجة مع التوكن
+    # إرجاع النتيجة
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
@@ -165,9 +173,12 @@ async def register_user(req: RegisterRequest):
         if u["username"] == uname:
             raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
             
+    # --- إضافة سطر التشفير هنا ---
+    hashed_pwd = hash_password(req.password)
+    
     new_user = {
         "username": uname,
-        "password": req.password,
+        "password": hashed_pwd, # حفظ النسخة المشفرة بدلاً من النص العادي
         "role": req.role,
         "balance": 0.00,
         "rtp": 50,
@@ -177,7 +188,6 @@ async def register_user(req: RegisterRequest):
     db.append(new_user)
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
-
 
 # --- 📊 مسارات الإدارة العامة والتحكم المالي المطور ---
 
