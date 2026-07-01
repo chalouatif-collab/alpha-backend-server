@@ -39,13 +39,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 app = FastAPI()
 
-# تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
 
 API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
 DB_FILE = "network_database.json"
