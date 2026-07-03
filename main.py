@@ -10,7 +10,32 @@ import random
 import json
 import os
 from passlib.context import CryptContext
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base, sessionmaker
 
+# جلب رابط قاعدة البيانات السري أو استخدام قاعدة محلية للتجربة
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# تشغيل محرك قاعدة البيانات
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+    role = Column(String)
+    balance = Column(Float, default=0.0)
+    rtp = Column(Integer, default=50)
+    is_blocked = Column(Integer, default=0)
+    created_by = Column(String)
+
+# هذا السطر السحري يقوم بإنشاء الجداول في السيرفر فوراً إذا لم تكن موجودة
+Base.metadata.create_all(bind=engine)
 # إعداد خوارزمية التشفير
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -52,25 +77,63 @@ DB_FILE = "network_database.json"
 TICKETS_FILE = "tickets_database.json"  # قاعدة بيانات الأوراق السحابية الجديدة
 
 # --- دالات الحفظ والقراءة الذكية لبيانات الشبكة والأوراق ---
+# --- دالات الحفظ والقراءة المرتبطة بقاعدة البيانات الجديدة ---
 def load_db():
-    if not os.path.exists(DB_FILE):
-        default_db = [
-            {"username": "fethi", "password": "123456", "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System"},
-            {"username": "samir", "password": "123456", "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi"}
+    db = SessionLocal()
+    users = db.query(User).all()
+    db.close()
+    
+    # تحويل البيانات لشكل القائمة القديم حتى لا يتعطل باقي الكود
+    result = []
+    for u in users:
+        result.append({
+            "username": u.username,
+            "password": u.password,
+            "role": u.role,
+            "balance": u.balance,
+            "rtp": u.rtp,
+            "is_blocked": u.is_blocked,
+            "created_by": u.created_by
+        })
+    
+    # إذا كانت القاعدة فارغة (أول تشغيل)، ننشئ الحسابات الأساسية
+    if not result:
+        default_users = [
+            {"username": "fethi", "password": hash_password("123456"), "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System"},
+            {"username": "samir", "password": hash_password("123456"), "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi"}
         ]
-        with open(DB_FILE, "w") as f:
-            json.dump(default_db, f)
-        return default_db
-    try:
-        with open(DB_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
+        save_db(default_users)
+        return default_users
+        
+    return result
 
 def save_db(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
+    db = SessionLocal()
+    for item in data:
+        user = db.query(User).filter(User.username == item["username"]).first()
+        if user:
+            # تحديث بيانات المستخدم إذا كان موجوداً
+            user.password = item.get("password", user.password)
+            user.role = item.get("role", user.role)
+            user.balance = item.get("balance", user.balance)
+            user.rtp = item.get("rtp", user.rtp)
+            user.is_blocked = item.get("is_blocked", user.is_blocked)
+            user.created_by = item.get("created_by", user.created_by)
+        else:
+            # إنشاء مستخدم جديد
+            new_user = User(
+                username=item["username"],
+                password=item["password"],
+                role=item.get("role", "player"),
+                balance=item.get("balance", 0.0),
+                rtp=item.get("rtp", 50),
+                is_blocked=item.get("is_blocked", 0),
+                created_by=item.get("created_by", "System")
+            )
+            db.add(new_user)
+    
+    db.commit()
+    db.close()
 def load_tickets_db():
     if not os.path.exists(TICKETS_FILE):
         with open(TICKETS_FILE, "w") as f:
