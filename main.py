@@ -22,6 +22,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 class User(Base):
     __tablename__ = "users"
 
@@ -34,8 +35,20 @@ class User(Base):
     is_blocked = Column(Integer, default=0)
     created_by = Column(String)
 
+# --- (الجديد) جدول سجل المعاملات المالية ---
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_username = Column(String)
+    target_username = Column(String)
+    action = Column(String)  # 'charge' أو 'withdraw'
+    amount = Column(Float)
+    date = Column(String)    # حفظ التاريخ والوقت
+
 # هذا السطر السحري يقوم بإنشاء الجداول في السيرفر فوراً إذا لم تكن موجودة
 Base.metadata.create_all(bind=engine)
+
 # إعداد خوارزمية التشفير
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -46,7 +59,7 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 # --- إعدادات الأمان ونظام التوكن ---
-SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" # هذا هو مفتاحك السري (غيره!)
+SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" # هذا هو مفتاحك السري
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
@@ -62,6 +75,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return payload.get("sub")
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 app = FastAPI()
 
 app.add_middleware(
@@ -70,20 +84,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# تفعيل الـ CORS بشكل كامل لجميع النطاقات والواجهات المعزولة
 
 API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
 DB_FILE = "network_database.json"
-TICKETS_FILE = "tickets_database.json"  # قاعدة بيانات الأوراق السحابية الجديدة
+TICKETS_FILE = "tickets_database.json" 
 
-# --- دالات الحفظ والقراءة الذكية لبيانات الشبكة والأوراق ---
-# --- دالات الحفظ والقراءة المرتبطة بقاعدة البيانات الجديدة ---
+# --- دالات الحفظ والقراءة المرتبطة بقاعدة البيانات ---
 def load_db():
     db = SessionLocal()
     users = db.query(User).all()
     db.close()
     
-    # تحويل البيانات لشكل القائمة القديم حتى لا يتعطل باقي الكود
     result = []
     for u in users:
         result.append({
@@ -96,7 +107,6 @@ def load_db():
             "created_by": u.created_by
         })
     
-    # إذا كانت القاعدة فارغة (أول تشغيل)، ننشئ الحسابات الأساسية
     if not result:
         default_users = [
             {"username": "fethi", "password": hash_password("123456"), "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System"},
@@ -112,7 +122,6 @@ def save_db(data):
     for item in data:
         user = db.query(User).filter(User.username == item["username"]).first()
         if user:
-            # تحديث بيانات المستخدم إذا كان موجوداً
             user.password = item.get("password", user.password)
             user.role = item.get("role", user.role)
             user.balance = item.get("balance", user.balance)
@@ -120,7 +129,6 @@ def save_db(data):
             user.is_blocked = item.get("is_blocked", user.is_blocked)
             user.created_by = item.get("created_by", user.created_by)
         else:
-            # إنشاء مستخدم جديد
             new_user = User(
                 username=item["username"],
                 password=item["password"],
@@ -134,6 +142,7 @@ def save_db(data):
     
     db.commit()
     db.close()
+
 def load_tickets_db():
     if not os.path.exists(TICKETS_FILE):
         with open(TICKETS_FILE, "w") as f:
@@ -149,8 +158,7 @@ def save_tickets_db(data):
     with open(TICKETS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-
-# --- النماذج وهياكل البيانات المدخلة (Pydantic Models) ---
+# --- النماذج وهياكل البيانات ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -178,7 +186,6 @@ class ChangePlayerPasswordRequest(BaseModel):
     target_username: str
     new_password: str
 
-# هياكل الرهان والربط السحابي الجديدة للسوبر أونر
 class SaveTicketRequest(BaseModel):
     username: str
     ticket_data: dict
@@ -190,35 +197,28 @@ class UpdateTicketStatusRequest(BaseModel):
 
 
 # --- 🔐 مسارات التحقق والحماية ---
-
 @app.post("/api/login")
 async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
     db = load_db()
     
     user = None
-    # تسجيل الدخول الخاص بالمالك (Owner)
     if uname == "fethi" and req.password == "123456":
         user = {"username": "fethi", "role": "owner", "balance": 999999.00}
     else:
-        # البحث عن اللاعبين العاديين والأدمن
         for u in db:
             if u["username"] == uname:
-                # نستخدم دالة verify_password للتحقق من التشفير
                 if verify_password(req.password, u.get("password", "")):
                     if u["is_blocked"] == 1: 
                         raise HTTPException(status_code=403, detail="Ce compte est bloqué")
                     user = u
                     break
     
-    # إذا لم نجد المستخدم أو كانت كلمة المرور خاطئة
     if not user:
         raise HTTPException(status_code=401, detail="Identifiants incorrects")
     
-    # إصدار الـ Token المشفر
     access_token = create_access_token(data={"sub": user["username"]})
     
-    # إرجاع النتيجة
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
@@ -236,12 +236,11 @@ async def register_user(req: RegisterRequest):
         if u["username"] == uname:
             raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
             
-    # --- إضافة سطر التشفير هنا ---
     hashed_pwd = hash_password(req.password)
     
     new_user = {
         "username": uname,
-        "password": hashed_pwd, # حفظ النسخة المشفرة بدلاً من النص العادي
+        "password": hashed_pwd,
         "role": req.role,
         "balance": 0.00,
         "rtp": 50,
@@ -252,8 +251,8 @@ async def register_user(req: RegisterRequest):
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
 
-# --- 📊 مسارات الإدارة العامة والتحكم المالي المطور ---
 
+# --- 📊 مسارات الإدارة والتحكم المالي ---
 @app.get("/api/admin/users")
 async def get_all_network_users(admin_username: Optional[str] = None):
     return load_db()
@@ -285,26 +284,20 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
             admin_user["balance"] -= amount
 
-        # --- 🚀 محرك الـ Cashback الذكي (10%) ---
         current_balance = target_user.get("balance", 0)
         daily_deps = target_user.get("daily_deposits", 0)
 
-        # إذا كان رصيد اللاعب منتهي (أقل من 1) وعنده إيداعات سابقة، نفعل الكاش باك!
         if current_balance < 1.0 and daily_deps > 0:
             cashback_bonus = daily_deps * 0.10
             target_user["balance"] = current_balance + cashback_bonus
-            target_user["daily_deposits"] = 0 # تصفير العداد بعد أخذ الهدية
+            target_user["daily_deposits"] = 0
         
-        # إضافة الشحن الجديد
         target_user["balance"] = target_user.get("balance", 0) + amount
         
-        # تسجيل الشحن في عداد الإيداعات (فقط إذا كان الشحن من مسؤول وليس من سيستم الأرباح)
         if admin != "system":
             target_user["daily_deposits"] = target_user.get("daily_deposits", 0) + amount
-        # ----------------------------------------
 
     elif req.action == "withdraw":
-        # 🚀 السماح للسيستم (واللاعبين) بخصم ثمن الورقة بدون أخطاء
         if target_user.get("balance", 0) < amount:
             raise HTTPException(status_code=400, detail="Solde insuffisant")
         
@@ -313,17 +306,55 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         if admin != "system" and admin != "fethi" and admin_user:
             admin_user["balance"] = admin_user.get("balance", 0) + amount
 
+    # --- (الجديد) تسجيل المعاملة في قاعدة البيانات ---
+    db_session = SessionLocal()
+    new_tx = Transaction(
+        admin_username=admin,
+        target_username=target,
+        action=req.action,
+        amount=amount,
+        date=datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
+    db_session.add(new_tx)
+    db_session.commit()
+    db_session.close()
+    # ------------------------------------------------
+
     save_db(db)
     return {"status": "success", "balance": target_user["balance"]}
 
+# --- (الجديد) مسار جلب سجل المعاملات ---
+@app.get("/api/admin/transactions-history")
+async def get_transactions_history(username: str):
+    db_session = SessionLocal()
+    uname = username.lower().strip()
+    
+    # إذا كان المدير الأساسي يرى كل شيء، وإلا يرى التحويلات التي قام بها أو استلمها فقط
+    if uname == "fethi":
+        txs = db_session.query(Transaction).order_by(Transaction.id.desc()).all()
+    else:
+        txs = db_session.query(Transaction).filter(
+            (Transaction.admin_username == uname) | (Transaction.target_username == uname)
+        ).order_by(Transaction.id.desc()).all()
+        
+    result = []
+    for t in txs:
+        result.append({
+            "id": t.id,
+            "admin_username": t.admin_username,
+            "target_username": t.target_username,
+            "action": t.action,
+            "amount": t.amount,
+            "date": t.date
+        })
+    db_session.close()
+    return result
 
-# --- 🚀 مسارات إدارة ومزامنة أوراق الرهان الرياضي للسوبر أونر ---
 
+# --- مسارات أوراق الرهان ---
 @app.post("/api/admin/save-ticket")
 async def save_player_ticket(req: SaveTicketRequest):
     tickets_db = load_tickets_db()
-    
-    # ربط التذكرة باسم المستخدم وحفظها سحابياً
     new_ticket = {
         "username": req.username.lower().strip(),
         "ticket_id": req.ticket_data.get("id"),
@@ -335,7 +366,6 @@ async def save_player_ticket(req: SaveTicketRequest):
         "gain": req.ticket_data.get("gain", 0.0),
         "date": req.ticket_data.get("date", datetime.now().strftime("%H:%M:%S"))
     }
-    
     tickets_db.append(new_ticket)
     save_tickets_db(tickets_db)
     return {"status": "success", "message": "Ticket synced with server database successfully"}
@@ -351,29 +381,22 @@ async def update_ticket_status(req: UpdateTicketStatusRequest):
             return {"status": "success", "message": "Ticket status updated on server"}
     raise HTTPException(status_code=404, detail="Ticket non trouvé")
 
-# المسار الخاص بجلب أوراق لاعب معين لعرضها فوراً في شاشة السوبر أونر المنبثقة
 @app.get("/api/admin/get-player-tickets")
 async def get_player_tickets(username: str):
     tickets_db = load_tickets_db()
     uname = username.lower().strip()
     player_tickets = [t for t in tickets_db if t["username"] == uname]
     return player_tickets
-# --- مسار جلب سجل التحويلات المالي والرياضي ---
+
 @app.get("/api/admin/get-history")
 async def get_history(username: str):
-    # جلب التذاكر الرياضية الخاصة باللاعب
     tickets_db = load_tickets_db()
     uname = username.lower().strip()
-    
-    # فلترة التذاكر الخاصة بهذا المستخدم فقط
     user_history = [t for t in tickets_db if t["username"] == uname]
-    
-    # إرجاع النتائج للواجهة
     return {"history": user_history}
 
 
-# --- 🔐 بقية مسارات الإدارة العامة وسحب البيانات الأصلية ---
-
+# --- مسارات إضافية ---
 @app.post("/api/admin/change-player-password")
 async def change_player_password(req: ChangePlayerPasswordRequest):
     target = req.target_username.lower().strip()
@@ -381,7 +404,7 @@ async def change_player_password(req: ChangePlayerPasswordRequest):
     
     for u in db:
         if u["username"] == target:
-            u["password"] = req.new_password
+            u["password"] = hash_password(req.new_password)
             save_db(db)
             return {"status": "success", "message": "Mot de passe modifié avec succès"}
             
