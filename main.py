@@ -251,6 +251,52 @@ async def register_user(req: RegisterRequest):
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
 
+# أضف هذه الدوال في أعلى الملف (مثلاً قبل السطر 200 أو فوق دالة daily_spin)
+def has_user_spun_today(username):
+    db = load_db()
+    for u in db:
+        if u["username"] == username:
+            return u.get("last_spin_date") == "2026-07-04"
+    return False
+
+def log_spin_usage(username):
+    db = load_db()
+    for u in db:
+        if u["username"] == username:
+            u["last_spin_date"] = "2026-07-04"
+            break
+    save_db(db)
+
+def add_balance(username, amount):
+    db = load_db()
+    for u in db:
+        if u["username"] == username:
+            # نستخدم float لتحويل الرصيد لرقم صحيح للعمليات الحسابية
+            u["balance"] = float(u.get("balance", 0)) + amount
+            break
+    save_db(db)
+    
+@app.post("/api/spin")
+async def daily_spin(current_user: User = Depends(get_current_user)):
+    # تحقق من قاعدة البيانات هل دار اللاعب العجلة اليوم
+    if has_user_spun_today(current_user.username): 
+        return {"status": "error", "message": "لقد استخدمت فرصتك اليوم، عد غداً!"}
+    
+    # نسبة 95% للخسارة
+    if random.random() < 0.95:
+        log_spin_usage(current_user.username)
+        return {"status": "loss", "message": "حظ سعيد في المرة القادمة!"}
+    
+    # نسبة 5% للفوز
+    prizes = [5, 10, 20, 50] 
+    won_amount = random.choice(prizes)
+    
+    # تحديث الرصيد وتسجيل العملية
+    add_balance(current_user.username, won_amount)
+    log_spin_usage(current_user.username)
+    
+    return {"status": "win", "amount": won_amount, "message": f"مبروك! ربحت {won_amount} TND"}
+
 
 # --- 📊 مسارات الإدارة والتحكم المالي ---
 @app.get("/api/admin/users")
