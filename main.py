@@ -12,7 +12,9 @@ import os
 from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
-
+# ضع هذا الكود هنا في أعلى الملف
+import time
+cache = {"matches": [], "last_update": 0}
 # جلب رابط قاعدة البيانات السري أو استخدام قاعدة محلية للتجربة
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -275,7 +277,7 @@ def add_balance(username, amount):
             u["balance"] = float(u.get("balance", 0)) + amount
             break
     save_db(db)
-    
+
 @app.post("/api/spin")
 async def daily_spin(current_user: User = Depends(get_current_user)):
     # تحقق من قاعدة البيانات هل دار اللاعب العجلة اليوم
@@ -480,17 +482,28 @@ async def delete_account(admin_username: str, target_username: str):
 
 @app.get("/api/sports/live")
 async def get_sports():
-    leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
-    all_matches = []
-    for league in leagues:
-        url = f"https://api.the-odds-api.com/v4/sports/{league}/odds/?apiKey={API_KEY}&regions=eu&markets=h2h"
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                all_matches.extend(response.json())
-        except Exception:
-            pass
-    return all_matches
+    current_time = time.time()
+    
+    # لا تجلب البيانات إلا إذا مر أكثر من 15 دقيقة (900 ثانية) على آخر تحديث
+    if current_time - cache["last_update"] > 900: 
+        leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
+        all_matches = []
+        for league in leagues:
+            try:
+                # تأكد أن API_KEY معرف لديك في الملف
+                url = f"https://api.the-odds-api.com/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h"
+                response = requests.get(url, timeout=5) 
+                if response.status_code == 200:
+                    all_matches.extend(response.json())
+            except Exception:
+                pass
+        
+        # تحديث الكاش
+        cache["matches"] = all_matches
+        cache["last_update"] = current_time
+    
+    # إرجاع البيانات المخزنة فوراً
+    return cache["matches"]
 
 @app.get("/")
 async def root():
