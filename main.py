@@ -13,6 +13,7 @@ import time
 from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
+import asyncio
 
 # ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
@@ -92,6 +93,50 @@ app.add_middleware(
 # سحب المفتاح بأمان
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
+# --- محرك التسوية التلقائي (Background Task) ---
+async def auto_settle_tickets():
+    """هذه الدالة تعمل في الخلفية بشكل دائم لفحص التذاكر"""
+    await asyncio.sleep(10) 
+    
+    while True:
+        try:
+            print("⏳ [Auto-Settler] جاري فحص التذاكر المعلقة...")
+            tickets_db = load_tickets_db()
+            db = load_db()
+            changes_made = False
+            
+            pending_tickets = [t for t in tickets_db if t.get("status") == "encours"]
+            
+            for ticket in pending_tickets:
+                simulated_result = random.choice(["gagne", "perdu"]) 
+                print(f"🔄 معالجة التذكرة #{ticket['ticket_id']} - النتيجة: {simulated_result}")
+                
+                ticket["status"] = simulated_result
+                changes_made = True
+                
+                if simulated_result == "gagne":
+                    target_username = ticket["username"]
+                    win_amount = float(ticket.get("gain", 0))
+                    
+                    for u in db:
+                        if u["username"] == target_username:
+                            u["balance"] = float(u.get("balance", 0)) + win_amount
+                            print(f"💰 تم إضافة {win_amount} TND لحساب {target_username}")
+                            break
+            
+            if changes_made:
+                save_tickets_db(tickets_db)
+                save_db(db)
+                print("✅ [Auto-Settler] تم حفظ النتائج وتحديث الأرصدة بنجاح.")
+                
+        except Exception as e:
+            print(f"❌ [Auto-Settler] حدث خطأ: {e}")
+        
+        await asyncio.sleep(60) 
+
+@app.on_event("startup")
+async def start_background_tasks():
+    asyncio.create_task(auto_settle_tickets())
 
 def load_db():
     db = SessionLocal()
@@ -497,3 +542,19 @@ async def get_sports():
 @app.get("/")
 async def root():
     return {"status": "Alpha Secure Database Backend Running Perfectly"}
+
+@app.post("/api/admin/request-transaction")
+async def request_transaction(req: UpdateBalanceRequest, current_user: str = Depends(get_current_user)):
+    # هذا المسار يسجل طلب المستخدم (إيداع أو سحب) ليقوم المدير بمراجعته
+    db_session = SessionLocal()
+    new_tx = Transaction(
+        admin_username="PENDING", # بانتظار موافقة المدير
+        target_username=current_user,
+        action=req.action,
+        amount=req.amount,
+        date=datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
+    db_session.add(new_tx)
+    db_session.commit()
+    db_session.close()
+    return {"status": "success", "message": "طلبك قيد المراجعة"}
