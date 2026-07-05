@@ -15,22 +15,18 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 import asyncio
 
-# ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
 
-# جلب رابط قاعدة البيانات
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# تشغيل محرك قاعدة البيانات
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class User(Base):
     __tablename__ = "alpha_users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password = Column(String)
@@ -39,13 +35,11 @@ class User(Base):
     rtp = Column(Integer, default=50)
     is_blocked = Column(Integer, default=0)
     created_by = Column(String)
-    # --- الأعمدة الجديدة التي كانت مفقودة لحفظ البيانات ---
     last_spin_date = Column(String, default="")
     daily_deposits = Column(Float, default=0.0)
 
 class Transaction(Base):
     __tablename__ = "transactions"
-
     id = Column(Integer, primary_key=True, index=True)
     admin_username = Column(String)
     target_username = Column(String)
@@ -55,7 +49,6 @@ class Transaction(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# إعداد خوارزمية التشفير
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str):
@@ -90,48 +83,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# سحب المفتاح بأمان
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
-# --- محرك التسوية التلقائي (Background Task) ---
+
 async def auto_settle_tickets():
-    """هذه الدالة تعمل في الخلفية بشكل دائم لفحص التذاكر"""
     await asyncio.sleep(10) 
-    
     while True:
         try:
-            print("⏳ [Auto-Settler] جاري فحص التذاكر المعلقة...")
             tickets_db = load_tickets_db()
             db = load_db()
             changes_made = False
-            
             pending_tickets = [t for t in tickets_db if t.get("status") == "encours"]
             
             for ticket in pending_tickets:
                 simulated_result = random.choice(["gagne", "perdu"]) 
-                print(f"🔄 معالجة التذكرة #{ticket['ticket_id']} - النتيجة: {simulated_result}")
-                
                 ticket["status"] = simulated_result
                 changes_made = True
                 
                 if simulated_result == "gagne":
                     target_username = ticket["username"]
                     win_amount = float(ticket.get("gain", 0))
-                    
                     for u in db:
                         if u["username"] == target_username:
                             u["balance"] = float(u.get("balance", 0)) + win_amount
-                            print(f"💰 تم إضافة {win_amount} TND لحساب {target_username}")
                             break
             
             if changes_made:
                 save_tickets_db(tickets_db)
                 save_db(db)
-                print("✅ [Auto-Settler] تم حفظ النتائج وتحديث الأرصدة بنجاح.")
-                
         except Exception as e:
-            print(f"❌ [Auto-Settler] حدث خطأ: {e}")
-        
+            print(f"❌ Error: {e}")
         await asyncio.sleep(60) 
 
 @app.on_event("startup")
@@ -146,15 +127,9 @@ def load_db():
     result = []
     for u in users:
         result.append({
-            "username": u.username,
-            "password": u.password,
-            "role": u.role,
-            "balance": u.balance,
-            "rtp": u.rtp,
-            "is_blocked": u.is_blocked,
-            "created_by": u.created_by,
-            "last_spin_date": u.last_spin_date,
-            "daily_deposits": u.daily_deposits
+            "username": u.username, "password": u.password, "role": u.role,
+            "balance": u.balance, "rtp": u.rtp, "is_blocked": u.is_blocked,
+            "created_by": u.created_by, "last_spin_date": u.last_spin_date, "daily_deposits": u.daily_deposits
         })
     
     if not result:
@@ -164,7 +139,6 @@ def load_db():
         ]
         save_db(default_users)
         return default_users
-        
     return result
 
 def save_db(data):
@@ -182,18 +156,12 @@ def save_db(data):
             user.daily_deposits = item.get("daily_deposits", user.daily_deposits)
         else:
             new_user = User(
-                username=item["username"],
-                password=item["password"],
-                role=item.get("role", "player"),
-                balance=item.get("balance", 0.0),
-                rtp=item.get("rtp", 50),
-                is_blocked=item.get("is_blocked", 0),
-                created_by=item.get("created_by", "System"),
-                last_spin_date=item.get("last_spin_date", ""),
+                username=item["username"], password=item["password"], role=item.get("role", "player"),
+                balance=item.get("balance", 0.0), rtp=item.get("rtp", 50), is_blocked=item.get("is_blocked", 0),
+                created_by=item.get("created_by", "System"), last_spin_date=item.get("last_spin_date", ""),
                 daily_deposits=item.get("daily_deposits", 0.0)
             )
             db.add(new_user)
-    
     db.commit()
     db.close()
 
@@ -220,7 +188,7 @@ class RegisterRequest(BaseModel):
     username: str
     password: str
     role: str
-    created_by: str
+    created_by: str = "Self-Register" # تم جعله إفتراضياً لحل مشكلة التسجيل
 
 class ConfigureAccountRequest(BaseModel):
     admin_username: str
@@ -248,6 +216,7 @@ class UpdateTicketStatusRequest(BaseModel):
     status: str
     amount_paid: float
 
+# تم تصحيح دالة الدخول وإرجاع الجزء المفقود منها
 @app.post("/api/login")
 async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
@@ -257,19 +226,27 @@ async def login_user(req: LoginRequest):
     if uname == "fethi" and req.password == "123456":
         user = {"username": "fethi", "role": "owner", "balance": 999999999999999999999999999.00}
     else:
-       for u in db:
-        if u["username"] == uname:
-            # إضافة أسطر التشخيص
-            print(f"DEBUG: Found username match: {u['username']}")
-            is_pwd_valid = verify_password(req.password, u.get("password", ""))
-            print(f"DEBUG: Password verification result: {is_pwd_valid}")
-            
-            # التحقق النهائي
-            if is_pwd_valid:
-                if u.get("is_blocked") == 1:
-                    raise HTTPException(status_code=403, detail="Ce compte est bloqué")
-                user = u
-                break # نخرج من الحلقة لأننا وجدنا المستخدم الصحيح
+        for u in db:
+            if u["username"] == uname:
+                is_pwd_valid = verify_password(req.password, u.get("password", ""))
+                if is_pwd_valid:
+                    if u.get("is_blocked") == 1:
+                        raise HTTPException(status_code=403, detail="Ce compte est bloqué")
+                    user = u
+                    break
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Identifiants incorrects")
+
+    access_token = create_access_token(data={"sub": user["username"]})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "username": user["username"],
+        "role": user.get("role", "player"),
+        "balance": user.get("balance", 0.0),
+        "created_by": user.get("created_by", "System")
+    }
 
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
@@ -333,10 +310,8 @@ async def daily_spin(current_user: str = Depends(get_current_user)):
     
     prizes = [5, 10, 20, 50] 
     won_amount = random.choice(prizes)
-    
     add_balance(current_user, won_amount)
     log_spin_usage(current_user)
-    
     return {"status": "win", "amount": won_amount, "message": f"مبروك! ربحت {won_amount} TND"}
 
 @app.get("/api/admin/users")
@@ -394,11 +369,8 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
 
     db_session = SessionLocal()
     new_tx = Transaction(
-        admin_username=admin,
-        target_username=target,
-        action=req.action,
-        amount=amount,
-        date=datetime.now().strftime("%Y-%m-%d %H:%M")
+        admin_username=admin, target_username=target,
+        action=req.action, amount=amount, date=datetime.now().strftime("%Y-%m-%d %H:%M")
     )
     db_session.add(new_tx)
     db_session.commit()
@@ -422,12 +394,8 @@ async def get_transactions_history(username: str):
     result = []
     for t in txs:
         result.append({
-            "id": t.id,
-            "admin_username": t.admin_username,
-            "target_username": t.target_username,
-            "action": t.action,
-            "amount": t.amount,
-            "date": t.date
+            "id": t.id, "admin_username": t.admin_username, "target_username": t.target_username,
+            "action": t.action, "amount": t.amount, "date": t.date
         })
     db_session.close()
     return result
@@ -465,15 +433,13 @@ async def update_ticket_status(req: UpdateTicketStatusRequest):
 async def get_player_tickets(username: str):
     tickets_db = load_tickets_db()
     uname = username.lower().strip()
-    player_tickets = [t for t in tickets_db if t["username"] == uname]
-    return player_tickets
+    return [t for t in tickets_db if t["username"] == uname]
 
 @app.get("/api/admin/get-history")
 async def get_history(username: str):
     tickets_db = load_tickets_db()
     uname = username.lower().strip()
-    user_history = [t for t in tickets_db if t["username"] == uname]
-    return {"history": user_history}
+    return {"history": [t for t in tickets_db if t["username"] == uname]}
 
 @app.post("/api/admin/change-player-password")
 async def change_player_password(req: ChangePlayerPasswordRequest):
@@ -510,11 +476,9 @@ async def delete_account(admin_username: str, target_username: str):
             return {"status": "success", "message": "Supprimé"}
     raise HTTPException(status_code=404, detail="Non trouvé")
 
-# --- تم تصحيح المسار ليتطابق مع الواجهة ---
 @app.get("/api/sports/get-live-matches")
 async def get_sports():
     current_time = time.time()
-    
     if current_time - cache["last_update"] > 900: 
         leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
         all_matches = []
@@ -526,10 +490,8 @@ async def get_sports():
                     all_matches.extend(response.json())
             except Exception:
                 pass
-        
         cache["matches"] = all_matches
         cache["last_update"] = current_time
-    
     return cache["matches"]
 
 @app.get("/")
@@ -538,10 +500,9 @@ async def root():
 
 @app.post("/api/admin/request-transaction")
 async def request_transaction(req: UpdateBalanceRequest, current_user: str = Depends(get_current_user)):
-    # هذا المسار يسجل طلب المستخدم (إيداع أو سحب) ليقوم المدير بمراجعته
     db_session = SessionLocal()
     new_tx = Transaction(
-        admin_username="PENDING", # بانتظار موافقة المدير
+        admin_username="PENDING",
         target_username=current_user,
         action=req.action,
         amount=req.amount,
