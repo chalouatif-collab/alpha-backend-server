@@ -269,14 +269,16 @@ async def login_user(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Identifiants incorrects")
     
     access_token = create_access_token(data={"sub": user["username"]})
-    
+
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
         "username": user["username"], 
         "role": user.get("role", "user"), 
-        "balance": user.get("balance", 0.0)
+        "balance": user.get("balance", 0.0),
+        "created_by": user.get("created_by", "System")
     }
+
 
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
