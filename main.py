@@ -9,13 +9,15 @@ from datetime import datetime, timedelta
 import random
 import json
 import os
+import time
 from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
-# ضع هذا الكود هنا في أعلى الملف
-import time
+
+# ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
-# جلب رابط قاعدة البيانات السري أو استخدام قاعدة محلية للتجربة
+
+# جلب رابط قاعدة البيانات
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -36,19 +38,20 @@ class User(Base):
     rtp = Column(Integer, default=50)
     is_blocked = Column(Integer, default=0)
     created_by = Column(String)
+    # --- الأعمدة الجديدة التي كانت مفقودة لحفظ البيانات ---
+    last_spin_date = Column(String, default="")
+    daily_deposits = Column(Float, default=0.0)
 
-# --- (الجديد) جدول سجل المعاملات المالية ---
 class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, index=True)
     admin_username = Column(String)
     target_username = Column(String)
-    action = Column(String)  # 'charge' أو 'withdraw'
+    action = Column(String)  
     amount = Column(Float)
-    date = Column(String)    # حفظ التاريخ والوقت
+    date = Column(String)    
 
-# هذا السطر السحري يقوم بإنشاء الجداول في السيرفر فوراً إذا لم تكن موجودة
 Base.metadata.create_all(bind=engine)
 
 # إعداد خوارزمية التشفير
@@ -60,8 +63,7 @@ def hash_password(password: str):
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-# --- إعدادات الأمان ونظام التوكن ---
-SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" # هذا هو مفتاحك السري
+SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" 
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 
@@ -87,11 +89,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-API_KEY = "f9afe7e1bc006f79f75bafe764b0f117"
-DB_FILE = "network_database.json"
+# سحب المفتاح بأمان
+API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
 
-# --- دالات الحفظ والقراءة المرتبطة بقاعدة البيانات ---
 def load_db():
     db = SessionLocal()
     users = db.query(User).all()
@@ -106,13 +107,15 @@ def load_db():
             "balance": u.balance,
             "rtp": u.rtp,
             "is_blocked": u.is_blocked,
-            "created_by": u.created_by
+            "created_by": u.created_by,
+            "last_spin_date": u.last_spin_date,
+            "daily_deposits": u.daily_deposits
         })
     
     if not result:
         default_users = [
-            {"username": "fethi", "password": hash_password("123456"), "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System"},
-            {"username": "samir", "password": hash_password("123456"), "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi"}
+            {"username": "fethi", "password": hash_password("123456"), "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System", "last_spin_date": "", "daily_deposits": 0.0},
+            {"username": "samir", "password": hash_password("123456"), "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi", "last_spin_date": "", "daily_deposits": 0.0}
         ]
         save_db(default_users)
         return default_users
@@ -130,6 +133,8 @@ def save_db(data):
             user.rtp = item.get("rtp", user.rtp)
             user.is_blocked = item.get("is_blocked", user.is_blocked)
             user.created_by = item.get("created_by", user.created_by)
+            user.last_spin_date = item.get("last_spin_date", user.last_spin_date)
+            user.daily_deposits = item.get("daily_deposits", user.daily_deposits)
         else:
             new_user = User(
                 username=item["username"],
@@ -138,7 +143,9 @@ def save_db(data):
                 balance=item.get("balance", 0.0),
                 rtp=item.get("rtp", 50),
                 is_blocked=item.get("is_blocked", 0),
-                created_by=item.get("created_by", "System")
+                created_by=item.get("created_by", "System"),
+                last_spin_date=item.get("last_spin_date", ""),
+                daily_deposits=item.get("daily_deposits", 0.0)
             )
             db.add(new_user)
     
@@ -160,7 +167,6 @@ def save_tickets_db(data):
     with open(TICKETS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# --- النماذج وهياكل البيانات ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -197,8 +203,6 @@ class UpdateTicketStatusRequest(BaseModel):
     status: str
     amount_paid: float
 
-
-# --- 🔐 مسارات التحقق والحماية ---
 @app.post("/api/login")
 async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
@@ -247,25 +251,28 @@ async def register_user(req: RegisterRequest):
         "balance": 0.00,
         "rtp": 50,
         "is_blocked": 0,
-        "created_by": req.created_by
+        "created_by": req.created_by,
+        "last_spin_date": "",
+        "daily_deposits": 0.0
     }
     db.append(new_user)
     save_db(db)
     return {"status": "success", "message": "Compte créé"}
 
-# أضف هذه الدوال في أعلى الملف (مثلاً قبل السطر 200 أو فوق دالة daily_spin)
 def has_user_spun_today(username):
     db = load_db()
+    today = datetime.now().strftime("%Y-%m-%d")
     for u in db:
         if u["username"] == username:
-            return u.get("last_spin_date") == "2026-07-04"
+            return u.get("last_spin_date") == today
     return False
 
 def log_spin_usage(username):
     db = load_db()
+    today = datetime.now().strftime("%Y-%m-%d")
     for u in db:
         if u["username"] == username:
-            u["last_spin_date"] = "2026-07-04"
+            u["last_spin_date"] = today
             break
     save_db(db)
 
@@ -273,34 +280,27 @@ def add_balance(username, amount):
     db = load_db()
     for u in db:
         if u["username"] == username:
-            # نستخدم float لتحويل الرصيد لرقم صحيح للعمليات الحسابية
             u["balance"] = float(u.get("balance", 0)) + amount
             break
     save_db(db)
 
 @app.post("/api/spin")
-async def daily_spin(current_user: User = Depends(get_current_user)):
-    # تحقق من قاعدة البيانات هل دار اللاعب العجلة اليوم
-    if has_user_spun_today(current_user.username): 
+async def daily_spin(current_user: str = Depends(get_current_user)):
+    if has_user_spun_today(current_user): 
         return {"status": "error", "message": "لقد استخدمت فرصتك اليوم، عد غداً!"}
     
-    # نسبة 95% للخسارة
     if random.random() < 0.95:
-        log_spin_usage(current_user.username)
+        log_spin_usage(current_user)
         return {"status": "loss", "message": "حظ سعيد في المرة القادمة!"}
     
-    # نسبة 5% للفوز
     prizes = [5, 10, 20, 50] 
     won_amount = random.choice(prizes)
     
-    # تحديث الرصيد وتسجيل العملية
-    add_balance(current_user.username, won_amount)
-    log_spin_usage(current_user.username)
+    add_balance(current_user, won_amount)
+    log_spin_usage(current_user)
     
     return {"status": "win", "amount": won_amount, "message": f"مبروك! ربحت {won_amount} TND"}
 
-
-# --- 📊 مسارات الإدارة والتحكم المالي ---
 @app.get("/api/admin/users")
 async def get_all_network_users(admin_username: Optional[str] = None):
     return load_db()
@@ -354,7 +354,6 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         if admin != "system" and admin != "fethi" and admin_user:
             admin_user["balance"] = admin_user.get("balance", 0) + amount
 
-    # --- (الجديد) تسجيل المعاملة في قاعدة البيانات ---
     db_session = SessionLocal()
     new_tx = Transaction(
         admin_username=admin,
@@ -366,18 +365,15 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     db_session.add(new_tx)
     db_session.commit()
     db_session.close()
-    # ------------------------------------------------
 
     save_db(db)
     return {"status": "success", "balance": target_user["balance"]}
 
-# --- (الجديد) مسار جلب سجل المعاملات ---
 @app.get("/api/admin/transactions-history")
 async def get_transactions_history(username: str):
     db_session = SessionLocal()
     uname = username.lower().strip()
     
-    # إذا كان المدير الأساسي يرى كل شيء، وإلا يرى التحويلات التي قام بها أو استلمها فقط
     if uname == "fethi":
         txs = db_session.query(Transaction).order_by(Transaction.id.desc()).all()
     else:
@@ -398,8 +394,6 @@ async def get_transactions_history(username: str):
     db_session.close()
     return result
 
-
-# --- مسارات أوراق الرهان ---
 @app.post("/api/admin/save-ticket")
 async def save_player_ticket(req: SaveTicketRequest):
     tickets_db = load_tickets_db()
@@ -443,8 +437,6 @@ async def get_history(username: str):
     user_history = [t for t in tickets_db if t["username"] == uname]
     return {"history": user_history}
 
-
-# --- مسارات إضافية ---
 @app.post("/api/admin/change-player-password")
 async def change_player_password(req: ChangePlayerPasswordRequest):
     target = req.target_username.lower().strip()
@@ -480,17 +472,16 @@ async def delete_account(admin_username: str, target_username: str):
             return {"status": "success", "message": "Supprimé"}
     raise HTTPException(status_code=404, detail="Non trouvé")
 
-@app.get("/api/sports/live")
+# --- تم تصحيح المسار ليتطابق مع الواجهة ---
+@app.get("/api/sports/get-live-matches")
 async def get_sports():
     current_time = time.time()
     
-    # لا تجلب البيانات إلا إذا مر أكثر من 15 دقيقة (900 ثانية) على آخر تحديث
     if current_time - cache["last_update"] > 900: 
         leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
         all_matches = []
         for league in leagues:
             try:
-                # تأكد أن API_KEY معرف لديك في الملف
                 url = f"https://api.the-odds-api.com/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h"
                 response = requests.get(url, timeout=5) 
                 if response.status_code == 200:
@@ -498,11 +489,9 @@ async def get_sports():
             except Exception:
                 pass
         
-        # تحديث الكاش
         cache["matches"] = all_matches
         cache["last_update"] = current_time
     
-    # إرجاع البيانات المخزنة فوراً
     return cache["matches"]
 
 @app.get("/")
