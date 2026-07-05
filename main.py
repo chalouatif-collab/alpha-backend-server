@@ -520,7 +520,7 @@ async def get_sports():
         all_matches = []
         for league in leagues:
             try:
-                url = f"https://api.the-odds-api.com/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h"
+                url = f"https://api.the-odds-api.com/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h,spreads,totals&oddsFormat=decimal"
                 response = requests.get(url, timeout=5) 
                 if response.status_code == 200:
                     all_matches.extend(response.json())
