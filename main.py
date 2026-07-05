@@ -28,7 +28,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "alpha_users"
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
