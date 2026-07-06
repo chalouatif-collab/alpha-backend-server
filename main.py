@@ -525,12 +525,15 @@ class DeleteAccountRequest(BaseModel):
 async def delete_account(req: DeleteAccountRequest):
     db = load_db()
     target = req.target_username.lower().strip()
-    for i, u in enumerate(db):
-        if u["username"] == target:
-            db.pop(i)
-            save_db(db)
-            return {"status": "success", "message": "Supprimé"}
-    raise HTTPException(status_code=404, detail="Non trouvé")
+    
+    # فلترة شاملة لاستثناء الحساب من القائمة
+    new_db = [u for u in db if u.get("username", "").lower().strip() != target]
+    
+    if len(new_db) == len(db):
+        raise HTTPException(status_code=404, detail="Non trouvé")
+        
+    save_db(new_db)
+    return {"status": "success", "message": "Supprimé"}
 # --- تم تصحيح المسار ليتطابق مع الواجهة ---
 @app.get("/api/sports/get-live-matches")
 async def get_sports():
