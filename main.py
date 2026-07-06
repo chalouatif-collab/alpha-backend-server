@@ -607,7 +607,7 @@ async def get_pending_requests():
     db_session = SessionLocal()
     # جلب جميع المعاملات التي تحمل اسم PENDING
     txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING").order_by(Transaction.id.desc()).all()
-    result = [{"id": t.id, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date} for t in txs]
+    result = [{"id": t.id, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date, "image_path": t.image_path} for t in txs]
     db_session.close()
     return result
 # هذا هو الجسر الذي يربط اسم التنبيهات بالوظيفة الموجودة
