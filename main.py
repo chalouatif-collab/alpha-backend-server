@@ -253,24 +253,31 @@ async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
     db = load_db()
     
+    # ابحث عن المستخدم
     user = None
-    if uname == "fethi" and req.password == "123456":
-        user = {"username": "fethi", "role": "owner", "balance": 999999999999999999999999999.00}
-    else:
-       for u in db:
+    for u in db:
         if u["username"] == uname:
-            # إضافة أسطر التشخيص
-            print(f"DEBUG: Found username match: {u['username']}")
-            is_pwd_valid = verify_password(req.password, u.get("password", ""))
-            print(f"DEBUG: Password verification result: {is_pwd_valid}")
-            
-            # التحقق النهائي
-            if is_pwd_valid:
+            # التحقق من كلمة المرور
+            if verify_password(req.password, u.get("password", "")):
                 if u.get("is_blocked") == 1:
                     raise HTTPException(status_code=403, detail="Ce compte est bloqué")
                 user = u
-                break # نخرج من الحلقة لأننا وجدنا المستخدم الصحيح
-
+                break
+    
+    # 🚨 التعديل الضروري هنا: إذا لم نجد المستخدم، نرسل خطأ صريح
+    if not user:
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
+        
+    # إذا نجح الدخول، ننشئ التوكن ونرسل البيانات
+    token = create_access_token(data={"sub": user["username"]})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "username": user["username"],
+        "role": user["role"],
+        "balance": user["balance"],
+        "created_by": user.get("created_by", "System")
+    }
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
     uname = req.username.lower().strip()
