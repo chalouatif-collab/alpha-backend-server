@@ -14,6 +14,9 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 import asyncio
+from fastapi import UploadFile, File, Form
+import shutil
+import os
 
 # ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
@@ -544,20 +547,44 @@ async def root():
     return {"status": "Alpha Secure Database Backend Running Perfectly"}
 
 @app.post("/api/admin/request-transaction")
-async def request_transaction(req: UpdateBalanceRequest, current_user: str = Depends(get_current_user)):
-    # هذا المسار يسجل طلب المستخدم (إيداع أو سحب) ليقوم المدير بمراجعته
+async def request_transaction(
+    target_username: str = Form(...),
+    action: str = Form(...),
+    amount: float = Form(...),
+    tx_id: str = Form(...),
+    file: UploadFile = File(None),
+    current_user: str = Depends(get_current_user)
+):
     db_session = SessionLocal()
-    new_tx = Transaction(
-        admin_username="PENDING", # بانتظار موافقة المدير
-        target_username=current_user,
-        action=req.action,
-        amount=req.amount,
-        date=datetime.now().strftime("%Y-%m-%d %H:%M")
-    )
-    db_session.add(new_tx)
-    db_session.commit()
-    db_session.close()
-    return {"status": "success", "message": "طلبك قيد المراجعة"}
+    try:
+        file_path = ""
+        if file and file.filename:
+            UPLOAD_DIR = "uploads"
+            os.makedirs(UPLOAD_DIR, exist_ok=True)
+            file_extension = os.path.splitext(file.filename)[1]
+            file_name = f"{tx_id}{file_extension}"
+            file_path = os.path.join(UPLOAD_DIR, file_name)
+            
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+        
+        new_tx = Transaction(
+            admin_username="PENDING",
+            target_username=target_username,
+            action=action,
+            amount=amount,
+            date=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            image_path=file_path
+        )
+        
+        db_session.add(new_tx)
+        db_session.commit()
+        return {"status": "success", "message": "طلبك قيد المراجعة"}
+    except Exception as e:
+        db_session.rollback()
+        return {"status": "error", "message": str(e)}
+    finally:
+        db_session.close()
 # ==========================================
 # مسارات معالجة طلبات الإيداع والسحب المعلقة
 # ==========================================
