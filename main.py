@@ -575,6 +575,11 @@ async def get_pending_requests():
     result = [{"id": t.id, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date} for t in txs]
     db_session.close()
     return result
+# هذا هو الجسر الذي يربط اسم التنبيهات بالوظيفة الموجودة
+@app.get("/api/admin/get-pending-deposits")
+async def get_pending_deposits_alias():
+    return await get_pending_requests()
+
 
 @app.post("/api/admin/handle-request")
 async def handle_pending_request(req: HandleRequestModel):
