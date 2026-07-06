@@ -518,18 +518,19 @@ async def configure_account(req: ConfigureAccountRequest):
             save_db(db)
             return {"status": "success", "message": "Configuration enregistrée"}
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
+class DeleteAccountRequest(BaseModel):
+    admin_username: str
+    target_username: str
 @app.delete("/api/admin/delete-account")
-async def delete_account(admin_username: str, target_username: str):
+async def delete_account(req: DeleteAccountRequest):
     db = load_db()
-    target = target_username.lower().strip()
+    target = req.target_username.lower().strip()
     for i, u in enumerate(db):
         if u["username"] == target:
             db.pop(i)
             save_db(db)
             return {"status": "success", "message": "Supprimé"}
     raise HTTPException(status_code=404, detail="Non trouvé")
-
 # --- تم تصحيح المسار ليتطابق مع الواجهة ---
 @app.get("/api/sports/get-live-matches")
 async def get_sports():
