@@ -17,7 +17,7 @@ import asyncio
 from fastapi import UploadFile, File, Form
 import shutil
 import os
-
+from fastapi.staticfiles import StaticFiles
 # ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
 
@@ -84,7 +84,7 @@ def create_access_token(data: dict):
     expire = datetime.utcnow() + timedelta(hours=24)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
+    
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -93,6 +93,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 app = FastAPI()
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
