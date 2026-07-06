@@ -54,8 +54,16 @@ class Transaction(Base):
     target_username = Column(String)
     action = Column(String)  
     amount = Column(Float)
-    date = Column(String)    
+    date = Column(String)  
+    image_path = Column(String, nullable=True)
 
+from sqlalchemy import text
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE transactions ADD COLUMN image_path VARCHAR"))
+except Exception:
+    pass
 Base.metadata.create_all(bind=engine)
 
 # إعداد خوارزمية التشفير
