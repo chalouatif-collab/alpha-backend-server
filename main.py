@@ -673,8 +673,8 @@ def launch_sportsbook(data: dict):
     # بناء الرسالة النهائية والمثالية
     payload = {
         "method": "game_launch",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
+        "agent_code": "TUNISS10",
+        "agent_token": "640155e57fcb46b910e23fafd9e858e1",
         "user_code": data.get("player_id"),
         "provider_code": "SPORTSBOOK", # كود المزود الذي استخرجناه
         "game_code": "Nexustrike",     # كود اللعبة الذي استخرجناه الآن
