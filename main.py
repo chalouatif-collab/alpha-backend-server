@@ -18,6 +18,7 @@ from fastapi import UploadFile, File, Form
 import shutil
 import os
 from fastapi.staticfiles import StaticFiles
+
 # ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
 
@@ -662,3 +663,35 @@ async def handle_pending_request(req: HandleRequestModel):
     save_db(db) # حفظ الرصيد الجديد
     
     return {"status": "success", "message": "Demande approuvée avec succès"}
+@app.post("/api/provider/launch-sportsbook")
+def launch_sportsbook(data: dict):
+    # ضع مفتاحك الحقيقي هنا
+    SPORTSBOOK_API_KEY = "640155e57fcb46b910e23fafd9e858e1"
+    
+    # تعريف البيانات
+    payload = {
+        "game_name": data.get("game_name"),
+        "username": data.get("player_id")
+    }
+    
+    # إعدادات الطلب
+    PROVIDER_ENDPOINT = "https://api.nexusggr.com"
+    headers = {
+        "Authorization": f"Bearer {SPORTSBOOK_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    # إرسال الطلب
+    try:
+        import requests # وضعناها هنا لضمان عملها
+        response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
+        response_data = response.json()
+        
+        if response.status_code == 200:
+            return {"launch_url": response_data.get("url")}
+        else:
+            print(f"Error from provider: {response_data}")
+            return {"error": "فشل الاتصال بالمزود"}
+            
+    except Exception as e:
+        return {"error": str(e)}
