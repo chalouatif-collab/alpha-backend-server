@@ -692,7 +692,8 @@ def launch_sportsbook(data: dict):
         response_data = response.json()
         
         # طباعة الرد في الكونسول للرقابة
-        print(f"NexusGGR Response: {response_data}")
+     
+        print("NexusGGR Response:", json.dumps(response_data, ensure_ascii=True))
         
         # استخراج الرابط الحقيقي
         game_url = response_data.get("url") or response_data.get("launch_url")
