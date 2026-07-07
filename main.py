@@ -662,36 +662,44 @@ async def handle_pending_request(req: HandleRequestModel):
     db_session.close()
     save_db(db) # حفظ الرصيد الجديد
     
-    return {"status": "success", "message": "Demande approuvée avec succès"}
+    return {"status": "success", "message": "Demande approuvée avec succès"} 
 @app.post("/api/provider/launch-sportsbook")
 def launch_sportsbook(data: dict):
-    # ضع مفتاحك الحقيقي هنا
-    SPORTSBOOK_API_KEY = "640155e57fcb46b910e23fafd9e858e1"
+    # بيانات وكالتك الثابتة
+    AGENT_CODE = "TUNISS10"
+    AGENT_TOKEN = "640155e57fcb46b910e23fafd9e858e1"
+    PROVIDER_ENDPOINT = "https://api.nexusggr.com"
     
-    # تعريف البيانات
+    # بناء الرسالة النهائية والمثالية
     payload = {
-        "game_name": data.get("game_name"),
-        "username": data.get("player_id")
+        "method": "game_launch",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "user_code": data.get("player_id"),
+        "provider_code": "SPORTSBOOK", # كود المزود الذي استخرجناه
+        "game_code": "Nexustrike",     # كود اللعبة الذي استخرجناه الآن
+        "lang": "en"
     }
     
-    # إعدادات الطلب
-    PROVIDER_ENDPOINT = "https://api.nexusggr.com"
     headers = {
-        "Authorization": f"Bearer {SPORTSBOOK_API_KEY}",
         "Content-Type": "application/json"
     }
 
-    # إرسال الطلب
     try:
-        import requests # وضعناها هنا لضمان عملها
+        import requests
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
         response_data = response.json()
         
-        if response.status_code == 200:
-            return {"launch_url": response_data.get("url")}
+        # طباعة الرد في الكونسول للرقابة
+        print(f"NexusGGR Response: {response_data}")
+        
+        # استخراج الرابط الحقيقي
+        game_url = response_data.get("url") or response_data.get("launch_url")
+        
+        if game_url:
+            return {"launch_url": game_url}
         else:
-            print(f"Error from provider: {response_data}")
-            return {"error": "فشل الاتصال بالمزود"}
+            return {"error": "المزود رفض الطلب", "details": response_data}
             
     except Exception as e:
         return {"error": str(e)}
