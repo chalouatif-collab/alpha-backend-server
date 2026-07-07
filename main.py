@@ -675,7 +675,7 @@ def launch_sportsbook(data: dict):
     "method": "game_launch",
     "agent_code": "TUNISS10",
     "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-    "user_code": "fethi_test", 
+    "user_code": "fethi1_test", 
     "provider_code": "SPORTSBOOK",
     "game_code": "Nexustrike",
     "lang": "en"
