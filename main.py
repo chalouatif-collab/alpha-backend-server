@@ -665,6 +665,7 @@ async def handle_pending_request(req: HandleRequestModel):
     return {"status": "success", "message": "Demande approuvée avec succès"} 
 @app.post("/api/provider/launch-sportsbook")
 def launch_sportsbook(data: dict):
+    print("--- 📢 وصل الطلب إلى السيرفر بنجاح! ---")
     # بيانات وكالتك الثابتة
     AGENT_CODE = "TUNISS10"
     AGENT_TOKEN = "640155e57fcb46b910e23fafd9e858e1"
