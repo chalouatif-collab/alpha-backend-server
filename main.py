@@ -827,7 +827,7 @@ async def get_games(request: Request):
 
     payload = {
         "method": "game_list",
-        "agent_code": "TUNIS10",
+        "agent_code": "TUNISS10",
         "agent_token": "1d370dd23266b78979ad81e0bda47708",
         "provider_code": provider_code
     }
