@@ -1960,6 +1960,12 @@ async function initCasinoLobby() {
     }
 }
 
+// تشغيل واجهة الكازينو فور تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initCasinoLobby === 'function') {
+        initCasinoLobby();
+    }
+});
 
     </script>
 </body>
