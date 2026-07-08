@@ -672,12 +672,13 @@ def launch_sportsbook(data: dict):
     PROVIDER_ENDPOINT = "https://api.nexusggr.com"
     
     # بناء الرسالة النهائية والمثالية
+    provider_code = data.get("provider_code")
     payload = {
         "method": "game_list",
-        "agent_code": "TUNISS10", 
-        "agent_token": "1d370dd23266b78979ad81e0bda47708",
+        "agent_code": "TUNISS10",
+        "agent_token": "9a418a80d898dd95f120c321012a67cf",
         "provider_code": provider_code
-    }
+      }
     
     
     headers = {
@@ -709,32 +710,34 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 
 @app.post("/api/provider/launch-casino")
+@app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
         data = await request.json()
-        game_code = data.get("game_code")          # رمز اللعبة (مثلاً: vs20fruitsw)
-        provider_code = data.get("provider_code")  # اسم المزود (مثلاً: PRAGMATIC)
-
-        # بيانات وكالتك الثابتة
+        game_code = data.get("game_code")
+        provider_code = data.get("provider_code")
+        user_code = "fethi2_test"  # تأكد من هذا الاسم إذا كان متغير
+        
         PROVIDER_ENDPOINT = "https://api.nexusggr.com"
 
         payload = {
-        "method": "game_list",
-        "agent_code": "TUNISS10", 
-        "agent_token": "1d370dd23266b78979ad81e0bda47708",
-        "provider_code": provider_code
-        
-    }
-            
-        
-        
+            "method": "game_launch",
+            "agent_code": "TUNISS10",
+            "agent_token": "9a418a80d898dd95f120c321012a67cf",
+            "provider_code": provider_code,
+            "game_code": game_code,
+            "user_code": user_code,
+            "lang": "fr",
+            "currency": "TND"
+        }
+
         headers = {"Content-Type": "application/json"}
         
         import requests
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
         response_data = response.json()
         
-        print(f"رد الكازينو للعبة {game_code}:", response_data) # للرقابة في الكونسول
+        print(f"رد المزود للعبة {game_code}:", response_data)
         
         game_url = response_data.get("url") or response_data.get("launch_url")
         
@@ -742,7 +745,7 @@ async def launch_casino(request: Request):
             return {"launch_url": game_url}
         else:
             return {"error": "المزود رفض الطلب", "details": response_data}
-
+            
     except Exception as e:
         return {"error": str(e)}
 
@@ -822,8 +825,8 @@ async def get_games(request: Request):
 
     payload = {
         "method": "game_list",
-        "agent_code": "TUNISS10", 
-        "agent_token": "1d370dd23266b78979ad81e0bda47708",
+        "agent_code": "TUNISS10",
+        "agent_token": "9a418a80d898dd95f120c321012a67cf",
         "provider_code": provider_code
     }
 
