@@ -18,6 +18,7 @@ from fastapi import UploadFile, File, Form
 import shutil
 import os
 from fastapi.staticfiles import StaticFiles
+import httpx
 
 # ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
@@ -817,3 +818,21 @@ async def seamless_wallet_handler(request: Request):
     except Exception as e:
         print(f"Error in gold_api: {e}")
         return JSONResponse(content={"status": 0, "msg": "INTERNAL_ERROR"})
+   
+    import httpx # تأكد من إضافة هذا في أعلى ملف main.py
+
+@app.post("/api/get-games-list")
+async def get_games(request: Request):
+    data = await request.json()
+    provider_code = data.get("provider_code")
+    
+    payload = {
+        "method": "game_list",
+        "agent_code": "TUNISS10",
+        "agent_token": "640155e57fcb46b910e23fafd9e858e1",
+        "provider_code": provider_code
+    }
+    
+    async with httpsx.AsyncClient() as client:
+        response = await client.post("https://api.nexusggr.com", json=payload)
+        return response.json()
