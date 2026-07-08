@@ -1932,27 +1932,22 @@ async function playCasinoGame(providerCode, gameCode) {
 async function initCasinoLobby() {
     console.log("جاري جلب الألعاب من السيرفر...");
     try {
-        const response = await fetch('/api/get-games-list', {
+        // تم تحديث الرابط هنا مع استخدام علامات التنصيص المائلة (`)
+        const response = await fetch(`${BACKEND_URL}/api/get-games-list`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ provider_code: "PRAGMATIC" }) // يمكنك تغيير المزود حسب الحاجة
+            body: JSON.stringify({ provider_code: "PRAGMATIC" }) // لجلب ألعاب Pragmatic Play
         });
         
         const data = await response.json();
         console.log("تم جلب الألعاب بنجاح:", data);
         
-        // ملاحظة: هنا يجب أن نربط البيانات المستلمة بكود تصميم الصفحة (UI) لكي تظهر الصور
-        
     } catch (error) {
         console.error("حدث خطأ أثناء الاتصال بالسيرفر:", error);
     }
 }
-        // تشغيل الواجهة عند تحميل الصفحة
-        document.addEventListener('DOMContentLoaded', () => {
-            initCasinoLobby();
-        });
 
 
     </script>

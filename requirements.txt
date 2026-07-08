@@ -4,7 +4,7 @@ pydantic
 requests
 python-jose[cryptography]
 passlib
-bcrypt>=4.0.0
+bcrypt=4.0.0
 psycopg2-binary
 SQLAlchemy
 python-multipart
