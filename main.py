@@ -676,7 +676,8 @@ def launch_sportsbook(data: dict):
             "method": "game_launch",
             "agent_code": "TUNISS10",
             "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-            "user_code": "fethi2_test",
+            "secret_key" : "1d370dd23266b78979ad81e0bda47708",
+            "user_code"  : "fethi2_test",
             "provider_code": "SPORTSBOOK",
             "game_code": "Nexustrike",
             "lang": "fr", # يمكنك جعلها fr لتكون الواجهة بالفرنسية
@@ -726,6 +727,7 @@ async def launch_casino(request: Request):
             "method": "game_launch",
             "agent_code": "TUNISS10",
             "agent_token": "640155e57fcb46b910e23fafd9e858e1",
+            "secret_key": "1d370dd23266b78979ad81e0bda47708",
             "user_code": "fethi2_test",
             "provider_code": provider_code,
             "game_code": game_code,
@@ -829,6 +831,7 @@ async def get_games(request: Request):
         "method": "game_list",
         "agent_code": "TUNIS10",
         "agent_token": "640155e57fcb46b910e23fafd9e858e1",
+        "secret_key": "1d370dd23266b78979ad81e0bda47708",
         "provider_code": provider_code
     }
 
