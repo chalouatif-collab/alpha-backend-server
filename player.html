@@ -1806,35 +1806,10 @@
         });
 
         // تشغيل السبورت بوك المدمج في الصفحة الرئيسية تلقائياً
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const response = await fetch('/api/provider/launch-sportsbook', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const data = await response.json();
-
-                if (data.launch_url) {
-                    const iframe = document.getElementById('inline-sportsbook-iframe');
-                    const loader = document.getElementById('inline-sportsbook-loader');
-
-                    // وضع الرابط في الإطار
-                    iframe.src = data.launch_url;
-
-                    // إظهار اللعبة وإخفاء التحميل بعد ثانيتين لضمان اكتمال التحميل
-                    setTimeout(() => {
-                        if (loader) loader.style.display = 'none';
-                        if (iframe) {
-                            iframe.classList.remove('opacity-0');
-                            iframe.classList.add('opacity-100');
-                        }
-                    }, 2000);
-                }
-            } catch (error) {
-                console.error("لم نتمكن من شحن اللعبة في الصفحة الرئيسية:", error);
-            }
-        });
+        // تشغيل السبورت بوك المدمج في الصفحة الرئيسية تلقائياً (تم تعطيله مؤقتاً)
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("تم تعطيل السبورت بوك مؤقتاً للتركيز على الكازينو.");
+});
         // 1. البيانات التجريبية للألعاب
         const casinoData = {
             "PRAGMATIC": {
@@ -1952,6 +1927,26 @@ async function playCasinoGame(providerCode, gameCode) {
     } catch (error) {
         showNotification("خطأ في الاتصال بسيرفر الألعاب", "error");
         closeCasinoGame();
+    }
+}
+async function initCasinoLobby() {
+    console.log("جاري جلب الألعاب من السيرفر...");
+    try {
+        const response = await fetch('/api/get-games-list', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ provider_code: "PRAGMATIC" }) // يمكنك تغيير المزود حسب الحاجة
+        });
+        
+        const data = await response.json();
+        console.log("تم جلب الألعاب بنجاح:", data);
+        
+        // ملاحظة: هنا يجب أن نربط البيانات المستلمة بكود تصميم الصفحة (UI) لكي تظهر الصور
+        
+    } catch (error) {
+        console.error("حدث خطأ أثناء الاتصال بالسيرفر:", error);
     }
 }
         // تشغيل الواجهة عند تحميل الصفحة
