@@ -672,14 +672,15 @@ def launch_sportsbook(data: dict):
     
     # بناء الرسالة النهائية والمثالية
     payload = {
-    "method": "game_launch",
-    "agent_code": "TUNISS10",
-    "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-    "user_code": "fethi2_test", 
-    "provider_code": "SPORTSBOOK",
-    "game_code": "Nexustrike",
-    "lang": "en"
-}
+            "method": "game_launch",
+            "agent_code": "TUNISS10",
+            "agent_token": "640155e57fcb46b910e23fafd9e858e1",
+            "user_code": "fethi2_test",
+            "provider_code": "SPORTSBOOK",
+            "game_code": "Nexustrike",
+            "lang": "fr", # يمكنك جعلها fr لتكون الواجهة بالفرنسية
+            "currency": "TND"  # <--- أضف هذا السطر هنا
+        }
     
     
     headers = {
@@ -715,15 +716,13 @@ async def seamless_wallet_handler(request: Request):
     try:
         data = await request.json()
         method = data.get("method")
-        user_code = data.get("user_code")  # اسم اللاعب في منصتك
+        user_code = data.get("user_code")  # اسم اللاعب
 
         # ----------------------------------------------------
         # 1. حالة الاستعلام عن الرصيد
         # ----------------------------------------------------
         if method == "user_balance":
-            # TODO: جلب الرصيد الحقيقي من قاعدة البيانات
             player_balance = 100.00  # رقم مؤقت للتجربة
-            
             return JSONResponse(content={
                 "status": 1,
                 "user_balance": player_balance
@@ -734,12 +733,25 @@ async def seamless_wallet_handler(request: Request):
         # ----------------------------------------------------
         elif method == "transaction":
             game_type = data.get("game_type")  # لمعرفة نوع اللعبة (SB, slot, live)
-            # جلب تفاصيل العملية من داخل الكائن الخاص باللعبة
             tx_data = data.get(game_type, {})
             
             bet_money = float(tx_data.get("bet_money", 0))
             win_money = float(tx_data.get("win_money", 0))
             txn_type = tx_data.get("txn_type")
+
+            # 🎯 رادار التقاط تذاكر الرياضة
+            if game_type == "SB" and "info" in data:
+                try:
+                    import json
+                    ticket_info = json.loads(data.get("info"))
+                    
+                    coupon_code = ticket_info.get("couponCode")
+                    ticket_status = ticket_info.get("status")
+                    stake = ticket_info.get("stake")
+
+                    print(f"🎟️ تم التقاط تذكرة! اللاعب: {user_code} | التذكرة: {coupon_code} | المبلغ: {stake} | الحالة: {ticket_status}")
+                except Exception as e:
+                    print(f"⚠️ خطأ في قراءة بيانات التذكرة: {e}")
 
             # TODO: جلب الرصيد الحقيقي من قاعدة البيانات قبل العملية
             player_balance = 100.00  # رقم مؤقت
@@ -747,38 +759,22 @@ async def seamless_wallet_handler(request: Request):
             # أ. معالجة خصم الرهان (Debit)
             if txn_type in ["debit", "debit_credit"]:
                 if player_balance < bet_money:
-                    # رفض العملية إذا كان الرصيد غير كافٍ
-                    return JSONResponse(content={
-                        "status": 0,
-                        "msg": "INSUFFICIENT_USER_FUNDS"
-                    })
-                player_balance -= bet_money  # خصم قيمة الرهان
+                    return JSONResponse(content={"status": 0, "msg": "INSUFFICIENT_USER_FUNDS"})
+                player_balance -= bet_money
 
             # ب. معالجة إضافة الربح (Credit)
             if txn_type in ["credit", "debit_credit"]:
-                player_balance += win_money  # إضافة قيمة الربح
+                player_balance += win_money
 
-            # TODO: حفظ الرصيد الجديد (player_balance) في قاعدة البيانات هنا
-
-            # إرسال رد بالنجاح مع الرصيد المحدث
             return JSONResponse(content={
                 "status": 1,
                 "user_balance": round(player_balance, 2)
             })
 
-        # ----------------------------------------------------
         # حالة طلب غير معروف
-        # ----------------------------------------------------
         else:
-            return JSONResponse(content={
-                "status": 0,
-                "msg": "UNKNOWN_METHOD"
-            })
+            return JSONResponse(content={"status": 0, "msg": "UNKNOWN_METHOD"})
 
     except Exception as e:
         print(f"Error in gold_api: {e}")
-        return JSONResponse(content={
-            "status": 0,
-            "msg": "INTERNAL_ERROR"
-        })
-    
+        return JSONResponse(content={"status": 0, "msg": "INTERNAL_ERROR"})
