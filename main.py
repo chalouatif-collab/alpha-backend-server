@@ -690,6 +690,7 @@ def launch_sportsbook(data: dict):
         import requests
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
         response_data = response.json()
+        print("محتوى رد المزود هو:", response_data)
         
         # طباعة الرد في الكونسول للرقابة
      
