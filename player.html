@@ -1932,17 +1932,28 @@ async function playCasinoGame(providerCode, gameCode) {
 async function initCasinoLobby() {
     console.log("جاري جلب الألعاب من السيرفر...");
     try {
-        // تم تحديث الرابط هنا مع استخدام علامات التنصيص المائلة (`)
-        const response = await fetch(`${BACKEND_URL}/api/get-games-list`, {
+        // استخدمنا الرابط المباشر لسيرفرك على Render لتفادي أي خطأ في المتغيرات
+        const response = await fetch('https://alpha-core-fl0v.onrender.com/api/get-games-list', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ provider_code: "PRAGMATIC" }) // لجلب ألعاب Pragmatic Play
+            body: JSON.stringify({ provider_code: "PRAGMATIC" }) 
         });
         
-        const data = await response.json();
-        console.log("تم جلب الألعاب بنجاح:", data);
+        console.log("حالة السيرفر (Status):", response.status); // لمعرفة هل الطلب نجح (200) أم فشل
+        
+        // جلب الرد كنص عادي أولاً لنرى ماذا يوجد بداخله
+        const rawText = await response.text(); 
+        console.log("الرد القادم من السيرفر:", rawText);
+        
+        // محاولة تحويل النص إلى بيانات ألعاب إذا لم يكن فارغاً
+        if (rawText) {
+            const data = JSON.parse(rawText);
+            console.log("تم جلب الألعاب بنجاح:", data);
+        } else {
+            console.error("السيرفر لم يرسل أي بيانات!");
+        }
         
     } catch (error) {
         console.error("حدث خطأ أثناء الاتصال بالسيرفر:", error);
