@@ -711,6 +711,45 @@ def launch_sportsbook(data: dict):
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+@app.post("/api/provider/launch-casino")
+async def launch_casino(request: Request):
+    try:
+        data = await request.json()
+        game_code = data.get("game_code")          # رمز اللعبة (مثلاً: vs20fruitsw)
+        provider_code = data.get("provider_code")  # اسم المزود (مثلاً: PRAGMATIC)
+
+        # بيانات وكالتك الثابتة
+        PROVIDER_ENDPOINT = "https://api.nexusggr.com"
+
+        payload = {
+            "method": "game_launch",
+            "agent_code": "TUNISS10",
+            "agent_token": "640155e57fcb46b910e23fafd9e858e1",
+            "user_code": "fethi2_test",
+            "provider_code": provider_code,
+            "game_code": game_code,
+            "lang": "fr",
+            "currency": "TND"
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        
+        import requests
+        response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
+        response_data = response.json()
+        
+        print(f"رد الكازينو للعبة {game_code}:", response_data) # للرقابة في الكونسول
+        
+        game_url = response_data.get("url") or response_data.get("launch_url")
+        
+        if game_url:
+            return {"launch_url": game_url}
+        else:
+            return {"error": "المزود رفض الطلب", "details": response_data}
+
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/gold_api")
 async def seamless_wallet_handler(request: Request):
     try:
