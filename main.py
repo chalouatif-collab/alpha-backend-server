@@ -673,15 +673,11 @@ def launch_sportsbook(data: dict):
     
     # بناء الرسالة النهائية والمثالية
     payload = {
-            "method": "game_launch",
-            "agent_code": "TUNISS10",
-            "agent_token": "1d370dd23266b78979ad81e0bda47708",
-            "user_code"  : "fethi2_test",
-            "provider_code": "SPORTSBOOK",
-            "game_code": "Nexustrike",
-            "lang": "fr", # يمكنك جعلها fr لتكون الواجهة بالفرنسية
-            "currency": "TND"  # <--- أضف هذا السطر هنا
-        }
+        "method": "game_list",
+        "agent_code": "TUNISS10", 
+        "agent_token": "1d370dd23266b78979ad81e0bda47708",
+        "provider_code": provider_code
+    }
     
     
     headers = {
@@ -723,15 +719,14 @@ async def launch_casino(request: Request):
         PROVIDER_ENDPOINT = "https://api.nexusggr.com"
 
         payload = {
-            "method": "game_launch",
-            "agent_code": "TUNISS10",
-            "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-            "user_code": "fethi2_test",
-            "provider_code": provider_code,
-            "game_code": game_code,
-            "lang": "fr",
-            "currency": "TND"
-        }
+        "method": "game_list",
+        "agent_code": "TUNISS10", 
+        "agent_token": "1d370dd23266b78979ad81e0bda47708",
+        "provider_code": provider_code
+        
+    }
+            
+        
         
         headers = {"Content-Type": "application/json"}
         
@@ -827,10 +822,11 @@ async def get_games(request: Request):
 
     payload = {
         "method": "game_list",
-        "agent_code": "TUNISS10",
+        "agent_code": "TUNISS10", 
         "agent_token": "1d370dd23266b78979ad81e0bda47708",
         "provider_code": provider_code
     }
+
 
     async with httpx.AsyncClient() as client:
         response = await client.post("https://api.nexusggr.com", json=payload)
