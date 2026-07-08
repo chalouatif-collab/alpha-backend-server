@@ -835,4 +835,8 @@ async def get_games(request: Request):
     
     async with httpsx.AsyncClient() as client:
         response = await client.post("https://api.nexusggr.com", json=payload)
+<<<<<<< HEAD
         return response.json()
+=======
+        return response.json()
+>>>>>>> e7a7c1c55dbb5ee5e70dc56257c85de59facae83

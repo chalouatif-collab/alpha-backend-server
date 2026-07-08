@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 fastapi
 uvicorn
 pydantic
@@ -7,3 +8,16 @@ passlib
 bcrypt==3.2.2
 psycopg2-binary
 SQLAlchemy
+=======
+fastapi
+uvicorn
+pydantic
+requests
+python-jose[cryptography]
+passlib
+bcrypt==3.2.2
+psycopg2-binary
+SQLAlchemy
+python-multipart
+httpx
+>>>>>>> e7a7c1c55dbb5ee5e70dc56257c85de59facae83
