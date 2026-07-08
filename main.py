@@ -668,15 +668,14 @@ def launch_sportsbook(data: dict):
     print("--- 📢 وصل الطلب إلى السيرفر بنجاح! ---")
     # بيانات وكالتك الثابتة
     AGENT_CODE = "TUNISS10"
-    AGENT_TOKEN = "640155e57fcb46b910e23fafd9e858e1"
+    AGENT_TOKEN = "1d370dd23266b78979ad81e0bda47708",
     PROVIDER_ENDPOINT = "https://api.nexusggr.com"
     
     # بناء الرسالة النهائية والمثالية
     payload = {
             "method": "game_launch",
             "agent_code": "TUNISS10",
-            "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-            "secret_key" : "1d370dd23266b78979ad81e0bda47708",
+            "agent_token": "1d370dd23266b78979ad81e0bda47708",
             "user_code"  : "fethi2_test",
             "provider_code": "SPORTSBOOK",
             "game_code": "Nexustrike",
@@ -727,7 +726,6 @@ async def launch_casino(request: Request):
             "method": "game_launch",
             "agent_code": "TUNISS10",
             "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-            "secret_key": "1d370dd23266b78979ad81e0bda47708",
             "user_code": "fethi2_test",
             "provider_code": provider_code,
             "game_code": game_code,
@@ -830,8 +828,7 @@ async def get_games(request: Request):
     payload = {
         "method": "game_list",
         "agent_code": "TUNIS10",
-        "agent_token": "640155e57fcb46b910e23fafd9e858e1",
-        "secret_key": "1d370dd23266b78979ad81e0bda47708",
+        "agent_token": "1d370dd23266b78979ad81e0bda47708",
         "provider_code": provider_code
     }
 
