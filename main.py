@@ -34,7 +34,6 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "alpha_users"
-
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password = Column(String)
@@ -706,3 +705,79 @@ def launch_sportsbook(data: dict):
             
     except Exception as e:
         return {"error": str(e)}
+      
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.post("/gold_api")
+async def seamless_wallet_handler(request: Request):
+    try:
+        data = await request.json()
+        method = data.get("method")
+        user_code = data.get("user_code")  # اسم اللاعب في منصتك
+
+        # ----------------------------------------------------
+        # 1. حالة الاستعلام عن الرصيد
+        # ----------------------------------------------------
+        if method == "user_balance":
+            # TODO: جلب الرصيد الحقيقي من قاعدة البيانات
+            player_balance = 100.00  # رقم مؤقت للتجربة
+            
+            return JSONResponse(content={
+                "status": 1,
+                "user_balance": player_balance
+            })
+
+        # ----------------------------------------------------
+        # 2. حالة العمليات المالية (رهان أو فوز)
+        # ----------------------------------------------------
+        elif method == "transaction":
+            game_type = data.get("game_type")  # لمعرفة نوع اللعبة (SB, slot, live)
+            # جلب تفاصيل العملية من داخل الكائن الخاص باللعبة
+            tx_data = data.get(game_type, {})
+            
+            bet_money = float(tx_data.get("bet_money", 0))
+            win_money = float(tx_data.get("win_money", 0))
+            txn_type = tx_data.get("txn_type")
+
+            # TODO: جلب الرصيد الحقيقي من قاعدة البيانات قبل العملية
+            player_balance = 100.00  # رقم مؤقت
+
+            # أ. معالجة خصم الرهان (Debit)
+            if txn_type in ["debit", "debit_credit"]:
+                if player_balance < bet_money:
+                    # رفض العملية إذا كان الرصيد غير كافٍ
+                    return JSONResponse(content={
+                        "status": 0,
+                        "msg": "INSUFFICIENT_USER_FUNDS"
+                    })
+                player_balance -= bet_money  # خصم قيمة الرهان
+
+            # ب. معالجة إضافة الربح (Credit)
+            if txn_type in ["credit", "debit_credit"]:
+                player_balance += win_money  # إضافة قيمة الربح
+
+            # TODO: حفظ الرصيد الجديد (player_balance) في قاعدة البيانات هنا
+
+            # إرسال رد بالنجاح مع الرصيد المحدث
+            return JSONResponse(content={
+                "status": 1,
+                "user_balance": round(player_balance, 2)
+            })
+
+        # ----------------------------------------------------
+        # حالة طلب غير معروف
+        # ----------------------------------------------------
+        else:
+            return JSONResponse(content={
+                "status": 0,
+                "msg": "UNKNOWN_METHOD"
+            })
+
+    except Exception as e:
+        print(f"Error in gold_api: {e}")
+        return JSONResponse(content={
+            "status": 0,
+            "msg": "INTERNAL_ERROR"
+        })
+    
