@@ -577,36 +577,15 @@
                 </div>
 
                 <div>
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-white font-black text-xs uppercase tracking-wider flex items-center gap-2">⭐ Trending Games</h3>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div onclick="switchSection('casino'); initCasinoLobby();" class="relative group rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-teal-500 transition-all shadow-lg">
-                            <img src="https://igaminggroup.com/wp-content/uploads/2021/04/sweet-bonanza-1.jpg" class="w-full h-24 object-cover opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">
-                            <div class="absolute bottom-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent p-2 pt-6">
-                                <h4 class="text-[10px] font-bold text-white truncate text-center">Sweet Bonanza</h4>
-                            </div>
-                        </div>
-                        <div onclick="switchSection('casino'); initCasinoLobby();" class="relative group rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-teal-500 transition-all shadow-lg">
-                            <img src="https://igaminggroup.com/wp-content/uploads/2022/07/sugar-rush.jpg" class="w-full h-24 object-cover opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">
-                            <div class="absolute bottom-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent p-2 pt-6">
-                                <h4 class="text-[10px] font-bold text-white truncate text-center">Sugar Rush</h4>
-                            </div>
-                        </div>
-                        <div onclick="switchSection('crash');" class="relative group rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-teal-500 transition-all shadow-lg bg-gradient-to-br from-teal-900 to-[#050814]">
-                            <div class="w-full h-24 flex items-center justify-center text-5xl group-hover:scale-125 transition-all duration-300 drop-shadow-[0_0_15px_rgba(20,184,166,0.5)]">🚀</div>
-                            <div class="absolute bottom-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent p-2 pt-6">
-                                <h4 class="text-[10px] font-bold text-teal-400 truncate text-center">Aviator</h4>
-                            </div>
-                        </div>
-                        <div onclick="switchSection('casino'); initCasinoLobby();" class="relative group rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-teal-500 transition-all shadow-lg">
-                            <img src="https://igaminggroup.com/wp-content/uploads/2020/07/crazy-time.jpg" class="w-full h-24 object-cover opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">
-                            <div class="absolute bottom-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent p-2 pt-6">
-                                <h4 class="text-[10px] font-bold text-white truncate text-center">Crazy Time</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                  <!-- 5. الألعاب الشائعة (Trending Games) - ديناميكية -->
+<div>
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-white font-black text-xs uppercase tracking-wider flex items-center gap-2">⭐ Trending Games</h3>
+    </div>
+    <div id="trending-games-container" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- سيتم ملؤه تلقائياً بواسطة الجافاسكريبت -->
+    </div>
+</div>
 
             </div>
             <div id="pane-sport" class="player-view-section space-y-4 hidden">
@@ -2166,6 +2145,7 @@
                     if (data && data.games && data.games.length > 0) {
                         localStorage.setItem(cacheKey, JSON.stringify(data.games));
                         if (!cachedGames) renderGames(data.games);
+                        renderTrendingGames();
                     } else if (!cachedGames) {
                         container.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10 font-bold">لا توجد ألعاب متاحة لهذا المشغل حالياً. 📭</div>';
                     }
@@ -2274,6 +2254,24 @@
                 });
             }
         });
+
+function renderTrendingGames() {
+    const container = document.getElementById('trending-games-container');
+    if (!container || currentProviderGames.length === 0) return;
+
+    // نأخذ أول 4 ألعاب فقط من القائمة المحملة كـ "ألعاب شائعة"
+    const trending = currentProviderGames.slice(0, 4);
+
+    container.innerHTML = trending.map(game => `
+        <div onclick="playCasinoGame('${currentActiveProviderCode}', '${game.game_code}')" 
+             class="relative group rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-teal-500 transition-all shadow-lg">
+            <img src="${game.banner}" loading="lazy" class="w-full h-24 object-cover opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">
+            <div class="absolute bottom-0 w-full bg-gradient-to-t from-black via-black/80 to-transparent p-2 pt-6">
+                <h4 class="text-[10px] font-bold text-white truncate text-center">${game.game_name}</h4>
+            </div>
+        </div>
+    `).join('');
+}
 
     </script>
 </body>
