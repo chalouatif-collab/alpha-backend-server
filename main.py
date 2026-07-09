@@ -19,7 +19,11 @@ import shutil
 import os
 from fastapi.staticfiles import StaticFiles
 import httpx
+from flask import Flask, request, jsonify
+from flask_cors import CORS  # استيراد مكتبة الـ CORS
 
+app = Flask(__name__)
+CORS(app)  # تفعيل الـ CORS لكل المسارات (Endpoints)
 # ذاكرة الكاش للمباريات
 cache = {"matches": [], "last_update": 0}
 
@@ -887,5 +891,14 @@ async def get_providers():
         except Exception as e:
          print(f"⚠️ خطأ في جلب المزودين: {e}")
     return {"status": 0, "msg": "Error connecting to provider"}
+
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # يسمح لأي موقع بالاتصال، وهذا سيحل مشكلتك فوراً
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 

@@ -9,3 +9,4 @@ psycopg2-binary
 SQLAlchemy
 python-multipart
 httpx
+flask-cors
