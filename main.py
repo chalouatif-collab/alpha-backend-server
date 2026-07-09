@@ -834,14 +834,14 @@ async def get_games(request: Request):
     import time
     current_time = time.time()
 
-    # 1. فحص الذاكرة: هل الألعاب موجودة في سيرفرنا ولم تمر ساعة؟
+    # فحص الذاكرة
     if provider_code in GAMES_CACHE:
         cached_data = GAMES_CACHE[provider_code]
         if current_time - cached_data['time'] < CACHE_TIME_LIMIT:
             print(f"⚡ جلب ألعاب {provider_code} فوراً من ذاكرة السيرفر السريعة (الكاش)")
             return cached_data['data']
 
-    # 2. إذا لم تكن في الذاكرة (أول مرة أو انتهت الساعة)، نكلم المزود
+    # إذا لم تكن في الذاكرة، نكلم المزود
     print(f"🌍 جلب ألعاب {provider_code} من المزود الخارجي (Nexus)...")
     payload = {
         "method": "game_list",
@@ -855,8 +855,6 @@ async def get_games(request: Request):
             response = await client.post("https://api.nexusggr.com", json=payload)
             response_data = response.json()
             
-            # 3. حفظ النتيجة في ذاكرة السيرفر للمرات القادمة
-            # نتأكد أن المزود أرسل الألعاب فعلاً قبل حفظها
             if "games" in response_data or response_data.get("status") == 1:
                 GAMES_CACHE[provider_code] = {
                     'time': current_time,
@@ -866,7 +864,26 @@ async def get_games(request: Request):
             
         except Exception as e:
             print(f"⚠️ خطأ في الاتصال بالمزود: {e}")
-            # حماية إضافية: إذا تعطل المزود، نعطي اللاعبين النسخة القديمة المحفوظة لدينا!
             if provider_code in GAMES_CACHE:
                 return GAMES_CACHE[provider_code]['data']
+            return {"status": 0, "msg": "Error connecting to provider"}
+
+# ==========================================
+# جلب قائمة المزودين (Providers List) ديناميكياً
+# ==========================================
+@app.get("/api/get-providers")
+async def get_providers():
+    print("🌍 جلب قائمة المزودين من Nexus...")
+    payload = {
+        "method": "provider_list",
+        "agent_code": "TUNISS10",
+        "agent_token": "9a418a80d898dd95f120c321012a67cf"
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post("https://api.nexusggr.com", json=payload)
+            return response.json()
+        except Exception as e:
+            print(f"⚠️ خطأ في جلب المزودين: {e}")
             return {"status": 0, "msg": "Error connecting to provider"}
