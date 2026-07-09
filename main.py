@@ -1,889 +1,2204 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
-import requests
-from pydantic import BaseModel
-from typing import List, Optional
-from fastapi.middleware.cors import CORSMiddleware
-from jose import jwt
-from datetime import datetime, timedelta
-import random
-import json
-import os
-import time
-from passlib.context import CryptContext
-from sqlalchemy import create_engine, Column, Integer, String, Float
-from sqlalchemy.orm import declarative_base, sessionmaker
-import asyncio
-from fastapi import UploadFile, File, Form
-import shutil
-import os
-from fastapi.staticfiles import StaticFiles
-import httpx
-
-# ذاكرة الكاش للمباريات
-cache = {"matches": [], "last_update": 0}
-
-# جلب رابط قاعدة البيانات
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-# تشغيل محرك قاعدة البيانات
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-class User(Base):
-    __tablename__ = "alpha_users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    password = Column(String)
-    role = Column(String)
-    balance = Column(Float, default=0.0)
-    rtp = Column(Integer, default=50)
-    is_blocked = Column(Integer, default=0)
-    created_by = Column(String)
-    # --- الأعمدة الجديدة التي كانت مفقودة لحفظ البيانات ---
-    last_spin_date = Column(String, default="")
-    daily_deposits = Column(Float, default=0.0)
-
-class Transaction(Base):
-    __tablename__ = "transactions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    admin_username = Column(String)
-    target_username = Column(String)
-    action = Column(String)  
-    amount = Column(Float)
-    date = Column(String)  
-    image_path = Column(String, nullable=True)
-
-from sqlalchemy import text
-
-try:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE transactions ADD COLUMN image_path VARCHAR"))
-except Exception:
-    pass
-Base.metadata.create_all(bind=engine)
-
-# إعداد خوارزمية التشفير
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def hash_password(password: str):
-    return pwd_context.hash(password)
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-SECRET_KEY = "gdldf52145*ytfrf-frtredà@&6é0'+" 
-ALGORITHM = "HS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
-
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=24)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub")
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-app = FastAPI()
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# سحب المفتاح بأمان
-API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
-TICKETS_FILE = "tickets_database.json" 
-# --- محرك التسوية التلقائي (Background Task) ---
-async def auto_settle_tickets():
-    """هذه الدالة تعمل في الخلفية بشكل دائم لفحص التذاكر"""
-    await asyncio.sleep(10) 
-    
-    while True:
-        try:
-            print("⏳ [Auto-Settler] جاري فحص التذاكر المعلقة...")
-            tickets_db = load_tickets_db()
-            db = load_db()
-            changes_made = False
-            
-            pending_tickets = [t for t in tickets_db if t.get("status") == "encours"]
-            
-            for ticket in pending_tickets:
-                simulated_result = random.choice(["gagne", "perdu"]) 
-                print(f"🔄 معالجة التذكرة #{ticket['ticket_id']} - النتيجة: {simulated_result}")
-                
-                ticket["status"] = simulated_result
-                changes_made = True
-                
-                if simulated_result == "gagne":
-                    target_username = ticket["username"]
-                    win_amount = float(ticket.get("gain", 0))
-                    
-                    for u in db:
-                        if u["username"] == target_username:
-                            u["balance"] = float(u.get("balance", 0)) + win_amount
-                            print(f"💰 تم إضافة {win_amount} TND لحساب {target_username}")
-                            break
-            
-            if changes_made:
-                save_tickets_db(tickets_db)
-                save_db(db)
-                print("✅ [Auto-Settler] تم حفظ النتائج وتحديث الأرصدة بنجاح.")
-                
-        except Exception as e:
-            print(f"❌ [Auto-Settler] حدث خطأ: {e}")
-        
-        await asyncio.sleep(60) 
-
-@app.on_event("startup")
-async def start_background_tasks():
-    asyncio.create_task(auto_settle_tickets())
-
-def load_db():
-    db = SessionLocal()
-    users = db.query(User).all()
-    db.close()
-    
-    result = []
-    for u in users:
-        result.append({
-            "username": u.username,
-            "password": u.password,
-            "role": u.role,
-            "balance": u.balance,
-            "rtp": u.rtp,
-            "is_blocked": u.is_blocked,
-            "created_by": u.created_by,
-            "last_spin_date": u.last_spin_date,
-            "daily_deposits": u.daily_deposits
-        })
-    
-    if not result:
-        default_users = [
-            {"username": "fethi", "password": hash_password("123456"), "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System", "last_spin_date": "", "daily_deposits": 0.0},
-            {"username": "samir", "password": hash_password("123456"), "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi", "last_spin_date": "", "daily_deposits": 0.0}
-        ]
-        save_db(default_users)
-        return default_users
-        
-    return result
-
-def save_db(data):
-    db = SessionLocal()
-    for item in data:
-        user = db.query(User).filter(User.username == item["username"]).first()
-        if user:
-            user.password = item.get("password", user.password)
-            user.role = item.get("role", user.role)
-            user.balance = item.get("balance", user.balance)
-            user.rtp = item.get("rtp", user.rtp)
-            user.is_blocked = item.get("is_blocked", user.is_blocked)
-            user.created_by = item.get("created_by", user.created_by)
-            user.last_spin_date = item.get("last_spin_date", user.last_spin_date)
-            user.daily_deposits = item.get("daily_deposits", user.daily_deposits)
-        else:
-            new_user = User(
-                username=item["username"],
-                password=item["password"],
-                role=item.get("role", "player"),
-                balance=item.get("balance", 0.0),
-                rtp=item.get("rtp", 50),
-                is_blocked=item.get("is_blocked", 0),
-                created_by=item.get("created_by", "System"),
-                last_spin_date=item.get("last_spin_date", ""),
-                daily_deposits=item.get("daily_deposits", 0.0)
-            )
-            db.add(new_user)
-    
-    db.commit()
-    db.close()
-
-def load_tickets_db():
-    if not os.path.exists(TICKETS_FILE):
-        with open(TICKETS_FILE, "w") as f:
-            json.dump([], f)
-        return []
-    try:
-        with open(TICKETS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_tickets_db(data):
-    with open(TICKETS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    role: str
-    created_by: str
-
-class ConfigureAccountRequest(BaseModel):
-    admin_username: str
-    target_username: str
-    rtp: int
-    is_blocked: int
-
-class UpdateBalanceRequest(BaseModel):
-    admin_username: str
-    target_username: str
-    action: str  
-    amount: float
-
-class ChangePlayerPasswordRequest(BaseModel):
-    admin_username: str
-    target_username: str
-    new_password: str
-
-class SaveTicketRequest(BaseModel):
-    username: str
-    ticket_data: dict
-
-class UpdateTicketStatusRequest(BaseModel):
-    ticket_id: int
-    status: str
-    amount_paid: float
-
-@app.post("/api/login")
-async def login_user(req: LoginRequest):
-    uname = req.username.lower().strip()
-    db = load_db()
-    
-    # ابحث عن المستخدم
-    user = None
-    for u in db:
-        if u["username"] == uname:
-            # التحقق من كلمة المرور
-            if verify_password(req.password, u.get("password", "")):
-                if u.get("is_blocked") == 1:
-                    raise HTTPException(status_code=403, detail="Ce compte est bloqué")
-                user = u
-                break
-    
-    # 🚨 التعديل الضروري هنا: إذا لم نجد المستخدم، نرسل خطأ صريح
-    if not user:
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
-        
-    # إذا نجح الدخول، ننشئ التوكن ونرسل البيانات
-    token = create_access_token(data={"sub": user["username"]})
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "username": user["username"],
-        "role": user["role"],
-        "balance": user["balance"],
-        "created_by": user.get("created_by", "System")
-    }
-@app.post("/api/register")
-async def register_user(req: RegisterRequest):
-    uname = req.username.lower().strip()
-    db = load_db()
-    
-    for u in db:
-        if u["username"] == uname:
-            raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
-            
-    hashed_pwd = hash_password(req.password)
-    
-    new_user = {
-        "username": uname,
-        "password": hashed_pwd,
-        "role": req.role,
-        "balance": 0.00,
-        "rtp": 50,
-        "is_blocked": 0,
-        "created_by": req.created_by,
-        "last_spin_date": "",
-        "daily_deposits": 0.0
-    }
-    db.append(new_user)
-    save_db(db)
-    return {"status": "success", "message": "Compte créé"}
-
-def has_user_spun_today(username):
-    db = load_db()
-    today = datetime.now().strftime("%Y-%m-%d")
-    for u in db:
-        if u["username"] == username:
-            return u.get("last_spin_date") == today
-    return False
-
-def log_spin_usage(username):
-    db = load_db()
-    today = datetime.now().strftime("%Y-%m-%d")
-    for u in db:
-        if u["username"] == username:
-            u["last_spin_date"] = today
-            break
-    save_db(db)
-
-def add_balance(username, amount):
-    db = load_db()
-    for u in db:
-        if u["username"] == username:
-            u["balance"] = float(u.get("balance", 0)) + amount
-            break
-    save_db(db)
-
-@app.post("/api/spin")
-async def daily_spin(current_user: str = Depends(get_current_user)):
-    if has_user_spun_today(current_user): 
-        return {"status": "error", "message": "لقد استخدمت فرصتك اليوم، عد غداً!"}
-    
-    if random.random() < 0.95:
-        log_spin_usage(current_user)
-        return {"status": "loss", "message": "حظ سعيد في المرة القادمة!"}
-    
-    prizes = [5, 10, 20, 50] 
-    won_amount = random.choice(prizes)
-    
-    add_balance(current_user, won_amount)
-    log_spin_usage(current_user)
-    
-    return {"status": "win", "amount": won_amount, "message": f"مبروك! ربحت {won_amount} TND"}
-
-@app.get("/api/admin/users")
-async def get_all_network_users(admin_username: Optional[str] = None):
-    return load_db()
-
-@app.post("/api/admin/update-balance")
-async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_current_user)):
-    target = req.target_username.lower().strip()
-    admin = req.admin_username.lower().strip()
-    amount = float(req.amount)
-    db = load_db()
-
-    target_user = None
-    admin_user = None
-
-    for u in db:
-        if u.get("username") == target:
-            target_user = u
-        if u.get("username") == admin:
-            admin_user = u
-
-    if not target_user:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-    if req.action == "charge":
-        if admin != "system" and admin != "fethi":
-            if not admin_user:
-                raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
-            if admin_user.get("balance", 0) < amount:
-                raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
-            admin_user["balance"] -= amount
-
-        current_balance = target_user.get("balance", 0)
-        daily_deps = target_user.get("daily_deposits", 0)
-
-        if current_balance < 1.0 and daily_deps > 0:
-            cashback_bonus = daily_deps * 0.10
-            target_user["balance"] = current_balance + cashback_bonus
-            target_user["daily_deposits"] = 0
-        
-        target_user["balance"] = target_user.get("balance", 0) + amount
-        
-        if admin != "system":
-            target_user["daily_deposits"] = target_user.get("daily_deposits", 0) + amount
-
-    elif req.action == "withdraw":
-        if target_user.get("balance", 0) < amount:
-            raise HTTPException(status_code=400, detail="Solde insuffisant")
-        
-        target_user["balance"] -= amount
-        
-        if admin != "system" and admin != "fethi" and admin_user:
-            admin_user["balance"] = admin_user.get("balance", 0) + amount
-
-    db_session = SessionLocal()
-    new_tx = Transaction(
-        admin_username=admin,
-        target_username=target,
-        action=req.action,
-        amount=amount,
-        date=datetime.now().strftime("%Y-%m-%d %H:%M")
-    )
-    db_session.add(new_tx)
-    db_session.commit()
-    db_session.close()
-
-    save_db(db)
-    return {"status": "success", "balance": target_user["balance"]}
-
-@app.get("/api/admin/transactions-history")
-async def get_transactions_history(username: str):
-    db_session = SessionLocal()
-    uname = username.lower().strip()
-    
-    if uname == "fethi":
-        txs = db_session.query(Transaction).order_by(Transaction.id.desc()).all()
-    else:
-        txs = db_session.query(Transaction).filter(
-            (Transaction.admin_username == uname) | (Transaction.target_username == uname)
-        ).order_by(Transaction.id.desc()).all()
-        
-    result = []
-    for t in txs:
-        result.append({
-            "id": t.id,
-            "admin_username": t.admin_username,
-            "target_username": t.target_username,
-            "action": t.action,
-            "amount": t.amount,
-            "date": t.date
-        })
-    db_session.close()
-    return result
-
-@app.post("/api/admin/save-ticket")
-async def save_player_ticket(req: SaveTicketRequest):
-    tickets_db = load_tickets_db()
-    new_ticket = {
-        "username": req.username.lower().strip(),
-        "ticket_id": req.ticket_data.get("id"),
-        "status": req.ticket_data.get("status", "encours"),
-        "games_count": req.ticket_data.get("gamesCount", 1),
-        "details_list": req.ticket_data.get("detailsList", []),
-        "total_cote": req.ticket_data.get("totalCote", 1.0),
-        "mise": req.ticket_data.get("mise", 0.0),
-        "gain": req.ticket_data.get("gain", 0.0),
-        "date": req.ticket_data.get("date", datetime.now().strftime("%H:%M:%S"))
-    }
-    tickets_db.append(new_ticket)
-    save_tickets_db(tickets_db)
-    return {"status": "success", "message": "Ticket synced with server database successfully"}
-
-@app.post("/api/admin/update-ticket-status")
-async def update_ticket_status(req: UpdateTicketStatusRequest):
-    tickets_db = load_tickets_db()
-    for t in tickets_db:
-        if t["ticket_id"] == req.ticket_id:
-            t["status"] = req.status
-            t["final_cashout_paid"] = req.amount_paid
-            save_tickets_db(tickets_db)
-            return {"status": "success", "message": "Ticket status updated on server"}
-    raise HTTPException(status_code=404, detail="Ticket non trouvé")
-
-@app.get("/api/admin/get-player-tickets")
-async def get_player_tickets(username: str):
-    tickets_db = load_tickets_db()
-    uname = username.lower().strip()
-    player_tickets = [t for t in tickets_db if t["username"] == uname]
-    return player_tickets
-
-@app.get("/api/admin/get-history")
-async def get_history(username: str):
-    tickets_db = load_tickets_db()
-    uname = username.lower().strip()
-    user_history = [t for t in tickets_db if t["username"] == uname]
-    return {"history": user_history}
-
-@app.post("/api/admin/change-player-password")
-async def change_player_password(req: ChangePlayerPasswordRequest):
-    target = req.target_username.lower().strip()
-    db = load_db()
-    
-    for u in db:
-        if u["username"] == target:
-            u["password"] = hash_password(req.new_password)
-            save_db(db)
-            return {"status": "success", "message": "Mot de passe modifié avec succès"}
-            
-    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-@app.post("/api/admin/configure-account")
-async def configure_account(req: ConfigureAccountRequest):
-    db = load_db()
-    for u in db:
-        if u["username"] == req.target_username.lower().strip():
-            u["rtp"] = req.rtp
-            u["is_blocked"] = req.is_blocked
-            save_db(db)
-            return {"status": "success", "message": "Configuration enregistrée"}
-    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-class DeleteAccountRequest(BaseModel):
-    admin_username: str
-    target_username: str
-@app.delete("/api/admin/delete-account")
-async def delete_account(req: DeleteAccountRequest):
-    db = load_db()
-    target = req.target_username.lower().strip()
-    
-    # فلترة شاملة لاستثناء الحساب من القائمة
-    new_db = [u for u in db if u.get("username", "").lower().strip() != target]
-    
-    if len(new_db) == len(db):
-        raise HTTPException(status_code=404, detail="Non trouvé")
-        
-    save_db(new_db)
-    return {"status": "success", "message": "Supprimé"}
-# --- تم تصحيح المسار ليتطابق مع الواجهة ---
-@app.get("/api/sports/get-live-matches")
-async def get_sports():
-    current_time = time.time()
-    
-    if current_time - cache["last_update"] > 900: 
-        leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
-        all_matches = []
-        for league in leagues:
-            try:
-                url = f"https://api.the-odds-api.com/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h,spreads,totals&oddsFormat=decimal"
-                response = requests.get(url, timeout=5) 
-                if response.status_code == 200:
-                    all_matches.extend(response.json())
-            except Exception:
-                pass
-        
-        cache["matches"] = all_matches
-        cache["last_update"] = current_time
-    
-    return cache["matches"]
-
-@app.get("/")
-async def root():
-    return {"status": "Alpha Secure Database Backend Running Perfectly"}
-
-@app.post("/api/admin/request-transaction")
-async def request_transaction(
-    target_username: str = Form(...),
-    action: str = Form(...),
-    amount: float = Form(...),
-    tx_id: str = Form(...),
-    file: UploadFile = File(None),
-    current_user: str = Depends(get_current_user)
-):
-    db_session = SessionLocal()
-    try:
-        file_path = ""
-        if file and file.filename:
-            UPLOAD_DIR = "uploads"
-            os.makedirs(UPLOAD_DIR, exist_ok=True)
-            file_extension = os.path.splitext(file.filename)[1]
-            file_name = f"{tx_id}{file_extension}"
-            file_path = os.path.join(UPLOAD_DIR, file_name)
-            
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-        
-        new_tx = Transaction(
-            admin_username="PENDING",
-            target_username=target_username,
-            action=action,
-            amount=amount,
-            date=datetime.now().strftime("%Y-%m-%d %H:%M"),
-            image_path=file_path
-        )
-        
-        db_session.add(new_tx)
-        db_session.commit()
-        return {"status": "success", "message": "طلبك قيد المراجعة"}
-    except Exception as e:
-        db_session.rollback()
-        return {"status": "error", "message": str(e)}
-    finally:
-        db_session.close()
-# ==========================================
-# مسارات معالجة طلبات الإيداع والسحب المعلقة
-# ==========================================
-
-class HandleRequestModel(BaseModel):
-    transaction_id: int
-    decision: str # 'accept' or 'reject'
-    admin_username: str
-
-@app.get("/api/admin/pending-requests")
-async def get_pending_requests():
-    db_session = SessionLocal()
-    # جلب جميع المعاملات التي تحمل اسم PENDING
-    txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING").order_by(Transaction.id.desc()).all()
-    result = [{"id": t.id, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date, "image_path": t.image_path} for t in txs]
-    db_session.close()
-    return result
-# هذا هو الجسر الذي يربط اسم التنبيهات بالوظيفة الموجودة
-@app.get("/api/admin/get-pending-deposits")
-async def get_pending_deposits_alias():
-    return await get_pending_requests()
-
-
-@app.post("/api/admin/handle-request")
-async def handle_pending_request(req: HandleRequestModel):
-    db_session = SessionLocal()
-    tx = db_session.query(Transaction).filter(Transaction.id == req.transaction_id).first()
-    
-    if not tx or tx.admin_username != "PENDING":
-        db_session.close()
-        raise HTTPException(status_code=404, detail="Demande introuvable ou déjà traitée")
-
-    # في حالة الرفض: نقوم بحذف الطلب فقط
-    if req.decision == "reject":
-        db_session.delete(tx)
-        db_session.commit()
-        db_session.close()
-        return {"status": "success", "message": "Demande rejetée"}
-
-    # في حالة القبول: نقوم بتحديث رصيد اللاعب
-    db = load_db()
-    target_user = next((u for u in db if u["username"] == tx.target_username), None)
-    if not target_user:
-        db_session.close()
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-    if tx.action == "deposit_request":
-        target_user["balance"] = float(target_user.get("balance", 0)) + tx.amount
-        tx.action = "charge" # تحويلها إلى شحن رسمي
-    elif tx.action == "withdraw_request":
-        if target_user.get("balance", 0) < tx.amount:
-            db_session.close()
-            raise HTTPException(status_code=400, detail="Solde insuffisant pour le retrait")
-        target_user["balance"] = float(target_user.get("balance", 0)) - tx.amount
-        tx.action = "withdraw" # تحويلها إلى سحب رسمي
-
-    # تسجيل اسم المدير الذي وافق على العملية
-    tx.admin_username = req.admin_username
-    db_session.commit()
-    db_session.close()
-    save_db(db) # حفظ الرصيد الجديد
-    
-    return {"status": "success", "message": "Demande approuvée avec succès"} 
-@app.post("/api/provider/launch-sportsbook")
-def launch_sportsbook(data: dict):
-    print("--- 📢 وصل الطلب إلى السيرفر بنجاح! ---")
-    # بيانات وكالتك الثابتة
-    AGENT_CODE = "TUNISS10"
-    AGENT_TOKEN = "1d370dd23266b78979ad81e0bda47708",
-    PROVIDER_ENDPOINT = "https://api.nexusggr.com"
-    
-    # بناء الرسالة النهائية والمثالية
-    provider_code = data.get("provider_code")
-    payload = {
-        "method": "game_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf",
-        "provider_code": provider_code
-      }
-    
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    try:
-        import requests
-        response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
-        response_data = response.json()
-        print("محتوى رد المزود هو:", response_data)
-        
-        # طباعة الرد في الكونسول للرقابة
-     
-        print("NexusGGR Response:", json.dumps(response_data, ensure_ascii=True))
-        
-        # استخراج الرابط الحقيقي
-        game_url = response_data.get("url") or response_data.get("launch_url")
-        
-        if game_url:
-            return {"launch_url": game_url}
-        else:
-            return {"error": "المزود رفض الطلب", "details": response_data}
-            
-    except Exception as e:
-        return {"error": str(e)}
-      
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
-@app.post("/api/provider/launch-casino")
-@app.post("/api/provider/launch-casino")
-async def launch_casino(request: Request):
-    try:
-        data = await request.json()
-        game_code = data.get("game_code")
-        provider_code = data.get("provider_code")
-        user_code = "fethi2_test"  # تأكد من هذا الاسم إذا كان متغير
-        
-        PROVIDER_ENDPOINT = "https://api.nexusggr.com"
-
-        payload = {
-            "method": "game_launch",
-            "agent_code": "TUNISS10",
-            "agent_token": "9a418a80d898dd95f120c321012a67cf",
-            "provider_code": provider_code,
-            "game_code": game_code,
-            "user_code": user_code,
-            "lang": "fr",
-            "currency": "TND"
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Alphabet - Player Control Center</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
         }
 
-        headers = {"Content-Type": "application/json"}
-        
-        import requests
-        response = requests.post(PROVIDER_ENDPOINT, json=payload, headers=headers)
-        response_data = response.json()
-        
-        print(f"رد المزود للعبة {game_code}:", response_data)
-        
-        game_url = response_data.get("url") or response_data.get("launch_url")
-        
-        if game_url:
-            return {"launch_url": game_url}
-        else:
-            return {"error": "المزود رفض الطلب", "details": response_data}
-            
-    except Exception as e:
-        return {"error": str(e)}
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
 
-@app.post("/gold_api")
-async def seamless_wallet_handler(request: Request):
-    try:
-        data = await request.json()
-        method = data.get("method")
-        user_code = data.get("user_code")  # اسم اللاعب
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
 
-        # ----------------------------------------------------
-        # 1. حالة الاستعلام عن الرصيد
-        # ----------------------------------------------------
-        if method == "user_balance":
-            player_balance = 100.00  # رقم مؤقت للتجربة
-            return JSONResponse(content={
-                "status": 1,
-                "user_balance": player_balance
-            })
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
 
-        # ----------------------------------------------------
-        # 2. حالة العمليات المالية (رهان أو فوز)
-        # ----------------------------------------------------
-        elif method == "transaction":
-            game_type = data.get("game_type")  # لمعرفة نوع اللعبة (SB, slot, live)
-            tx_data = data.get(game_type, {})
-            
-            bet_money = float(tx_data.get("bet_money", 0))
-            win_money = float(tx_data.get("win_money", 0))
-            txn_type = tx_data.get("txn_type")
+        @keyframes spin-slot {
+            0% {
+                transform: translateY(0);
+            }
 
-            # 🎯 رادار التقاط تذاكر الرياضة
-            if game_type == "SB" and "info" in data:
-                try:
-                    import json
-                    ticket_info = json.loads(data.get("info"))
+            50% {
+                transform: translateY(-50px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .slot-anim {
+            animation: spin-slot 0.4s ease-in-out;
+        }
+
+        .active-menu-btn {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            border-radius: 12px;
+        }
+
+        .active-filter-btn {
+            background-color: #14b8a6 !important;
+            color: #050814 !important;
+        }
+
+        .active-sub-tab {
+            border-color: #14b8a6 !important;
+            color: #2c3837 !important;
+            background-color: rgba(20, 184, 166, 0.05);
+        }
+
+        .crash-graph-grid {
+            background-image: linear-gradient(rgba(30, 41, 59, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.2) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .live-ticker-wrapper {
+            width: 100%;
+            background: linear-gradient(90deg, rgba(20, 184, 166, 0.05) 0%, rgba(20, 184, 166, 0.15) 50%, rgba(20, 184, 166, 0.05) 100%);
+            border: 1px solid rgba(20, 184, 166, 0.2);
+            border-radius: 16px;
+            padding: 8px 0;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            z-index: 30;
+        }
+
+        .live-ticker-track {
+            display: flex;
+            gap: 2rem;
+            white-space: nowrap;
+            animation: scroll-ticker 60s linear infinite;
+        }
+
+        @keyframes scroll-ticker {
+            0% {
+                transform: translateX(100vw);
+            }
+
+            100% {
+                transform: translateX(-150%);
+            }
+        }
+
+        .winner-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(5, 8, 20, 0.8);
+            border: 1px solid rgba(30, 41, 59, 0.8);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .winner-card .w-icon {
+            font-size: 1rem;
+        }
+
+        .winner-card .w-name {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .winner-card .w-game {
+            color: #64748b;
+            font-family: sans-serif;
+            font-size: 0.7rem;
+        }
+
+        .winner-card .w-amount {
+            color: #14b8a6;
+            font-weight: 900;
+            text-shadow: 0 0 8px rgba(20, 184, 166, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                display: block !important;
+            }
+
+            #main-content-area {
+                height: 100vh !important;
+                padding-bottom: 80px !important;
+            }
+
+            #main-sidebar {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 70px !important;
+                padding: 0 !important;
+                background-color: #090f24 !important;
+                border-top: 1px solid #1e293b !important;
+                z-index: 40 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+            }
+
+            #main-sidebar .space-y-6>div.flex,
+            #main-sidebar .pt-4,
+            #main-sidebar nav .hide-on-mobile-bar {
+                display: none !important;
+            }
+
+            #main-sidebar .space-y-6 {
+                width: 100% !important;
+                margin: 0 !important;
+                height: 100% !important;
+                display: flex;
+                align-items: center;
+            }
+
+            #main-sidebar nav {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
+            }
+
+            #main-sidebar nav>button {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 25% !important;
+                height: 100% !important;
+                padding: 5px !important;
+                background: transparent !important;
+                gap: 4px !important;
+                border: none !important;
+                position: relative !important;
+            }
+
+            #main-sidebar nav span {
+                font-size: 10px !important;
+                margin: 0 !important;
+                font-weight: bold !important;
+                text-align: center !important;
+            }
+
+            #main-sidebar nav span:first-child {
+                font-size: 20px !important;
+            }
+
+            #my-bets-badge-count {
+                position: absolute !important;
+                top: 5px !important;
+                right: 20px !important;
+                transform: none !important;
+            }
+
+            .active-menu-btn {
+                background-color: transparent !important;
+                color: #14b8a6 !important;
+            }
+
+            #btn-menu-paris-view>div {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 4px !important;
+            }
+
+            /* تحديد حجم التذكرة في الهاتف لكي لا تملأ الشاشة */
+            #main-ticket-container {
+                bottom: 85px !important;
+                right: 15px !important;
+                width: 280px !important;
+            }
+        }
+
+        .wheel-container {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+
+        .wheel {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            border: 10px solid #fbbf24;
+            background: conic-gradient(#ef4444 0deg 45deg, #f59e0b 45deg 90deg, #ef4444 90deg 135deg, #f59e0b 135deg 180deg, #ef4444 180deg 225deg, #f59e0b 225deg 270deg, #ef4444 270deg 315deg, #f59e0b 315deg 360deg);
+            transition: transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+
+        .jackpot-card {
+            position: relative;
+            transition: all 0.3s ease;
+            animation: pulse-glow 3s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% {
+                box-shadow: 0 0 5px rgba(251, 191, 36, 0.2);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+            }
+
+            100% {
+                box-shadow: 0 0 5px rgba(251, 191, 36, 0.2);
+            }
+        }
+
+        .jackpot-card:hover {
+            transform: scale(1.05);
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="bg-[#050814] text-slate-200 min-h-screen font-sans flex flex-col md:flex-row md:overflow-hidden relative">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 w-full max-w-sm px-4"></div>
+
+    <div id="mobile-drawer-menu"
+        class="fixed inset-0 z-50 bg-black/60 hidden backdrop-blur-sm transition-all duration-300">
+        <div class="w-45 bg-[#060914] h-full p-5 flex flex-col gap-6 border-r border-slate-900 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-900 pb-3">
+                <img src="image/logo.png" alt="Logo" class="h-45 w-auto object-contain">
+                <button onclick="toggleMobileSidebar()"
+                    class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+            <nav class="flex flex-col gap-1 overflow-y-auto no-scrollbar pb-2">
+                <button onclick="switchSection('accueil'); toggleMobileSidebar();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center">🏠</span> <span class="font-medium text-sm">Accueil</span>
+                </button>
+                <button onclick="openLiveGame('SPORTSBOOK', true); toggleMobileSidebar();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center">⚽</span> <span class="font-medium text-sm">Sport</span>
+                </button>
+                <button onclick="openLiveGame('SPORTSBOOK', true); toggleMobileSidebar();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center relative">⚡<span
+                            class="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span
+                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span><span
+                                class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span></span>
+                    <span class="font-medium text-sm">Live Sport</span>
+                </button>
+                <button onclick="openLiveGame('SPORTSBOOK', true); toggleMobileSidebar();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center">🎮</span> <span class="font-medium text-sm">E-Sport</span>
+                </button>
+                <button onclick="switchSection('casino'); toggleMobileSidebar(); initCasinoLobby();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center">🎰</span> <span class="font-medium text-sm">Casino</span>
+                </button>
+                <button onclick="switchSection('crash'); toggleMobileSidebar();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center text-teal-400">🚀</span> <span
+                        class="font-medium text-sm text-teal-400">Aviator</span>
+                </button>
+                <button onclick="toggleWheelModal(); toggleMobileSidebar();"
+                    class="w-full flex items-center gap-4 p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all text-left">
+                    <span class="text-xl w-6 text-center">🎰</span><span class="font-medium text-sm">عجلة الحظ</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- نافذة تسجيل الدخول -->
+    <div id="player-login-modal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4">
+        <div
+            class="w-full max-w-md bg-[#0b1124] border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 relative">
+            <button onclick="closeLoginModal()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
+            <div class="text-center">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-[#14b8a6] flex items-center justify-center transform rotate-45 mx-auto mb-4 shadow-lg shadow-teal-500/20">
+                    <span class="text-slate-950 font-black text-xl transform -rotate-45">A</span>
+                </div>
+                <h1 class="text-2xl font-black text-white tracking-widest">Alphabet</h1>
+            </div>
+            <div class="space-y-4 text-xs font-bold">
+                <div>
+                    <label class="text-slate-400 block mb-1.5 text-left">Nom d'utilisateur</label>
+                    <input type="text" id="p-auth-username"
+                        class="w-full p-3.5 rounded-xl bg-[#050814] border border-slate-800 text-teal-400 font-mono focus:outline-none focus:border-teal-500">
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1.5 text-left">Mot de passe</label>
+                    <input type="password" id="p-auth-password"
+                        class="w-full p-3.5 rounded-xl bg-[#050814] border border-slate-800 text-white font-mono focus:outline-none focus:border-teal-500">
+                </div>
+                <button onclick="handlePlayerAuth()"
+                    class="w-full bg-[#14b8a6] hover:bg-teal-600 text-slate-950 font-black p-4 rounded-xl transition-all cursor-pointer shadow-lg text-sm uppercase">Connexion</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة التسجيل -->
+    <div id="register-modal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4">
+        <div class="w-full max-w-md bg-[#0b1124] border border-slate-800 rounded-3xl p-6 shadow-2xl relative">
+            <button onclick="document.getElementById('register-modal').classList.add('hidden')"
+                class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg cursor-pointer">&times;</button>
+            <h2 class="text-white text-xl font-bold mb-4">إنشاء حساب جديد</h2>
+            <div class="space-y-4">
+                <input type="text" id="reg-username" placeholder="Nom d'utilisateur"
+                    class="w-full p-3 rounded-xl bg-[#050814] border border-slate-800 text-white">
+                <input type="password" id="reg-password" placeholder="Mot de passe"
+                    class="w-full p-3 rounded-xl bg-[#050814] border border-slate-800 text-white">
+                <button onclick="registerPlayer()"
+                    class="w-full bg-[#14b8a6] hover:bg-teal-600 text-slate-950 font-bold p-4 rounded-xl transition-all">S'inscrire</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- السايدبار للكمبيوتر -->
+    <aside id="main-sidebar"
+        class="w-full md:w-64 bg-[#060914] p-4 flex flex-col justify-between shrink-0 h-auto md:h-screen z-40 shadow-2xl">
+        <div class="space-y-6">
+            <div class="flex items-center gap-3 px-2 py-2 border-b border-slate-900/60">
+                <div
+                    class="w-7 h-7 rounded-lg bg-[#14b8a6] flex items-center justify-center font-black text-slate-950 text-xs">
+                    A</div>
+                <span class="text-base font-black tracking-wider text-white" id="player-name-display">Visitor</span>
+            </div>
+
+            <nav class="space-y-1 text-sm font-bold text-slate-300">
+                <button onclick="switchSection('accueil')" id="btn-menu-accueil"
+                    class="w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left active-menu-btn">
+                    <span>🏠</span> <span id="menu-accueil">Accueil</span>
+                </button>
+                <button onclick="openLiveGame('SPORTSBOOK', true)" id="btn-menu-sport"
+                    class="w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left">
+                    <span>🏆</span> <span id="menu-sport">Sport</span>
+                </button>
+                <button onclick="switchSection('paris')" id="btn-menu-paris-view"
+                    class="w-full flex justify-between items-center hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left relative">
+                    <div class="flex items-center gap-4"><span>📄</span> <span id="menu-paris">Mes Paris</span></div>
+                    <span class="bg-[#eab308] text-slate-950 text-[10px] px-2 py-0.5 rounded-full font-black"
+                        id="my-bets-badge-count">0</span>
+                </button>
+                <button onclick="switchSection('casino'); initCasinoLobby()" id="btn-menu-casino"
+                    class="w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left">
+                    <span>🎰</span> <span id="menu-casino">Le casino</span>
+                </button>
+
+                <button
+                    class="hide-on-mobile-bar w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left opacity-40 cursor-not-allowed">
+                    <span>🤵</span> <span id="menu-live">Casino en direct</span>
+                </button>
+                <button onclick="switchSection('crash')" id="btn-menu-crash"
+                    class="hide-on-mobile-bar w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left">
+                    <span>🚀</span> <span id="menu-crash">Jeux de crash</span>
+                </button>
+                <button
+                    class="hide-on-mobile-bar w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left opacity-40 cursor-not-allowed">
+                    <span>🔥</span> <span id="menu-meilleurs">Meilleurs games</span>
+                </button>
+                <button
+                    class="hide-on-mobile-bar w-full flex items-center gap-4 hover:bg-slate-900/60 p-3 rounded-xl transition-all cursor-pointer text-left opacity-40 cursor-not-allowed">
+                    <span>🎁</span> <span id="menu-promotions">Promotions</span>
+                </button>
+
+                <div
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-800/60 mt-2 hide-on-mobile-bar">
+                    <div class="flex items-center gap-4 text-slate-400">
+                        <span>💬</span> <span id="menu-langue">Langue</span>
+                    </div>
+                    <select id="player-lang-select" onchange="changePlayerLanguage(this.value)"
+                        class="bg-[#050814] text-white text-xs font-bold p-1 rounded border border-slate-700 focus:outline-none cursor-pointer">
+                        <option value="fr">Français</option>
+                        <option value="ar">العربية</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <div id="main-content-area" class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header
+            class="bg-[#090f24]/80 border-b border-slate-800/60 py-6 px-4 flex justify-between items-center shadow-md shrink-0">
+            <div class="flex items-center -mt-4">
+                <button onclick="toggleMobileSidebar()"
+                    class="md:hidden text-teal-400 text-2xl font-bold px-2 py-1 mr-1 active:scale-95 transition-all cursor-pointer rounded-lg bg-slate-900/50 border border-slate-800 hover:bg-slate-800">☰</button>
+                <img src="image/logo.png" alt="Logo" class="h-15 w-auto object-contain">
+            </div>
+
+            <div class="flex flex-col items-end gap-1 -mt-2 relative z-50">
+                <div id="auth-buttons-container" class="flex flex-col gap-1 items-end">
+                    <button onclick="openLoginModal()" id="top-login-btn"
+                        class="bg-slate-800 hover:bg-slate-700 text-white text-[9px] font-bold px-2 py-1 rounded-md transition-all w-16 text-center cursor-pointer">Connexion</button>
+                    <button onclick="openRegisterModal()"
+                        class="bg-teal-500 hover:bg-teal-600 text-slate-950 text-[9px] font-black px-2 py-1 rounded-md transition-all w-16 text-center cursor-pointer">S'inscrire</button>
+                </div>
+
+                <div id="top-user-profile" class="hidden flex-col items-end gap-1">
+                    <button onclick="toggleUserMenu()"
+                        class="flex items-center gap-1.5 text-xs font-bold hover:text-teal-400 transition-all text-white cursor-pointer">
+                        <span id="header-username-display">User</span>
+                        <span class="text-[8px] text-slate-400">▼</span>
+                    </button>
+
+                    <div id="main-balance-container"
+                        class="hidden bg-[#050814] border border-slate-800 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-mono">
+                        <span class="text-[#14b8a6] font-black text-[10px]" id="player-balance-val">0.00</span>
+                        <button onclick="toggleBalanceVisibility()"
+                            class="text-slate-500 hover:text-white text-[9px] cursor-pointer"
+                            id="eye-icon-btn">👁️</button>
+                        <div id="deposit-btn-container" class="hidden ml-0.5 border-l border-slate-800 pl-1.5">
+                            <button onclick="toggleCashier()"
+                                class="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-slate-950 font-black px-1.5 py-0.5 rounded text-[8px] uppercase transition-all cursor-pointer">Dépôt</button>
+                        </div>
+                    </div>
+                    <div id="user-dropdown"
+                        class="hidden absolute top-full right-0 mt-2 w-48 bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl z-50 p-2 text-left">
+                        <button onclick="switchSection('history-transfer'); toggleUserMenu();"
+                            class="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 rounded text-xs cursor-pointer">💸
+                            Historique de transfert</button>
+                        <button onclick="switchSection('history-casino'); toggleUserMenu();"
+                            class="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 rounded text-xs cursor-pointer">📜
+                            Historique de casino</button>
+                        <div class="h-px bg-slate-700 my-1"></div>
+                        <button onclick="logoutPlayer()"
+                            class="w-full text-left px-3 py-2 text-rose-400 hover:bg-rose-900/20 rounded text-xs font-bold cursor-pointer">🚪
+                            Déconnexion</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- المحتوى الرئيسي -->
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar relative">
+
+            <div class="live-ticker-wrapper">
+                <div class="live-ticker-track" id="winners-ticker-track"></div>
+            </div>
+
+            <div id="pane-accueil" class="player-view-section space-y-4">
+                <div class="grid grid-cols-3 gap-2 md:gap-4 mb-4">
+                    <div
+                        class="jackpot-card bg-gradient-to-b from-amber-500/20 to-[#090f24] border border-amber-500/40 rounded-2xl p-3 text-center shadow-lg relative overflow-hidden">
+                        <div class="text-amber-400 font-black text-[9px] md:text-xs uppercase tracking-widest mb-1">Mega
+                            🥇</div>
+                        <div class="text-white font-mono font-black text-[11px] md:text-xl" id="jackpot-mega">124,567.89
+                        </div>
+                    </div>
+                    <div
+                        class="jackpot-card bg-gradient-to-b from-slate-300/20 to-[#090f24] border border-slate-300/40 rounded-2xl p-3 text-center shadow-lg">
+                        <div class="text-slate-300 font-black text-[9px] md:text-xs uppercase tracking-widest mb-1">
+                            Major 🥈</div>
+                        <div class="text-white font-mono font-black text-[11px] md:text-xl" id="jackpot-major">14,230.50
+                        </div>
+                    </div>
+                    <div
+                        class="jackpot-card bg-gradient-to-b from-orange-600/20 to-[#090f24] border border-orange-600/40 rounded-2xl p-3 text-center shadow-lg">
+                        <div class="text-orange-500 font-black text-[9px] md:text-xs uppercase tracking-widest mb-1">
+                            Mini 🥉</div>
+                        <div class="text-white font-mono font-black text-[11px] md:text-xl" id="jackpot-mini">1,850.25
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-[#0a0f24] relative -mx-4 md:-mx-6 mt-4" style="height: 85vh; min-height: 700px;">
+                    <div id="inline-sportsbook-loader"
+                        class="absolute inset-0 flex items-center justify-center bg-[#050814] z-10">
+                        <span class="text-teal-400 font-bold animate-pulse">جاري تحميل المباريات المباشرة... ⚽</span>
+                    </div>
+
+                    <iframe id="inline-sportsbook-iframe" src=""
+                        class="w-full h-full border-0 opacity-0 transition-opacity duration-500"></iframe>
+                </div>
+
+            </div>
+
+            <div id="pane-sport" class="player-view-section space-y-4 hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2"
+                        id="trans-sport-title">⚽ MATCHES EN DIRECT & À VENIR</h3>
+                </div>
+                <div class="flex overflow-x-auto gap-2 p-2 bg-[#050814] mb-4 no-scrollbar border-b border-slate-800">
+                    <button onclick="changeMarket('h2h')"
+                        class="market-tab whitespace-nowrap px-4 py-2 bg-teal-600 rounded-lg text-xs font-bold text-white transition">Résultat</button>
+                    <button onclick="changeMarket('double_chance')"
+                        class="market-tab whitespace-nowrap px-4 py-2 bg-slate-800 rounded-lg text-xs font-bold text-white hover:bg-teal-600 transition">Double
+                        Chance</button>
+                    <button onclick="changeMarket('totals')"
+                        class="market-tab whitespace-nowrap px-4 py-2 bg-slate-800 rounded-lg text-xs font-bold text-white hover:bg-teal-600 transition">Total
+                        Buts</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-start pb-10"
+                    id="matches-list-container">
+                    <!-- المباريات ستظهر هنا -->
+                </div>
+            </div>
+
+            <div id="pane-paris" class="player-view-section space-y-4 hidden">
+                <div class="flex border-b border-slate-800/80 gap-1 overflow-x-auto no-scrollbar">
+                    <button onclick="switchBetsSubTab('encours')" id="sub-tab-encours"
+                        class="text-xs font-bold px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition-all cursor-pointer active-sub-tab">⏳
+                        En cours</button>
+                    <button onclick="switchBetsSubTab('gagne')" id="sub-tab-gagne"
+                        class="text-xs font-bold px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition-all cursor-pointer">✅
+                        Gagné</button>
+                    <button onclick="switchBetsSubTab('perdu')" id="sub-tab-perdu"
+                        class="text-xs font-bold px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition-all cursor-pointer">❌
+                        Perdu</button>
+                    <button onclick="switchBetsSubTab('cashout')" id="sub-tab-cashout"
+                        class="text-xs font-bold px-4 py-2 border-b-2 border-transparent text-slate-400 hover:text-white transition-all cursor-pointer">💸
+                        Cashout</button>
+                </div>
+                <div id="my-bets-history-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"></div>
+            </div>
+
+            <div id="pane-crash" class="player-view-section space-y-6 hidden">
+                <div
+                    class="max-w-2xl mx-auto bg-[#090f24] border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
+                    <div class="flex justify-between items-center border-b border-slate-800/60 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🚀</span>
+                            <h2 class="text-sm font-black text-teal-400 tracking-wider uppercase">Alphabet Aviator
+                                Real-Time
+                            </h2>
+                        </div>
+                        <span id="crash-status-badge"
+                            class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black px-2 py-0.5 rounded uppercase">Waiting</span>
+                    </div>
+                    <div
+                        class="h-64 bg-[#050814] border border-slate-800 rounded-2xl relative overflow-hidden crash-graph-grid flex items-center justify-center">
+                        <div id="crash-multiplier-display"
+                            class="text-5xl md:text-6xl font-black text-white font-mono tracking-tight z-10 drop-shadow-md">
+                            1.00x</div>
+                        <div id="crash-airplane-icon"
+                            class="absolute bottom-6 left-6 text-4xl opacity-0 transition-all duration-100 ease-out z-20">
+                            🚀
+                        </div>
+                        <div id="crash-blast-screen"
+                            class="absolute inset-0 bg-rose-950/80 backdrop-blur-sm flex flex-col items-center justify-center scale-0 transition-all duration-300 z-30">
+                            <span class="text-4xl">💥</span><span
+                                class="text-rose-400 font-black text-sm uppercase tracking-widest mt-2">FLEW AWAY @
+                                <span id="blast-multiplier-val">0.00</span>x</span>
+                        </div>
+                    </div>
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-[#050814]/60 p-4 rounded-xl border border-slate-800/80 font-bold text-xs">
+                        <div class="space-y-1.5">
+                            <label class="text-slate-400 block">Mise du Crash:</label>
+                            <input type="number" id="crash-stake-input" value="10" min="1"
+                                class="w-full bg-[#050814] border border-slate-800 rounded-xl p-3 text-teal-400 font-mono focus:outline-none">
+                        </div>
+                        <div class="pt-5">
+                            <button onclick="startCrashBetRound()" id="crash-action-btn"
+                                class="w-full bg-teal-500 hover:bg-teal-600 text-slate-950 font-black p-3.5 rounded-xl text-center cursor-pointer transition-all uppercase tracking-wider shadow-lg">Placer
+                                le Pari 🚀</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+           <div id="pane-casino" class="player-view-section space-y-4 hidden">
+
+                <div class="flex flex-col gap-4 mb-6 mt-2">
                     
-                    coupon_code = ticket_info.get("couponCode")
-                    ticket_status = ticket_info.get("status")
-                    stake = ticket_info.get("stake")
+                    <div id="casino-controls" class="flex flex-col md:flex-row gap-4 justify-between items-center bg-[#0f172a] p-4 rounded-xl border border-slate-800 shadow-md w-full">
+                        <div class="relative w-full md:w-1/2">
+                            <input type="text" id="game-search-input" onkeyup="filterGames()" placeholder="ابحث عن اسم اللعبة..." 
+                                class="w-full bg-[#1e293b] text-slate-200 border border-slate-700 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-teal-500 transition-colors text-sm font-bold">
+                            <span class="absolute left-3 top-2 text-slate-400 text-lg">🔍</span>
+                        </div>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <select id="game-sort-select" onchange="filterGames()" 
+                                class="w-full bg-[#1e293b] text-slate-200 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-teal-500 cursor-pointer text-sm font-bold">
+                                <option value="default">الترتيب الافتراضي</option>
+                                <option value="az">أبجدياً (A-Z)</option>
+                                <option value="za">أبجدياً (Z-A)</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    print(f"🎟️ تم التقاط تذكرة! اللاعب: {user_code} | التذكرة: {coupon_code} | المبلغ: {stake} | الحالة: {ticket_status}")
-                except Exception as e:
-                    print(f"⚠️ خطأ في قراءة بيانات التذكرة: {e}")
+                    <div id="providers-bar" class="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
+                    </div>
+                    
+                </div>
 
-            # TODO: جلب الرصيد الحقيقي من قاعدة البيانات قبل العملية
-            player_balance = 100.00  # رقم مؤقت
+                <div id="games-grid" class="grid grid-cols-2 md:grid-cols-4 sm:grid-cols-3 gap-4 p-2">
+                </div>
 
-            # أ. معالجة خصم الرهان (Debit)
-            if txn_type in ["debit", "debit_credit"]:
-                if player_balance < bet_money:
-                    return JSONResponse(content={"status": 0, "msg": "INSUFFICIENT_USER_FUNDS"})
-                player_balance -= bet_money
+            </div>
+            <div id="pane-history-casino" class="player-view-section space-y-4 hidden">
+                <h3 class="text-sm font-black text-teal-400 uppercase tracking-wider">📜 Historique de Casino</h3>
+                <div class="bg-[#090f24] border border-slate-800 p-8 rounded-2xl text-center shadow-md">
+                    <span class="text-4xl block mb-2 opacity-50">📂</span>
+                    <p class="text-xs text-slate-500 font-bold uppercase">Aucun historique disponible pour le moment.
+                    </p>
+                </div>
+            </div>
 
-            # ب. معالجة إضافة الربح (Credit)
-            if txn_type in ["credit", "debit_credit"]:
-                player_balance += win_money
+            <div id="pane-history-transfer" class="player-view-section space-y-4 hidden">
+                <h3 class="text-sm font-black text-teal-400 uppercase tracking-wider">💸 Historique de Transfére</h3>
+                <div class="bg-[#090f24] border border-slate-800 p-8 rounded-2xl text-center shadow-md">
+                    <span class="text-4xl block mb-2 opacity-50">📂</span>
+                    <p class="text-xs text-slate-500 font-bold uppercase">Aucun historique disponible pour le moment.
+                    </p>
+                </div>
+            </div>
 
-            return JSONResponse(content={
-                "status": 1,
-                "user_balance": round(player_balance, 2)
-            })
+        </main>
+    </div>
 
-        # حالة طلب غير معروف
-        else:
-            return JSONResponse(content={"status": 0, "msg": "UNKNOWN_METHOD"})
+    <!-- 🎫 التذكرة الجديدة المنبثقة بحجم الشات الصغير 🎫 -->
+    <div id="main-ticket-container"
+        class="fixed bottom-4 right-4 w-[280px] md:w-[300px] z-50 flex flex-col transition-all duration-300 hidden shadow-2xl rounded-2xl overflow-hidden border border-slate-700">
 
-    except Exception as e:
-        print(f"Error in gold_api: {e}")
-        return JSONResponse(content={"status": 0, "msg": "INTERNAL_ERROR"})
+        <!-- الشريط المصغر (الرأس) -->
+        <div id="ticket-minimized-bar" onclick="toggleTicketSize()"
+            class="bg-[#14b8a6] hover:bg-teal-500 text-slate-950 w-full p-2.5 flex justify-between items-center cursor-pointer transition-colors shrink-0">
+            <span class="font-black text-xs uppercase flex items-center gap-2">
+                📋 Ticket <span id="ticket-count-badge"
+                    class="bg-slate-950 text-teal-400 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+            </span>
+            <span id="minimized-bar-label" class="text-[10px] font-black uppercase">👀 Ouvrir</span>
+        </div>
 
-# ==========================================
-# نظام التخزين المؤقت (Cache) لألعاب الكازينو
-# ==========================================
-GAMES_CACHE = {}
-CACHE_TIME_LIMIT = 3600  # مدة الحفظ بالثواني (ساعة واحدة)
+        <!-- جسم التذكرة (يتمدد للأسفل) -->
+        <div id="ticket-full-body"
+            class="bg-[#090f24] w-full transition-all duration-300 overflow-hidden max-h-0 flex flex-col">
+            <div class="flex justify-between items-center p-2 border-b border-slate-800 bg-[#050814] shrink-0">
+                <span class="text-teal-400 font-bold text-[9px] uppercase">Vos Paris:</span>
+                <div class="flex gap-1">
+                    <button onclick="clearTicket(); event.stopPropagation();"
+                        class="text-rose-400 hover:text-rose-500 text-[9px] font-bold bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded transition cursor-pointer">🗑️
+                        Effacer</button>
+                    <button onclick="closeTicketComplete(); event.stopPropagation();"
+                        class="text-white hover:text-red-500 text-[9px] font-bold bg-rose-600 hover:bg-rose-700 px-2 py-1 rounded transition cursor-pointer">✖
+                        Fermer</button>
+                </div>
+            </div>
 
-@app.post("/api/get-games-list")
-async def get_games(request: Request):
-    data = await request.json()
-    provider_code = data.get("provider_code")
-    
-    if not provider_code:
-        return {"status": 0, "msg": "Provider code is missing"}
+            <div id="ticket-odds-box"
+                class="overflow-y-auto p-2 space-y-2 custom-scrollbar bg-[#090f24] flex-1 max-h-[250px]"></div>
 
-    import time
-    current_time = time.time()
+            <div class="p-2 border-t border-slate-800 bg-[#050814] shrink-0">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-slate-400 text-[10px]">Total Odds:</span>
+                    <span id="ticket-total-odds" class="text-white font-mono font-bold text-xs">1.00</span>
+                </div>
+                <div class="mb-2 flex items-center gap-2">
+                    <label class="text-slate-400 text-[9px] whitespace-nowrap">Stake (TND):</label>
+                    <input type="number" id="ticket-stake-input" oninput="calculatePotentialGain()" value="5"
+                        class="w-full bg-[#090f24] border border-slate-700 rounded p-1 text-white text-[10px] focus:border-teal-500 outline-none" />
+                </div>
+                <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-2 mb-2">
+                    <span class="text-slate-400 text-xs">Gain Potentiel:</span>
+                    <span id="ticket-potential-gain" class="text-teal-400 font-black text-sm">0.00 TND</span>
+                </div>
+                <button onclick="submitSportTicket()" id="ticket-submit-btn"
+                    class="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-2 rounded transition shadow-lg cursor-pointer uppercase tracking-wider text-[10px]">
+                    Place Bet 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- نهاية التذكرة -->
 
-    # فحص الذاكرة
-    if provider_code in GAMES_CACHE:
-        cached_data = GAMES_CACHE[provider_code]
-        if current_time - cached_data['time'] < CACHE_TIME_LIMIT:
-            print(f"⚡ جلب ألعاب {provider_code} فوراً من ذاكرة السيرفر السريعة (الكاش)")
-            return cached_data['data']
+    <!-- 💰 نوافذ الكاشير وألعاب الكازينو (مخفية) -->
+    <div id="cashier-modal"
+        class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#0b1124] border border-slate-800 rounded-3xl w-full max-w-md p-6 relative shadow-2xl">
+            <button onclick="toggleCashier()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
+            <h2 class="text-lg font-black text-white mb-4 flex items-center gap-2">💳 Caisse (الكاشير)</h2>
+            <div class="flex gap-2 mb-6 bg-[#050814] p-1 rounded-xl border border-slate-800">
+                <button onclick="switchCashierTab('deposit')" id="tab-deposit"
+                    class="flex-1 bg-teal-500 text-slate-950 font-bold py-2 rounded-lg text-xs transition-all">Dépôt
+                    (إيداع)</button>
+                <button onclick="switchCashierTab('withdraw')" id="tab-withdraw"
+                    class="flex-1 text-slate-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all">Retrait
+                    (سحب)</button>
+            </div>
+            <div id="deposit-section" class="space-y-4">
+                <label class="text-xs text-slate-400 font-bold">Choisissez la méthode:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="selectPaymentMethod('d17')"
+                        class="border border-slate-700 bg-slate-800/50 hover:border-teal-500 hover:bg-slate-800 p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer">
+                        <span class="text-xl">📱</span><span class="text-[10px] font-bold text-white">D17 /
+                            Flouci</span>
+                    </button>
+                    <button onclick="selectPaymentMethod('usdt')"
+                        class="border border-slate-700 bg-slate-800/50 hover:border-teal-500 hover:bg-slate-800 p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer">
+                        <span class="text-xl">🪙</span><span class="text-[10px] font-bold text-white">USDT
+                            (Binance)</span>
+                    </button>
+                </div>
+                <div id="payment-details"
+                    class="hidden bg-[#050814] border border-slate-800 p-4 rounded-xl mt-4 space-y-3">
+                    <div class="text-[11px] text-slate-300 font-mono" id="payment-instructions"></div>
+                    <input type="number" id="deposit-amount" placeholder="Montant (المبلغ TND)"
+                        class="w-full bg-[#090f24] border border-slate-700 rounded-lg p-2.5 text-teal-400 text-sm font-mono focus:outline-none focus:border-teal-500">
+                    <input type="text" id="deposit-tx" placeholder="ID de transaction (رقم العملية)"
+                        class="w-full bg-[#090f24] border border-slate-700 rounded-lg p-2.5 text-white text-sm font-mono focus:outline-none focus:border-teal-500">
+                    <!-- حقل رفع صورة الإيصال الجديد -->
+                    <div class="text-start">
+                        <label class="text-[11px] text-slate-400 font-mono mb-1 block">صورة الإيصال (اختياري):</label>
+                        <input type="file" id="deposit-file" accept="image/*"
+                            class="w-full bg-[#090f24] border border-slate-700 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-teal-400">
+                    </div>
+                    <button onclick="submitDeposit()"
+                        class="w-full bg-teal-500 hover:bg-teal-600 text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all mt-2 cursor-pointer">Confirmer
+                        le Dépôt</button>
+                </div>
+            </div>
+            <div id="withdraw-section" class="hidden space-y-4">
+                <div
+                    class="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-[10px] text-amber-400 font-bold mb-4">
+                    Solde disponible: <span id="cashier-balance-display">0.00</span> TND
+                </div>
+                <input type="number" id="withdraw-amount" placeholder="Montant à retirer (المبلغ)"
+                    class="w-full bg-[#050814] border border-slate-700 rounded-lg p-3 text-teal-400 text-sm font-mono focus:outline-none focus:border-teal-500">
+                <input type="text" id="withdraw-account" placeholder="Numéro D17 / Adresse USDT"
+                    class="w-full bg-[#050814] border border-slate-700 rounded-lg p-3 text-white text-sm font-mono focus:outline-none focus:border-teal-500">
+                <button onclick="submitWithdraw()"
+                    class="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all mt-2 cursor-pointer">Demander
+                    le Retrait</button>
+            </div>
+        </div>
+    </div>
 
-    # إذا لم تكن في الذاكرة، نكلم المزود
-    print(f"🌍 جلب ألعاب {provider_code} من المزود الخارجي (Nexus)...")
-    payload = {
-        "method": "game_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf",
-        "provider_code": provider_code
-    }
+    <div id="wheel-modal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="bg-slate-900 p-8 rounded-3xl border border-amber-500 shadow-2xl relative">
+            <button onclick="toggleWheelModal()"
+                class="absolute top-4 right-4 text-white hover:text-red-500 text-xl font-bold">X</button>
+            <div class="wheel-container flex flex-col items-center">
+                <div id="wheel" class="wheel"></div>
+                <button onclick="spinWheel()"
+                    class="mt-6 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full transition">دوران
+                    العجلة! 🎰</button>
+            </div>
+        </div>
+    </div>
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post("https://api.nexusggr.com", json=payload)
-            response_data = response.json()
-            
-            if "games" in response_data or response_data.get("status") == 1:
-                GAMES_CACHE[provider_code] = {
-                    'time': current_time,
-                    'data': response_data
+    <div id="modal-slot-machine" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
+        <div
+            class="bg-[#090f24] border border-slate-800 rounded-3xl max-w-md w-full p-6 text-center space-y-6 relative shadow-2xl">
+            <button onclick="closeGameMachine()"
+                class="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
+            <h3 class="text-xs font-black text-teal-400 tracking-wider uppercase" id="modal-game-title">GATES OF OLYMPUS
+            </h3>
+            <div
+                class="flex justify-center gap-4 text-4xl p-6 bg-[#050814] border border-slate-800/80 rounded-2xl shadow-md mx-auto">
+                <div id="slot-reel-1"
+                    class="bg-[#050814] p-3 rounded-xl border border-slate-800 w-16 h-16 flex items-center justify-center">
+                    👑</div>
+                <div id="slot-reel-2"
+                    class="bg-[#050814] p-3 rounded-xl border border-slate-800 w-16 h-16 flex items-center justify-center">
+                    💎</div>
+                <div id="slot-reel-3"
+                    class="bg-[#050814] p-3 rounded-xl border border-slate-800 w-16 h-16 flex items-center justify-center">
+                    🍒</div>
+            </div>
+            <div class="flex items-center justify-center gap-4 text-xs font-bold">
+                <div class="flex items-center gap-2 bg-[#050814] border border-slate-800 px-3 py-2 rounded-xl">
+                    <span id="trans-slot-bet">BET TND:</span>
+                    <select id="player-bet-select"
+                        class="bg-[#090f24] border border-slate-700 rounded text-teal-400 font-mono">
+                        <option value="1">1.00</option>
+                        <option value="5">5.00</option>
+                        <option value="10">10.00</option>
+                    </select>
+                </div>
+                <button onclick="spinPragmaticSlot()" id="spin-btn"
+                    class="bg-[#14b8a6] hover:bg-teal-600 text-slate-950 font-black px-6 py-3 rounded-xl transition-all cursor-pointer shadow-md">SPIN
+                    🎰</button>
+            </div>
+        </div>
+    </div>
+    <!-- 🎰 شاشة عرض الكازينو الحقيقي (Fullscreen Iframe) 🎰 -->
+    <div id="casino-iframe-container"
+        class="fixed inset-0 z-[100] bg-black hidden flex-col transition-all duration-300">
+        <!-- الشريط العلوي للعبة -->
+        <button onclick="closeCasinoGame()"
+            class="absolute top-4 right-4 z-[110] bg-black/50 hover:bg-rose-600 text-white w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold backdrop-blur-md border border-white/20 transition-all shadow-2xl cursor-pointer">
+            ✖
+        </button>
+        <!-- إطار اللعبة -->
+        <div class="w-full flex-1 relative bg-[#090f24] flex items-center justify-center">
+            <!-- رسالة تحميل تظهر قبل فتح اللعبة -->
+            <div id="casino-loader" class="absolute inset-0 flex flex-col items-center justify-center z-10">
+                <div class="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4">
+                </div>
+                <p class="text-teal-400 font-bold text-sm animate-pulse">Chargement du jeu...</p>
+            </div>
+            <iframe id="casino-iframe" class="w-full h-full border-0 relative z-20" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        function toggleMobileSidebar() {
+            const drawer = document.getElementById('mobile-drawer-menu');
+            if (drawer.classList.contains('hidden')) {
+                drawer.classList.remove('hidden');
+            } else {
+                drawer.classList.add('hidden');
+            }
+        }
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('token');
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        const BACKEND_URL = "https://alpha-core-fl0v.onrender.com";
+        let playerSession = null;
+        let balanceInterval = null;
+        let currentLangCode = "fr";
+        let currentBetsSubTab = "encours";
+
+        let comboTicketMatchesList = [];
+        let myActiveBetsList = [];
+        let currentGlobalMatches = []; // مصفوفة لتخزين المباريات الحالية لتحديث الأزرار الحمراء
+
+        let crashLoopInterval = null;
+        let crashMultiplier = 1.00;
+        let isCrashRoundRunning = false;
+        let currentCrashStakeAmount = 0;
+        let hasPlayerCashedOutFromCrash = false;
+
+        const slotItems = ["👑", "💎", "🍒", "🍀", "🍋", "🍇"];
+
+        const dictionary_translations = {
+            fr: { ticket_empty: "Aucun match sélectionné", ticket_success: "Pari combos validé avec succès !", cashout_success: "Cash Out effectué avec succès !" },
+            ar: { ticket_empty: "لم تقم باختيار أي مباراة بعد", ticket_success: "تم قبول وتثبيت ورقة الرهان المتعددة بنجاح !", cashout_success: "تم سحب كاش أوت وإغلاق الكوبون بنجاح !" },
+            en: { ticket_empty: "No match selected yet", ticket_success: "Combo ticket submitted successfully!", cashout_success: "Cash Out processed successfully!" }
+        };
+
+        function getBonusRate(matchCount) {
+            if (matchCount >= 8) return 0.20;
+            if (matchCount >= 5) return 0.10;
+            if (matchCount >= 3) return 0.05;
+            return 0;
+        }
+
+        function openLoginModal() { document.getElementById('player-login-modal').style.display = 'flex'; }
+        function closeLoginModal() { document.getElementById('player-login-modal').style.display = 'none'; }
+
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl shadow-2xl border text-xs font-bold text-slate-950 flex items-center gap-2 ${type === 'success' ? 'bg-teal-400 border-teal-500' : 'bg-rose-400 border-rose-500'}`;
+            toast.innerHTML = type === 'success' ? `✅ ${message}` : `❌ ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        function switchSection(sectionId) {
+            localStorage.setItem('active_section', sectionId);
+            document.querySelectorAll('.player-view-section').forEach(el => el.classList.add('hidden'));
+            const panelElement = document.getElementById(`pane-${sectionId}`);
+            if (panelElement) panelElement.classList.remove('hidden');
+
+            document.getElementById('main-sidebar').querySelectorAll('button').forEach(btn => btn.classList.remove('active-menu-btn'));
+            const targetBtn = document.getElementById(`btn-menu-${sectionId === 'paris' ? 'paris-view' : sectionId}`);
+            if (targetBtn) targetBtn.classList.add('active-menu-btn');
+
+            if (sectionId === 'sport' || sectionId === 'accueil') {
+                if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+                else injectBackupMatches();
+            }
+            if (sectionId === 'paris') renderMyBetsHistoryPane();
+            if (sectionId === 'casino') {
+                initCasinoLobby(); // استدعاء دالة جلب الألعاب عند فتح الكازينو
+            }
+
+        }
+
+
+        function toggleBalanceVisibility() {
+            const balSpan = document.getElementById('player-balance-val');
+            const eyeBtn = document.getElementById('eye-icon-btn');
+            if (balSpan.style.filter === 'blur(4px)') {
+                balSpan.style.filter = 'none'; eyeBtn.innerText = '👁️';
+            } else {
+                balSpan.style.filter = 'blur(4px)'; eyeBtn.innerText = '🙈';
+            }
+        }
+
+        function switchBetsSubTab(subTabId) {
+            currentBetsSubTab = subTabId;
+            document.getElementById('pane-paris').querySelectorAll('button').forEach(btn => btn.classList.remove('active-sub-tab'));
+            document.getElementById(`sub-tab-${subTabId}`).classList.add('active-sub-tab');
+            renderMyBetsHistoryPane();
+        }
+
+        /* ================= وظائف التذكرة الجديدة ================= */
+        let isTicketOpen = false;
+
+        function toggleTicketSize() {
+            const body = document.getElementById('ticket-full-body');
+            const label = document.getElementById('minimized-bar-label');
+
+            if (isTicketOpen) {
+                body.classList.add('max-h-0');
+                body.classList.remove('max-h-[400px]');
+                label.innerText = "👀 Ouvrir";
+                isTicketOpen = false;
+            } else {
+                body.classList.remove('max-h-0');
+                body.classList.add('max-h-[400px]');
+                label.innerText = "🔽 Réduire";
+                isTicketOpen = true;
+
+                setTimeout(() => {
+                    document.getElementById('main-ticket-container').scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 300);
+            }
+        }
+
+        function closeTicketComplete() {
+            document.getElementById('main-ticket-container').classList.add('hidden');
+            isTicketOpen = false;
+            document.getElementById('ticket-full-body').classList.add('max-h-0');
+            document.getElementById('ticket-full-body').classList.remove('max-h-[400px]');
+            document.getElementById('minimized-bar-label').innerText = "👀 Ouvrir";
+        }
+
+        function clearTicket() {
+            comboTicketMatchesList = [];
+            renderComboTicketUI();
+            closeTicketComplete();
+
+            if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+            else injectBackupMatches();
+        }
+
+        function selectBetOutcome(outcome, odds, matchName, matchId) {
+            const existing = comboTicketMatchesList.find(item => item.matchId === matchId);
+            if (existing && existing.outcome === outcome) {
+                removeMatchFromCombo(matchId);
+                return;
+            }
+
+            comboTicketMatchesList = comboTicketMatchesList.filter(item => item.matchId !== matchId);
+            comboTicketMatchesList.push({ matchId, matchName, outcome, odds });
+
+            renderComboTicketUI();
+
+            if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+            else injectBackupMatches();
+
+            document.getElementById('main-ticket-container').classList.remove('hidden');
+
+            if (!isTicketOpen && comboTicketMatchesList.length === 1) {
+                toggleTicketSize();
+            }
+        }
+
+        function removeMatchFromCombo(matchId) {
+            comboTicketMatchesList = comboTicketMatchesList.filter(item => item.matchId !== matchId);
+            renderComboTicketUI();
+
+            if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+            else injectBackupMatches();
+
+            if (comboTicketMatchesList.length === 0) closeTicketComplete();
+        }
+
+        function renderComboTicketUI() {
+            const box = document.getElementById('ticket-odds-box');
+            const matchCount = comboTicketMatchesList.length;
+            const bonusRate = getBonusRate(matchCount);
+
+            document.getElementById('ticket-count-badge').innerText = matchCount;
+
+            if (matchCount === 0) {
+                box.innerHTML = `<div class="text-center text-slate-500 py-4">${dictionary_translations[currentLangCode].ticket_empty}</div>`;
+                document.getElementById('ticket-total-odds').innerText = "1.00";
+                calculatePotentialGain();
+                return;
+            }
+
+            let totalCoteCalculated = 1.00;
+            box.innerHTML = comboTicketMatchesList.map(item => {
+                totalCoteCalculated *= item.odds;
+                return `
+                    <div class="bg-[#050814] border border-slate-800 p-2 rounded-xl relative text-left font-sans shadow-sm mb-2">
+                        <button onclick="removeMatchFromCombo('${item.matchId}')" class="absolute top-1 right-2 text-rose-400 hover:text-rose-500 font-bold text-xs cursor-pointer">&times;</button>
+                        <div class="text-slate-400 text-[10px] truncate max-w-[90%]">${item.matchName}</div>
+                        <div class="text-white text-[11px] font-bold">Option: <span class="text-teal-400">${item.outcome}</span></div>
+                        <div class="text-right text-cyan-400 font-mono font-black text-[11px]">Cote: ${item.odds.toFixed(2)}</div>
+                    </div>
+                `;
+            }).join('');
+
+            if (bonusRate > 0) {
+                box.innerHTML += `<div class="text-amber-400 text-[10px] font-bold text-center mt-1 p-1 border-t border-slate-700 bg-amber-500/10 rounded">🎁 Bonus Accumulateur: +${(bonusRate * 100)}%</div>`;
+            }
+
+            document.getElementById('ticket-total-odds').innerText = totalCoteCalculated.toFixed(2);
+            calculatePotentialGain();
+        }
+        function calculatePotentialGain() {
+            const stake = parseFloat(document.getElementById('ticket-stake-input').value) || 0;
+            const totalOdds = parseFloat(document.getElementById('ticket-total-odds').innerText) || 1.00;
+            const matchCount = comboTicketMatchesList.length;
+            const bonusRate = getBonusRate(matchCount);
+
+            const totalGain = (stake * totalOdds) * (1 + bonusRate);
+
+            const displayElement = document.getElementById('ticket-potential-gain');
+            if (displayElement) {
+                displayElement.innerText = `${totalGain.toFixed(2)} TND`;
+            }
+
+        }
+        async function refreshPlayerBalance() {
+            if (!playerSession || !playerSession.username) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/users?timestamp=${new Date().getTime()}`, { method: 'GET', headers: getAuthHeaders() });
+                if (res.ok) {
+                    const users = await res.json();
+                    const currentMe = users.find(u => u.username === playerSession.username);
+
+                    if (currentMe) {
+                        // --- اللمسة السحرية: مقارنة الرصيد القديم بالجديد ---
+                        let oldBalance = parseFloat(playerSession.balance) || 0;
+                        let newBalance = parseFloat(currentMe.balance) || 0;
+
+                        if (newBalance > oldBalance) {
+                            if (typeof triggerGoldRain === "function") {
+                                triggerGoldRain();
+                            }
+                        }
+                        // ----------------------------------------------------
+
+                        playerSession.balance = currentMe.balance;
+                        localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+                        document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+                    }
                 }
-            return response_data
+            } catch (e) { console.error("عطل في الاتصال بالسيرفر أثناء تحديث الرصيد", e); }
+        }
+        async function fetchPlayerTicketsFromServer() {
+            if (!playerSession || !playerSession.username) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/get-player-tickets?username=${playerSession.username}`, { method: 'GET', headers: getAuthHeaders(), });
+                if (res.ok) {
+                    const tickets = await res.json();
+                    if (tickets) {
+                        myActiveBetsList = tickets.map(t => ({
+                            id: t.ticket_id, status: t.status, gamesCount: t.games_count,
+                            detailsList: t.details_list, totalCote: t.total_cote, mise: t.mise,
+                            gain: t.gain, cashOutAmount: t.mise * 0.90, finalCashoutPaid: t.final_cashout_paid || 0, date: t.date
+                        }));
+                        updateActiveBetsBadgeCount();
+                        if (!document.getElementById('pane-paris').classList.contains('hidden')) { renderMyBetsHistoryPane(); }
+                    }
+                }
+            } catch (e) { console.error("Error syncing tickets from database", e); }
+        }
+
+        async function handlePlayerAuth() {
+            const username = document.getElementById('p-auth-username').value.trim().toLowerCase();
+            const password = document.getElementById('p-auth-password').value;
+            if (!username || !password) return showNotification('الرجاء ملء جميع الحقول أولاً', 'error');
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/login`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password })
+                });
+                const responseText = await res.text();
+                let data;
+                try { data = JSON.parse(responseText); } catch (e) { return showNotification('السيرفر يواجه مشكلة داخلية', 'error'); }
+
+                if (res.ok) {
+                    if (data.role === 'owner' || data.role === 'admin' || data.role === 'shop') {
+                        return showNotification('Accès refusé. Vous n\'êtes pas un membre du joueur !', 'error');
+                    }
+                    playerSession = data;
+                    localStorage.setItem('alpha_player_session', JSON.stringify(data));
+                    localStorage.setItem('token', data.access_token);
+                    setupLoggedInUI();
+                    await fetchPlayerTicketsFromServer();
+                } else {
+                    showNotification(typeof data === 'object' ? JSON.stringify(data.detail || data.message || data) : data, 'error');
+                }
+            } catch (e) { showNotification('السيرفر قيد التشغيل، جرب مرة أخرى', 'error'); }
+        }
+
+        function setupLoggedInUI() {
+            closeLoginModal();
+            document.getElementById('auth-buttons-container').classList.add('hidden');
+            document.getElementById('main-balance-container')?.classList.remove('hidden');
+
+            if (playerSession.created_by === "Self-Register") { document.getElementById('deposit-btn-container')?.classList.remove('hidden'); }
+            else { document.getElementById('deposit-btn-container')?.classList.add('hidden'); }
+
+            const topProfile = document.getElementById('top-user-profile');
+            if (topProfile) { topProfile.classList.remove('hidden'); topProfile.classList.add('flex'); }
+            const headerName = document.getElementById('header-username-display');
+            if (headerName) headerName.innerText = playerSession.username;
+
+            const playerDisplay = document.getElementById('player-name-display');
+            if (playerDisplay) { playerDisplay.innerText = `${playerSession.username}`; playerDisplay.classList.remove('hidden'); }
+
+            document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+            if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 4000);
+        }
+
+        async function submitSportTicket() {
+            if (!playerSession) { return openLoginModal(); }
+            if (comboTicketMatchesList.length === 0) return;
+
+            await refreshPlayerBalance();
+            const stake = parseFloat(document.getElementById('ticket-stake-input').value) || 0;
+            if (stake <= 0 || playerSession.balance < stake) return showNotification('solde insuffisant!', 'error');
+
+            const matchCount = comboTicketMatchesList.length;
+            const bonusRate = getBonusRate(matchCount);
+
+            const btn = document.getElementById('ticket-submit-btn');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: "System", target_username: playerSession.username, action: "withdraw", amount: stake })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    playerSession.balance = data.balance;
+                    document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+
+                    const totalOdds = parseFloat(document.getElementById('ticket-total-odds').innerText);
+                    const baseGain = stake * totalOdds;
+                    const finalGain = baseGain * (1 + bonusRate);
+
+                    const betTicketObject = {
+                        id: Math.floor(100000 + Math.random() * 900000),
+                        status: "encours",
+                        gamesCount: matchCount,
+                        detailsList: [...comboTicketMatchesList],
+                        totalCote: totalOdds,
+                        mise: stake,
+                        gain: finalGain,
+                        bonusApplied: (bonusRate * 100) + "%",
+                        cashOutAmount: stake * 0.90,
+                        date: new Date().toLocaleTimeString('fr-FR')
+                    };
+
+                    await fetch(`${BACKEND_URL}/api/admin/save-ticket`, {
+                        method: 'POST', headers: getAuthHeaders(),
+                        body: JSON.stringify({ username: playerSession.username, ticket_data: betTicketObject })
+                    }).catch(err => console.error("Sync backup server ticket error"));
+
+                    myActiveBetsList.push(betTicketObject);
+                    updateActiveBetsBadgeCount();
+                    showNotification(dictionary_translations[currentLangCode].ticket_success);
+                    clearTicket();
+                } else { showNotification('خطأ في معالجة رصيد السيرفر', 'error'); }
+            } catch (e) { showNotification('خطأ شبكة مالي', 'error'); }
+            btn.disabled = false;
+        }
+
+        async function executeTicketCashOut(ticketId, cashOutAmount) {
+            if (!playerSession) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: "System", target_username: playerSession.username, action: "charge", amount: parseFloat(cashOutAmount) })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    playerSession.balance = data.balance;
+                    document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+
+                    const targetTicket = myActiveBetsList.find(b => b.id === ticketId);
+                    if (targetTicket) { targetTicket.status = "cashout"; targetTicket.finalCashoutPaid = cashOutAmount; }
+
+                    await fetch(`${BACKEND_URL}/api/admin/update-ticket-status`, {
+                        method: 'POST', headers: getAuthHeaders(),
+                        body: JSON.stringify({ ticket_id: ticketId, status: "cashout", amount_paid: cashOutAmount })
+                    }).catch(err => console.error("Sync error"));
+
+                    updateActiveBetsBadgeCount();
+                    showNotification(dictionary_translations[currentLangCode].cashout_success);
+                    renderMyBetsHistoryPane();
+                } else { showNotification('فشل تنفيذ الكاش أوت', 'error'); }
+            } catch (e) { showNotification('خطأ اتصال مالي', 'error'); }
+        }
+
+        function updateActiveBetsBadgeCount() {
+            const activeCount = myActiveBetsList.filter(b => b.status === 'encours').length;
+            document.getElementById('my-bets-badge-count').innerText = activeCount;
+        }
+
+        function renderMyBetsHistoryPane() {
+            const container = document.getElementById('my-bets-history-list');
+            const filteredTickets = myActiveBetsList.filter(b => b.status === currentBetsSubTab);
+
+            if (filteredTickets.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 font-bold uppercase">Aucun ticket dans cette catégorie</div>`;
+                return;
+            }
+
+            container.innerHTML = filteredTickets.map(b => {
+                let statusBadgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                let bottomBoxContent = "";
+                if (b.status === "encours") {
+                    statusBadgeStyle = "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
+                    bottomBoxContent = `
+                        <div class="bg-[#050814] p-2 rounded-xl text-center text-cyan-400 font-bold border border-slate-800/80 flex flex-wrap justify-between items-center gap-2">
+                            <span>Gain: +${b.gain.toFixed(2)} TND</span>
+                            <button onclick="executeTicketCashOut(${b.id}, ${b.cashOutAmount.toFixed(2)})" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-sans font-black text-[10px] px-2.5 py-1.5 rounded-xl transition-all cursor-pointer shadow">
+                                Cash Out (${b.cashOutAmount.toFixed(2)} TND)
+                            </button>
+                        </div>`;
+                } else if (b.status === "gagne") {
+                    statusBadgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+                    bottomBoxContent = `<div class="bg-emerald-950/20 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 font-bold text-center">🏆 ورقة رابحة: +${b.gain.toFixed(2)} TND شُحنت للرصيد</div>`;
+                } else if (b.status === "perdu") {
+                    statusBadgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                    bottomBoxContent = `<div class="bg-rose-950/20 border border-rose-500/30 p-2.5 rounded-xl text-rose-400 font-bold text-center">❌ ورقة خاسرة</div>`;
+                } else if (b.status === "cashout") {
+                    statusBadgeStyle = "bg-purple-500/10 text-purple-400 border-purple-500/20";
+                    bottomBoxContent = `<div class="bg-purple-950/20 border border-purple-500/30 p-2.5 rounded-xl text-purple-400 font-bold text-center">💸 تم استرجاع كاش أوت: +${parseFloat(b.finalCashoutPaid).toFixed(2)} TND</div>`;
+                }
+
+                return `
+                    <div class="bg-[#090f24] border border-slate-800 p-4 rounded-2xl space-y-3 shadow-md font-bold">
+                        <div class="flex justify-between items-center text-[10px] text-slate-500 border-b border-slate-800/60 pb-2">
+                            <span>Ref: #${b.id} (${b.gamesCount} M)</span>
+                            <span class="px-2 py-0.5 rounded border text-[9px] font-bold ${statusBadgeStyle}">${b.status.toUpperCase()}</span>
+                        </div>
+                        <div class="space-y-2">
+                            ${b.detailsList.map(g => `
+                                <div class="border-l-2 border-teal-500 pl-2 py-0.5">
+                                    <div class="text-white font-sans font-bold text-[11px]">${g.matchName}</div>
+                                    <div class="text-slate-400 text-[10px]">Choix: <span class="text-teal-400">${g.outcome}</span> | Cote: ${g.odds.toFixed(2)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="flex justify-between items-center pt-1 text-[11px] border-t border-slate-800/40">
+                            <span>Total Cote: <span class="text-cyan-400 font-bold">${b.totalCote.toFixed(2)}</span></span>
+                            <span>Mise: <span class="text-white font-bold">${b.mise.toFixed(2)} TND</span></span>
+                        </div>
+                        ${bottomBoxContent}
+                    </div>`;
+            }).join('');
+        }
+
+        function changePlayerLanguage(lang) {
+            currentLangCode = lang;
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            if (comboTicketMatchesList.length === 0) document.getElementById('ticket-odds-box').innerText = dictionary_translations[lang].ticket_empty;
+        }
+
+        async function loadLiveMatchesData() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/sports/get-live-matches`, { method: 'GET', headers: getAuthHeaders() });
+                if (res.ok) {
+                    const matches = await res.json();
+                    if (matches && matches.length > 0) {
+                        currentGlobalMatches = matches;
+                        return renderMatchesList(matches);
+                    }
+                }
+                injectBackupMatches();
+            } catch (e) { injectBackupMatches(); }
+        }
+
+        function renderMatchesList(matches) {
+            const container = document.getElementById('matches-list-container');
+            const homeContainer = document.getElementById('home-matches-container');
+
+            if (!matches || matches.length === 0) {
+                const msg = '<div class="text-center text-slate-500 p-4">لا توجد مباريات متاحة.</div>';
+                container.innerHTML = msg;
+                if (homeContainer) homeContainer.innerHTML = msg;
+                return;
+            }
+
+            const htmlContent = matches.map((m) => {
+                const bookmaker = m.bookmakers?.[0];
+                if (!bookmaker) return '';
+                const marketData = bookmaker.markets.find(mk => mk.key === currentActiveMarket);
+                const outcomes = marketData ? marketData.outcomes : [];
+
+                return `
+                <div class="bg-[#090f24] border border-slate-800 p-3 rounded-2xl mb-3 shadow-lg hover:border-teal-500/50 transition">
+                    <div class="text-white fw-bold mb-3 text-sm flex justify-between items-center">
+                        <span>${m.home_team} vs ${m.away_team}</span>
+                        <span class="text-teal-400 text-[9px] border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 rounded">LIVE</span>
+                    </div>
+                    <div class="grid grid-cols-${outcomes.length > 2 ? '3' : '2'} gap-2">
+                        ${outcomes.map(o => {
+                    const isSelected = comboTicketMatchesList.some(item => item.matchId === m.id && item.outcome === o.name);
+                    const btnClass = isSelected ? "bg-rose-600 border-rose-500 text-white shadow-[0_0_10px_rgba(225,29,72,0.3)]" : "bg-[#050814] border-slate-700 text-slate-300 hover:border-teal-500 hover:text-teal-400";
+
+                    return `<button onclick="selectBetOutcome('${o.name}', ${o.price}, '${m.home_team} vs ${m.away_team}', '${m.id}')" 
+                                    class="${btnClass} py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border flex flex-col items-center gap-1">
+                                <span>${o.name}</span><span class="${isSelected ? 'text-white' : 'text-teal-400'} font-black text-sm">${o.price}</span>
+                            </button>`;
+                }).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.innerHTML = htmlContent;
+            if (homeContainer) homeContainer.innerHTML = htmlContent;
+        }
+
+        function injectBackupMatches() {
+
+        }
+        function renderCasinoGames() {
+            const container = document.getElementById('games-grid-container');
+            const games = [
+                { name: "Gates of Olympus", icon: "⚡", style: "from-amber-500 to-amber-600", tag: "SLOT" },
+                { name: "Sweet Bonanza", icon: "🍭", style: "from-pink-500 to-rose-500", tag: "SLOT" },
+                { name: "Lightning Roulette", icon: "🎡", style: "from-red-600 to-slate-900", tag: "LIVE" },
+                { name: "Infinite Blackjack", icon: "🃏", style: "from-teal-800 to-slate-900", tag: "CARDS" },
+                { name: "Wanted Dead or a Wild", icon: "🤠", style: "from-amber-800 to-orange-950", tag: "HACKSAW" },
+                { name: "Alphabet Aviator", icon: "🚀", style: "from-teal-500 to-teal-600", tag: "CRASH" }
+            ];
+            container.innerHTML = games.map(g => `
+                <div class="bg-[#090f24] border border-slate-800 rounded-2xl overflow-hidden shadow-lg flex flex-col justify-between group hover:border-teal-500 transition">
+                    <div class="h-28 bg-gradient-to-br ${g.style} flex items-center justify-center text-4xl shadow-inner relative">
+                        ${g.icon}<span class="absolute top-2 right-2 text-[10px] bg-slate-950/60 text-white px-1.5 py-0.5 rounded font-bold border border-white/10">${g.tag}</span>
+                    </div>
+                    <div class="p-3 space-y-2">
+                        <div class="text-[11px] font-black text-white truncate text-center">${g.name}</div>
+                        <button onclick="openLiveGame('${g.name}')" class="w-full bg-[#050814] hover:bg-teal-500 hover:text-slate-950 text-slate-300 text-[10px] font-black py-2 rounded-xl border border-slate-800/80 transition-all cursor-pointer uppercase">Jouer</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function startCrashBetRound() {
+            if (!playerSession) { return openLoginModal(); }
+            if (isCrashRoundRunning) { return triggerCrashCashOutEarly(); }
+            await refreshPlayerBalance();
+            const stakeInput = document.getElementById('crash-stake-input');
+            const stakeAmount = parseFloat(stakeInput.value) || 0;
+            if (stakeAmount <= 0 || playerSession.balance < stakeAmount) { return showNotification('رصيدك غير كافٍ', 'error'); }
+
+            stakeInput.disabled = true; isCrashRoundRunning = true; hasPlayerCashedOutFromCrash = false;
+            currentCrashStakeAmount = stakeAmount; crashMultiplier = 1.00;
+            document.getElementById('crash-blast-screen').classList.add('scale-0');
+            document.getElementById('crash-blast-screen').classList.remove('scale-100');
+            document.getElementById('crash-status-badge').innerText = "LIVE FLYING";
+
+            try {
+                const deductRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: "system", target_username: playerSession.username, action: "withdraw", amount: stakeAmount })
+                });
+                if (!deductRes.ok) { isCrashRoundRunning = false; stakeInput.disabled = false; return showNotification('فشلت المعاملة', 'error'); }
+                const deductData = await deductRes.json();
+                playerSession.balance = deductData.balance;
+                document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+            } catch (e) { isCrashRoundRunning = false; stakeInput.disabled = false; return; }
+
+            const actionBtn = document.getElementById('crash-action-btn');
+            actionBtn.innerText = "TAKE CASH OUT 💸"; actionBtn.className = "w-full bg-amber-500 text-slate-950 font-black p-3.5 rounded-xl transition-all cursor-pointer shadow-lg animate-pulse";
+
+            const planeIcon = document.getElementById('crash-airplane-icon');
+            planeIcon.style.opacity = "1";
+            const luckyCrashPointTarget = (Math.random() * 10) + 1.1;
+
+            crashLoopInterval = setInterval(() => {
+                crashMultiplier += 0.04;
+                document.getElementById('crash-multiplier-display').innerText = `${crashMultiplier.toFixed(2)}x`;
+                const progressPercent = Math.min((crashMultiplier - 1) * 20, 85);
+                planeIcon.style.left = `${6 + progressPercent}%`; planeIcon.style.bottom = `${6 + (progressPercent * 0.6)}%`;
+                if (crashMultiplier >= luckyCrashPointTarget) { triggerAirplaneCrashBlast(); }
+            }, 80);
+        }
+
+        async function triggerCrashCashOutEarly() {
+            if (!isCrashRoundRunning || hasPlayerCashedOutFromCrash) return;
+            hasPlayerCashedOutFromCrash = true; clearInterval(crashLoopInterval);
+            const totalWinCalculated = currentCrashStakeAmount * crashMultiplier;
+            try {
+                const winRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: "System", target_username: playerSession.username, action: "charge", amount: totalWinCalculated })
+                });
+                if (winRes.ok) {
+                    const winData = await winRes.json();
+                    playerSession.balance = winData.balance;
+                    document.getElementById('player-balance-val').innerText = parseFloat(playerSession.balance).toFixed(2);
+                    showNotification(`Félicitations! Gagne +${totalWinCalculated.toFixed(2)} TND 🚀🔥`, 'success');
+                }
+            } catch (e) { console.error("Error pushing crash victory money", e); }
+            resetCrashInterfaceToReady();
+        }
+
+        function triggerAirplaneCrashBlast() {
+            clearInterval(crashLoopInterval); isCrashRoundRunning = false;
+            document.getElementById('blast-multiplier-val').innerText = crashMultiplier.toFixed(2);
+            document.getElementById('crash-blast-screen').classList.remove('scale-0');
+            document.getElementById('crash-blast-screen').classList.add('scale-100');
+            showNotification('FLEW AWAY! الرفعة طارت وانفجرت الطائرة', 'error');
+            resetCrashInterfaceToReady();
+        }
+
+        function resetCrashInterfaceToReady() {
+            isCrashRoundRunning = false;
+            document.getElementById('crash-stake-input').disabled = false;
+            document.getElementById('crash-status-badge').innerText = "Waiting Round";
+            const actionBtn = document.getElementById('crash-action-btn');
+            actionBtn.innerText = "Placer le Pari 🚀"; actionBtn.className = "w-full bg-teal-500 text-slate-950 font-black p-3.5 rounded-xl cursor-pointer shadow-lg";
+            document.getElementById('crash-airplane-icon').style.opacity = "0";
+        }
+
+        async function spinPragmaticSlot() {
+            if (!playerSession) return;
+            await refreshPlayerBalance();
+            const betAmount = parseFloat(document.getElementById('player-bet-select').value);
+            if (playerSession.balance < betAmount) return showNotification('رصيدك غير كافٍ !', 'error');
+            const spinBtn = document.getElementById('spin-btn');
+            spinBtn.disabled = true;
+            try {
+                const deductRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: "System", target_username: playerSession.username, action: "withdraw", amount: betAmount })
+                });
+                if (!deductRes.ok) { spinBtn.disabled = false; return; }
+                const deductData = await deductRes.json();
+                playerSession.balance = deductData.balance;
+                document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+
+                const r1 = document.getElementById('slot-reel-1'); const r2 = document.getElementById('slot-reel-2'); const r3 = document.getElementById('slot-reel-3');
+                r1.classList.add('slot-anim'); r2.classList.add('slot-anim'); r3.classList.add('slot-anim');
+
+                setTimeout(async () => {
+                    r1.classList.remove('slot-anim'); r2.classList.remove('slot-anim'); r3.classList.remove('slot-anim');
+                    const res1 = slotItems[Math.floor(Math.random() * slotItems.length)];
+                    const res2 = slotItems[Math.floor(Math.random() * slotItems.length)];
+                    const res3 = slotItems[Math.floor(Math.random() * slotItems.length)];
+                    r1.innerText = res1; r2.innerText = res2; r3.innerText = res3;
+
+                    if (res1 === res2 && res2 === res3) {
+                        const winAmount = betAmount * (res1 === "👑" ? 10 : 5);
+                        const winRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                            method: 'POST', headers: getAuthHeaders(),
+                            body: JSON.stringify({ admin_username: "System", target_username: playerSession.username, action: "charge", amount: winAmount })
+                        });
+                        const winData = await winRes.json();
+                        playerSession.balance = winData.balance;
+                        document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+                        showNotification(`لقد ربحت ${winAmount.toFixed(2)} TND 🔥`);
+                    }
+                    spinBtn.disabled = false;
+                }, 400);
+            } catch (e) { spinBtn.disabled = false; }
+        }
+
+        // دالة فتح لعبة كازينو أو سبورت بوك
+        async function openLiveGame(gameName, isSportsbook = false) {
+            console.log("تم الضغط على الزر، والآن أحاول الاتصال بالسيرفر...");
+            if (!playerSession) return openLoginModal();
+
+            // إخبار الهاتف أننا دخلنا صفحة اللعبة لكي يعمل زر العودة
+            history.pushState({ isGame: true }, "", "#playing");
+
+            // تم حذف أسطر تحديث الرصيد والاسم من هنا لأننا ألغينا الشريط العلوي 🎯
+
+            const container = document.getElementById('casino-iframe-container');
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+
+            const iframe = document.getElementById('casino-iframe');
+            const loader = document.getElementById('casino-loader');
+
+            loader.style.display = 'flex';
+            iframe.style.opacity = '0';
+            iframe.src = "";
+
+            try {
+                const endpoint = isSportsbook ? `${BACKEND_URL}/api/provider/launch-sportsbook` : `${BACKEND_URL}/api/provider/launch-game`;
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ game_name: gameName, player_id: playerSession.username })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.launch_url) {
+                        iframe.src = data.launch_url;
+                    } else {
+                        showNotification("فشل جلب رابط اللعبة", "error");
+                        closeCasinoGame();
+                        return;
+                    }
+                } else {
+                    console.log("وضع التطوير: فتح الرابط التجريبي المؤقت");
+                    iframe.src = isSportsbook ? "https://ggr.gitbook.io/docs/integration/sportsbook-installation" : "https://html5.gamedesire.com/games/pragmatic/gates_of_olympus/demo";
+                }
+
+                iframe.onload = () => {
+                    loader.style.display = 'none';
+                    iframe.style.opacity = '1';
+                };
+
+            } catch (e) {
+                console.error("خطأ أثناء تشغيل اللعبة الحقيقية:", e);
+                iframe.src = isSportsbook ? "https://ggr.gitbook.io/docs/integration/sportsbook-installation" : "https://html5.gamedesire.com/games/pragmatic/gates_of_olympus/demo";
+                loader.style.display = 'none';
+                iframe.style.opacity = '1';
+            }
+        }
+
+        // دالة الخروج من اللعبة (تدعم زر X وزر الهاتف)
+        function closeCasinoGame(fromPhoneBackButton = false) {
+            const container = document.getElementById('casino-iframe-container');
+            container.classList.add('hidden');
+            container.classList.remove('flex');
+
+            document.getElementById('casino-iframe').src = "";
+            refreshPlayerBalance();
+
+            // إذا ضغط اللاعب على زر ✖ (وليس زر الهاتف)، نمسح الصفحة الوهمية من السجل
+            if (!fromPhoneBackButton && window.location.hash === "#playing") {
+                history.back();
+            }
+
+        }
+        function logoutPlayer() {
+            if (balanceInterval) clearInterval(balanceInterval);
+            if (crashLoopInterval) clearInterval(crashLoopInterval);
+            localStorage.removeItem('token'); localStorage.removeItem('alpha_player_session');
+            playerSession = null; myActiveBetsList = [];
+            document.getElementById('my-bets-badge-count').innerText = "0";
+            const playerDisplay = document.getElementById('player-name-display');
+            if (playerDisplay) { playerDisplay.innerText = "Visitor"; playerDisplay.classList.add('hidden'); }
+            document.getElementById('player-balance-val').innerText = "0.00";
+            document.getElementById('main-balance-container')?.classList.add('hidden');
+            document.getElementById('deposit-btn-container')?.classList.add('hidden');
+            document.getElementById('top-login-btn')?.classList.remove('hidden');
+            const topProfile = document.getElementById('top-user-profile');
+            if (topProfile) { topProfile.classList.remove('flex'); topProfile.classList.add('hidden'); }
+            switchSection('accueil');
+            document.getElementById('auth-buttons-container').classList.remove('hidden');
+        }
+
+        window.onload = function () {
+            // 1. فتح القسم المحفوظ فوراً وبدون أي تأخير لمنع الوميض 🎯
+            const savedSection = localStorage.getItem('active_section') || 'accueil';
+            switchSection(savedSection);
+
+            // 2. باقي العمليات وتجهيز الألعاب تعمل في الخلفية
+
+            clearTicket();
+            startJackpots();
+            generateLiveWinnersTicker();
+
+            const savedSession = localStorage.getItem('alpha_player_session');
+            if (savedSession) {
+                playerSession = JSON.parse(savedSession);
+                refreshPlayerBalance();
+                setupLoggedInUI();
+                fetchPlayerTicketsFromServer();
+            }
+
+            if (typeof loadLiveMatchesData === 'function') {
+                loadLiveMatchesData();
+
+                // === كود تشغيل السبورت بوك المدمج في الاستقبال ===
+                const inlineIframe = document.getElementById('inline-sportsbook-iframe');
+                const inlineLoader = document.getElementById('inline-sportsbook-loader');
+
+                if (inlineIframe) {
+                    const userData = localStorage.getItem('alpha_player_session');
+                    const username = userData ? JSON.parse(userData).username : 'guest';
+
+                    fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ game_name: 'Alphabet Sportsbook', player_id: username })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.launch_url) {
+                                inlineIframe.src = data.launch_url;
+                                inlineIframe.onload = () => {
+                                    if (inlineLoader) inlineLoader.style.display = 'none';
+                                    inlineIframe.style.opacity = '1';
+                                };
+                            } else {
+                                inlineIframe.src = "about:blank";
+                                if (inlineLoader) inlineLoader.innerText = "السبورت بوك سيفتح قريباً...";
+                            }
+                        })
+                        .catch(err => {
+                            console.error("خطأ:", err);
+                            if (inlineLoader) inlineLoader.innerText = "تعذر الاتصال بخادم الألعاب.";
+                        });
+                }
+            }
+
+            // === كود تشغيل السبورت بوك المدمج في الاستقبال ===
+            const inlineIframe = document.getElementById('inline-sportsbook-iframe');
+            const inlineLoader = document.getElementById('inline-sportsbook-loader');
+
+            // تأكد أن اللاعب مسجل دخوله وأن الإطار موجود في الصفحة
+            if (inlineIframe && savedSession) {
+                fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ game_name: 'Alphabet Sportsbook', player_id: JSON.parse(savedSession).username })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.launch_url) {
+                            inlineIframe.src = data.launch_url; // الرابط الحقيقي للمباريات
+                        } else {
+                            // رابط تجريبي للرؤية أثناء التطوير
+                            inlineIframe.src = "https://ggr.gitbook.io/docs/integration/sportsbook-installation";
+                        }
+
+                        // إخفاء التحميل وإظهار المباريات بمجرد اكتمال الجلب
+                        inlineIframe.onload = () => {
+                            inlineLoader.style.display = 'none';
+                            inlineIframe.style.opacity = '1';
+                        };
+                    })
+                    .catch(err => {
+                        console.error("خطأ في جلب الرياضة المدمجة:", err);
+                        inlineIframe.src = "https://ggr.gitbook.io/docs/integration/sportsbook-installation";
+                        inlineLoader.style.display = 'none';
+                        inlineIframe.style.opacity = '1';
+                    });
+            }
+        };
+
+        function startJackpots() {
+            setInterval(() => {
+                const now = new Date();
+                let miniProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+                document.getElementById('jackpot-mega').innerText = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000).toFixed(2);
+                document.getElementById('jackpot-major').innerText = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350).toFixed(2);
+                document.getElementById('jackpot-mini').innerText = (miniProgress * 120).toFixed(2);
+            }, 1000);
+
+        }
+
+        function toggleUserMenu() { document.getElementById('user-dropdown').classList.toggle('hidden'); }
+
+        function generateLiveWinnersTicker() {
+            const track = document.getElementById('winners-ticker-track');
+            if (!track) return;
+            const fakeNames = ["fethi", "ahmed", "samir", "karim", "yassine", "mohamed", "ali", "hassen", "rami"];
+            const gamesList = ["Aviator 🚀", "Gates of Olympus ⚡", "Sport ⚽", "Live Roulette 🎡", "Sweet Bonanza 🍭"];
+            let tickerHTML = '';
+            for (let i = 0; i < 15; i++) {
+                const name = fakeNames[Math.floor(Math.random() * fakeNames.length)] + Math.floor(Math.random() * 99);
+                tickerHTML += `<div class="winner-card"><span class="w-icon">🎉</span><span class="w-name">${name.substring(0, Math.ceil(name.length / 2)) + "***"}</span><span class="w-game">gagné sur ${gamesList[Math.floor(Math.random() * gamesList.length)]}</span><span class="w-amount">+${(Math.random() * 800 + 15).toFixed(2)} TND</span></div>`;
+            }
+            track.innerHTML = tickerHTML;
+        }
+
+        function toggleWheelModal() { document.getElementById('wheel-modal').classList.toggle('hidden'); }
+
+        async function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/spin`, { method: 'POST', headers: getAuthHeaders() });
+                const result = await response.json();
+                wheel.style.transform = `rotate(3600deg)`;
+                setTimeout(() => { alert(result.message); if (result.status === 'win') location.reload(); }, 5000);
+            } catch (error) { alert("حدث خطأ في الاتصال بالسيرفر"); }
+        }
+
+        function toggleCashier() {
+            if (!playerSession) return openLoginModal();
+            const modal = document.getElementById('cashier-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) { document.getElementById('cashier-balance-display').innerText = playerSession.balance.toFixed(2); }
+        }
+
+        function switchCashierTab(tab) {
+            if (tab === 'deposit') {
+                document.getElementById('deposit-section').classList.remove('hidden'); document.getElementById('withdraw-section').classList.add('hidden');
+            } else {
+                document.getElementById('deposit-section').classList.add('hidden'); document.getElementById('withdraw-section').classList.remove('hidden');
+            }
+        }
+
+        function selectPaymentMethod(method) {
+            document.getElementById('payment-details').classList.remove('hidden');
+            const inst = document.getElementById('payment-instructions');
+            if (method === 'd17') {
+                inst.innerHTML = `<div class="mb-2 text-slate-300">Veuillez envoyer via D17 au numéro:</div><div class="bg-slate-900/80 p-2 rounded-lg flex justify-between items-center border border-slate-700"><strong class="text-teal-400 text-sm tracking-widest" id="d17-number">90 260 600</strong></div><div class="mt-2 text-[10px] text-slate-400">Puis entrez le montant et l'ID de transaction ci-dessous.</div>`;
+            } else {
+                inst.innerHTML = `<div class="mb-2 text-slate-300">Envoyez USDT <span class="text-amber-400 font-bold">(TRC20)</span> à l'adresse Binance:</div><div class="bg-slate-900/80 p-2 rounded-lg flex justify-between items-center border border-slate-700 gap-2"><strong class="text-teal-400 text-[10px] break-all select-all" id="usdt-address">TTDRJEGzqsEnEBNZ7T64QcRkw4CXVCbqwq</strong></div>`;
+            }
+        }
+
+        async function submitDeposit() {
+            const amount = document.getElementById('deposit-amount').value;
+            const txId = document.getElementById('deposit-tx').value;
+            const fileInput = document.getElementById('deposit-file');
+            // التحقق من أن البيانات موجودة
+            if (!amount || !txId) {
+                return showNotification('الرجاء تعمير جميع البيانات', 'error');
+            }
+
+            try {
+                // إنشاء FormData لإرسال النصوص والملفات معاً
+                const formData = new FormData();
+                formData.append('target_username', playerSession.username);
+                formData.append('action', 'deposit_request');
+                formData.append('amount', amount);
+                formData.append('tx_id', txId);
+
+                // إذا قام اللاعب برفع صورة، يتم إرفاقها بالطلب
+                if (fileInput.files.length > 0) {
+                    formData.append('file', fileInput.files[0]);
+                }
+
+                // نرسل الطلب للسيرفر عبر الـ FormData
+                const res = await fetch(`${BACKEND_URL}/api/admin/request-transaction`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }, // بدون Content-Type المتصفح يتعرف عليه تلقائياً
+                    body: formData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        showNotification('تم إرسال طلب الإيداع للأدمن بنجاح', 'success');
+                        toggleCashier(); // إغلاق نافذة الكاشير بعد النجاح
+                    } else {
+                        // هذا السطر سيكشف لنا الخطأ الحقيقي القادم من السيرفر
+                        showNotification(`رسالة من السيرفر: ${data.message}`, 'error');
+                    }
+                } else {
+                    showNotification('حدث خطأ أثناء إرسال الطلب', 'error');
+                }
+            } catch (e) {
+                showNotification('خطأ في الاتصال بالسيرفر', 'error');
+            }
+        }
+        function triggerGoldRain() {
+            const duration = 3 * 1000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5, angle: 60, spread: 55, origin: { x: 0 },
+                    colors: ['#FFD700', '#F8B400', '#FFF8DC'], zIndex: 9999
+                });
+                confetti({
+                    particleCount: 5, angle: 120, spread: 55, origin: { x: 1 },
+                    colors: ['#FFD700', '#F8B400', '#FFF8DC'], zIndex: 9999
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+        // التقاط ضغطة زر "العودة" في الهاتف
+        window.addEventListener("popstate", function (event) {
+            const container = document.getElementById('casino-iframe-container');
+            // إذا كانت شاشة اللعبة مفتوحة، نغلقها ونمنع الخروج من الموقع //
+            if (!container.classList.contains('hidden')) {
+                closeCasinoGame(true);
+            }
+        });
+
+        // تشغيل السبورت بوك المدمج في الصفحة الرئيسية تلقائياً
+        // تشغيل السبورت بوك المدمج في الصفحة الرئيسية تلقائياً (تم تعطيله مؤقتاً)
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("تم تعطيل السبورت بوك مؤقتاً للتركيز على الكازينو.");
+        });
+        // 1. البيانات التجريبية للألعاب
+        const casinoData = {
+            "PRAGMATIC": {
+                name: "Pragmatic Play",
+                games: [
+                    { name: "Sweet Bonanza", code: "vs20fruitsw", image: "https://igaminggroup.com/wp-content/uploads/2021/04/sweet-bonanza-1.jpg" },
+                    { name: "Gates of Olympus", code: "vs20olympgate", image: "https://igaminggroup.com/wp-content/uploads/2021/04/gates-of-olympus.jpg" },
+                    { name: "Sugar Rush", code: "vs20sugarrush", image: "https://igaminggroup.com/wp-content/uploads/2022/07/sugar-rush.jpg" },
+                    { name: "Starlight Princess", code: "vs20starlight", image: "https://igaminggroup.com/wp-content/uploads/2021/09/starlight-princess.jpg" }
+                ]
+            },
+            "EVO": {
+                name: "Evolution Live",
+                games: [
+                    { name: "Crazy Time", code: "crazytime", image: "https://igaminggroup.com/wp-content/uploads/2020/07/crazy-time.jpg" },
+                    { name: "Lightning Roulette", code: "lightningroulette", image: "https://igaminggroup.com/wp-content/uploads/2018/04/lightning-roulette.jpg" }
+                ]
+            }
+        };
+
+        // 3. دالة عرض الألعاب في الشبكة
+        function showProviderGames(providerCode) {
+            const grid = document.getElementById('games-grid');
+            grid.innerHTML = '';
+            const games = casinoData[providerCode].games;
+
+            games.forEach(game => {
+                const gameCard = document.createElement('div');
+                gameCard.className = 'relative group rounded-xl overflow-hidden cursor-pointer border border-slate-800 hover:border-teal-500 transition-all shadow-lg bg-slate-900';
+                gameCard.innerHTML = `
+            <img src="${game.image}" alt="${game.name}" class="w-full h-28 md:h-36 object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">
+            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button class="bg-gradient-to-r from-teal-500 to-teal-400 text-slate-900 px-4 py-2 rounded-lg font-black text-xs shadow-xl" onclick="playCasinoGame('${providerCode}', '${game.code}')">▶ Jouer</button>
+            </div>
+            <div class="p-2 text-center absolute bottom-0 w-full bg-gradient-to-t from-black to-transparent pt-6">
+                <h4 class="text-xs font-bold text-white truncate shadow-black drop-shadow-md">${game.name}</h4>
+            </div>
+        `;
+                grid.appendChild(gameCard);
+            });
+        }
+
+        // 4. دالة استدعاء السيرفر لفتح اللعبة في الشاشة المخصصة
+        async function playCasinoGame(providerCode, gameCode) {
+            if (!playerSession) return openLoginModal();
+
+            // إظهار الشاشة السوداء المنبثقة ودائرة التحميل
+            const container = document.getElementById('casino-iframe-container');
+            const iframe = document.getElementById('casino-iframe');
+            const loader = document.getElementById('casino-loader');
+
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+            loader.style.display = 'flex';
+            iframe.style.opacity = '0';
+            iframe.src = "";
+
+            // إخبار الهاتف أننا داخل لعبة لكي يعمل زر الرجوع
+            history.pushState({ isGame: true }, "", "#playing");
+
+            try {
+                // الاتصال بالسيرفر (main.py) الذي برمجناه سابقاً
+                const res = await fetch(`${BACKEND_URL}/api/provider/launch-casino`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        game_code: gameCode,
+                        provider_code: providerCode
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.launch_url) {
+                    iframe.src = data.launch_url;
+                } else {
+                    showNotification("المزود رفض الطلب، الرصيد غير كافٍ أو اللعبة غير متاحة", "error");
+                    closeCasinoGame();
+                }
+
+                // إخفاء التحميل عند اكتمال فتح اللعبة
+                iframe.onload = () => {
+                    loader.style.display = 'none';
+                    iframe.style.opacity = '1';
+                };
+
+            } catch (error) {
+                showNotification("خطأ في الاتصال بسيرفر الألعاب", "error");
+                closeCasinoGame();
+            }
+        }
+        // ==========================================
+        // أكواد الكازينو الشاملة (نظيفة ومحدثة)
+        // ==========================================
+
+        // 1. المتغير أصبح فارغاً لأننا سنجلبه من السيرفر
+        let casinoProviders = [];
+
+        // 2. دالة جلب المشغلين من السيرفر وبناء الأزرار تلقائياً
+        async function fetchAndRenderProviders() {
+            const bar = document.getElementById('providers-bar');
+            if (!bar) return;
             
-        except Exception as e:
-            print(f"⚠️ خطأ في الاتصال بالمزود: {e}")
-            if provider_code in GAMES_CACHE:
-                return GAMES_CACHE[provider_code]['data']
-            return {"status": 0, "msg": "Error connecting to provider"}
+            bar.innerHTML = '<div class="text-teal-400 text-sm animate-pulse">جاري تحميل المزودين...</div>';
 
-# ==========================================
-# جلب قائمة المزودين (Providers List) ديناميكياً
-# ==========================================
-@app.get("/api/get-providers")
-async def get_providers():
-    print("🌍 جلب قائمة المزودين من Nexus...")
-    payload = {
-        "method": "provider_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf"
-    }
+            try {
+                // نكلم سيرفرنا (main.py)
+                const response = await fetch('https://alpha-core-fl0v.onrender.com/api/get-providers');
+                const data = await response.json();
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post("https://api.nexusggr.com", json=payload)
-            return response.json()
-        except Exception as e:
-            print(f"⚠️ خطأ في جلب المزودين: {e}")
-            return {"status": 0, "msg": "Error connecting to provider"}
+                if (data && data.status === 1 && data.providers) {
+                    casinoProviders = data.providers; // حفظ القائمة التي جاءت من Nexus
+                    
+                    // بناء الأزرار لكل مزود مع محاولة تحميل الشعار الخاص به
+                    bar.innerHTML = casinoProviders.map(p => `
+                        <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}"
+                            class="prov-tab-btn flex items-center gap-2 px-4 py-2 bg-[#050814] hover:bg-teal-600 border border-slate-800 hover:border-teal-400 rounded-xl text-xs font-bold text-slate-300 hover:text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-md">
+                            
+                            <img src="image/${p.code.toLowerCase()}.png" 
+                                 alt="${p.name}" 
+                                 class="w-6 h-6 object-contain rounded-full" 
+                                 onerror="this.style.display='none'">
+                            
+                            <span>${p.name}</span>
+                        </button>
+                    `).join('');
+
+                    // بعد تحميل الأزرار، نعرض ألعاب أول مزود في القائمة تلقائياً
+                    if (casinoProviders.length > 0) {
+                        loadProviderGames(casinoProviders[0].code);
+                    }
+                } else {
+                    bar.innerHTML = '<div class="text-rose-500 text-sm">لم نتمكن من جلب المزودين</div>';
+                }
+            } catch (error) {
+                console.error("خطأ:", error);
+                bar.innerHTML = '<div class="text-rose-500 text-sm">حدث خطأ في الاتصال</div>';
+            }
+        }
+
+       function renderProvidersBar() {
+    const bar = document.getElementById('providers-bar');
+    if (!bar) return;
+    
+    bar.innerHTML = casinoProviders.map(p => `
+        <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}"
+            class="prov-tab-btn flex items-center gap-2 px-4 py-2 bg-[#050814] hover:bg-teal-600 border border-slate-800 hover:border-teal-400 rounded-xl text-xs font-bold text-slate-300 hover:text-slate-950 transition-all cursor-pointer whitespace-nowrap shadow-md">
+            
+            <img src="image/${p.code.toLowerCase()}.png" 
+                 alt="${p.name}" 
+                 class="w-6 h-6 object-contain rounded-full"
+                 onerror="this.style.display='none'">
+            
+            <span>${p.name}</span>
+        </button>
+    `).join('');
+}
+
+   // متغيرات التحكم المتطورة (للبحث والتحميل اللانهائي)
+        let currentProviderGames = [];
+        let filteredProviderGames = []; 
+        let currentlyDisplayedCount = 0;
+        let currentActiveProviderCode = '';
+
+        // دالة الفلترة والترتيب (السحرية)
+        function filterGames() {
+            const searchTerm = document.getElementById('game-search-input').value.toLowerCase();
+            const sortType = document.getElementById('game-sort-select').value;
+
+            // 1. البحث بالاسم
+            filteredProviderGames = currentProviderGames.filter(game => 
+                game.game_name.toLowerCase().includes(searchTerm)
+            );
+
+            // 2. الترتيب (Sort)
+            if (sortType === 'az') {
+                filteredProviderGames.sort((a, b) => a.game_name.localeCompare(b.game_name));
+            } else if (sortType === 'za') {
+                filteredProviderGames.sort((a, b) => b.game_name.localeCompare(a.game_name));
+            }
+
+            // 3. تصفير العداد ورسم الشبكة من جديد
+            currentlyDisplayedCount = 0;
+            const container = document.getElementById('games-grid');
+            if (container) {
+                container.innerHTML = '';
+                
+                if (filteredProviderGames.length === 0) {
+                    container.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10 font-bold">لا توجد ألعاب تطابق بحثك " ${searchTerm} " 🕵️‍♂️</div>`;
+                    return;
+                }
+                
+                loadMoreGames(); // عرض أول 40 لعبة من نتائج البحث
+            }
+        }
+
+        // 3. دالة جلب الألعاب (مجهزة بالتحميل السريع Cache)
+        async function loadProviderGames(providerCode) {
+            document.querySelectorAll('.prov-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-600', 'border-teal-400', 'text-slate-950');
+                btn.classList.add('bg-[#050814]', 'border-slate-800', 'text-slate-300');
+            });
+            const activeBtn = document.getElementById(`btn-prov-${providerCode}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-[#050814]', 'border-slate-800', 'text-slate-300');
+                activeBtn.classList.add('bg-teal-600', 'border-teal-400', 'text-slate-950');
+            }
+
+            const container = document.getElementById('games-grid');
+            if (!container) return;
+
+            const cacheKey = 'alpha_games_' + providerCode;
+            const cachedGames = localStorage.getItem(cacheKey);
+
+            currentActiveProviderCode = providerCode;
+
+            // تصفير البحث عند تغيير المزود
+            const searchInput = document.getElementById('game-search-input');
+            const sortSelect = document.getElementById('game-sort-select');
+            if(searchInput) searchInput.value = '';
+            if(sortSelect) sortSelect.value = 'default';
+
+            // دالة ذكية للبدء برسم الألعاب
+            const renderGames = (gamesList) => {
+                currentProviderGames = gamesList;
+                filteredProviderGames = [...gamesList]; // نسخ للفلترة
+                currentlyDisplayedCount = 0;
+                container.innerHTML = '';
+                loadMoreGames();
+            };
+
+            if (cachedGames) {
+                renderGames(JSON.parse(cachedGames));
+            } else {
+                container.innerHTML = '<div class="col-span-full text-center text-teal-400 py-10 font-bold animate-pulse">جاري تحميل ألعاب ' + providerCode + '... ⏳</div>';
+            }
+
+            try {
+                const response = await fetch('https://alpha-core-fl0v.onrender.com/api/get-games-list', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: providerCode })
+                });
+
+                const rawText = await response.text();
+                if (rawText) {
+                    const data = JSON.parse(rawText);
+                    if (data && data.games && data.games.length > 0) {
+                        localStorage.setItem(cacheKey, JSON.stringify(data.games));
+                        if (!cachedGames) renderGames(data.games);
+                    } else if (!cachedGames) {
+                        container.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10 font-bold">لا توجد ألعاب متاحة لهذا المشغل حالياً. 📭</div>';
+                    }
+                }
+            } catch (error) {
+                if (!cachedGames) {
+                    container.innerHTML = '<div class="col-span-full text-center text-rose-500 py-10 font-bold">حدث خطأ أثناء الاتصال بالسيرفر ❌</div>';
+                }
+            }
+        }
+
+        // دالة سحب 40 لعبة إضافية كلما نزل اللاعب للأسفل
+        function loadMoreGames() {
+            if (currentlyDisplayedCount >= filteredProviderGames.length) return;
+
+            const container = document.getElementById('games-grid');
+            if (!container) return;
+
+            // أخذ 40 لعبة من القائمة المفلترة
+            const nextBatch = filteredProviderGames.slice(currentlyDisplayedCount, currentlyDisplayedCount + 40);
+            let htmlChunk = '';
+
+            nextBatch.forEach(game => {
+                htmlChunk += `
+                    <div onclick="playCasinoGame('${currentActiveProviderCode}', '${game.game_code}')" class="hover:scale-105 transition-all shadow-lg group" style="cursor: pointer; background: #1e293b; padding: 10px; border-radius: 12px; text-align: center; border: 1px solid #334155;">
+                        <div class="relative overflow-hidden rounded-lg mb-2">
+                            <img src="${game.banner}" alt="${game.game_name}" loading="lazy" style="width: 100%; height: auto;" class="group-hover:opacity-80 transition-opacity">
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                                <span class="bg-teal-500 text-slate-950 font-black text-[10px] px-3 py-1.5 rounded-full uppercase">▶ Jouer</span>
+                            </div>
+                        </div>
+                        <span style="color: #cbd5e1; font-size: 12px; font-weight: bold;" class="truncate block">${game.game_name}</span>
+                    </div>
+                `;
+            });
+
+            container.insertAdjacentHTML('beforeend', htmlChunk);
+            currentlyDisplayedCount += nextBatch.length;
+        }
+
+        // 4. دالة استدعاء السيرفر لفتح اللعبة في الشاشة المخصصة
+        async function playCasinoGame(providerCode, gameCode) {
+            if (!playerSession) return openLoginModal();
+
+            const container = document.getElementById('casino-iframe-container');
+            const iframe = document.getElementById('casino-iframe');
+            const loader = document.getElementById('casino-loader');
+
+            container.classList.remove('hidden');
+            container.classList.add('flex');
+            loader.style.display = 'flex';
+            iframe.style.opacity = '0';
+            iframe.src = "";
+
+            history.pushState({ isGame: true }, "", "#playing");
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/provider/launch-casino`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        game_code: gameCode,
+                        provider_code: providerCode
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.launch_url) {
+                    iframe.src = data.launch_url;
+                } else {
+                    showNotification("المزود رفض الطلب، اللعبة غير متاحة حالياً", "error");
+                    closeCasinoGame();
+                }
+
+                iframe.onload = () => {
+                    loader.style.display = 'none';
+                    iframe.style.opacity = '1';
+                };
+
+            } catch (error) {
+                showNotification("خطأ في الاتصال بسيرفر الألعاب", "error");
+                closeCasinoGame();
+            }
+        }
+
+       // 5. دالة التشغيل الأولية
+        function initCasinoLobby() {
+            fetchAndRenderProviders(); 
+        }
+
+        // تشغيل واجهة الكازينو + إعداد حساس النزول (Infinite Scroll)
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initCasinoLobby === 'function') {
+                initCasinoLobby();
+            }
+
+            // هذا هو الحساس الذي يراقب النزول
+            const mainContentArea = document.querySelector('main.overflow-y-auto');
+            if (mainContentArea) {
+                mainContentArea.addEventListener('scroll', () => {
+                    // إذا وصل اللاعب لأسفل الصفحة تقريباً، اسحب المزيد من الألعاب!
+                    if (mainContentArea.scrollTop + mainContentArea.clientHeight >= mainContentArea.scrollHeight - 300) {
+                        loadMoreGames();
+                    }
+                });
+            }
+        });
+
+    </script>
+</body>
+
+</html>
