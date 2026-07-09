@@ -885,5 +885,7 @@ async def get_providers():
             response = await client.post("https://api.nexusggr.com", json=payload)
             return response.json()
         except Exception as e:
-            print(f"⚠️ خطأ في جلب المزودين: {e}")
-            return {"status": 0, "msg": "Error connecting to provider"}
+         print(f"⚠️ خطأ في جلب المزودين: {e}")
+    return {"status": 0, "msg": "Error connecting to provider"}
+
+
