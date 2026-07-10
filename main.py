@@ -269,12 +269,18 @@ async def login_user(req: LoginRequest):
     user = None
     for u in db:
         if u["username"] == uname:
-            # التحقق من كلمة المرور
-            if verify_password(req.password, u.get("password", "")):
-                if u.get("is_blocked") == 1:
-                    raise HTTPException(status_code=403, detail="Ce compte est bloqué")
-                user = u
-                break
+           if u["username"] == uname:
+                # التحقق من كلمة المرور وحل مشكلة الـ 72 بايت
+                try:
+                    is_valid = verify_password(req.password, u.get("password", ""))
+                except ValueError:
+                    is_valid = False
+                
+                if is_valid:
+                    if u.get("is_blocked") == 1:
+                        raise HTTPException(status_code=403, detail="Ce compte est bloqué")
+                    user = u
+                    break
     
     # 🚨 التعديل الضروري هنا: إذا لم نجد المستخدم، نرسل خطأ صريح
     if not user:
