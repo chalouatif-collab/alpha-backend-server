@@ -16,7 +16,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 import asyncio
 from fastapi import UploadFile, File, Form
 import shutil
-import os
 from fastapi.staticfiles import StaticFiles
 import httpx
 
