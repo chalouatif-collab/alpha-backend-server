@@ -16,6 +16,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 import asyncio
 from fastapi import UploadFile, File, Form
 import shutil
+import os
 from fastapi.staticfiles import StaticFiles
 import httpx
 
@@ -899,6 +900,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-
