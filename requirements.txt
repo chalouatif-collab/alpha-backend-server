@@ -10,3 +10,4 @@ SQLAlchemy
 python-multipart
 httpx
 flask-cors
+gunicorn
