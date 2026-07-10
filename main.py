@@ -19,13 +19,7 @@ import shutil
 import os
 from fastapi.staticfiles import StaticFiles
 import httpx
-from flask import Flask, request, jsonify
-from flask_cors import CORS  # استيراد مكتبة الـ CORS
 
-app = Flask(__name__)
-CORS(app)  # تفعيل الـ CORS لكل المسارات (Endpoints)
-# ذاكرة الكاش للمباريات
-cache = {"matches": [], "last_update": 0}
 
 # جلب رابط قاعدة البيانات
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
@@ -526,6 +520,7 @@ async def configure_account(req: ConfigureAccountRequest):
 class DeleteAccountRequest(BaseModel):
     admin_username: str
     target_username: str
+
 @app.delete("/api/admin/delete-account")
 async def delete_account(req: DeleteAccountRequest):
     db = load_db()
@@ -539,7 +534,13 @@ async def delete_account(req: DeleteAccountRequest):
         
     save_db(new_db)
     return {"status": "success", "message": "Supprimé"}
-# --- تم تصحيح المسار ليتطابق مع الواجهة ---
+
+# تعريف الذاكرة المؤقتة للمباريات لتفادي الخطأ
+cache = {
+    "last_update": 0,
+    "matches": []
+}
+
 @app.get("/api/sports/get-live-matches")
 async def get_sports():
     current_time = time.time()
