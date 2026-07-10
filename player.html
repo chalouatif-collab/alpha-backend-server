@@ -2284,7 +2284,7 @@ function openLoginModal() { document.getElementById('player-login-modal').style.
             document.getElementById('player-login-modal').style.display = 'none';
         }
 
-        // دالة إرسال بيانات التسجيل للسيرفر
+       // دالة إرسال بيانات التسجيل للسيرفر (محدثة)
         async function registerPlayer() {
             const username = document.getElementById('reg-username').value.trim().toLowerCase();
             const password = document.getElementById('reg-password').value;
@@ -2292,11 +2292,16 @@ function openLoginModal() { document.getElementById('player-login-modal').style.
             if (!username || !password) return showNotification('الرجاء ملء جميع الحقول', 'error');
 
             try {
-                // نطلب من السيرفر إنشاء حساب جديد
+                // أضفنا created_by لكي يقبلها السيرفر بدون أخطاء
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: username, password: password, role: 'player' })
+                    body: JSON.stringify({ 
+                        username: username, 
+                        password: password, 
+                        role: 'player',
+                        created_by: 'Self-Register' 
+                    })
                 });
 
                 const data = await res.json();
@@ -2306,12 +2311,14 @@ function openLoginModal() { document.getElementById('player-login-modal').style.
                     document.getElementById('register-modal').classList.remove('flex');
                     document.getElementById('register-modal').classList.add('hidden');
                     
-                    // نقوم بإدخال اللاعب تلقائياً بعد نجاح التسجيل
                     document.getElementById('p-auth-username').value = username;
                     document.getElementById('p-auth-password').value = password;
                     await handlePlayerAuth();
                 } else {
-                    showNotification(data.detail || data.message || 'حدث خطأ أثناء إنشاء الحساب', 'error');
+                    // هذا السطر يمنع ظهور رسالة Object Object ويكشف الخطأ الحقيقي
+                    let errorMsg = data.detail || data.message || 'حدث خطأ';
+                    if (typeof errorMsg === 'object') errorMsg = JSON.stringify(errorMsg);
+                    showNotification(errorMsg, 'error');
                 }
             } catch (error) {
                 showNotification('فشل الاتصال بالسيرفر. جرب مرة أخرى.', 'error');
