@@ -2273,6 +2273,50 @@ function renderTrendingGames() {
     `).join('');
 }
 
+function openLoginModal() { document.getElementById('player-login-modal').style.display = 'flex'; }
+
+
+// دوال فتح وإغلاق نافذة التسجيل
+        function openRegisterModal() {
+            document.getElementById('register-modal').classList.remove('hidden');
+            document.getElementById('register-modal').classList.add('flex');
+            // إغلاق نافذة الدخول إذا كانت مفتوحة حتى لا تتداخل
+            document.getElementById('player-login-modal').style.display = 'none';
+        }
+
+        // دالة إرسال بيانات التسجيل للسيرفر
+        async function registerPlayer() {
+            const username = document.getElementById('reg-username').value.trim().toLowerCase();
+            const password = document.getElementById('reg-password').value;
+            
+            if (!username || !password) return showNotification('الرجاء ملء جميع الحقول', 'error');
+
+            try {
+                // نطلب من السيرفر إنشاء حساب جديد
+                const res = await fetch(`${BACKEND_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username, password: password, role: 'player' })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showNotification('تم إنشاء الحساب بنجاح! جاري الدخول...', 'success');
+                    document.getElementById('register-modal').classList.remove('flex');
+                    document.getElementById('register-modal').classList.add('hidden');
+                    
+                    // نقوم بإدخال اللاعب تلقائياً بعد نجاح التسجيل
+                    document.getElementById('p-auth-username').value = username;
+                    document.getElementById('p-auth-password').value = password;
+                    await handlePlayerAuth();
+                } else {
+                    showNotification(data.detail || data.message || 'حدث خطأ أثناء إنشاء الحساب', 'error');
+                }
+            } catch (error) {
+                showNotification('فشل الاتصال بالسيرفر. جرب مرة أخرى.', 'error');
+            }
+        }
     </script>
 </body>
 
