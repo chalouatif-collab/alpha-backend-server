@@ -542,21 +542,6 @@ async def delete_account(req: DeleteAccountRequest):
     save_db(new_db)
     return {"status": "success", "message": "Supprimé"}
 
-@app.get("/api/get-sports-url")
-async def get_sports_url():
-    try:
-        # البيانات الحساسة مخبأة هنا داخل السيرفر ولا يراها أي لاعب في المتصفح
-        token = "9a418a80d898dd95f120c321012a67cf"
-        
-        # الرابط المباشر للسبورت بوك الخاص بالمزود
-        provider_sports_url = f"https://alpha-backend-server.onrender.com/sports?token={token}"
-        
-        # نرسل الرابط للمتصفح بشكل نظيف
-        return {"url": provider_sports_url}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 # تعريف الذاكرة المؤقتة للمباريات لتفادي الخطأ
 cache = {
     "last_update": 0,
