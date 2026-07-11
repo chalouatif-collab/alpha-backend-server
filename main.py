@@ -555,7 +555,6 @@ async def get_sports_url():
         return {"url": provider_sports_url}
         
     except Exception as e:
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
 
 # تعريف الذاكرة المؤقتة للمباريات لتفادي الخطأ
