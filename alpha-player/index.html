@@ -2206,7 +2206,7 @@ function closeCasinoGame() {
 
             try {
                 // نكلم سيرفرنا (main.py)
-                const response = await fetch('https://alpha-backend-server.onrender.com/api/get-providers');
+                const response = await fetch(`https://alpha-backend-server.onrender.com/api/get-providers`);
                 const data = await response.json();
 console.log("بيانات السيرفر:", data);
                 if (data && data.status === 1 && data.providers) {
@@ -2554,7 +2554,7 @@ async function openSportsbook() {
         document.getElementById('sportsbook-overlay').classList.remove('hidden');
         
         // نطلب الرابط الآمن من سيرفر البايثون الخاص بنا دون إظهار أي مفاتيح
-        const response = await fetch('https://alpha-backend-server.onrender.com/api/get-providers') //
+        const response = await fetch(`https://alpha-backend-server.onrender.com/api/get-providers`) //
         const data = await response.json();
         
         if (data.url) {
