@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 import httpx
 
 
+
 # جلب رابط قاعدة البيانات
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -92,6 +93,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # يسمح للمتصفح بالاتصال من أي مكان
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
@@ -720,7 +730,7 @@ def launch_sportsbook(data: dict):
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-@app.post("/api/provider/launch-casino")
+
 @app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
@@ -739,7 +749,7 @@ async def launch_casino(request: Request):
             "game_code": game_code,
             "user_code": user_code,
             "lang": "fr",
-            "currency": "TND"
+            "currency": "USD"
         }
 
         headers = {"Content-Type": "application/json"}
@@ -834,31 +844,37 @@ async def seamless_wallet_handler(request: Request):
 GAMES_CACHE = {}
 CACHE_TIME_LIMIT = 3600  # مدة الحفظ بالثواني (ساعة واحدة)
 
-@app.post("/api/get-games-list")
-async def get_games(request: Request):
-    data = await request.json()
-    provider_code = data.get("provider_code")
-    
-    if not provider_code:
-        return {"status": 0, "msg": "Provider code is missing"}
+from pydantic import BaseModel
 
-    import time
-    current_time = time.time()
+class ProviderRequest(BaseModel):
+    provider_code: str
 
-    # فحص الذاكرة
-    if provider_code in GAMES_CACHE:
-        cached_data = GAMES_CACHE[provider_code]
-        if current_time - cached_data['time'] < CACHE_TIME_LIMIT:
-            print(f"⚡ جلب ألعاب {provider_code} فوراً من ذاكرة السيرفر السريعة (الكاش)")
-            return cached_data['data']
-
-    # إذا لم تكن في الذاكرة، نكلم المزود
-    print(f"🌍 جلب ألعاب {provider_code} من المزود الخارجي (Nexus)...")
-    payload = {
-        "method": "game_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf",
-        "provider_code": provider_code
+@app.post("/api/get-providers")  # تأكد من أن هذا هو نفس مسار جلب الألعاب لديك
+async def get_mock_games(request: ProviderRequest):
+    return {
+        "status": 1,
+        "games": [
+            {
+                "id": "gates", 
+                "title": "Gates of Olympus", 
+                "image": "https://placehold.co/400x300/0f172a/38bdf8?text=Gates+of+Olympus&font=Montserrat"
+            },
+            {
+                "id": "aviator", 
+                "title": "Aviator", 
+                "image": "https://placehold.co/400x300/0f172a/f43f5e?text=Aviator&font=Montserrat"
+            },
+            {
+                "id": "sweet", 
+                "title": "Sweet Bonanza", 
+                "image": "https://placehold.co/400x300/0f172a/a855f7?text=Sweet+Bonanza&font=Montserrat"
+            },
+            {
+                "id": "roulette", 
+                "title": "Mega Roulette", 
+                "image": "https://placehold.co/400x300/0f172a/10b981?text=Mega+Roulette&font=Montserrat"
+            }
+        ]
     }
 
     async with httpx.AsyncClient() as client:
@@ -883,12 +899,17 @@ async def get_games(request: Request):
 # جلب قائمة المزودين (Providers List) ديناميكياً
 # ==========================================
 @app.get("/api/get-providers")
-async def get_providers():
-    print("🌍 جلب قائمة المزودين من Nexus...")
-    payload = {
-        "method": "provider_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf"
+async def get_mock_providers():
+    # بيانات وهمية مؤقتة مطابقة تماماً لشروط الواجهة (status === 1)
+    return {
+        "status": 1,
+        "providers": [
+            {"code": "PRAGMATIC", "name": "Pragmatic Play"},
+            {"code": "AMATIC", "name": "Amatic Premium"},
+            {"code": "EVOLUTION", "name": "Evolution Live"},
+            {"code": "HACKSAW", "name": "Hacksaw Gaming"},
+            {"code": "NETENT", "name": "NetEnt Casino"}
+        ]
     }
 
     async with httpx.AsyncClient() as client:
