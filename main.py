@@ -519,9 +519,11 @@ async def launch_casino(request: Request):
             "agent_token": AGENT_TOKEN,
             "provider_code": data.get("provider_code"),
             "game_code": data.get("game_code"),
-            "user_code": data.get("user_code", "fethi2_test"), 
+            "user_code": data.get("user_code", "fethi2_test"),
             "lang": "fr",
-            "currency": "USD"
+            "currency": "USD",
+            "rtp": 92,
+            "lobby_url": "https://alphabet216.com/"
         }
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
         response_data = response.json()
