@@ -2306,8 +2306,7 @@ console.log("بيانات السيرفر:", data);
             if(searchInput) searchInput.value = '';
             if(sortSelect) sortSelect.value = 'default';
 
-           // الدالة المحدثة لاستقبال البيانات الحقيقية
-const renderGames = (gamesList) => {
+           const renderGames = (gamesList) => {
     currentProviderGames = gamesList;
     filteredProviderGames = [...gamesList];
     currentlyDisplayedCount = 0;
@@ -2317,25 +2316,24 @@ const renderGames = (gamesList) => {
     loadMoreGames();
 };
 
-// وتأكد أن دالة loadMoreGames تستخدم الأسماء الصحيحة (name و banner)
 function loadMoreGames() {
     const container = document.getElementById('games-container');
-    const itemsToLoad = 20; // تحميل 20 لعبة في كل مرة
+    const itemsToLoad = 20; 
     const end = Math.min(currentlyDisplayedCount + itemsToLoad, filteredProviderGames.length);
 
     for (let i = currentlyDisplayedCount; i < end; i++) {
         const game = filteredProviderGames[i];
         
-        // هنا التغيير الجوهري: استخدام الأسماء الصحيحة للمتغيرات القادمة من NexusGGR
-        const gameName = game.name || game.title || "Game";
-        const gameImage = game.banner || game.thumb || game.image || 'https://placehold.co/400x300?text=No+Image';
-        const gameProvider = game.provider_code || '';
+        // هنا الذكاء: نحاول البحث عن الاسم والصورة بأكثر من اسم شائع
+        const gameName = game.name || game.game_name || game.title || "Game Name";
+        const gameImage = game.banner || game.thumb || game.image || game.img_url || 'https://placehold.co/400x300?text=No+Image';
+        const gameProvider = game.provider_code || game.provider || '';
         const gameCode = game.game_code || game.id || '';
 
         const gameCard = document.createElement('div');
-        gameCard.className = 'game-card ...'; // احتفظ بنفس الـ Classes الموجودة عندك
+        gameCard.className = 'game-card-class-here'; // تأكد من وضع الكلاسات الخاصة بك هنا
         gameCard.innerHTML = `
-            <img src="${gameImage}" alt="${gameName}" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+            <img src="${gameImage}" alt="${gameName}" onerror="this.src='https://placehold.co/400x300?text=Error'">
             <h3 class="text-white">${gameName}</h3>
             <button onclick="playCasinoGame('${gameProvider}', '${gameCode}')">Play</button>
         `;
