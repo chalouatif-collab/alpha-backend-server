@@ -10,8 +10,5 @@ SQLAlchemy
 python-multipart
 httpx
 flask-cors
-<<<<<<< HEAD
 gunicorn
-=======
-gunicorn
->>>>>>> 3c139577542f676b29c86bcd74976d7473fd3f1d
+
