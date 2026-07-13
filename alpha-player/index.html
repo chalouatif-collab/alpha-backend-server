@@ -2306,7 +2306,14 @@ console.log("بيانات السيرفر:", data);
             if(searchInput) searchInput.value = '';
             if(sortSelect) sortSelect.value = 'default';
 
-       
+           // الدالة المحدثة لاستقبال البيانات الحقيقية
+const renderGames = (gamesList) => {
+    currentProviderGames = gamesList;
+    filteredProviderGames = [...gamesList];
+    currentlyDisplayedCount = 0;
+    container.innerHTML = '';
+    
+    // استخدام دالة لتحميل الألعاب تدريجياً
     loadMoreGames();
 };
 
@@ -2340,7 +2347,7 @@ function loadMoreGames() {
             if (cachedGames) {
                 renderGames(JSON.parse(cachedGames));
             } else {
-                container.innerHTML = '<div class="col-span-full text-center text-teal-400 py-10 font-bold animate-pulse">جاري تحميل ألعاب ' + providerCode + '... ⏳</div>';
+                container.innerHTML = '<div class="col-span-full text-center text-teal-400 py-10 font-bold animate-pulse">chargement des jeux ' + providerCode + '... ⏳</div>';
             }
 
             try {
@@ -2368,7 +2375,7 @@ function loadMoreGames() {
                     container.innerHTML = '<div class="col-span-full text-center text-rose-500 py-10 font-bold">حدث خطأ أثناء الاتصال بالسيرفر ❌</div>';
                 }
             }
-        
+        }
 
       function loadMoreGames() {
             if (currentlyDisplayedCount >= filteredProviderGames.length) return;
