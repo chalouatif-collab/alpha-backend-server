@@ -849,52 +849,41 @@ from pydantic import BaseModel
 class ProviderRequest(BaseModel):
     provider_code: str
 
-@app.post("/api/get-providers")  # تأكد من أن هذا هو نفس مسار جلب الألعاب لديك
-async def get_mock_games(request: ProviderRequest):
-    return {
-        "status": 1,
-        "games": [
-            {
-                "id": "gates", 
-                "title": "Gates of Olympus", 
-                "image": "https://placehold.co/400x300/0f172a/38bdf8?text=Gates+of+Olympus&font=Montserrat"
-            },
-            {
-                "id": "aviator", 
-                "title": "Aviator", 
-                "image": "https://placehold.co/400x300/0f172a/f43f5e?text=Aviator&font=Montserrat"
-            },
-            {
-                "id": "sweet", 
-                "title": "Sweet Bonanza", 
-                "image": "https://placehold.co/400x300/0f172a/a855f7?text=Sweet+Bonanza&font=Montserrat"
-            },
-            {
-                "id": "roulette", 
-                "title": "Mega Roulette", 
-                "image": "https://placehold.co/400x300/0f172a/10b981?text=Mega+Roulette&font=Montserrat"
-            }
-        ]
-    }
+@app.post("/api/get-providers")
+async def get_real_games(request: ProviderRequest):
+    provider_code = request.provider_code
+    current_time = time.time()
+    
+    # 1. التحقق مما إذا كانت الألعاب محفوظة في الذاكرة المؤقتة (لتسريع الموقع)
+    if provider_code in GAMES_CACHE and (current_time - GAMES_CACHE[provider_code]['time']) < CACHE_TIME_LIMIT:
+        return GAMES_CACHE[provider_code]['data']
 
+    # 2. إذا لم تكن محفوظة، نطلب الألعاب الحقيقية من المزود
+    payload = {
+        "method": "game_list",
+        "agent_code": "TUNISS10",
+        "agent_token": "9a418a80d898dd95f120c321012a67cf",
+        "provider_code": provider_code
+    }
+    
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post("https://api.nexusggr.com", json=payload)
+            # الاتصال الفعلي بسيرفر NexusGGR
+            response = await client.post("https://api.nexusggr.com", json=payload, timeout=20)
             response_data = response.json()
             
-            if "games" in response_data or response_data.get("status") == 1:
-                GAMES_CACHE[provider_code] = {
-                    'time': current_time,
-                    'data': response_data
-                }
+            # حفظ الألعاب في الذاكرة المؤقتة إذا نجح الاتصال
+            if response_data.get("status") == 1 or "games" in response_data:
+                GAMES_CACHE[provider_code] = {'time': current_time, 'data': response_data}
+                
             return response_data
             
         except Exception as e:
             print(f"⚠️ خطأ في الاتصال بالمزود: {e}")
-            if provider_code in GAMES_CACHE:
+            # في حالة انقطاع الاتصال، نحاول عرض الألعاب المحفوظة سابقاً
+            if provider_code in GAMES_CACHE: 
                 return GAMES_CACHE[provider_code]['data']
-            return {"status": 0, "msg": "Error connecting to provider"}
-
+            return {"status": 0, "msg": "Error connecting to games API"}
 # ==========================================
 # جلب قائمة المزودين (Providers List) ديناميكياً
 # ==========================================
