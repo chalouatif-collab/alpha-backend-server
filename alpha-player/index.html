@@ -2324,18 +2324,25 @@ function loadMoreGames() {
     for (let i = currentlyDisplayedCount; i < end; i++) {
         const game = filteredProviderGames[i];
         
-        // هنا الذكاء: نحاول البحث عن الاسم والصورة بأكثر من اسم شائع
-        const gameName = game.name || game.game_name || game.title || "Game Name";
-        const gameImage = game.banner || game.thumb || game.image || game.img_url || 'https://placehold.co/400x300?text=No+Image';
-        const gameProvider = game.provider_code || game.provider || '';
-        const gameCode = game.game_code || game.id || '';
+        // 1. استخراج البيانات بذكاء (يبحث عن الاسم في عدة أماكن)
+        const gameName = game.name || game.title || "Game Name";
+        
+        // 2. معالجة الصور: إذا لم يجد صورة محلية، سيضع صورة افتراضية جميلة
+        const gameImage = game.banner || game.thumb || game.image || 'https://placehold.co/400x300/1e293b/fff?text=Game';
 
         const gameCard = document.createElement('div');
-        gameCard.className = 'game-card-class-here'; // تأكد من وضع الكلاسات الخاصة بك هنا
+        gameCard.className = 'game-card'; // تأكد أن لديك CSS لهذا الكلاس
+        
         gameCard.innerHTML = `
-            <img src="${gameImage}" alt="${gameName}" onerror="this.src='https://placehold.co/400x300?text=Error'">
-            <h3 class="text-white">${gameName}</h3>
-            <button onclick="playCasinoGame('${gameProvider}', '${gameCode}')">Play</button>
+            <div class="card-inner">
+                <img src="${gameImage}" 
+                     alt="${gameName}" 
+                     onerror="this.src='https://placehold.co/400x300/1e293b/fff?text=No+Image'">
+                <h3 class="game-title">${gameName}</h3>
+                <button onclick="playCasinoGame('${game.provider_code || ''}', '${game.game_code || game.id || ''}')">
+                    Play
+                </button>
+            </div>
         `;
         container.appendChild(gameCard);
     }
