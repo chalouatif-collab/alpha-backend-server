@@ -2306,14 +2306,36 @@ console.log("بيانات السيرفر:", data);
             if(searchInput) searchInput.value = '';
             if(sortSelect) sortSelect.value = 'default';
 
-            // دالة ذكية للبدء برسم الألعاب
-            const renderGames = (gamesList) => {
-                currentProviderGames = gamesList;
-                filteredProviderGames = [...gamesList]; // نسخ للفلترة
-                currentlyDisplayedCount = 0;
-                container.innerHTML = '';
-                loadMoreGames();
-            };
+       
+    loadMoreGames();
+};
+
+// وتأكد أن دالة loadMoreGames تستخدم الأسماء الصحيحة (name و banner)
+function loadMoreGames() {
+    const container = document.getElementById('games-container');
+    const itemsToLoad = 20; // تحميل 20 لعبة في كل مرة
+    const end = Math.min(currentlyDisplayedCount + itemsToLoad, filteredProviderGames.length);
+
+    for (let i = currentlyDisplayedCount; i < end; i++) {
+        const game = filteredProviderGames[i];
+        
+        // هنا التغيير الجوهري: استخدام الأسماء الصحيحة للمتغيرات القادمة من NexusGGR
+        const gameName = game.name || game.title || "Game";
+        const gameImage = game.banner || game.thumb || game.image || 'https://placehold.co/400x300?text=No+Image';
+        const gameProvider = game.provider_code || '';
+        const gameCode = game.game_code || game.id || '';
+
+        const gameCard = document.createElement('div');
+        gameCard.className = 'game-card ...'; // احتفظ بنفس الـ Classes الموجودة عندك
+        gameCard.innerHTML = `
+            <img src="${gameImage}" alt="${gameName}" onerror="this.src='https://placehold.co/400x300?text=No+Image'">
+            <h3 class="text-white">${gameName}</h3>
+            <button onclick="playCasinoGame('${gameProvider}', '${gameCode}')">Play</button>
+        `;
+        container.appendChild(gameCard);
+    }
+    currentlyDisplayedCount = end;
+}
 
             if (cachedGames) {
                 renderGames(JSON.parse(cachedGames));
@@ -2346,7 +2368,7 @@ console.log("بيانات السيرفر:", data);
                     container.innerHTML = '<div class="col-span-full text-center text-rose-500 py-10 font-bold">حدث خطأ أثناء الاتصال بالسيرفر ❌</div>';
                 }
             }
-        }
+        
 
       function loadMoreGames() {
             if (currentlyDisplayedCount >= filteredProviderGames.length) return;
