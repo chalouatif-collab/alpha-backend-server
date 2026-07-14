@@ -219,7 +219,39 @@
             </div>
 
             <!-- ==================== 1. قسم الرئيسية (Accueil) ==================== -->
-<span class="text-[9px] font-bold text-gray-400 tex
+           <!-- شريط الألعاب الاحترافي -->
+<div class="flex overflow-x-auto gap-3 py-4 px-4 no-scrollbar mb-2">
+    <!-- زر الكازينو -->
+    <div onclick="switchSection('casino'); initCasinoLobby();" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
+        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">🎰</div>
+        <span class="text-[9px] font-bold text-white text-center leading-tight uppercase">Casino</span>
+    </div>
+    <!-- زر لايف كازينو -->
+    <div onclick="switchSection('casino')" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
+        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">🎡</div>
+        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Live Casino</span>
+    </div>
+    <!-- زر الرياضة -->
+    <div onclick="openSportsbook()" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
+        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">⚽</div>
+        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Sport</span>
+    </div>
+    <!-- زر لايف سبورت -->
+    <div onclick="openSportsbook()" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
+        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">⚡</div>
+        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Live Sport</span>
+    </div>
+    <!-- زر كراش -->
+    <div onclick="switchSection('crash')" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
+        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">🚀</div>
+        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Crash</span>
+    </div>
+    <!-- زر أفييتور -->
+    <div onclick="switchSection('crash')" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
+        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">✈️</div>
+        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Aviator</span>
+    </div>
+</div>
             <div id="pane-accueil" class="player-view-section w-full max-w-full space-y-6">
                 
                 <!-- سلايدر العروض (متوافق مع دوال JS القديمة) -->
