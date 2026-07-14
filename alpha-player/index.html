@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Alphabet216 - Premium App</title>
+    <title>Alphabet216 - Premium Casino</title>
     
-    <!-- إعداد Tailwind بألوان Asbet المخصصة -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
     <script>
         tailwind.config = {
             theme: {
@@ -15,8 +17,8 @@
                         asbet: {
                             dark: '#0B001A',      /* الخلفية الأساسية (أسود بنفسجي) */
                             card: '#180A2B',      /* خلفية البطاقات والأزرار */
-                            primary: '#E8006F',   /* الوردي الفاقع (أزرار التسجيل) */
-                            secondary: '#91167B', /* البنفسجي الداكن (للتدرجات) */
+                            primary: '#E8006F',   /* الوردي الفاقع */
+                            secondary: '#91167B', /* البنفسجي الداكن */
                             accent: '#FACC15'     /* الأصفر للتنبيهات والكوينز */
                         }
                     }
@@ -24,7 +26,6 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -39,7 +40,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* تأثيرات النيون والأزرار */
         .btn-gradient {
             background: linear-gradient(90deg, #E8006F 0%, #91167B 100%);
             box-shadow: 0 4px 15px rgba(232, 0, 111, 0.4);
@@ -51,7 +51,6 @@
             color: #E8006F;
         }
 
-        /* أيقونات القائمة العلوية الدائرية */
         .category-box {
             min-width: 70px;
             height: 70px;
@@ -67,18 +66,14 @@
         }
         .category-box:active { transform: scale(0.95); border-color: #E8006F; }
 
-        /* شريط سفلي عائم واحترافي */
         .bottom-nav {
             background: rgba(24, 10, 43, 0.95);
             backdrop-filter: blur(10px);
             border-top: 1px solid rgba(255,255,255,0.05);
         }
         
-        .nav-item.active {
-            color: #E8006F;
-        }
+        .nav-item.active { color: #E8006F; }
         
-        /* زر القائمة المركزي البارز */
         .center-menu-btn {
             background: #180A2B;
             border: 2px solid #E8006F;
@@ -94,169 +89,431 @@
     </style>
 </head>
 
-<body class="pb-24">
+<body class="pb-24 flex flex-col relative">
 
-    <!-- الهيدر العلوي (Sticky Header) -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 w-full max-w-sm px-4"></div>
+
+    <div id="player-login-modal" class="fixed inset-0 z-[60] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-8 shadow-2xl relative">
+            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-asbet-primary to-white">ALPHABET</h1>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="p-auth-username" placeholder="Nom d'utilisateur" class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                <input type="password" id="p-auth-password" placeholder="Mot de passe" class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                <button onclick="handlePlayerAuth()" class="w-full btn-gradient text-white font-black p-4 rounded-xl uppercase tracking-widest mt-4">Connexion</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="register-modal" class="fixed inset-0 z-[60] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-8 shadow-2xl relative">
+            <button onclick="closeRegisterModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <h2 class="text-white text-xl font-bold mb-6 text-center">Créer un compte</h2>
+            <div class="space-y-4">
+                <input type="text" id="reg-username" placeholder="Nom d'utilisateur" class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                <input type="password" id="reg-password" placeholder="Mot de passe" class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                <button onclick="registerPlayer()" class="w-full btn-gradient text-white font-black p-4 rounded-xl uppercase tracking-widest mt-4">S'inscrire</button>
+            </div>
+        </div>
+    </div>
+
     <header class="sticky top-0 z-50 bg-asbet-dark/95 backdrop-blur-md px-4 py-3 flex justify-between items-center shadow-md border-b border-white/5">
-        <div class="flex items-center gap-2">
-            <!-- شعار مؤقت بستايل Asbet -->
+        <div class="flex items-center">
             <div class="text-2xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-asbet-primary to-white tracking-tighter">
                 Alphabet
             </div>
         </div>
         
-        <div class="flex items-center gap-1.5">
-            <button class="btn-outline px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide">
-                SE CONNECTER
-            </button>
-            <button class="btn-gradient px-2.5 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-wide">
-                S'INSCRIRE
-            </button>
+        <div id="auth-buttons-container" class="flex items-center gap-1.5">
+            <button onclick="openLoginModal()" class="btn-outline px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide">SE CONNECTER</button>
+            <button onclick="openRegisterModal()" class="btn-gradient px-2.5 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-wide">S'INSCRIRE</button>
+        </div>
+
+        <div id="top-user-profile" class="hidden items-center gap-2">
+            <div class="bg-asbet-card border border-asbet-secondary/50 px-3 py-1 rounded-full flex items-center gap-2">
+                <span class="text-asbet-accent font-black text-xs" id="player-balance-val">0.00 TND</span>
+            </div>
+            <button onclick="logoutPlayer()" class="text-gray-400 hover:text-asbet-primary text-xl">🚪</button>
         </div>
     </header>
 
-    <!-- شريط الفئات الأفقي (Horizontal Categories) -->
-    <div class="flex overflow-x-auto gap-3 py-4 px-4 no-scrollbar">
-        <div class="flex flex-col items-center gap-2 cursor-pointer">
-            <div class="category-box text-asbet-primary">🎡</div>
-            <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">ROUE DE<br>FORTUNE</span>
+    <div id="pane-accueil" class="player-view-section block">
+        <div class="flex overflow-x-auto gap-3 py-4 px-4 no-scrollbar">
+            <div onclick="switchSection('accueil')" class="flex flex-col items-center gap-2 cursor-pointer">
+                <div class="category-box text-asbet-primary">🏠</div>
+                <span class="text-[9px] font-bold text-white text-center leading-tight">ACCUEIL</span>
+            </div>
+            <div onclick="openSportsbook()" class="flex flex-col items-center gap-2 cursor-pointer">
+                <div class="category-box">⚽</div>
+                <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">SPORTS</span>
+            </div>
+            <div onclick="switchSection('casino'); initCasinoLobby();" class="flex flex-col items-center gap-2 cursor-pointer">
+                <div class="category-box text-rose-500">🎰</div>
+                <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">CASINO</span>
+            </div>
+            <div onclick="switchSection('crash')" class="flex flex-col items-center gap-2 cursor-pointer">
+                <div class="category-box text-asbet-accent">🚀</div>
+                <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">AVIATOR</span>
+            </div>
         </div>
-        <div class="flex flex-col items-center gap-2 cursor-pointer">
-            <div class="category-box">🏆</div>
-            <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">COUPE DU<br>MONDE 2026</span>
-        </div>
-        <div class="flex flex-col items-center gap-2 cursor-pointer">
-            <div class="category-box text-asbet-accent">🎁</div>
-            <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">PROMOTIONS</span>
-        </div>
-        <div class="flex flex-col items-center gap-2 cursor-pointer">
-            <div class="category-box">⚽</div>
-            <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">SPORTS</span>
-        </div>
-        <div class="flex flex-col items-center gap-2 cursor-pointer">
-            <div class="category-box text-rose-500">🎰</div>
-            <span class="text-[9px] font-bold text-gray-400 text-center leading-tight">LIVE<br>CASINO</span>
-        </div>
-    </div>
 
-    <!-- السلايدر المتحرك (Swiper Banners) -->
-    <div class="px-4 mb-6">
-        <div class="swiper heroSwiper w-full h-[180px] rounded-2xl overflow-hidden shadow-2xl border border-white/5">
-            <div class="swiper-wrapper">
-                <div class="swiper-slide bg-gradient-to-r from-asbet-secondary to-asbet-dark flex items-center p-6 relative">
-                    <div class="absolute right-0 top-0 opacity-50 text-8xl">🎰</div>
-                    <div class="relative z-10">
-                        <span class="bg-asbet-primary text-[8px] font-bold px-2 py-1 rounded uppercase">Nouveau</span>
-                        <h2 class="text-2xl font-black mt-2 leading-tight">TOURNOI<br>CASINO</h2>
-                        <p class="text-[10px] text-gray-300 mt-1">Gagnez jusqu'à 10,000 TND</p>
+        <div class="px-4 mb-6">
+            <div class="swiper heroSwiper w-full h-[180px] rounded-2xl overflow-hidden shadow-2xl border border-white/5">
+                <div class="swiper-wrapper">
+                    <div class="swiper-slide bg-gradient-to-r from-asbet-secondary to-asbet-dark flex items-center p-6 relative">
+                        <div class="absolute right-0 top-0 opacity-50 text-8xl">🎰</div>
+                        <div class="relative z-10">
+                            <span class="bg-asbet-primary text-[8px] font-bold px-2 py-1 rounded uppercase">Nouveau</span>
+                            <h2 class="text-2xl font-black mt-2 leading-tight">TOURNOI<br>CASINO</h2>
+                            <button onclick="switchSection('casino'); initCasinoLobby();" class="mt-2 text-[10px] bg-white text-asbet-dark font-bold px-3 py-1 rounded-full">Jouer Maintenant</button>
+                        </div>
+                    </div>
+                    <div class="swiper-slide bg-gradient-to-r from-blue-900 to-asbet-dark flex items-center p-6 relative">
+                        <div class="absolute right-0 top-0 opacity-50 text-8xl">⚽</div>
+                        <div class="relative z-10">
+                            <span class="bg-blue-500 text-[8px] font-bold px-2 py-1 rounded uppercase">Sport</span>
+                            <h2 class="text-2xl font-black mt-2 leading-tight">FREEBET<br>PREMIER DÉPÔT</h2>
+                            <button onclick="openSportsbook()" class="mt-2 text-[10px] bg-white text-asbet-dark font-bold px-3 py-1 rounded-full">Parier</button>
+                        </div>
                     </div>
                 </div>
-                <div class="swiper-slide bg-gradient-to-r from-blue-900 to-asbet-dark flex items-center p-6 relative">
-                    <div class="absolute right-0 top-0 opacity-50 text-8xl">⚽</div>
-                    <div class="relative z-10">
-                        <span class="bg-blue-500 text-[8px] font-bold px-2 py-1 rounded uppercase">Sport</span>
-                        <h2 class="text-2xl font-black mt-2 leading-tight">FREEBET<br>PREMIER DÉPÔT</h2>
-                    </div>
-                </div>
+                <div class="swiper-pagination"></div>
             </div>
-            <div class="swiper-pagination"></div>
         </div>
-    </div>
 
-    <!-- قسم الألعاب الأول (Top des vainqueurs) -->
-    <div class="px-4 mb-6">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold flex items-center gap-2">Top des vainqueurs <span class="bg-white text-asbet-dark text-[8px] px-2 py-0.5 rounded-full font-black uppercase">En direct</span></h3>
-        </div>
-        
-        <!-- بطاقات صغيرة للمرابيح -->
-        <div class="flex overflow-x-auto gap-3 no-scrollbar pb-2">
-            <div class="bg-asbet-card rounded-xl p-2 flex items-center gap-3 min-w-[200px] border border-white/5">
-                <img src="https://placehold.co/40x40/E8006F/FFF?text=G" class="rounded-lg w-10 h-10 object-cover">
-                <div>
-                    <div class="text-[10px] text-gray-400">124***1870</div>
-                    <div class="text-xs font-bold text-asbet-accent">228.54 TND</div>
-                </div>
+        <div class="px-4 mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold">Jeux Populaires</h3>
+                <button onclick="switchSection('casino'); initCasinoLobby();" class="text-[10px] text-asbet-primary font-bold">Tous les jeux ➔</button>
             </div>
-            <div class="bg-asbet-card rounded-xl p-2 flex items-center gap-3 min-w-[200px] border border-white/5">
-                <img src="https://placehold.co/40x40/91167B/FFF?text=M" class="rounded-lg w-10 h-10 object-cover">
-                <div>
-                    <div class="text-[10px] text-gray-400">985***930</div>
-                    <div class="text-xs font-bold text-asbet-accent">19.20 TND</div>
+            <div class="grid grid-cols-2 gap-3">
+                <div onclick="playCasinoGame('pragmatic', 'gates_of_olympus')" class="bg-asbet-card rounded-xl overflow-hidden relative border border-white/5 cursor-pointer">
+                    <span class="absolute top-1 left-1 bg-asbet-primary text-[8px] font-bold px-1.5 py-0.5 rounded z-10">HOT</span>
+                    <img src="https://placehold.co/400x300/180A2B/FFF?text=Gates+of+Olympus" class="w-full h-24 object-cover">
+                    <div class="p-2 text-center text-[10px] font-bold">Gates of Olympus</div>
+                </div>
+                <div onclick="playCasinoGame('spribe', 'aviator')" class="bg-asbet-card rounded-xl overflow-hidden relative border border-white/5 cursor-pointer">
+                    <span class="absolute top-1 left-1 bg-asbet-accent text-asbet-dark text-[8px] font-bold px-1.5 py-0.5 rounded z-10">TRENDING</span>
+                    <img src="https://placehold.co/400x300/0B001A/FFF?text=Aviator" class="w-full h-24 object-cover">
+                    <div class="p-2 text-center text-[10px] font-bold">Aviator</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- قسم ألعاب الكازينو (Jeux de casino) -->
-    <div class="px-4 mb-6">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold">Jeux de casino</h3>
-            <button class="text-[10px] text-gray-400 hover:text-white">Tous ➔</button>
-        </div>
-        
-        <div class="grid grid-cols-3 gap-3">
-            <!-- Game Card 1 -->
-            <div class="bg-asbet-card rounded-xl overflow-hidden relative border border-white/5">
-                <span class="absolute top-1 left-1 bg-asbet-primary text-[8px] font-bold px-1.5 py-0.5 rounded z-10">HOT</span>
-                <img src="https://placehold.co/300x400/2A134B/FFF?text=Lady+Monopoly" class="w-full h-28 object-cover">
+    <div id="pane-casino" class="player-view-section hidden w-full px-4 pt-4">
+        <h3 class="text-sm font-black mb-3">🎰 Le Casino</h3>
+        <div id="providers-bar" class="flex overflow-x-auto gap-2 pb-3 no-scrollbar mb-2">
             </div>
-            <!-- Game Card 2 -->
-            <div class="bg-asbet-card rounded-xl overflow-hidden relative border border-white/5">
-                <img src="https://placehold.co/300x400/180A2B/FFF?text=Atlantis" class="w-full h-28 object-cover">
+        <div id="games-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-6">
             </div>
-            <!-- Game Card 3 -->
-            <div class="bg-asbet-card rounded-xl overflow-hidden relative border border-white/5">
-                <span class="absolute top-1 left-1 bg-asbet-accent text-asbet-dark text-[8px] font-bold px-1.5 py-0.5 rounded z-10">NEW</span>
-                <img src="https://placehold.co/300x400/91167B/FFF?text=Sweet" class="w-full h-28 object-cover">
-            </div>
-        </div>
     </div>
 
-    <!-- شريط التنقل السفلي الاحترافي (Bottom Nav) -->
-    <nav class="bottom-nav fixed bottom-0 left-0 right-0 h-[65px] flex justify-around items-center px-2 z-[100]">
-        
-        <button class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
-            <span class="text-xl mb-1">⏱️</span>
+    <div id="pane-sport" class="player-view-section hidden px-4 pt-4"><div class="text-center text-gray-500 mt-10">Redirection vers Sportsbook...</div></div>
+    <div id="pane-crash" class="player-view-section hidden px-4 pt-4"><div class="text-center text-gray-500 mt-10">Redirection vers Aviator...</div></div>
+
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 h-[65px] flex justify-around items-center px-2 z-[50]">
+        <button onclick="switchSection('accueil')" class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
+            <span class="text-xl mb-1">🏠</span>
+            <span class="text-[9px] font-bold uppercase">Accueil</span>
+        </button>
+        <button onclick="openSportsbook()" class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
+            <span class="text-xl mb-1">⚽</span>
             <span class="text-[9px] font-bold uppercase">Sports</span>
         </button>
-
-        <button class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
-            <span class="text-xl mb-1">📺</span>
-            <span class="text-[9px] font-bold uppercase">En direct</span>
+        <button onclick="switchSection('casino'); initCasinoLobby();" class="flex flex-col items-center justify-center w-[20%] relative">
+            <div class="center-menu-btn text-white text-2xl">🎰</div>
         </button>
-
-        <!-- زر القائمة المركزي البارز (المنيو أو الكوبون) -->
-        <button class="flex flex-col items-center justify-center w-[20%] relative">
-            <div class="center-menu-btn text-white text-xl">
-                <span>☰</span>
-            </div>
+        <button onclick="switchSection('crash')" class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
+            <span class="text-xl mb-1">🚀</span>
+            <span class="text-[9px] font-bold uppercase">Crash</span>
         </button>
-
-        <button class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
-            <span class="text-xl mb-1">📄</span>
-            <span class="text-[9px] font-bold uppercase">Fiche</span>
-        </button>
-
-        <button class="nav-item active flex flex-col items-center justify-center w-[20%] transition-colors">
-            <span class="text-xl mb-1">🎰</span>
-            <span class="text-[9px] font-bold uppercase">Casino</span>
+        <button onclick="openLoginModal()" class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors">
+            <span class="text-xl mb-1">👤</span>
+            <span class="text-[9px] font-bold uppercase">Profil</span>
         </button>
     </nav>
 
-    <!-- Swiper JS Script -->
+    <div id="casino-iframe-container" class="fixed inset-0 z-[100] bg-black hidden flex-col transition-all duration-300">
+        <button onclick="closeCasinoGame()" class="absolute top-4 right-4 z-[110] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shadow-2xl">✖</button>
+        <div class="w-full flex-1 relative bg-asbet-dark flex items-center justify-center">
+            <div id="casino-loader" class="absolute inset-0 flex flex-col items-center justify-center z-10">
+                <div class="w-12 h-12 border-4 border-asbet-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-asbet-primary font-bold text-sm animate-pulse">Chargement...</p>
+            </div>
+            <iframe id="casino-iframe" class="w-full h-full border-0 relative z-20" src=""></iframe>
+        </div>
+    </div>
+
+    <div id="sportsbook-overlay" class="fixed inset-0 z-[100] bg-asbet-dark flex flex-col hidden">
+        <div class="h-14 w-full bg-asbet-card border-b border-white/10 flex items-center justify-between px-4">
+            <span class="text-white font-bold italic">Sportsbook</span>
+            <button onclick="closeSportsbook()" class="text-gray-400 hover:text-asbet-primary text-2xl">&times;</button>
+        </div>
+        <div class="flex-1 w-full relative">
+            <iframe id="sportsbook-iframe" src="" frameborder="0" class="w-full h-full absolute inset-0"></iframe>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script>
+        const BACKEND_URL = "https://alpha-backend-server.onrender.com";
+        let playerSession = null;
+        let balanceInterval = null;
+
+        // تهيئة السلايدر
         document.addEventListener('DOMContentLoaded', function () {
-            const heroSwiper = new Swiper('.heroSwiper', {
+            new Swiper('.heroSwiper', {
                 loop: true,
                 autoplay: { delay: 3500, disableOnInteraction: false },
                 pagination: { el: '.swiper-pagination', clickable: true },
             });
+
+            // التحقق من الجلسة
+            const savedSession = localStorage.getItem('alpha_player_session');
+            if (savedSession) {
+                playerSession = JSON.parse(savedSession);
+                setupLoggedInUI();
+            }
         });
-        
-        // إبقاء جميع دوالك القديمة (الاتصال بالسيرفر) أسفل هذا التعليق لكي تعمل الألعاب
-        
+
+        // التنقل بين الأقسام
+        function switchSection(sectionId) {
+            document.querySelectorAll('.player-view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`pane-${sectionId}`).classList.remove('hidden');
+            
+            // تفعيل الزر السفلي
+            document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => btn.classList.remove('active'));
+            // (تحديث الأزرار حسب القسم المختار يمكن إضافته هنا)
+        }
+
+        // ================= النوافذ والمصادقة =================
+        function openLoginModal() { document.getElementById('player-login-modal').style.display = 'flex'; }
+        function closeLoginModal() { document.getElementById('player-login-modal').style.display = 'none'; }
+        function openRegisterModal() { document.getElementById('register-modal').style.display = 'flex'; closeLoginModal(); }
+        function closeRegisterModal() { document.getElementById('register-modal').style.display = 'none'; }
+
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl shadow-2xl border text-xs font-bold text-white flex items-center gap-2 ${type === 'success' ? 'bg-green-600 border-green-500' : 'bg-asbet-primary border-rose-500'}`;
+            toast.innerHTML = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function getAuthHeaders() {
+            return {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        async function handlePlayerAuth() {
+            const username = document.getElementById('p-auth-username').value.trim().toLowerCase();
+            const password = document.getElementById('p-auth-password').value;
+            if (!username || !password) return showNotification('الرجاء ملء جميع الحقول', 'error');
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/login`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    playerSession = data;
+                    localStorage.setItem('alpha_player_session', JSON.stringify(data));
+                    localStorage.setItem('token', data.access_token);
+                    setupLoggedInUI();
+                } else {
+                    showNotification(data.detail || 'Erreur de connexion', 'error');
+                }
+            } catch (e) { showNotification('Erreur Serveur', 'error'); }
+        }
+
+        async function registerPlayer() {
+            const username = document.getElementById('reg-username').value.trim().toLowerCase();
+            const password = document.getElementById('reg-password').value;
+            if (!username || !password) return showNotification('الرجاء ملء جميع الحقول', 'error');
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/register`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role: 'player', created_by: 'Self-Register' })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification('Compte créé avec succès!', 'success');
+                    closeRegisterModal();
+                    document.getElementById('p-auth-username').value = username;
+                    document.getElementById('p-auth-password').value = password;
+                    handlePlayerAuth();
+                } else { showNotification(data.detail || 'Erreur', 'error'); }
+            } catch (e) { showNotification('Erreur Serveur', 'error'); }
+        }
+
+        function setupLoggedInUI() {
+            closeLoginModal();
+            document.getElementById('auth-buttons-container').classList.add('hidden');
+            document.getElementById('top-user-profile').classList.remove('hidden');
+            document.getElementById('top-user-profile').classList.add('flex');
+            document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)} TND`;
+            
+            if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 5000);
+        }
+
+        function logoutPlayer() {
+            localStorage.removeItem('token'); localStorage.removeItem('alpha_player_session');
+            playerSession = null;
+            if(balanceInterval) clearInterval(balanceInterval);
+            document.getElementById('auth-buttons-container').classList.remove('hidden');
+            document.getElementById('top-user-profile').classList.add('hidden');
+            document.getElementById('top-user-profile').classList.remove('flex');
+            switchSection('accueil');
+        }
+
+        async function refreshPlayerBalance() {
+            if (!playerSession) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/users?timestamp=${new Date().getTime()}`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const users = await res.json();
+                    const me = users.find(u => u.username === playerSession.username);
+                    if (me) {
+                        playerSession.balance = me.balance;
+                        document.getElementById('player-balance-val').innerText = `${parseFloat(playerSession.balance).toFixed(2)} TND`;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // ================= الكازينو (محرك الألعاب المحدث للتصميم الجديد) =================
+        let casinoProviders = [];
+        let filteredProviderGames = [];
+        let currentlyDisplayedCount = 0;
+        let currentActiveProviderCode = '';
+
+        async function initCasinoLobby() {
+            const bar = document.getElementById('providers-bar');
+            if (!bar) return;
+            if (casinoProviders.length > 0) return; // تم التحميل مسبقاً
+
+            bar.innerHTML = '<div class="text-asbet-primary text-xs ml-2">Chargement des fournisseurs...</div>';
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/get-providers`);
+                const data = await response.json();
+                if (data && data.providers) {
+                    casinoProviders = data.providers;
+                    bar.innerHTML = casinoProviders.map(p => `
+                        <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}"
+                            class="prov-tab-btn flex items-center shrink-0 px-4 py-2 bg-asbet-card border border-white/5 rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all whitespace-nowrap">
+                            ${p.name}
+                        </button>
+                    `).join('');
+                    if (casinoProviders.length > 0) loadProviderGames(casinoProviders[0].code);
+                }
+            } catch (e) { bar.innerHTML = '<div class="text-rose-500 text-xs ml-2">Erreur de connexion</div>'; }
+        }
+
+        async function loadProviderGames(providerCode) {
+            document.querySelectorAll('.prov-tab-btn').forEach(btn => {
+                btn.className = "prov-tab-btn flex items-center shrink-0 px-4 py-2 bg-asbet-card border border-white/5 rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all whitespace-nowrap";
+            });
+            const activeBtn = document.getElementById(`btn-prov-${providerCode}`);
+            if (activeBtn) activeBtn.className = "prov-tab-btn flex items-center shrink-0 px-4 py-2 bg-asbet-primary border border-asbet-primary text-white rounded-full text-xs font-bold transition-all whitespace-nowrap shadow-[0_0_10px_rgba(232,0,111,0.5)]";
+
+            const container = document.getElementById('games-grid');
+            container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10">Chargement...</div>';
+            currentActiveProviderCode = providerCode;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: providerCode })
+                });
+                const data = await response.json();
+                if (data && data.games) {
+                    filteredProviderGames = data.games;
+                    currentlyDisplayedCount = 0;
+                    container.innerHTML = '';
+                    loadMoreGames();
+                } else { container.innerHTML = '<div class="col-span-full text-center text-gray-500">Aucun jeu trouvé.</div>'; }
+            } catch (e) { container.innerHTML = '<div class="col-span-full text-center text-rose-500">Erreur Serveur</div>'; }
+        }
+
+        function loadMoreGames() {
+            if (currentlyDisplayedCount >= filteredProviderGames.length) return;
+            const container = document.getElementById('games-grid');
+            const nextBatch = filteredProviderGames.slice(currentlyDisplayedCount, currentlyDisplayedCount + 20);
+            
+            // هنا التصميم الجديد للبطاقات يتدخل!
+            let htmlChunk = nextBatch.map(game => {
+                const gameName = game.name || game.game_name || game.title || "Game";
+                const gameImage = game.banner || game.image || 'https://placehold.co/300x400/180A2B/FFF?text=Casino';
+                const gameCode = game.game_code || game.id || '';
+
+                return `
+                <div onclick="playCasinoGame('${currentActiveProviderCode}', '${gameCode}')" class="bg-asbet-card rounded-xl overflow-hidden relative border border-white/5 group cursor-pointer shadow-lg">
+                    <img src="${gameImage}" alt="${gameName}" class="w-full h-28 object-cover group-hover:scale-110 transition-transform duration-300">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
+                        <span class="bg-asbet-primary text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                    </div>
+                    <div class="p-2 absolute bottom-0 w-full bg-gradient-to-t from-asbet-dark to-transparent pt-6">
+                        <span class="text-white text-[10px] font-bold truncate block text-center drop-shadow-md">${gameName}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.insertAdjacentHTML('beforeend', htmlChunk);
+            currentlyDisplayedCount += nextBatch.length;
+        }
+
+        async function playCasinoGame(providerCode, gameCode) {
+            if (!playerSession) return openLoginModal();
+            const container = document.getElementById('casino-iframe-container');
+            const iframe = document.getElementById('casino-iframe');
+            const loader = document.getElementById('casino-loader');
+
+            container.classList.remove('hidden'); container.classList.add('flex');
+            loader.style.display = 'flex'; iframe.style.opacity = '0';
+            
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/provider/launch-casino`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ game_code: gameCode, provider_code: providerCode })
+                });
+                const data = await res.json();
+                if (data.launch_url) {
+                    iframe.src = data.launch_url;
+                    iframe.onload = () => { loader.style.display = 'none'; iframe.style.opacity = '1'; };
+                } else { showNotification("Jeu indisponible", "error"); closeCasinoGame(); }
+            } catch (e) { showNotification("Erreur de connexion", "error"); closeCasinoGame(); }
+        }
+
+        function closeCasinoGame() {
+            document.getElementById('casino-iframe-container').classList.add('hidden');
+            document.getElementById('casino-iframe-container').classList.remove('flex');
+            document.getElementById('casino-iframe').src = "";
+            refreshPlayerBalance();
+        }
+
+        // ================= الرياضة =================
+        async function openSportsbook() {
+            if (!playerSession) return openLoginModal();
+            document.getElementById('sportsbook-overlay').classList.remove('hidden');
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/get-providers`); // استخدم رابطك الفعلي للرياضة هنا
+                const data = await response.json();
+                if (data.url) document.getElementById('sportsbook-iframe').src = data.url;
+            } catch (e) {}
+        }
+
+        function closeSportsbook() {
+            document.getElementById('sportsbook-overlay').classList.add('hidden');
+            document.getElementById('sportsbook-iframe').src = "about:blank";
+            switchSection('accueil');
+        }
     </script>
 </body>
 </html>
