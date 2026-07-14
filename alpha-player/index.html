@@ -209,9 +209,12 @@
         </aside>
 
         <main id="main-content-area" class="flex-1 w-full overflow-y-auto p-4 md:p-6 no-scrollbar relative">
+            <!-- إضاءة خلفية مشعة (Ambient Glow) -->
+<div class="absolute top-[-10%] left-1/2 transform -translate-x-1/2 w-[80%] h-[400px] bg-pink-600/15 blur-[120px] rounded-full pointer-events-none z-0"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[300px] bg-purple-600/15 blur-[100px] rounded-full pointer-events-none z-0"></div>
             
             <!-- شريط الرابحين (Live Ticker) -->
-            <div class="w-full bg-asbet-card border border-white/5 overflow-hidden py-2 mb-4 rounded-xl shadow-lg">
+<div class="w-full bg-asbet-card border border-white/10 shadow-[0_0_15px_rgba(255,215,0,0.1)] overflow-hidden py-2 mb-4 rounded-xl">
                 <div class="flex overflow-hidden relative w-full">
                     <div class="live-ticker-track flex gap-4 whitespace-nowrap px-4" id="winners-ticker-track" style="animation: scroll-ticker 30s linear infinite;"></div>
                 </div>
@@ -222,7 +225,8 @@
      <div class="flex flex-nowrap overflow-x-auto gap-2 py-4 px-2 w-full justify-start md:justify-between items-center no-scrollbar scroll-smooth mb-2">
     <!-- زر الكازينو -->
     <div onclick="switchSection('casino'); initCasinoLobby();" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">🎰</div>
+       <!-- مثال لزر الكازينو مع إضاءة النيون -->
+<div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/10 shadow-[0_0_10px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:border-white transition-all duration-300">🎰</div>
         <span class="text-[9px] font-bold text-white text-center leading-tight uppercase">Casino</span>
     </div>
     <!-- زر لايف كازينو -->
