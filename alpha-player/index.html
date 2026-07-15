@@ -48,12 +48,21 @@ html, body {
 }
 
 /* إخفاء شريط التمرير الجانبي (Scrollbar) بالكامل للمتصفحات */
-body::-webkit-scrollbar {
-    display: none; /* لمتصفحات كروم وسفاري */
+/* منع السباحة (الارتداد) نهائياً */
+html, body { 
+    overscroll-behavior: none !important; 
+    overflow-x: hidden !important; 
+    width: 100%;
+    position: relative;
 }
-body {
-    -ms-overflow-style: none;  /* لمتصفح إيدج */
-    scrollbar-width: none;  /* لمتصفح فايرفوكس */
+
+/* إخفاء شريط التمرير (العمود الجانبي) من كل عناصر الصفحة */
+* {
+    -ms-overflow-style: none;  /* للمتصفحات القديمة */
+    scrollbar-width: none;     /* لمتصفح فايرفوكس */
+}
+*::-webkit-scrollbar {
+    display: none;             /* لمتصفحات كروم، سفاري، وأندرويد */
 }
         /* أزرار Asbet السحرية */
         .btn-gradient { background: linear-gradient(90deg, #E8006F 0%, #91167B 100%); box-shadow: 0 4px 15px rgba(232, 0, 111, 0.4); }
