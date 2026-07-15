@@ -32,10 +32,28 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
         
-        body { font-family: 'Montserrat', sans-serif; background-color: #0B001A; color: #ffffff; -webkit-tap-highlight-color: transparent; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
+      
+  /* ضبط حجم الصفحة ومنع التسرب الجانبي نهائياً */
+html, body { 
+    font-family: 'Montserrat', sans-serif; 
+    background-color: #0B001A; 
+    color: #ffffff; 
+    -webkit-tap-highlight-color: transparent; 
+    width: 100%; 
+    max-width: 100vw;
+    overflow-x: hidden !important; 
+    overscroll-behavior-x: none; /* تمنع تأثير السحب في الهواتف */
+    position: relative;
+}
+
+/* إخفاء شريط التمرير الجانبي (Scrollbar) بالكامل للمتصفحات */
+body::-webkit-scrollbar {
+    display: none; /* لمتصفحات كروم وسفاري */
+}
+body {
+    -ms-overflow-style: none;  /* لمتصفح إيدج */
+    scrollbar-width: none;  /* لمتصفح فايرفوكس */
+}
         /* أزرار Asbet السحرية */
         .btn-gradient { background: linear-gradient(90deg, #E8006F 0%, #91167B 100%); box-shadow: 0 4px 15px rgba(232, 0, 111, 0.4); }
         .btn-outline { background: transparent; border: 2px solid #E8006F; color: #E8006F; }
@@ -46,8 +64,8 @@
         .crash-graph-grid { background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 20px 20px; }
         .wheel { width: 250px; height: 250px; border-radius: 50%; border: 10px solid #fbbf24; background: conic-gradient(#ef4444 0deg 45deg, #f59e0b 45deg 90deg, #ef4444 90deg 135deg, #f59e0b 135deg 180deg, #ef4444 180deg 225deg, #f59e0b 225deg 270deg, #ef4444 270deg 315deg, #f59e0b 315deg 360deg); transition: transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
         @keyframes scroll-ticker {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
         /* القائمة السفلية */
         .bottom-nav { background: rgba(24, 10, 43, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.05); }
@@ -57,6 +75,8 @@
 </head>
 <body class="pb-24 flex flex-col relative min-h-screen">
 
+    <!-- هذا السطر هو الصندوق المغلق الذي يمنع السباحة -->
+    <div class="w-full max-w-[100vw] overflow-x-hidden relative flex flex-col min-h-screen overscroll-none">
     <!-- حاوية الإشعارات -->
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 w-full max-w-sm px-4"></div>
 
@@ -212,6 +232,7 @@
         </aside>
 
         <main id="main-content-area" class="flex-1 w-full overflow-y-auto p-4 md:p-6 no-scrollbar relative">
+           <div id="home-section" class="app-section block w-full"></div> 
             <!-- إضاءة خلفية مشعة (Ambient Glow) -->
 <div class="absolute top-[-10%] left-1/2 transform -translate-x-1/2 w-[80%] h-[400px] bg-pink-600/15 blur-[120px] rounded-full pointer-events-none z-0"></div>
 <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[300px] bg-purple-600/15 blur-[100px] rounded-full pointer-events-none z-0"></div>
@@ -225,42 +246,87 @@
     </div>
 </div>
 
-            <!-- ==================== 1. قسم الرئيسية (Accueil) ==================== -->
-           <!-- شريط الألعاب الاحترافي -->
-     <div class="flex flex-nowrap overflow-x-auto gap-2 py-4 px-2 w-full justify-start md:justify-between items-center no-scrollbar scroll-smooth mb-2">
-    <!-- زر الكازينو -->
-    <div onclick="switchSection('casino'); initCasinoLobby();" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-       <!-- مثال لزر الكازينو مع إضاءة النيون -->
-<div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/10 shadow-[0_0_10px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:border-white transition-all duration-300">🎰</div>
-        <span class="text-[9px] font-bold text-white text-center leading-tight uppercase">Casino</span>
+<!-- ================== شبكة الأقسام السريعة (Grid Menu) ================== -->
+<div class="grid grid-cols-4 gap-2 md:gap-3 mb-6 w-full">
+    
+    <!-- الزر 1: عجلة الحظ -->
+    <div onclick="switchSection('wheel')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🎡</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Roue de<br>Fortune</span>
     </div>
-    <!-- زر لايف كازينو -->
-    <div onclick="switchSection('casino')" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">🎡</div>
-        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Live Casino</span>
+
+    <!-- الزر 2: كأس العالم / بطولات -->
+    <div onclick="switchSection('tournaments')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🏆</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Tournois</span>
     </div>
-    <!-- زر الرياضة -->
-    <div onclick="openSportsbook()" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">⚽</div>
-        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Sport</span>
+
+    <!-- الزر 3: العروض الترويجية -->
+    <div onclick="switchSection('promotions')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">💎</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Promotions</span>
     </div>
-    <!-- زر لايف سبورت -->
-    <div onclick="openSportsbook()" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">⚡</div>
-        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Live Sport</span>
+
+    <!-- الزر 4: لوتو -->
+    <div onclick="switchSection('lotto')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🎱</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Lotto</span>
     </div>
-    <!-- زر كراش -->
-    <div onclick="switchSection('crash')" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">🚀</div>
-        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Crash</span>
+
+    <!-- الزر 5: مباريات مباشرة -->
+    <div onclick="openSportsbook('live')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⏱️</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Live<br>Matches</span>
     </div>
-    <!-- زر أفييتور -->
-    <div onclick="switchSection('crash')" class="flex flex-col items-center gap-2 cursor-pointer shrink-0">
-        <div class="w-[70px] h-[70px] bg-asbet-card rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-lg hover:border-asbet-primary transition-all">✈️</div>
-        <span class="text-[9px] font-bold text-gray-400 text-center leading-tight uppercase">Aviator</span>
+
+    <!-- الزر 6: رياضة -->
+    <div onclick="openSportsbook('prematch')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⚽</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Sports</span>
+    </div>
+
+    <!-- الزر 7: كازينو مباشر -->
+    <div onclick="switchSection('live-casino')" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🃏</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Live<br>Casino</span>
+    </div>
+
+    <!-- الزر 8: كازينو -->
+    <div onclick="switchSection('casino'); initCasinoLobby();" class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🎰</div>
+        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Casino</span>
+    </div>
+
+</div>
+<div class="w-full mb-6 relative rounded-2xl overflow-hidden shadow-lg border border-white/5">
+    <div class="swiper myBannersSwiper rounded-2xl">
+        <div class="swiper-wrapper">
+            
+            <div class="swiper-slide cursor-pointer">
+                <div class="w-full h-[180px] md:h-[220px] bg-gradient-to-r from-[#2A0845] to-[#E8006F] rounded-2xl flex flex-col justify-center items-start p-5 md:p-8 relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/20 blur-3xl rounded-full"></div>
+                    
+                    <span class="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded mb-2 uppercase tracking-widest backdrop-blur-sm border border-white/10">🎁 Bonus de bienvenue</span>
+                    <h2 class="text-xl md:text-3xl font-black text-white leading-tight mb-3 drop-shadow-md">100% SUR VOTRE<br>PREMIER DÉPÔT</h2>
+                    <button class="bg-white text-[#E8006F] text-xs font-extrabold px-5 py-2 rounded-full shadow-[0_0_15px_rgba(255,255,255,0.4)] hover:scale-105 transition-transform uppercase">Jouer Maintenant</button>
+                </div>
+            </div>
+
+            <div class="swiper-slide cursor-pointer">
+                <div class="w-full h-[180px] md:h-[220px] bg-gradient-to-r from-[#0f2027] via-[#203a43] to-[#2c5364] rounded-2xl flex flex-col justify-center items-start p-5 md:p-8 relative overflow-hidden">
+                    <div class="absolute top-0 -right-5 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full"></div>
+                    
+                    <span class="bg-black/30 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded mb-2 uppercase tracking-widest backdrop-blur-sm border border-emerald-500/20">🏆 Tournoi Exclusif</span>
+                    <h2 class="text-xl md:text-3xl font-black text-white leading-tight mb-3 drop-shadow-md">GAGNEZ JUSQU'À<br><span class="text-emerald-400">60.000 TND</span></h2>
+                    <button class="bg-emerald-500 text-white text-xs font-extrabold px-5 py-2 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-105 transition-transform uppercase">Participer</button>
+                </div>
+            </div>
+
+        </div>
+        <div class="swiper-pagination"></div>
     </div>
 </div>
-            <div id="pane-accueil" class="player-view-section w-full max-w-full space-y-6">
+            <div id="pane-accueil" class="player-view-section block w-full">
                 
                 <!-- سلايدر العروض (متوافق مع دوال JS القديمة) -->
                 <div class="relative w-full h-[200px] md:h-[300px] rounded-3xl overflow-hidden mb-4 border border-white/5 shadow-2xl group">
@@ -324,7 +390,56 @@
                     </div>
                     <div id="trending-games-container" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
                 </div>
+            </div> 
+            <div class="w-full mt-8 mb-24 p-5 bg-[#130822] rounded-t-3xl border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+
+    <div class="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-xl">🏆</div>
+            <div>
+                <h3 class="text-amber-500 font-black text-[10px] uppercase tracking-wider">Gain Maximum</h3>
+                <p class="text-white font-bold text-lg leading-none mt-1">30 000 TND</p>
             </div>
+        </div>
+        <div class="text-amber-500/50 text-2xl">✨</div>
+    </div>
+
+    <div class="mb-8">
+        <h4 class="text-gray-400 text-[10px] font-bold uppercase mb-3 text-center tracking-widest">Méthodes de Paiement</h4>
+        <div class="flex flex-wrap justify-center gap-2">
+            <div class="w-14 h-8 bg-white rounded-md flex items-center justify-center p-1"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1200px-Mastercard-logo.svg.png" class="max-h-full object-contain" alt="Mastercard"></div>
+            <div class="w-14 h-8 bg-white rounded-md flex items-center justify-center p-1"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" class="max-h-full object-contain" alt="Visa"></div>
+            <div class="w-14 h-8 bg-[#000000] border border-white/20 rounded-md flex items-center justify-center text-[10px] font-bold text-white tracking-widest">D17</div>
+            <div class="w-14 h-8 bg-[#E3000F] rounded-md flex items-center justify-center text-[10px] font-bold text-white">Ooredoo</div>
+            <div class="w-14 h-8 bg-[#FF6600] rounded-md flex items-center justify-center text-[10px] font-bold text-white">Orange</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-8 text-center border-t border-b border-white/5 py-5">
+        <a href="#" class="text-gray-400 text-[11px] font-medium hover:text-[#E8006F] transition-colors">Termes et Conditions</a>
+        <a href="#" class="text-gray-400 text-[11px] font-medium hover:text-[#E8006F] transition-colors">Jeu Responsable</a>
+        <a href="#" class="text-gray-400 text-[11px] font-medium hover:text-[#E8006F] transition-colors">Politique de Confidentialité</a>
+        <a href="#" class="text-gray-400 text-[11px] font-medium hover:text-[#E8006F] transition-colors">Règles des Paris</a>
+    </div>
+
+    <div class="mb-6 flex flex-col items-center">
+        <h4 class="text-gray-400 text-[10px] font-bold uppercase mb-3 tracking-widest">Nous Contacter</h4>
+        <div class="flex gap-4">
+            <a href="#" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg text-white hover:bg-[#E8006F] hover:scale-110 transition-all shadow-lg">💬</a>
+            <a href="#" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg text-white hover:bg-[#E8006F] hover:scale-110 transition-all shadow-lg">📧</a>
+            <a href="#" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg text-[#0088cc] hover:bg-[#0088cc] hover:text-white hover:scale-110 transition-all shadow-lg">✈️</a>
+        </div>
+    </div>
+
+    <div class="text-center text-gray-500 text-[9px] mt-4 opacity-60">
+        <p class="mb-1">© 2026 Alphabet216. Tous droits réservés.</p>
+        <p class="flex items-center justify-center gap-1">
+            <span class="w-4 h-4 rounded-full border border-gray-500 flex items-center justify-center font-bold text-[8px]">18+</span>
+            Les jeux d'argent sont interdits aux mineurs.
+        </p>
+    </div>
+
+</div>
 
             <!-- ==================== 2. قسم الرياضة (Sport) ==================== -->
             <div id="pane-sport" class="player-view-section space-y-4 hidden">
@@ -381,7 +496,7 @@
             </div>
 
             <!-- ==================== 5. قسم الكازينو (Le Casino) ==================== -->
-            <div id="pane-casino" class="player-view-section w-full max-w-full flex flex-col space-y-4 hidden">
+            <div id="pane-casino" class="player-view-section hidden w-full">
                 <div id="casino-controls" class="flex flex-col md:flex-row gap-4 justify-between items-center bg-asbet-card p-4 rounded-xl border border-white/5 shadow-md w-full">
                     <div class="relative w-full md:w-1/2">
                         <input type="text" id="game-search-input" onkeyup="filterGames()" placeholder="Chercher un jeu..." class="w-full bg-asbet-dark text-white border border-white/10 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-asbet-primary transition-colors text-sm font-bold">
@@ -415,9 +530,14 @@
                     <p class="text-xs text-gray-500 font-bold uppercase">Aucun historique disponible.</p>
                 </div>
             </div>
-            </main>
+            </div> <!-- نهاية صندوق home-section (الصفحة الرئيسية) -->
 
+    <!-- ================== قسم الكازينو (مخفي افتراضياً) ================== -->
+    <div id="casino-section" class="app-section hidden w-full">
+        <h2 class="text-white text-2xl font-bold text-center mt-10">مرحباً بك في الكازينو 🎰</h2>
+        <!-- سننقل ألعاب الكازينو الحقيقية إلى هنا لاحقاً -->
     </div>
+   </div>
     </main>
     </div> <!-- نهاية تقسيم الشاشة (Sidebar + Main) -->
 
@@ -1530,6 +1650,27 @@
         function resetSlideInterval() { clearInterval(slideInterval); slideInterval = setInterval(nextSlide, 5000); }
         resetSlideInterval();
 
-    </script>
+    
+
+
+</script>
+            <script>
+    // تشغيل اللافتات الإعلانية
+    document.addEventListener('DOMContentLoaded', function () {
+        const swiper = new Swiper('.myBannersSwiper', {
+            loop: true, // تكرار لا نهائي
+            autoplay: {
+                delay: 3500, // تتحرك كل 3.5 ثانية
+                disableOnInteraction: false,
+            },
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+            spaceBetween: 10, // مسافة خفيفة بين اللافتات
+        });
+    });
+            </script>
+   </div>         
 </body>
 </html>
