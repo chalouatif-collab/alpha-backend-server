@@ -78,7 +78,7 @@ html, body {
         .center-menu-btn { background: #180A2B; border: 2px solid #E8006F; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; transform: translateY(-15px); box-shadow: 0 5px 15px rgba(232, 0, 111, 0.3); }
     </style>
 </head>
-<body class=" flex flex-col relative min-h-screen">
+<body class="h-screen flex flex-col overflow-hidden bg-[#0B001A]">
 
     <!-- حاوية الإشعارات -->
     <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 w-full max-w-sm px-4"></div>
@@ -234,7 +234,8 @@ html, body {
             </div>
         </aside>
 
-        <main id="main-content-area" class="flex-1 w-full overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-20 no-scrollbar relative">
+        <main id="main-content-area" class="flex-1 w-full overflow-y-auto overflow-x-hidden relative">
+    </main>
            <div id="pane-accueil" class="player-view-section block w-full"> 
             <!-- إضاءة خلفية مشعة (Ambient Glow) -->
 <div class="absolute top-[-10%] left-1/2 transform -translate-x-1/2 w-[80%] h-[400px] bg-pink-600/15 blur-[120px] rounded-full pointer-events-none z-0"></div>
@@ -451,12 +452,12 @@ html, body {
                     <button onclick="changeMarket('double_chance')" class="market-tab whitespace-nowrap px-4 py-2 bg-asbet-dark rounded-lg text-xs font-bold text-white hover:bg-asbet-secondary transition border border-white/5">Double Chance</button>
                     <button onclick="changeMarket('totals')" class="market-tab whitespace-nowrap px-4 py-2 bg-asbet-dark rounded-lg text-xs font-bold text-white hover:bg-asbet-secondary transition border border-white/5">Total Buts</button>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-start pb-10" id="matches-list-container"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-start " id="matches-list-container"></div>
             </div>
 
             <!-- ==================== 3. قسم تاريخ الرهانات (Mes Paris) ==================== -->
             <div id="pane-paris" class="player-view-section space-y-4 hidden">
-                <div class="flex border-b border-white/10 gap-1 overflow-x-auto no-scrollbar pb-2">
+                <div class="flex border-b border-white/10 gap-1 overflow-x-auto no-scrollbar ">
                     <button onclick="switchBetsSubTab('encours')" id="sub-tab-encours" class="text-xs font-bold px-4 py-2 border-b-2 border-asbet-primary text-white transition-all cursor-pointer active-sub-tab">⏳ En cours</button>
                     <button onclick="switchBetsSubTab('gagne')" id="sub-tab-gagne" class="text-xs font-bold px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-white transition-all cursor-pointer">✅ Gagné</button>
                     <button onclick="switchBetsSubTab('perdu')" id="sub-tab-perdu" class="text-xs font-bold px-4 py-2 border-b-2 border-transparent text-gray-400 hover:text-white transition-all cursor-pointer">❌ Perdu</button>
@@ -468,7 +469,7 @@ html, body {
             <!-- ==================== 4. قسم الكراش (Crash - Aviator) ==================== -->
             <div id="pane-crash" class="player-view-section space-y-6 hidden">
                 <div class="max-w-2xl mx-auto bg-asbet-card border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6">
-                    <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                    <div class="flex justify-between items-center border-b border-white/10 ">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🚀</span>
                             <h2 class="text-sm font-black text-asbet-primary tracking-wider uppercase">Alphabet Aviator</h2>
@@ -512,7 +513,7 @@ html, body {
                         </select>
                     </div>
                 </div>
-                <div id="providers-bar" class="flex overflow-x-auto gap-2 pb-2 no-scrollbar"></div>
+                <div id="providers-bar" class="flex overflow-x-auto gap-2  no-scrollbar"></div>
                 <div id="games-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 w-full p-2"></div>
             </div>
 
@@ -1083,7 +1084,7 @@ html, body {
 
                 return `
                     <div class="bg-asbet-card border border-white/5 p-4 rounded-2xl space-y-3 shadow-md font-bold">
-                        <div class="flex justify-between items-center text-[10px] text-gray-400 border-b border-white/10 pb-2">
+                        <div class="flex justify-between items-center text-[10px] text-gray-400 border-b border-white/10 ">
                             <span>Ref: #${b.id} (${b.gamesCount} M)</span>
                             <span class="px-2 py-0.5 rounded border text-[9px] font-bold ${statusBadgeStyle}">${b.status.toUpperCase()}</span>
                         </div>
