@@ -35,24 +35,19 @@
         
       
   /* ضبط حجم الصفحة ومنع التسرب الجانبي نهائياً */
-html, body { 
-    font-family: 'Montserrat', sans-serif; 
-    background-color: #0B001A; 
-    color: #ffffff; 
-    -webkit-tap-highlight-color: transparent; 
-    width: 100%; 
+html, body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #0B001A;
+    color: #ffffff;
+    -webkit-tap-highlight-color: transparent;
+    width: 100%;
     max-width: 100vw;
     overflow-x: hidden !important; 
-    overscroll-behavior-x: none; /* تمنع تأثير السحب في الهواتف */
-    position: relative;
-}
-
-/* إخفاء شريط التمرير الجانبي (Scrollbar) بالكامل للمتصفحات */
-/* منع السباحة (الارتداد) نهائياً */
-html, body { 
-    overscroll-behavior: none !important; 
-    overflow-x: hidden !important; 
-    width: 100%;
+    
+    /* هذا هو السر: نمنع السباحة أفقياً، ونسمح بها عمودياً */
+    overscroll-behavior-x: none; 
+    overscroll-behavior-y: auto; 
+    
     position: relative;
 }
 
