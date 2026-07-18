@@ -203,9 +203,118 @@
                 </div>
             </div>
         </div>
+        <!-- زر تصحيح التذاكر (Resettlement) -->
+<a href="javascript:void(0)" onclick="showResettlementPanel()" class="flex items-center gap-3 w-full p-3 mb-3 border border-gray-500/50 rounded-lg hover:bg-white/5 transition-colors">
+    <i class="fas fa-tools text-asbet-primary text-lg"></i>
+    <span class="text-white font-bold">Correction des Tickets</span>
+</a>
+    <!-- ================= Panneau d'Administration : Correction des Tickets ================= -->
+<div id="admin-resettlement-panel" class="hidden bg-asbet-dark border border-asbet-secondary/50 rounded-2xl p-6 max-w-3xl mx-auto my-8 shadow-[0_0_20px_rgba(232,0,111,0.1)]">
+
+    <h2 class="text-2xl font-black text-white mb-2 flex items-center gap-2">
+        <i class="fas fa-tools text-asbet-primary"></i> Correction des Tickets (Resettlement)
+    </h2>
+    <p class="text-gray-400 text-sm mb-6">Recherchez un ticket par son ID pour corriger manuellement les résultats des matchs.</p>
+
+    <!-- Section de Recherche -->
+    <div class="flex gap-3 mb-8">
+        <input type="text" id="ticket-search-input" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)" class="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-asbet-primary transition-colors">
+        <button onclick="searchTicket()" class="bg-asbet-primary hover:bg-asbet-accent text-white font-bold px-6 py-3 rounded-xl transition-colors flex items-center gap-2">
+            <i class="fas fa-search"></i> Rechercher
+        </button>
+    </div>
+
+    <!-- Section des Résultats (Masquée par défaut) -->
+    <div id="ticket-details-section" class="hidden">
+        
+        <!-- Informations Générales du Ticket -->
+        <div class="bg-black/30 rounded-xl p-4 border border-white/5 mb-6 flex justify-between items-center flex-wrap gap-4">
+            <div>
+                <span class="text-gray-500 text-xs uppercase tracking-wider block">ID du Ticket</span>
+                <span class="text-white font-bold">#TCK-98765</span>
+            </div>
+            <div>
+                <span class="text-gray-500 text-xs uppercase tracking-wider block">Joueur</span>
+                <span class="text-white font-bold">Karim***</span>
+            </div>
+            <div>
+                <span class="text-gray-500 text-xs uppercase tracking-wider block">Mise</span>
+                <span class="text-white font-bold">50.00 TND</span>
+            </div>
+            <div>
+                <span class="text-gray-500 text-xs uppercase tracking-wider block">Gain Potentiel</span>
+                <span class="text-green-400 font-bold">450.00 TND</span>
+            </div>
+        </div>
+
+        <!-- Liste des matchs du ticket -->
+        <h3 class="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Détails des Matchs</h3>
+        
+        <div class="space-y-3 mb-6">
+            <!-- Match 1 -->
+            <div class="bg-asbet-card border border-white/5 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex-1">
+                    <span class="text-asbet-secondary text-xs font-bold block mb-1">Football - Ligue des Champions</span>
+                    <p class="text-white font-medium">Real Madrid vs Manchester City</p>
+                    <p class="text-gray-400 text-sm">Pari: <span class="text-white">Real Madrid Gagne (1)</span> | Cote: <span class="text-asbet-accent font-bold">2.10</span></p>
+                </div>
+                <div class="w-full md:w-auto">
+                    <select class="w-full bg-black border border-white/20 text-white rounded-lg px-4 py-2 focus:border-asbet-primary outline-none cursor-pointer">
+                        <option value="pending">En Attente ⏳</option>
+                        <option value="won" selected>Gagné ✅</option>
+                        <option value="lost">Perdu ❌</option>
+                        <option value="void">Annulé 🔄</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Match 2 (Erreur) -->
+            <div class="bg-asbet-card border border-red-500/50 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-[0_0_15px_rgba(255,0,0,0.1)]">
+                <div class="flex-1">
+                    <span class="text-asbet-secondary text-xs font-bold block mb-1">Football - Premier League</span>
+                    <p class="text-white font-medium">Arsenal vs Chelsea</p>
+                    <p class="text-gray-400 text-sm">Pari: <span class="text-white">Plus de 2.5 Buts</span> | Cote: <span class="text-asbet-accent font-bold">1.85</span></p>
+                </div>
+                <div class="w-full md:w-auto">
+                    <select class="w-full bg-black border border-red-500 text-white rounded-lg px-4 py-2 focus:border-asbet-primary outline-none cursor-pointer">
+                        <option value="pending">En Attente ⏳</option>
+                        <option value="won">Gagné ✅</option>
+                        <option value="lost" selected>Perdu ❌</option>
+                        <option value="void">Annulé 🔄</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bouton d'action final -->
+        <button onclick="resettleTicket()" class="w-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-black text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all">
+            <i class="fas fa-check-circle mr-2"></i> Recalculer et Soumettre
+        </button>
+    </div>
+</div>
+<!-- ======================================================================================= -->
     </div>
 
     <script>
+// ================= وظائف تصحيح التذاكر (Resettlement) =================
+function showResettlementPanel() {
+    // إظهار لوحة التصحيح
+    document.getElementById('admin-resettlement-panel').classList.remove('hidden');
+    // إذا أردت إخفاء باقي الأقسام عند فتح هذه اللوحة، يمكنك كتابة أكواد الإخفاء هنا
+}
+
+function searchTicket() {
+    // إظهار تفاصيل التذكرة بعد النقر على زر البحث
+    document.getElementById('ticket-details-section').classList.remove('hidden');
+}
+
+function resettleTicket() {
+    // رسالة نجاح مؤقتة (سنقوم لاحقاً بربطها بالسيرفر الفعلي)
+    alert("✅ Succès ! Le ticket a été recalculé et les gains ont été ajoutés au solde du joueur.");
+}
+// ======================================================================
+
+        
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
 
         let allUsers = []; 
