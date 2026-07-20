@@ -124,8 +124,7 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     old_status = ticket.get("status")
     player_username = ticket.get("username")
     win_amount = float(ticket.get("gain", 0))
-    
-    # 2. البحث عن اللاعب لتحديث رصيده
+# 2. البحث عن اللاعب لتحديث رصيده
     target_user = next((u for u in db if u["username"] == player_username), None)
     if not target_user:
         raise HTTPException(status_code=404, detail="اللاعب غير موجود")
@@ -143,9 +142,119 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     save_tickets_db(tickets_db)
     save_db(db)
     
-    return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}
+    return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}    
+    from pydantic import BaseModel
+from datetime import datetime
+
+# 1. تحديد شكل البيانات التي ستصل من اللاعب
+class DepositRequest(BaseModel):
+    player: str
+    method: str
+    amount: float
+    code: str
+
+# 2. إنشاء المسار الذي يستقبل الطلب
+@app.post("/api/deposit")
+async def create_deposit(req: DepositRequest):
+    try:
+        # تحميل قاعدة البيانات الحالية
+        db = load_tickets_db()
+        
+        # إنشاء تذكرة إيداع جديدة
+        new_ticket = {
+            "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
+            "type": "deposit",
+            "username": req.player,
+            "method": req.method,
+            "amount": req.amount,
+            "code": req.code, # رقم بطاقة Ooredoo أو غيرها
+            "status": "pending", # الحالة: قيد الانتظار
+            "date": datetime.now().isoformat()
+        }
+        
+        # حفظ التذكرة في قاعدة البيانات
+        db.append(new_ticket)
+        
+        # كتابة البيانات الجديدة في الملف (تأكد من وجود دالة الحفظ لديك، أو استخدم هذه الطريقة)
+        import json
+        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f, indent=4, ensure_ascii=False)
+            
+        return {"status": "success", "message": "تم إرسال طلب الإيداع بنجاح"}
+    except Exception as e:
+        print(f"Error in create_deposit: {e}")
+        return {"status": "error", "message": "حدث خطأ أثناء معالجة الطلب"}
+    from fastapi import HTTPException, Depends
+from pydantic import BaseModel
+
+# ==========================================
+# 1. مسار جلب الطلبات المعلقة للوحة المالك
+# ==========================================
+@app.get("/api/admin/get-pending-deposits")
+async def get_pending_deposits(current_user: str = Depends(get_current_user)):
+    try:
+        # تحميل كل التذاكر من قاعدة البيانات
+        db = load_tickets_db()
+        
+        # تصفية التذاكر لجلب طلبات الشحن المعلقة فقط
+        # نبحث عن التذاكر التي نوعها deposit وحالتها pending
+        pending_deposits = [
+            t for t in db 
+            if t.get("type") == "deposit" and t.get("status") == "pending"
+        ]
+        
+        return pending_deposits
+    except Exception as e:
+        print(f"Error fetching pending deposits: {e}")
+        raise HTTPException(status_code=500, detail="خطأ في السيرفر أثناء جلب الطلبات")
 
 
+# ==========================================
+# 2. مسار الموافقة على الشحن وصب الرصيد
+# ==========================================
+# تحديد شكل البيانات التي ستصل من زر "موافقة"
+class ApproveDepositRequest(BaseModel):
+    ticket_id: str
+    amount: float
+
+@app.post("/api/admin/approve-deposit")
+async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depends(get_current_user)):
+    try:
+        db = load_tickets_db()
+        
+        # البحث عن التذكرة المطلوبة
+        ticket = next((t for t in db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
+        
+        if not ticket:
+            raise HTTPException(status_code=404, detail="التذكرة غير موجودة")
+            
+        if ticket.get("status") != "pending":
+            raise HTTPException(status_code=400, detail="هذه التذكرة تمت معالجتها مسبقاً")
+
+        username = ticket.get("username")
+        real_amount = req.amount
+
+        # 1. تحديث حالة التذكرة إلى "مقبولة" وتسجيل المبلغ الحقيقي
+        ticket["status"] = "approuvé"
+        ticket["amount"] = real_amount
+        
+        # حفظ التعديل في ملف التذاكر
+        import json
+        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f, indent=4, ensure_ascii=False)
+            
+        # =====================================================================
+        # ⚠️ تنبيه هام: هنا يتم صب الرصيد في حساب اللاعب!
+        # يجب عليك استخدام الدالة الخاصة بك التي تضيف الرصيد لقاعدة بيانات اللاعبين
+        # مثال (قم بتغييرها لتطابق نظامك إذا كان مختلفاً):
+        # update_player_balance(username, real_amount)
+        # =====================================================================
+        
+        return {"status": "success", "message": f"تمت الموافقة وإضافة {real_amount} بنجاح"}
+        
+    except Exception as e:
+        print(f"Error approving deposit: {e}")
+        raise HTTPException(status_code=500, detail="حدث خطأ داخلي أثناء الموافقة")
 
 @app.get("/api/admin/get-all-tickets")
 async def get_all_tickets(current_user: str = Depends(get_current_user)):

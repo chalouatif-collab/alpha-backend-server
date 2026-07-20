@@ -516,7 +516,56 @@ function getAuthHeaders() {
             title.innerText = "Historique: " + safeType.toUpperCase();
             body.innerHTML = '<div class="text-center p-4 text-info fw-bold">Chargement en cours... (جاري التحميل)</div>';
             myModal.show();
-
+            // === إضافة قسم الطلبات المعلقة (الشحن) ===
+    if (safeType === 'pending') {
+        title.innerText = "Demandes de Dépôt en Attente";
+        body.innerHTML = '<div class="text-center p-4 text-info fw-bold">Chargement en cours... (جاري التحميل)</div>';
+        
+        try {
+            // جلب الطلبات المعلقة من السيرفر
+            const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-deposits`, { headers: getAuthHeaders() });
+            if (res.ok) {
+                const tickets = await res.json();
+                if (tickets && tickets.length > 0) {
+                    let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
+                    tickets.forEach(t => {
+                        html += `
+                        <div class="card bg-transparent border-warning shadow-sm" style="background-color: #1a1a1a !important;">
+                            <div class="card-body p-2 d-flex flex-column gap-2">
+                                <div class="text-white d-flex justify-content-between align-items-center">
+                                    <strong class="fs-6">👤 ${t.username}</strong>
+                                    <span class="badge bg-warning text-dark">En attente</span>
+                                </div>
+                                <div class="text-info small">Méthode: <strong class="text-white">${t.method}</strong></div>
+                                
+                                <!-- كود الشحن (بارز وواضح) -->
+                                <div class="text-light fs-5 user-select-all bg-dark p-2 rounded text-center border border-secondary" style="letter-spacing: 2px;">
+                                    💳 <span class="text-success fw-bold">${t.code}</span>
+                                </div>
+                                
+                                <!-- إدخال المبلغ والموافقة -->
+                                <div class="d-flex gap-2 mt-2">
+                                    <input type="number" id="amt-${t.ticket_id}" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Montant réel (TND)">
+                                    <button class="btn btn-sm btn-success fw-bold w-50 shadow-sm" onclick="approveDeposit('${t.ticket_id}', '${t.username}')">✅ Accepter</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                    body.innerHTML = html;
+                } else {
+                    body.innerHTML = '<div class="text-center p-4 text-white fw-bold">Aucune demande en attente. (لا توجد طلبات شحن معلقة)</div>';
+                }
+            } else {
+                body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur serveur.</div>';
+            }
+        } catch (error) {
+            body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur de connexion.</div>';
+        }
+        return; // مهم جداً: إيقاف الدالة هنا لكي لا ينزل ويشغل كود الرياضة بالأسفل!
+    }
+    // ===========================================
+          
             if (safeType === 'sport') {
                 if(!target_username || target_username === "sélectionnez...") {
                     body.innerHTML = `<div class="text-center p-4 text-warning fw-bold">Sélectionnez un joueur dans la console d'abord ! (اختر لاعباً أولاً)</div>`;
@@ -1000,6 +1049,41 @@ function getAuthHeaders() {
             document.getElementById('audio-enable-btn').style.display = 'none';
             showNotification('تم تفعيل التنبيهات الصوتية!', 'success');
         }
+// دالة الموافقة على الشحن وصب الرصيد
+async function approveDeposit(ticketId, username) {
+    const amountInput = document.getElementById(`amt-${ticketId}`).value;
+    
+    // التأكد من أن المالك أدخل مبلغاً صحيحاً
+    if (!amountInput || amountInput <= 0) {
+        alert("⚠️ Veuillez entrer un montant valide ! (الرجاء إدخال مبلغ صحيح)");
+        return;
+    }
+
+    // رسالة تأكيد أخيرة لتفادي الأخطاء
+    if (confirm(`Êtes-vous sûr de vouloir créditer ${amountInput} TND à ${username} ?`)) {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/admin/approve-deposit`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ 
+                    ticket_id: ticketId, 
+                    amount: parseFloat(amountInput) 
+                })
+            });
+
+            if (res.ok) {
+                alert("✅ Dépôt approuvé avec succès ! Le solde a été mis à jour.");
+                // تحديث القائمة تلقائياً لإخفاء الطلب الذي تمت الموافقة عليه
+                fetchAndOpenHistory('pending'); 
+            } else {
+                alert("❌ Erreur lors de l'approbation.");
+            }
+        } catch (error) {
+            alert("❌ Erreur de connexion avec le serveur.");
+        }
+    }
+}
+
     </script>
 </body>
 </html>
