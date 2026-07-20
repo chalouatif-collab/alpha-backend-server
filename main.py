@@ -146,23 +146,16 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}
 
 
-# تأكد أن هذا هو المسار الوحيد بهذا الاسم في كامل ملف main.py
-@app.get("/api/admin/get-all-tickets")
-async def get_all_tickets(current_user: str = Depends(get_current_user)):
-    # 1. تحميل قاعدة بيانات التذاكر فقط
-    tickets_db = load_tickets_db() 
-    
-    # 2. التأكد من أننا نرجع التذاكر وليس المستخدمين (db)
-    # ملاحظة: إذا كنت تريد الترتيب، استخدم هذا السطر:
 
 @app.get("/api/admin/get-all-tickets")
 async def get_all_tickets(current_user: str = Depends(get_current_user)):
-    # تأكد من أننا نحمل ملف التذاكر هنا
-    tickets_db = load_tickets_db() 
-    # أضف هذا السطر للتأكد (سيظهر لك في الـ Terminal الخاص بالسيرفر)
-    print("قائمة التذاكر التي تم تحميلها:", tickets_db) 
+    tickets_db = load_tickets_db()
     
-
+    # التأكد من إرجاع قائمة فارغة إذا كانت النتيجة None
+    if tickets_db is None:
+        return []
+        
+    # إذا كانت القائمة تحتوي بيانات، قم بترتيبها
     return sorted(tickets_db, key=lambda x: x.get('date', ''), reverse=True)
 # ==========================================
 # الوظائف الخلفية وقاعدة البيانات (Background & DB)

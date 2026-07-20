@@ -190,7 +190,7 @@
                 <div class="input-group mb-4">
 
                     <input type="text" id="ticket-search-input" class="form-control input-blue" style="color: #e8006f !important; font-weight: bold;" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)">
-=======
+
                     <input type="text" id="ticket-search-input" class="form-control input-blue" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)">
 
                     <button class="btn bg-owner-primary text-white fw-bold px-4" onclick="searchTicket()">
@@ -396,8 +396,13 @@ async function fetchAllTickets() {
         let user = JSON.parse(localStorage.getItem('alpha_user')) || { username: 'fethi', role: 'owner' };
 function getAuthHeaders() {
     const token = localStorage.getItem('token');
-    console.log("Current Token in localStorage:", token); // <-- أضف هذا السطر
-    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    // إضافة تنبيه إذا كان التوكين يبدو غير صحيح
+    if (!token) console.error("لا يوجد توكين!");
+    
+    return { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+    };
 }
 
         const translations = {
@@ -420,10 +425,11 @@ function getAuthHeaders() {
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            const el = document.getElementById('owner-username');
-            if(el) el.innerText = user.username;
-            loadNetworkData();
-        });
+    const el = document.getElementById('owner-username');
+    if(el) el.innerText = user.username;
+    loadNetworkData();
+    fetchAllTickets(); // أضف هذا السطر هنا ليتم استدعاء التذاكر عند فتح الصفحة
+});
 
         function showNotification(message, type = 'success') {
             const container = document.getElementById('toast-container');
