@@ -147,8 +147,11 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
 
 @app.get("/api/admin/get-all-tickets")
 async def get_all_tickets(current_user: str = Depends(get_current_user)):
-    # تأكد من استخدام load_tickets_db وليس load_db
+    # تأكد من أننا نحمل ملف التذاكر هنا
     tickets_db = load_tickets_db() 
+    # أضف هذا السطر للتأكد (سيظهر لك في الـ Terminal الخاص بالسيرفر)
+    print("قائمة التذاكر التي تم تحميلها:", tickets_db) 
+    
     return sorted(tickets_db, key=lambda x: x.get('date', ''), reverse=True)
 # ==========================================
 # الوظائف الخلفية وقاعدة البيانات (Background & DB)
