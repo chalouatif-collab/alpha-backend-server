@@ -1656,7 +1656,7 @@ function closeProfileMenu() {
         }
 
         // ================= الإعدادات عند تحميل الصفحة =================
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded'), () => { 
             // التحقق من وجود جلسة محفوظة
             const savedSession = localStorage.getItem('alpha_player_session');
             if (savedSession) {
@@ -1841,19 +1841,11 @@ async function fetchGameOfDayImage() {
 
 // تشغيل الدالة فوراً عند فتح الصفحة
 fetchGameOfDayImage();
-// =================================================================
-</script>
+    function generateLiveWinnersTicker() {}
+    function startJackpots() {}
+    function renderTrendingGames() {}
+    function initCasinoLobby() { fetchAndRenderProviders(); }
+}
+    </script>
 </body>
 </html>
- 
-</script>
-
-        // دوال رياضية وكراش فارغة للتوضيح (موجودة في الكود الخاص بك)
-        function generateLiveWinnersTicker() {}
-        function startJackpots() {}
-        function renderTrendingGames() {}
-        function initCasinoLobby() { fetchAndRenderProviders(); }
-    </script>
-
-</body>
-</html> 
