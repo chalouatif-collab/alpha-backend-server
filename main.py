@@ -125,6 +125,47 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     player_username = ticket.get("username")
     win_amount = float(ticket.get("gain", 0))
     
+    from pydantic import BaseModel
+from datetime import datetime
+
+# 1. تحديد شكل البيانات التي ستصل من اللاعب
+class DepositRequest(BaseModel):
+    player: str
+    method: str
+    amount: float
+    code: str
+
+# 2. إنشاء المسار الذي يستقبل الطلب
+@app.post("/api/deposit")
+async def create_deposit(req: DepositRequest):
+    try:
+        # تحميل قاعدة البيانات الحالية
+        db = load_tickets_db()
+        
+        # إنشاء تذكرة إيداع جديدة
+        new_ticket = {
+            "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
+            "type": "deposit",
+            "username": req.player,
+            "method": req.method,
+            "amount": req.amount,
+            "code": req.code, # رقم بطاقة Ooredoo أو غيرها
+            "status": "pending", # الحالة: قيد الانتظار
+            "date": datetime.now().isoformat()
+        }
+        
+        # حفظ التذكرة في قاعدة البيانات
+        db.append(new_ticket)
+        
+        # كتابة البيانات الجديدة في الملف (تأكد من وجود دالة الحفظ لديك، أو استخدم هذه الطريقة)
+        import json
+        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f, indent=4, ensure_ascii=False)
+            
+        return {"status": "success", "message": "تم إرسال طلب الإيداع بنجاح"}
+    except Exception as e:
+        print(f"Error in create_deposit: {e}")
+        return {"status": "error", "message": "حدث خطأ أثناء معالجة الطلب"}
     # 2. البحث عن اللاعب لتحديث رصيده
     target_user = next((u for u in db if u["username"] == player_username), None)
     if not target_user:
