@@ -407,7 +407,24 @@ async def delete_account(req: DeleteAccountRequest):
     if len(new_db) == len(db): raise HTTPException(status_code=404, detail="Non trouvé")
     save_db(new_db)
     return {"status": "success", "message": "Supprimé"}
+class ChangeMyPasswordRequest(BaseModel):
+    username: str
+    new_password: str
 
+@app.post("/api/user/change-password")
+async def change_my_password(req: ChangeMyPasswordRequest):
+    db = load_db()
+    for u in db:
+        if u["username"] == req.username.lower().strip():
+            u["password"] = hash_password(req.new_password)
+            save_db(db)
+            return {"status": "success", "message": "Mot de passe modifié avec succès"}
+    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+@app.get("/api/admin/get-player-tickets")
+async def get_player_tickets(username: str, current_user: str = Depends(get_current_user)):
+    tickets_db = load_tickets_db()
+    player_tickets = [t for t in tickets_db if t.get("username") == username.lower().strip()]
+    return player_tickets
 # ==========================================
 # دمج مزود الألعاب الحقيقي (NexusGGR API)
 # ==========================================
