@@ -346,6 +346,8 @@ async function fetchAllTickets() {
     listContainer.innerHTML = '<div class="text-info text-center p-3">جاري التحميل... ⏳</div>';
 
     try {
+        const authHeaders = getAuthHeaders();
+        console.log("Headers being sent:", authHeaders);
         const res = await fetch(`${BACKEND_URL}/api/admin/get-all-tickets`, { headers: getAuthHeaders() });
         const tickets = await res.json();
         
@@ -392,11 +394,11 @@ async function fetchAllTickets() {
         let allUsers = []; 
         let allTransactionsCache = []; 
         let user = JSON.parse(localStorage.getItem('alpha_user')) || { username: 'fethi', role: 'owner' };
-
-        function getAuthHeaders() {
-            const token = localStorage.getItem('token');
-            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-        }
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    console.log("Current Token in localStorage:", token); // <-- أضف هذا السطر
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+}
 
         const translations = {
             fr: { menu: "Menu de Gestion", selected: "Utilisateur Sélectionné", create: "👑 Créer un nouveau compte", user: "Nom d'utilisateur", pass: "Mot de passe", console: "📋 Console de gestion globale", credit: "Créditer", retirer: "Retirer", out: "🚪 Déconnexion" },
