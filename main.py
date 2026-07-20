@@ -107,6 +107,53 @@ AGENT_CODE = "TUNISS10"
 AGENT_TOKEN = "9a418a80d898dd95f120c321012a67cf"
 PROVIDER_ENDPOINT = "https://api.nexusggr.com"
 
+class ResettleTicketRequest(BaseModel):
+    ticket_id: str
+    new_status: str  # 'won', 'lost', 'void'
+
+@app.post("/api/admin/resettle-ticket")
+async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depends(get_current_user)):
+    tickets_db = load_tickets_db()
+    db = load_db()
+    
+    # 1. البحث عن التذكرة
+    ticket = next((t for t in tickets_db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="التذكرة غير موجودة")
+    
+    old_status = ticket.get("status")
+    player_username = ticket.get("username")
+    win_amount = float(ticket.get("gain", 0))
+    
+    # 2. البحث عن اللاعب لتحديث رصيده
+    target_user = next((u for u in db if u["username"] == player_username), None)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="اللاعب غير موجود")
+
+    # 3. المنطق المالي (التصحيح)
+    if old_status == "gagne" and req.new_status != "gagne":
+        # كانت رابحة وستصبح خاسرة/ملغاة -> خصم المبلغ
+        target_user["balance"] = float(target_user.get("balance", 0)) - win_amount
+    elif old_status != "gagne" and req.new_status == "gagne":
+        # كانت خاسرة وستصبح رابحة -> إضافة المبلغ
+        target_user["balance"] = float(target_user.get("balance", 0)) + win_amount
+
+    # 4. حفظ التغييرات
+    ticket["status"] = req.new_status
+    save_tickets_db(tickets_db)
+    save_db(db)
+    
+    return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}
+
+# تأكد أن هذا هو المسار الوحيد بهذا الاسم في كامل ملف main.py
+@app.get("/api/admin/get-all-tickets")
+async def get_all_tickets(current_user: str = Depends(get_current_user)):
+    # 1. تحميل قاعدة بيانات التذاكر فقط
+    tickets_db = load_tickets_db() 
+    
+    # 2. التأكد من أننا نرجع التذاكر وليس المستخدمين (db)
+    # ملاحظة: إذا كنت تريد الترتيب، استخدم هذا السطر:
+    return sorted(tickets_db, key=lambda x: x.get('date', ''), reverse=True)
 # ==========================================
 # الوظائف الخلفية وقاعدة البيانات (Background & DB)
 # ==========================================
@@ -407,7 +454,24 @@ async def delete_account(req: DeleteAccountRequest):
     if len(new_db) == len(db): raise HTTPException(status_code=404, detail="Non trouvé")
     save_db(new_db)
     return {"status": "success", "message": "Supprimé"}
+class ChangeMyPasswordRequest(BaseModel):
+    username: str
+    new_password: str
 
+@app.post("/api/user/change-password")
+async def change_my_password(req: ChangeMyPasswordRequest):
+    db = load_db()
+    for u in db:
+        if u["username"] == req.username.lower().strip():
+            u["password"] = hash_password(req.new_password)
+            save_db(db)
+            return {"status": "success", "message": "Mot de passe modifié avec succès"}
+    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+@app.get("/api/admin/get-player-tickets")
+async def get_player_tickets(username: str, current_user: str = Depends(get_current_user)):
+    tickets_db = load_tickets_db()
+    player_tickets = [t for t in tickets_db if t.get("username") == username.lower().strip()]
+    return player_tickets
 # ==========================================
 # دمج مزود الألعاب الحقيقي (NexusGGR API)
 # ==========================================
