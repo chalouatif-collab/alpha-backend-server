@@ -1249,7 +1249,11 @@ function closeProfileMenu() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/provider/launch-casino`, {
                     method: 'POST', headers: getAuthHeaders(),
-                    body: JSON.stringify({ game_code: gameCode, provider_code: providerCode })
+                    body: JSON.stringify({ 
+    game_code: gameCode, 
+    provider_code: providerCode,
+    user_code: playerSession.username 
+})
                 });
                 const data = await res.json();
                 if (data.launch_url) {
@@ -1276,7 +1280,10 @@ function closeProfileMenu() {
                 
                 const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
                     method: 'POST', headers: getAuthHeaders(),
-                    body: JSON.stringify({ game_name: 'Alphabet Sportsbook', player_id: playerSession.username })
+                    body: JSON.stringify({ 
+    provider_code: 'BETBY', // تأكد من وضع كود مزود الرياضة الخاص بك هنا إذا كان مختلفاً
+    player_id: playerSession.username 
+})
                 });
                 const data = await response.json();
                 
