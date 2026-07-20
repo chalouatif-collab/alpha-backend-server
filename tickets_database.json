@@ -1,10 +1,1 @@
-[
-    {
-        "username": "fethi",
-        "password": "$2b$12$48JFGC52pfCn9i.tfUVPWedkM3vtO8ePGEzakB44ETInyU4ondA4C",
-        "role": "owner",
-        "balance": 10000.0,
-        "is_blocked": 0,
-        "created_by": "System"
-    }
-] 
+[]
