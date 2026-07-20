@@ -188,7 +188,11 @@
 
                 <!-- Section de Recherche -->
                 <div class="input-group mb-4">
+
                     <input type="text" id="ticket-search-input" class="form-control input-blue" style="color: #e8006f !important; font-weight: bold;" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)">
+=======
+                    <input type="text" id="ticket-search-input" class="form-control input-blue" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)">
+
                     <button class="btn bg-owner-primary text-white fw-bold px-4" onclick="searchTicket()">
                         <i class="fas fa-search me-2"></i> Rechercher
                     </button>
@@ -235,11 +239,14 @@
                     <button onclick="resettleTicket()" class="btn btn-success w-100 fw-bold py-3 fs-5">
                         <i class="fas fa-check-circle me-2"></i> Recalculer et Soumettre
                     </button>
+
                 <!-- القائمة المضافة حديثاً -->
 <div class="mt-4">
     <h6 class="text-white fw-bold mb-3">📜 جميع التذاكر (Derniers Tickets)</h6>
     <div id="all-tickets-list" style="max-height: 300px; overflow-y: auto;"></div>
 </div>
+
+
                 </div>
             </div>
         </div>
@@ -280,12 +287,19 @@
 
     <script>
         // ================= وظائف تصحيح التذاكر (Resettlement) =================
+
        // استدعاء البيانات عند فتح اللوحة
 function showResettlementPanel() {
     document.getElementById('default-dashboard-view').classList.add('d-none');
     document.getElementById('admin-resettlement-panel').classList.remove('d-none');
     fetchAllTickets(); // إضافة هذا السطر لجلب التذاكر
 }
+
+        function showResettlementPanel() {
+            document.getElementById('default-dashboard-view').classList.add('d-none');
+            document.getElementById('admin-resettlement-panel').classList.remove('d-none');
+        }
+
 
         function hideResettlementPanel() {
             document.getElementById('admin-resettlement-panel').classList.add('d-none');
@@ -295,6 +309,7 @@ function showResettlementPanel() {
         function searchTicket() {
             document.getElementById('ticket-details-section').classList.remove('d-none');
         }
+
 
         async function resettleTicket() {
     const ticketId = document.getElementById('ticket-search-input').value;
@@ -364,6 +379,12 @@ async function fetchAllTickets() {
         listContainer.innerHTML = '<div class="text-danger text-center p-3">خطأ في جلب البيانات</div>';
     }
 }
+
+        function resettleTicket() {
+            alert("✅ Succès ! Le ticket a été recalculé et les gains ont été ajoutés au solde du joueur.");
+            hideResettlementPanel();
+        }
+
         // ======================================================================
 
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
