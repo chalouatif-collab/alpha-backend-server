@@ -144,12 +144,12 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     save_db(db)
     
     return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}
+
 @app.get("/api/admin/get-all-tickets")
 async def get_all_tickets(current_user: str = Depends(get_current_user)):
-    tickets_db = load_tickets_db()
-    # جلب جميع التذاكر، مع ترتيبها ليظهر الأحدث أولاً
+    # تأكد من استخدام load_tickets_db وليس load_db
+    tickets_db = load_tickets_db() 
     return sorted(tickets_db, key=lambda x: x.get('date', ''), reverse=True)
-
 # ==========================================
 # الوظائف الخلفية وقاعدة البيانات (Background & DB)
 # ==========================================
