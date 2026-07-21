@@ -827,3 +827,92 @@ async def open_owner_panel(request: Request):
 async def logout_owner(request: Request):
     request.session.clear() # مسح التأشيرة
     return RedirectResponse(url="/owner-login")
+# ==========================================
+# نظام التوجيه الذكي والروابط النظيفة للإدارة
+# ==========================================
+
+# 1. الصفحة الرئيسية (نافذة تسجيل الدخول الموحدة)
+@app.get("/", response_class=HTMLResponse)
+async def admin_home(request: Request):
+    role = request.session.get("role")
+    if role == "owner":
+        return RedirectResponse(url="/panel/owner")
+    elif role == "super_admin":
+        return RedirectResponse(url="/panel/super-admin")
+    elif role == "admin":
+        return RedirectResponse(url="/panel/admin")
+    elif role == "shop":
+        return RedirectResponse(url="/panel/shop")
+
+    return """
+    <html>
+        <head><meta charset="utf-8"><title>Alpha Admin Login</title></head>
+        <body style="text-align:center; margin-top:100px; font-family:Arial; background-color:#1e1e2f; color:white;">
+            <h2>تسجيل الدخول إلى لوحة الإدارة</h2>
+            <form action="/login-router" method="post" style="background:#2a2a40; padding:25px; width:320px; margin:auto; border-radius:10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">
+                <input type="text" name="username" placeholder="اسم المستخدم" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none; background:#3b3b58; color:white;"><br>
+                <input type="password" name="password" placeholder="كلمة المرور" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none; background:#3b3b58; color:white;"><br>
+                <button type="submit" style="width:95%; padding:10px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:bold;">دخول</button>
+            </form>
+        </body>
+    </html>
+    """
+
+# 2. معالجة تسجيل الدخول والتوجيه حسب الرتبة
+@app.post("/login-router")
+async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
+    uname = username.lower().strip()
+    db = load_db()
+    user = next((u for u in db if u["username"] == uname), None)
+    
+    if not user or not verify_password(password, user.get("password", "")):
+        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>اسم المستخدم أو كلمة المرور غير صحيحة!</h3><div style='text-align:center;'><a href='/' style='color:#4CAF50;'>العودة للمحاولة</a></div>")
+    
+    if user.get("is_blocked") == 1:
+        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>هذا الحساب محظور!</h3>")
+
+    request.session["username"] = user["username"]
+    request.session["role"] = user["role"]
+
+    role = user["role"]
+    if role == "owner":
+        return RedirectResponse(url="/panel/owner", status_code=303)
+    elif role == "super_admin":
+        return RedirectResponse(url="/panel/super-admin", status_code=303)
+    elif role == "admin":
+        return RedirectResponse(url="/panel/admin", status_code=303)
+    elif role == "shop":
+        return RedirectResponse(url="/panel/shop", status_code=303)
+    else:
+        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:orange;'>ليس لديك صلاحية للوصول إلى لوحة الإدارة.</h3>")
+
+# 3. روابط نظيفة ومخفية للملفات الحقيقية
+@app.get("/panel/owner")
+async def get_owner_panel(request: Request):
+    if request.session.get("role") != "owner":
+        return RedirectResponse(url="/")
+    return FileResponse("owner.html")
+
+@app.get("/panel/super-admin")
+async def get_super_admin_panel(request: Request):
+    if request.session.get("role") not in ["owner", "super_admin"]:
+        return RedirectResponse(url="/")
+    return FileResponse("super_admin.html")
+
+@app.get("/panel/admin")
+async def get_admin_panel(request: Request):
+    if request.session.get("role") not in ["owner", "super_admin", "admin"]:
+        return RedirectResponse(url="/")
+    return FileResponse("admin.html")
+
+@app.get("/panel/shop")
+async def get_shop_panel(request: Request):
+    if request.session.get("role") not in ["owner", "super_admin", "shop"]:
+        return RedirectResponse(url="/")
+    return FileResponse("shop.html")
+
+# 4. تسجيل الخروج
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/")
