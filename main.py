@@ -27,7 +27,7 @@ load_dotenv()
 # سحب الأسرار لحفظها في متغيرات داخل الكود
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
-app.secret_key = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # ==========================================
 # إعدادات قاعدة البيانات والتشفير
@@ -97,6 +97,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 # إعدادات تطبيق FastAPI الأساسية
 # ==========================================
 app = FastAPI()
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 app.add_middleware(
     CORSMiddleware,
