@@ -1,0 +1,3 @@
+ADMIN_USERNAME=fethi
+ADMIN_PASSWORD=F90260887305fethi1225
+SECRET_KEY=@flymhkdrsifv;268ree6yeee@-hrrtglplrepoltgzssùeùêrmùtmtfdlmemlsz^lertgtytypêd^tf^dde^mb^ùfmù

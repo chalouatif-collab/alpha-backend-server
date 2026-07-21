@@ -18,6 +18,16 @@ import shutil
 from fastapi.staticfiles import StaticFiles
 import httpx
 from fastapi.responses import JSONResponse
+import os
+from dotenv import load_dotenv
+
+# تحميل الأسرار من ملف .env
+load_dotenv()
+
+# سحب الأسرار لحفظها في متغيرات داخل الكود
+ADMIN_USER = os.getenv("ADMIN_USERNAME")
+ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
+app.secret_key = os.getenv("SECRET_KEY")
 
 # ==========================================
 # إعدادات قاعدة البيانات والتشفير

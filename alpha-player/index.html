@@ -978,23 +978,32 @@ function closeProfileMenu() {
             if (!bar) return;
             bar.innerHTML = '<div class="text-teal-400 text-sm animate-pulse">جاري التحميل...</div>';
 
-            try {
+            try {               
                 const response = await fetch(`${BACKEND_URL}/api/get-providers`);
                 const data = await response.json();
+                console.log("البيانات القادمة من السيرفر:", data);
                 
-                if (data && (data.providers || data.data)) {
-                    casinoProviders = data.providers || data.data; 
-                    bar.innerHTML = casinoProviders.map(p => `  
-                    <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}"
-                        class="prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-1.5 mt-1 bg-[#090f24] border border-slate-800 hover:border-cyan-500/50 rounded-full text-xs font-bold text-slate-300 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md">
-                            <span>${p.name}</span>
-                        </button>
-                    `).join('');
-
-                    if (casinoProviders.length > 0) loadProviderGames(casinoProviders[0].code);
-                } else {
-                    bar.innerHTML = '<div class="text-rose-500 text-xs">تنسيق البيانات غير متوافق!</div>';
-                }
+               // الكود الجديد الذي يحل المشكلة
+        if (data) {
+            // سحب البيانات سواء كانت في providers أو data أو مصفوفة مباشرة
+            casinoProviders = data.providers || data.data || (Array.isArray(data) ? data : []);
+            
+            if (casinoProviders.length > 0) {
+                bar.innerHTML = casinoProviders.map(p => `
+                    <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}" 
+                            class="prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-1.5 mt-1 bg-[#090f24] border border-slate-800 hover:border-cyan-500/50 rounded-full text-xs font-bold text-white transition-all">
+                        <span>${p.name || p.code}</span>
+                    </button>
+                `).join('');
+                
+                // تشغيل أول مزود ألعاب تلقائياً
+                loadProviderGames(casinoProviders[0].code);
+            } else {
+                bar.innerHTML = '<div class="text-rose-500 text-xs">لا توجد ألعاب حالياً</div>';
+            }
+        } else {
+            bar.innerHTML = '<div class="text-rose-500 text-xs">تنسيق البيانات غير متوافق!</div>';
+        }
             } catch (error) {
                 bar.innerHTML = '<div class="text-rose-500 text-xs">حدث خطأ في الاتصال</div>';
             }
