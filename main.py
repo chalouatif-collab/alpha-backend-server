@@ -112,9 +112,28 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
-# --- مسارات لوحات الإدارة النظيفة (التحديث الجديد) ---
+from fastapi.responses import HTMLResponse, RedirectResponse
+
+# --- التوجيه الذكي اليدوي لإجبار الروابط القديمة على العمل بالروابط النظيفة ---
+@app.get("/owner.html")
+async def redirect_owner():
+    return RedirectResponse(url="/panel/owner/", status_code=303)
+
+@app.get("/super_admin.html")
+async def redirect_super_admin():
+    return RedirectResponse(url="/panel/super_admin/", status_code=303)
+
+@app.get("/admin.html")
+async def redirect_admin():
+    return RedirectResponse(url="/panel/admin/", status_code=303)
+
+@app.get("/shop.html")
+async def redirect_shop():
+    return RedirectResponse(url="/panel/shop/", status_code=303)
+
+# --- مسارات لوحات الإدارة النظيفة ---
 @app.get("/panel/owner", response_class=HTMLResponse)
-@app.get("/panel/owner/", response_class=HTMLResponse) # مسار إضافي بشريطة مائلة للاحتياط
+@app.get("/panel/owner/", response_class=HTMLResponse)
 async def get_owner_panel():
     with open("panel/owner/index.html", "r", encoding="utf-8") as f:
         return f.read()
