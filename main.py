@@ -110,9 +110,37 @@ app.add_middleware(
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
+# مسارات نظيفة ومخفية بالكامل (بدون إظهار اسم الملف في الرابط)
+  
+@app.get("/panel/owner", response_class=HTMLResponse)
+async def get_owner_panel():
+    with open("owner.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/panel/super_admin", response_class=HTMLResponse)
+async def get_super_admin_panel():
+    with open("super_admin.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/panel/admin", response_class=HTMLResponse)
+async def get_admin_panel():
+    with open("admin.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/panel/shop", response_class=HTMLResponse)
+async def get_shop_panel():
+    with open("shop.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+# 4. تسجيل الخروج
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/")
+
+
 
 # إعدادات مزود الألعاب (NexusGGR)
 AGENT_CODE = "TUNISS10"
@@ -885,33 +913,4 @@ async def process_login_router(request: Request, username: str = Form(...), pass
         return RedirectResponse(url="/panel/shop", status_code=303)
     else:
         return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:orange;'>ليس لديك صلاحية للوصول إلى لوحة الإدارة.</h3>")
-
-# مسارات نظيفة ومخفية بالكامل (بدون إظهار اسم الملف في الرابط)
-# --- مسارات لوحات الإدارة النظيفة ---
-
-@app.get("/panel/owner", response_class=HTMLResponse)
-async def get_owner_panel():
-    with open("owner.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/panel/super_admin", response_class=HTMLResponse)
-async def get_super_admin_panel():
-    with open("super_admin.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/panel/admin", response_class=HTMLResponse)
-async def get_admin_panel():
-    with open("admin.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/panel/shop", response_class=HTMLResponse)
-async def get_shop_panel():
-    with open("shop.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-# 4. تسجيل الخروج
-@app.get("/logout")
-async def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/")
 
