@@ -875,29 +875,20 @@ async def logout_owner(request: Request):
 # 1. الصفحة الرئيسية (نافذة تسجيل الدخول الموحدة)
 @app.get("/", response_class=HTMLResponse)
 async def admin_home(request: Request):
+    # نظام التوجيه الذكي للمستخدمين المسجلين مسبقاً
     role = request.session.get("role")
     if role == "owner":
-        return RedirectResponse(url="/panel/owner")
+        return RedirectResponse(url="/panel/owner", status_code=303)
     elif role == "super_admin":
-        return RedirectResponse(url="/panel/super-admin")
+        return RedirectResponse(url="/panel/super_admin", status_code=303)
     elif role == "admin":
-        return RedirectResponse(url="/panel/admin")
+        return RedirectResponse(url="/panel/admin", status_code=303)
     elif role == "shop":
-        return RedirectResponse(url="/panel/shop")
-
-    return """
-    <html>
-        <head><meta charset="utf-8"><title>Alpha Admin Login</title></head>
-        <body style="text-align:center; margin-top:100px; font-family:Arial; background-color:#1e1e2f; color:white;">
-            <h2>تسجيل الدخول إلى لوحة الإدارة</h2>
-            <form action="/login-router" method="post" style="background:#2a2a40; padding:25px; width:320px; margin:auto; border-radius:10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">
-                <input type="text" name="username" placeholder="اسم المستخدم" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none; background:#3b3b58; color:white;"><br>
-                <input type="password" name="password" placeholder="كلمة المرور" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none; background:#3b3b58; color:white;"><br>
-                <button type="submit" style="width:95%; padding:10px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px; font-weight:bold;">دخول</button>
-            </form>
-        </body>
-    </html>
-    """
+        return RedirectResponse(url="/panel/shop", status_code=303)
+    
+    # إذا لم يكن مسجلاً للدخول، اعرض له صفحة index.html الحقيقية
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
 # 2. معالجة تسجيل الدخول والتوجيه حسب الرتبة
 @app.post("/login-router")
