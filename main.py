@@ -112,36 +112,30 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
-# مسارات نظيفة ومخفية بالكامل (بدون إظهار اسم الملف في الرابط)
-  
+# --- مسارات لوحات الإدارة النظيفة (التحديث الجديد) ---
 @app.get("/panel/owner", response_class=HTMLResponse)
+@app.get("/panel/owner/", response_class=HTMLResponse) # مسار إضافي بشريطة مائلة للاحتياط
 async def get_owner_panel():
-    with open("owner.html", "r", encoding="utf-8") as f:
+    with open("panel/owner/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/panel/super_admin", response_class=HTMLResponse)
+@app.get("/panel/super_admin/", response_class=HTMLResponse)
 async def get_super_admin_panel():
-    with open("super_admin.html", "r", encoding="utf-8") as f:
+    with open("panel/super_admin/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/panel/admin", response_class=HTMLResponse)
+@app.get("/panel/admin/", response_class=HTMLResponse)
 async def get_admin_panel():
-    with open("admin.html", "r", encoding="utf-8") as f:
+    with open("panel/admin/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/panel/shop", response_class=HTMLResponse)
+@app.get("/panel/shop/", response_class=HTMLResponse)
 async def get_shop_panel():
-    with open("shop.html", "r", encoding="utf-8") as f:
+    with open("panel/shop/index.html", "r", encoding="utf-8") as f:
         return f.read()
-
-# 4. تسجيل الخروج
-@app.get("/logout")
-async def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/")
-
-
-
 # إعدادات مزود الألعاب (NexusGGR)
 AGENT_CODE = "TUNISS10"
 AGENT_TOKEN = "9a418a80d898dd95f120c321012a67cf"
