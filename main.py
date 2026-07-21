@@ -920,3 +920,26 @@ async def get_shop_panel(request: Request):
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/")
+
+# --- مسارات لوحات الإدارة النظيفة ---
+
+@app.get("/panel/owner", response_class=HTMLResponse)
+async def get_owner_panel(request: Request):
+    # يمكنك لاحقاً إضافة كود التحقق من الجلسة (Session) هنا
+    with open("owner.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/panel/super_admin", response_class=HTMLResponse)
+async def get_super_admin_panel(request: Request):
+    with open("super_admin.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/panel/admin", response_class=HTMLResponse)
+async def get_admin_panel(request: Request):
+    with open("admin.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/panel/shop", response_class=HTMLResponse)
+async def get_shop_panel(request: Request):
+    with open("shop.html", "r", encoding="utf-8") as f:
+        return f.read()
