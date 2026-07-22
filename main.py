@@ -20,7 +20,9 @@ import httpx
 from fastapi.responses import JSONResponse,HTMLResponse,FileResponse,RedirectResponse
 import os
 from dotenv import load_dotenv
-
+import pyotp
+import qrcode
+import io
 # تحميل الأسرار من ملف .env
 load_dotenv()
 
@@ -891,25 +893,121 @@ async def process_login_router(request: Request, username: str = Form(...), pass
     uname = username.lower().strip()
     db = load_db()
     user = next((u for u in db if u["username"] == uname), None)
-    
+
+    # 1. التحقق من كلمة المرور واسم المستخدم
     if not user or not verify_password(password, user.get("password", "")):
-        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>اسم المستخدم أو كلمة المرور غير صحيحة!</h3><div style='text-align:center;'><a href='/' style='color:#4CAF50;'>العودة للمحاولة</a></div>")
-    
+        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>اسم المستخدم أو كلمة المرور غير صحيحة!</h3><div style='text-align:center;'><a href='/' style='color:blue;'>العودة</a></div>")
+
+    # 2. التحقق من الحظر
     if user.get("is_blocked") == 1:
         return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>هذا الحساب محظور!</h3>")
 
+    role = user.get("role")
+
+    # 3. جدار التحقق الثنائي (فقط للإدارة)
+    if role in ["owner", "super_admin", "admin"]:
+        # حفظ البيانات مؤقتاً في الجلسة (لا تعطيه الصلاحية بعد)
+        request.session["pending_user"] = uname
+        request.session["pending_role"] = role
+        
+        # عرض شاشة إدخال الكود
+        html_form = """
+        <html dir="rtl">
+        <head><title>التحقق الثنائي</title></head>
+        <body style="background-color: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Tahoma, sans-serif;">
+            <div style="background-color: #2d2d2d; padding: 40px; border-radius: 10px; text-align: center; border: 1px solid #444;">
+                <h2 style="color: #00d2ff;">التحقق الثنائي (2FA) 🔐</h2>
+                <p style="color: #ccc;">أدخل الكود من تطبيق Google Authenticator</p>
+                <form action="/verify-2fa" method="post">
+                    <input type="text" name="totp_code" placeholder="أدخل 6 أرقام" required style="padding: 10px; font-size: 20px; text-align: center; letter-spacing: 5px; border-radius: 5px; border: none; outline: none; margin-bottom: 20px; font-weight: bold;"><br>
+                    <button type="submit" style="padding: 10px 30px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">دخول آمن</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_form)
+
+    # 4. الدخول المباشر للحسابات العادية (مثل shop)
     request.session["username"] = user["username"]
     request.session["role"] = user["role"]
-
-    role = user["role"]
-    if role == "owner":
-        return RedirectResponse(url="/panel/owner", status_code=303)
-    elif role == "super_admin":
-        return RedirectResponse(url="/panel/super-admin", status_code=303)
-    elif role == "admin":
-        return RedirectResponse(url="/panel/admin", status_code=303)
-    elif role == "shop":
+    
+    if role == "shop":
         return RedirectResponse(url="/panel/shop", status_code=303)
     else:
-        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:orange;'>ليس لديك صلاحية للوصول إلى لوحة الإدارة.</h3>")
+        return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
 
+    import pyotp  # تذكر إضافتها في أعلى الملف إذا لم تفعل
+
+@app.post("/verify-2fa")
+async def verify_2fa(request: Request, totp_code: str = Form(...)):
+    uname = request.session.get("pending_user")
+    role = request.session.get("pending_role")
+    
+    if not uname:
+        return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>انتهت الجلسة، يرجى تسجيل الدخول مجدداً. <a href='/'>العودة</a></h3>")
+
+    db = load_db()
+    user = next((u for u in db if u["username"] == uname), None)
+    
+    # سنجلب المفتاح السري الخاص بهذا الحساب من قاعدة البيانات
+    secret = user.get("two_factor_secret") 
+    
+    if not secret:
+        return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>لم يتم إعداد التحقق الثنائي لهذا الحساب بعد!</h3>")
+
+    # مطابقة الكود المدخل مع المفتاح السري
+    totp = pyotp.TOTP(secret)
+    if totp.verify(totp_code):
+        # الكود صحيح! نمنح الصلاحية الكاملة الآن
+        request.session["username"] = uname
+        request.session["role"] = role
+        
+        # نمسح الجلسة المؤقتة
+        request.session.pop("pending_user", None)
+        request.session.pop("pending_role", None)
+        
+        # التوجيه بناءً على الرتبة
+        if role == "owner":
+            return RedirectResponse(url="/panel/owner", status_code=303)
+        elif role == "super_admin":
+            return RedirectResponse(url="/panel/super-admin", status_code=303)
+        elif role == "admin":
+            return RedirectResponse(url="/panel/admin", status_code=303)
+    else:
+        return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>الكود السداسي غير صحيح! <a href='/'>حاول مرة أخرى</a></h3>")
+
+    import io
+from fastapi.responses import StreamingResponse
+import pyotp
+import qrcode
+
+@app.get("/setup-2fa/{username}")
+async def setup_2fa(username: str):
+    db = load_db()
+    user = next((u for u in db if u["username"] == username), None)
+    
+    if not user:
+        return HTMLResponse("<h3 style='text-align:center; color:red;'>المستخدم غير موجود!</h3>")
+    
+    # 1. توليد مفتاح سري عشوائي ومعقد
+    secret = pyotp.random_base32()
+    
+    # 2. إضافة المفتاح إلى بيانات المستخدم
+    user["two_factor_secret"] = secret
+    
+    # 3. حفظ التعديلات في قاعدة البيانات
+    # (تأكد من استخدام الدالة الخاصة بك لحفظ قاعدة البيانات، مثلاً: save_db(db))
+    # save_db(db) 
+    
+    # 4. إنشاء الرابط الخاص بتطبيق جوجل
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=username, issuer_name="Alpha Casino")
+    
+    # 5. تحويل الرابط إلى صورة QR Code
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    
+    return StreamingResponse(buf, media_type="image/png")
