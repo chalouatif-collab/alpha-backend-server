@@ -483,7 +483,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     if not target_user: raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
     if req.action == "charge":
-        if admin not in ["system", "fethi"]:
+        if admin != "system" and admin_user.get("role") != "owner":
             if not admin_user: raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
             if admin_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
             admin_user["balance"] -= amount
@@ -499,7 +499,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     elif req.action == "withdraw":
         if target_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant")
         target_user["balance"] -= amount
-        if admin not in ["system", "fethi"] and admin_user:
+        if admin != "system" and admin_user.get("role") != "owner":
             admin_user["balance"] = admin_user.get("balance", 0) + amount
 
     db_session = SessionLocal()
@@ -882,6 +882,22 @@ async def admin_home(request: Request):
         return RedirectResponse(url="/panel/admin", status_code=303)
     elif role == "shop":
         return RedirectResponse(url="/panel/shop", status_code=303)
+    
+    from fastapi import Form
+from fastapi.responses import RedirectResponse
+
+@app.post("/login")
+async def process_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    # هنا نضع بيانات حساب المالك الذي قمنا بحمايته
+    # (قم بتغيير '123456' إلى كلمة المرور الحقيقية الخاصة بك)
+    if username == "fethi" and password == "F90260887305fethi1225":
+        # إعطاء الصلاحية في الجلسة
+        request.session["role"] = "owner"
+        # التوجيه الذكي إلى لوحة المالك
+        return RedirectResponse(url="/panel/owner", status_code=303)
+    
+    # إذا كانت البيانات خاطئة، نعيده للصفحة الرئيسية
+    return RedirectResponse(url="/", status_code=303)
     
     # إذا لم يكن مسجلاً للدخول، اعرض له صفحة index.html الحقيقية
     with open("index.html", "r", encoding="utf-8") as f:

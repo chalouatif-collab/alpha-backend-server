@@ -65,6 +65,10 @@ F<!DOCTYPE html>
         });
         
         const data = await res.json();
+        if (!res.ok) {
+    // إذا أرسل السيرفر خطأ (مثل باسورد خاطئ)، نظهر الخطأ ونوقف العملية
+    return showNotification(data.detail || 'Erreur de connexion', 'error');
+}
         
         if (res.ok) {
             if(data.role === 'player') {
@@ -78,7 +82,7 @@ F<!DOCTYPE html>
             showNotification('Authentification réussie ! Redirection...');
 
             setTimeout(() => {
-                if (data.username === 'fethi' || data.role === 'owner') {
+                if (data.username === 'fethi' || data.role.toLowerCase() === 'owner') {
                     window.location.href = '/panel/owner'; 
                 } else if (data.role === 'super_admin') {
                     window.location.href = '/panel/super_admin';
