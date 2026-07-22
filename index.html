@@ -76,22 +76,53 @@ F<!DOCTYPE html>
             }
 
             // حفظ بيانات المستخدم
-            localStorage.setItem('alpha_user', JSON.stringify(data));
-            localStorage.setItem('token', data.access_token); 
+            // --- بداية كود الـ 2FA الجديد ---
+            let finalData = data; // متغير لحفظ البيانات النهائية
             
-            showNotification('Authentification réussie ! Redirection...');
+            if (data.require_2fa) {
+                // إظهار نافذة منبثقة تطلب الكود من الأونر
+                const code = prompt("🔒 يرجى إدخال كود التحقق (Google Authenticator) المكون من 6 أرقام:");
+                
+                if (!code) {
+                    return showNotification('تم إلغاء تسجيل الدخول الأمني', 'error');
+                }
+                
+                showNotification('جاري التحقق من الكود...', 'success');
+                
+                // إرسال الكود للسيرفر للتحقق
+                const verifyRes = await fetch(`${BACKEND_URL}/api/verify-2fa`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: data.username, totp_code: code })
+                });
+                
+                finalData = await verifyRes.json();
+                if (!verifyRes.ok) {
+                    return showNotification(finalData.detail || 'كود التحقق خاطئ!', 'error');
+                }
+            }
+            // --- نهاية كود الـ 2FA الجديد ---
 
+            // حفظ بيانات المستخدم
+            localStorage.setItem('alpha_user', JSON.stringify(finalData));
+            if (finalData.access_token) {
+                localStorage.setItem('token', finalData.access_token);
+            }
+            
+            showNotification('Authentification réussie ! Redirection...', 'success');
+            
             setTimeout(() => {
-                if (data.username === 'fethi' || data.role.toLowerCase() === 'owner') {
-                    window.location.href = '/panel/owner'; 
-                } else if (data.role === 'super_admin') {
+                if (finalData.username === 'fethi' || finalData.role.toLowerCase() === 'owner') {
+                    window.location.href = '/panel/owner';
+                } else if (finalData.role === 'super_admin') {
                     window.location.href = '/panel/super_admin';
-                } else if (data.role === 'admin') {
+                } else if (finalData.role === 'admin') {
                     window.location.href = '/panel/admin';
-                } else if (data.role === 'shop') {
+                } else if (finalData.role === 'shop') {
                     window.location.href = '/panel/shop';
                 }
             }, 800);
+            
 
         } else { 
             showNotification(data.detail || 'Identifiants incorrects !', 'error'); 

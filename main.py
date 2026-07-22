@@ -449,11 +449,48 @@ async def login_user(req: LoginRequest):
                 break
     if not user:
         raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
+    role = user.get("role")
+    
+    # --- جدار التحقق الثنائي للإدارة ---
+    if role in ["owner", "super_admin", "admin"]:
+        # نأمر الواجهة بطلب الكود بدلاً من تسجيل الدخول فوراً
+        return {"require_2fa": True, "username": user["username"], "role": role}
+    # -----------------------------------
+    
     token = create_access_token(data={"sub": user["username"]})
     return {
         "access_token": token, "token_type": "bearer", "username": user["username"],
         "role": user["role"], "balance": user["balance"], "created_by": user.get("created_by", "System")
     }
+
+from pydantic import BaseModel
+from fastapi import HTTPException
+import pyotp
+
+# نموذج استقبال البيانات من النافذة المنبثقة
+class Verify2FARequest(BaseModel):
+    username: str
+    totp_code: str
+
+@app.post("/api/verify-2fa")
+async def verify_2fa_api(req: Verify2FARequest):
+    db = load_db()
+    user = next((u for u in db if u["username"] == req.username), None)
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="المستخدم غير موجود")
+        
+    secret = user.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية لهذا الحساب!")
+        
+    totp = pyotp.TOTP(secret)
+    if totp.verify(req.totp_code):
+        # الكود صحيح! نقوم بإنشاء التوكن الآن
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+        return {"username": user["username"], "role": user["role"], "access_token": access_token}
+    else:
+        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
 
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
