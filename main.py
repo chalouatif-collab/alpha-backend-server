@@ -882,27 +882,9 @@ async def admin_home(request: Request):
         return RedirectResponse(url="/panel/admin", status_code=303)
     elif role == "shop":
         return RedirectResponse(url="/panel/shop", status_code=303)
-    
-    from fastapi import Form
-from fastapi.responses import RedirectResponse
-
-@app.post("/login")
-async def process_login(request: Request, username: str = Form(...), password: str = Form(...)):
-    # هنا نضع بيانات حساب المالك الذي قمنا بحمايته
-    # (قم بتغيير '123456' إلى كلمة المرور الحقيقية الخاصة بك)
-    if username == "fethi" and password == "F90260887305fethi1225":
-        # إعطاء الصلاحية في الجلسة
-        request.session["role"] = "owner"
-        # التوجيه الذكي إلى لوحة المالك
-        return RedirectResponse(url="/panel/owner", status_code=303)
-    
-    # إذا كانت البيانات خاطئة، نعيده للصفحة الرئيسية
-    return RedirectResponse(url="/", status_code=303)
-    
-    # إذا لم يكن مسجلاً للدخول، اعرض له صفحة index.html الحقيقية
+    # إذا لم يكن مسجلاً للدخول، اعرض له صفحة index.html
     with open("index.html", "r", encoding="utf-8") as f:
         return f.read()
-
 # 2. معالجة تسجيل الدخول والتوجيه حسب الرتبة
 @app.post("/login-router")
 async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
