@@ -125,12 +125,16 @@
                         <input type="password" id="new-user-pass" class="form-control input-blue font-monospace">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="text-secondary mb-1" style="font-size: 0.75rem;">Rôle</label>
-                        <select id="new-user-role" class="form-select input-blue font-monospace">
-                            <option value="owner">Owner</option><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="shop">Shop</option><option value="player">Player</option>
-                        </select>
-                    </div>
-                </div>
+            <label class="text-secondary mb-1" style="font-size: 0.75rem;" id="lbl-role">Rôle</label>
+            <select id="new-user-role" class="form-select input-blue font-monospace">
+                <option value="owner">Owner</option><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="shop">Shop</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="text-secondary mb-1" style="font-size: 0.75rem;">Téléphone (WhatsApp)</label>
+            <input type="text" id="new_phone" class="form-control input-blue font-monospace" placeholder="+216...">
+        </div>
+    </div>
                 <button onclick="createNetworkUser()" class="btn bg-owner-primary w-100 fw-bold" id="btn-create">Créer le compte</button>
             </section>
 

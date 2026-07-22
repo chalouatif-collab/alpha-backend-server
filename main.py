@@ -455,7 +455,7 @@ def save_tickets_db(data):
 # النماذج (Models)
 # ==========================================
 class LoginRequest(BaseModel): username: str; password: str
-class RegisterRequest(BaseModel): username: str; password: str; role: str; created_by: str
+class RegisterRequest(BaseModel): username: str; password: str; role: str; created_by: str; phone: str
 class ConfigureAccountRequest(BaseModel): admin_username: str; target_username: str; rtp: int; is_blocked: int
 class UpdateBalanceRequest(BaseModel): admin_username: str; target_username: str; action: str; amount: float
 class ChangePlayerPasswordRequest(BaseModel): admin_username: str; target_username: str; new_password: str
