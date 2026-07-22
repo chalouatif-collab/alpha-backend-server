@@ -94,7 +94,44 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return payload.get("sub")
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
+import httpx
+import pyotp
 
+def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_key: str):
+    INSTANCE_ID = "instance185867"
+    TOKEN = "76jnhy79la7a5bxx"
+    
+    message = f"""*مرحباً بك في نظام Alpha Core 🔐*
+
+تم إنشاء حساب الإدارة الخاص بك بنجاح.
+
+👤 *اسم المستخدم:* {username}
+🔑 *كلمة المرور:* {password}
+
+🛡️ *خطوات تفعيل الحماية (Google Authenticator):*
+1️⃣ افتح تطبيق Google Authenticator.
+2️⃣ اختر (إدخال مفتاح الإعداد).
+3️⃣ اسم الحساب: AlphaCore - {username}
+4️⃣ المفتاح السري:
+*{secret_key}*
+
+⚠️ _يرجى حذف هذه الرسالة بعد التفعيل للحفاظ على سرية بياناتك._"""
+
+    if not phone_number.startswith("+"):
+        phone_number = f"+{phone_number}"
+
+    url = f"https://api.ultramsg.com/{INSTANCE_ID}/messages/chat"
+    payload = {"token": TOKEN, "to": phone_number, "body": message}
+    headers = {'content-type': 'application/x-www-form-urlencoded'}
+
+    try:
+        response = httpx.post(url, data=payload, headers=headers)
+        if response.status_code == 200:
+            print(f"✅ تم إرسال رسالة الواتساب بنجاح إلى: {phone_number}")
+        else:
+            print(f"❌ خطأ في إرسال الواتساب: {response.text}")
+    except Exception as e:
+        print(f"❌ حدث خطأ في الاتصال: {e}")
 # ==========================================
 # إعدادات تطبيق FastAPI الأساسية
 # ==========================================
@@ -496,16 +533,37 @@ async def verify_2fa_api(req: Verify2FARequest):
 async def register_user(req: RegisterRequest):
     uname = req.username.lower().strip()
     db = load_db()
+    
     for u in db:
         if u["username"] == uname:
             raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
+            
     hashed_pwd = hash_password(req.password)
+    
+    # --- 1. توليد المفتاح السري الخاص بـ Google Authenticator ---
+    new_secret_key = pyotp.random_base32()
+    
+    # --- 2. إضافة المفتاح إلى بيانات المستخدم الجديد ---
     new_user = {
-        "username": uname, "password": hashed_pwd, "role": req.role, "balance": 0.00,
-        "rtp": 50, "is_blocked": 0, "created_by": req.created_by, "last_spin_date": "", "daily_deposits": 0.0
+        "username": uname, 
+        "password": hashed_pwd, 
+        "role": req.role, 
+        "balance": 0.00,
+        "rtp": 50, 
+        "is_blocked": 0, 
+        "created_by": req.created_by, 
+        "last_spin_date": "", 
+        "daily_deposits": 0.0,
+        "two_factor_secret": new_secret_key  # تم إضافة المفتاح هنا
     }
+    
     db.append(new_user)
-    save_db(db)
+    save_db(db) # استخدمنا دالة الحفظ الخاصة بك هنا
+        
+    # --- 3. إرسال الواتساب للمستخدم الجديد (وضعنا رقمك للتجربة) ---
+    test_phone_number = "+21690260600" 
+    send_whatsapp_2fa(test_phone_number, req.username, req.password, new_secret_key)
+    
     return {"status": "success", "message": "Compte créé"}
 
 @app.get("/api/admin/users")
@@ -1048,3 +1106,48 @@ async def setup_2fa(username: str):
     buf.seek(0)
     
     return StreamingResponse(buf, media_type="image/png")
+
+import httpx
+
+def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_key: str):
+    # ضع بياناتك التي نسختها من موقع UltraMsg هنا
+    INSTANCE_ID = "ضع_الـ_instance_هنا"
+    TOKEN = "ضع_الـ_token_هنا"
+    
+    # نص الرسالة الأنيق
+    message = f"""*مرحباً بك في نظام Alpha Core 🔐*
+
+تم إنشاء حساب الإدارة الخاص بك بنجاح.
+
+👤 *اسم المستخدم:* {username}
+🔑 *كلمة المرور:* {password}
+
+🛡️ *خطوات تفعيل الحماية (Google Authenticator):*
+1️⃣ افتح تطبيق Google Authenticator.
+2️⃣ اختر (إدخال مفتاح الإعداد).
+3️⃣ اسم الحساب: AlphaCore - {username}
+4️⃣ المفتاح السري:
+*{secret_key}*
+
+⚠️ _يرجى حذف هذه الرسالة بعد التفعيل للحفاظ على سرية بياناتك._"""
+
+    # إعداد الطلب
+    url = f"https://api.ultramsg.com/{INSTANCE_ID}/messages/chat"
+    payload = {
+        "token": TOKEN,
+        "to": phone_number,
+        "body": message
+    }
+    headers = {'content-type': 'application/x-www-form-urlencoded'}
+
+    try:
+        response = httpx.post(url, data=payload, headers=headers)
+        if response.status_code == 200:
+            print(f"✅ تم إرسال رسالة الواتساب بنجاح إلى: {phone_number}")
+            return True
+        else:
+            print(f"❌ خطأ في إرسال الواتساب: {response.text}")
+            return False
+    except Exception as e:
+        print(f"❌ حدث خطأ في الاتصال بخدمة الواتساب: {e}")
+        return False
