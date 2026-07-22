@@ -514,7 +514,7 @@
         }
         
         function changeShopLanguage(lang) { document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'; }
-        function logoutShop() { localStorage.clear(); window.location.href = 'index.html'; }
+        function logoutShop() { localStorage.clear(); window.location.href = '/login.html'; }
 
         window.onload = async function() {
             const saved = localStorage.getItem('alpha_user');
@@ -524,7 +524,7 @@
                 document.getElementById('shop-balance-val').innerText = `${parseFloat(shopSessionUser.balance).toFixed(2)} TND`;
                 await loadShopPlayersData();
             } else {
-                window.location.href = 'index.html';
+                window.location.href = '/login.html';
             }
         }
         
