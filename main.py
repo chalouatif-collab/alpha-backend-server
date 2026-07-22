@@ -821,10 +821,7 @@ async def get_sports():
         cache["matches"], cache["last_update"] = all_matches, current_time
     return cache["matches"]
 
-@app.get("/")
-async def root():
-    return {"status": "Alpha Secure Database Backend Running Perfectly"}
-# ==========================================
+
 # الجدار الأمني الثاني: حماية لوحة المالك
 # ==========================================
 
