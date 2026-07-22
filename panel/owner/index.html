@@ -891,7 +891,7 @@ function getAuthHeaders() {
         }
        
         function openPasswordModal() { new bootstrap.Modal(document.getElementById('passwordModal')).show(); }
-        function logout() { localStorage.clear(); sessionStorage.clear(); window.location.href = '/login.html'; }
+        function logout() { localStorage.clear(); sessionStorage.clear(); window.location.href = '/';  }
 
         async function submitNewPassword() {
             const new_password = document.getElementById('new-sys-pass').value;
