@@ -474,10 +474,9 @@ function getAuthHeaders() {
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
                // نقوم بفحص ما إذا كان المستخدم يمتلك مفتاحاً سرياً في قاعدة البيانات
-const faBadge = user.two_factor_secret 
-    ? `<span class="badge bg-success text-white p-1 rounded small"><i class="fa-solid fa-key"></i> ${user.two_factor_secret}</span>` 
+const secretBadge = u.two_factor_secret 
+    ? `<span class="badge bg-success text-white p-1 rounded small"><i class="fa-solid fa-key"></i> ${u.two_factor_secret}</span>` 
     : `<span class="badge bg-secondary text-white p-1 rounded small"><i class="fa-solid fa-key"></i> Non activé</span>`;
-
                 container.innerHTML += `
                 <div class="card bg-transparent border-blue-custom shadow-sm cursor-pointer mb-2" style="background-color: #040a18 !important;" onclick="selectForControl('${usernameClean}', ${userRtp})">
                     <div class="card-body p-2 d-flex justify-content-between align-items-center">
