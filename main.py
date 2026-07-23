@@ -572,7 +572,7 @@ async def register_user(req: RegisterRequest):
         send_whatsapp_2fa(req.phone, req.username, req.password, new_secret_key) 
     
     
-    return {"status": "success", "message": "Compte créé"}
+    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key}
 
 @app.get("/api/admin/users")
 async def get_all_network_users(admin_username: Optional[str] = None):
