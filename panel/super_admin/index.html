@@ -104,6 +104,9 @@
                     <div class="col-12 col-md-6">
                         <input type="password" id="new-user-pass" placeholder="Mot de passe" class="form-control input-blue font-monospace">
                     </div>
+                    <div class="col-12 mt-2">
+    <input type="text" id="new_phone" class="form-control input-blue font-monospace" placeholder="Téléphone (WhatsApp) Ex: +216...">
+</div>
                 </div>
                 <button onclick="createAdminUser()" class="btn btn-success w-100 fw-bold" id="btn-create">تثبيت الحساب</button>
             </section>
@@ -355,26 +358,41 @@
         }
 
         // --- إدارة الحسابات ---
-        async function createAdminUser() {
-            const usernameInput = document.getElementById('new-user-name');
-            const passwordInput = document.getElementById('new-user-pass');
-            const username = usernameInput.value.trim().toLowerCase();
-            const password = passwordInput.value;
+       async function createadminuser() {
+        const usernameInput = document.getElementById('new-user-name');
+        const passwordInput = document.getElementById('new-user-pass');
+        const roleSelect = document.getElementById('new-user-role');
+        const phoneInput = document.getElementById('new_phone'); // جلب الهاتف
 
-            if(!username || !password) return showNotification('الرجاء ملء جميع الحقول!', 'error');
+        const username = usernameInput.value.trim().toLowerCase();
+        const password = passwordInput.value;
+        const role = roleSelect ? roleSelect.value : 'player';
+        const phone = phoneInput ? phoneInput.value.trim() : ''; // قيمة الهاتف
 
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST', headers: getAuthHeaders(), 
-                    body: JSON.stringify({ username, password, role: "admin", created_by: user.username })
-                });
-                if(res.ok){ 
-                    showNotification('تم إنشاء حساب الأدمن بنجاح!'); 
-                    usernameInput.value = ''; passwordInput.value = '';
-                    await loadNetworkData(); 
-                } else { showNotification('فشل الإنشاء', 'error'); }
-            } catch(e) { showNotification('خطأ في الاتصال', 'error'); }
+        if(!username || !password) return showNotification('Remplir tous les champs!', 'error');
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/register`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ username, password, role, created_by: user.username, phone }) // إرسال الهاتف
+            });
+            
+            const data = await res.json(); 
+
+            if(res.ok){
+                showNotification('Compte créé avec succès!', 'success');
+                usernameInput.value = '';
+                passwordInput.value = '';
+                if(phoneInput) phoneInput.value = '';
+                loadNetworkData();
+            } else {
+                showNotification(data.detail || 'Erreur lors de la création', 'error');
+            }
+        } catch(e) {
+            showNotification('Erreur de connexion avec le serveur', 'error');
         }
+    }
 
         async function saveRtpAndBlock(blockStatus) {
             const target_username = document.getElementById('target-action-user').value;
