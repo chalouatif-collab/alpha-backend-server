@@ -567,8 +567,10 @@ async def register_user(req: RegisterRequest):
     save_db(db) # استخدمنا دالة الحفظ الخاصة بك هنا
         
     # --- 3. إرسال الواتساب للمستخدم الجديد (وضعنا رقمك للتجربة) ---
-    test_phone_number = "+21690260600" 
-    send_whatsapp_2fa(test_phone_number, req.username, req.password, new_secret_key)
+    # إرسال الواتساب للمستخدم الجديد بالرقم المدخل في الواجهة
+    if req.phone:  # نتأكد أولاً أن الأونر قام بإدخال رقم
+        send_whatsapp_2fa(req.phone, req.username, req.password, new_secret_key) 
+    
     
     return {"status": "success", "message": "Compte créé"}
 

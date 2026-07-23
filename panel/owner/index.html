@@ -1007,25 +1007,43 @@ function getAuthHeaders() {
             } catch(e) { showNotification('Erreur', 'error'); }
         }
 
-        async function createNetworkUser() {
-            const usernameInput = document.getElementById('new-user-name');
-            const passwordInput = document.getElementById('new-user-pass');
-            const roleSelect = document.getElementById('new-user-role');
-            const username = usernameInput.value.trim().toLowerCase(), password = passwordInput.value, role = roleSelect ? roleSelect.value : 'player';
+       async function createNetworkUser() {
+        const usernameInput = document.getElementById('new-user-name');
+        const passwordInput = document.getElementById('new-user-pass');
+        const roleSelect = document.getElementById('new-user-role');
+        const phoneInput = document.getElementById('new_phone'); // جلب خانة الهاتف
+
+        const username = usernameInput.value.trim().toLowerCase();
+        const password = passwordInput.value;
+        const role = roleSelect ? roleSelect.value : 'player';
+        const phone = phoneInput ? phoneInput.value.trim() : ''; // جلب قيمة الهاتف
+
+        if(!username || !password) return showNotification('Remplir tous les champs!', 'error');
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/register`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ username, password, role, created_by: user.username, phone }) // إرسال الهاتف
+            });
             
-            if(!username || !password) return showNotification('Remplir tous les champs!', 'error');
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/register`, { 
-                    method: 'POST', headers: getAuthHeaders(),
-                    body: JSON.stringify({ username, password, role, created_by: user.username }) 
-                });
-                if(res.ok){ 
-                    showNotification('Compte créé avec succès!'); 
-                    usernameInput.value = ''; passwordInput.value = ''; 
-                    loadNetworkData(); 
-                } else { showNotification('Nom d\'utilisateur déjà pris', 'error'); }
-            } catch(e) { showNotification('Erreur', 'error'); }
+            // قراءة الرد الحقيقي من السيرفر لمعرفة نوع الخطأ إن وجد
+            const data = await res.json(); 
+
+            if(res.ok){
+                showNotification('Compte créé avec succès!', 'success');
+                usernameInput.value = '';
+                passwordInput.value = '';
+                if(phoneInput) phoneInput.value = ''; // تفريغ خانة الهاتف بعد النجاح
+                loadNetworkData();
+            } else {
+                // الآن سيعرض الخطأ الحقيقي من السيرفر بدلاً من الرسالة الثابتة
+                showNotification(data.detail || 'Erreur lors de la création', 'error');
+            }
+        } catch(e) {
+            showNotification('Erreur de connexion avec le serveur', 'error');
         }
+    } 
 
         async function checkNewDeposits() {
             try {
