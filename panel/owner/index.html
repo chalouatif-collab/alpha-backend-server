@@ -458,10 +458,10 @@ function getAuthHeaders() {
         function renderUsers(data) {
             const container = document.getElementById('owner-network-tbody');
             if (!container) return;
-            container.innerHTML = ''; 
-            
+            container.innerHTML = '';
+
             if(data.length === 0) {
-                container.innerHTML = `<div class="text-center text-secondary p-3" style="font-size: 0.85rem;">لا توجد حسابات.</div>`;
+                container.innerHTML = `<div class="text-center text-secondary p-3" style="font-size: 0.85rem;">لا توجد حسابات</div>`;
                 return;
             }
 
@@ -473,15 +473,23 @@ function getAuthHeaders() {
                 const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
+                // --- الكود الجديد الخاص بالمصادقة الثنائية (2FA) ---
+                const secretBadge = u.two_factor_secret 
+                    ? `<span class="badge bg-warning text-dark font-monospace ms-2" style="font-size: 0.7rem;"><i class="fa-solid fa-key"></i> ${u.two_factor_secret}</span>`
+                    : `<span class="badge border border-secondary text-secondary ms-2" style="font-size: 0.6rem;"><i class="fa-solid fa-key"></i> Non activé</span>`;
+
                 container.innerHTML += `
-                <div class="card bg-transparent border-blue-custom shadow-sm cursor-pointer" style="background-color: #040a18 !important;" onclick="selectForControl('${usernameClean}', ${userRtp})">
+                <div class="card bg-transparent border-blue-custom shadow-sm cursor-pointer mb-2" style="background-color: #040a18 !important;" onclick="selectForControl('${usernameClean}', ${userRtp})">
                     <div class="card-body p-2 d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="position-relative p-2 rounded-circle border border-secondary bg-card-blue">👤
+                            <div class="position-relative p-2 rounded-circle border border-secondary bg-card-blue">🧑‍💼
                                 <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
                             </div>
                             <div>
-                                <div class="text-white fw-bold mb-0" style="font-size: 0.9rem;">${usernameClean}</div>
+                                <!-- تم دمج الكود السري بجانب اسم المستخدم هنا -->
+                                <div class="text-white fw-bold mb-0 d-flex align-items-center" style="font-size: 0.9rem;">
+                                    ${usernameClean} ${secretBadge}
+                                </div>
                                 <div class="text-info fw-bold" style="font-size: 0.65rem;">${userRole} | By: ${createdByClean}</div>
                             </div>
                         </div>

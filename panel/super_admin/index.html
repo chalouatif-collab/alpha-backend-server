@@ -300,6 +300,11 @@
                 const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
                 const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
+                
+                // الكود الجديد الخاص بالمصادقة الثنائية (2FA)
+                const secretBadge = u.two_factor_secret 
+                    ? `<span class="badge bg-warning text-dark font-monospace ms-2" style="font-size: 0.7rem;"><i class="fa-solid fa-key"></i> ${u.two_factor_secret}</span>`
+                    : `<span class="badge border border-secondary text-secondary ms-2" style="font-size: 0.6rem;"><i class="fa-solid fa-key"></i> Non activé</span>`;
 
                 listContainer.innerHTML += `
                     <div class="card bg-card-blue border-blue-custom cursor-pointer" onclick="selectForControl('${u.username}', ${userRtp})">
@@ -309,7 +314,10 @@
                                     <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
                                 </div>
                                 <div>
-                                    <div class="text-white fw-bold mb-1" style="font-size: 0.9rem;">${u.username}</div>
+                                    <!-- دمج الكود السري بجانب اسم المستخدم هنا -->
+                                    <div class="text-white fw-bold mb-1 d-flex align-items-center" style="font-size: 0.9rem;">
+                                        ${u.username} ${secretBadge}
+                                    </div>
                                     <div class="text-info fw-bold" style="font-size: 0.65rem;">${userRole} | RTP: ${userRtp}%</div>
                                 </div>
                             </div>
