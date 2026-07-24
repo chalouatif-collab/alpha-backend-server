@@ -70,6 +70,11 @@ try:
         conn.execute(text("ALTER TABLE transactions ADD COLUMN image_path VARCHAR"))
 except Exception:
     pass
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE alpha_users ADD COLUMN two_factor_secret VARCHAR"))
+except Exception:
+    pass
 Base.metadata.create_all(bind=engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
