@@ -158,7 +158,11 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=[
+        "https://alphabet216.com",
+        "https://alpha-player-frontend.onrender.com"
+        # يمكنك إضافة "http://localhost:3000" هنا إذا كنت تطور الواجهة على جهازك
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
