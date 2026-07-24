@@ -1120,3 +1120,206 @@ async def setup_2fa(username: str):
 
 import httpx
 
+# ==========================================
+# دمج نظام BSW Aggregator Callbacks
+# ==========================================
+import hashlib
+import urllib.parse
+from fastapi import Query
+
+# ضع هنا الـ salt_token الذي استلمته في وثائق التكامل الخاصة بك
+SALT_TOKEN = os.getenv("SALT_TOKEN", "YOUR_SALT_TOKEN_HERE")
+
+
+def verify_hash(data: dict, received_hash: str) -> bool:
+  """التحقق من صحة الـ Hash بناءً على متطلبات BSW Aggregator"""
+  # 1. إزالة حقل الـ hash إن وجد واستبعاد القيم الفارغة
+  filtered_data = {
+      k: v for k, v in data.items() if k != "hash" and v is not None
+  }
+  # 2. ترتيب المفاتيح أبجدياً
+  sorted_params = sorted(filtered_data.items())
+
+  # 3. تحويل المعلمات إلى نص استعلام (Query String)
+  query_string = urllib.parse.urlencode(sorted_params)
+
+  # 4. إلحاق الـ salt_token في النهاية
+  string_to_hash = query_string + SALT_TOKEN
+
+  # 5. حساب MD5 Hash والمقارنة
+  calculated_hash = hashlib.md5(string_to_hash.encode("utf-8")).hexdigest()
+
+  return calculated_hash == received_hash
+
+
+# 1. نقطة اتصال جلب الرصيد (Get Balance)
+@app.get("/player_balance")
+async def player_balance(
+    project_name: str = Query(...),
+    provider: str = Query(...),
+    user_id: int = Query(...),
+    timestamp: int = Query(...),
+    hash: str = Query(...),
+):
+  incoming_data = {
+      "project_name": project_name,
+      "provider": provider,
+      "user_id": user_id,
+      "timestamp": timestamp,
+      "hash": hash,
+  }
+
+  # التحقق من الـ Hash[cite: 3]
+  if not verify_hash(incoming_data, hash):
+    return {"result": {}, "status": 18, "error_message": "Hash does not match"}
+
+  # جلب رصيد اللاعب من قاعدة البيانات الخاصة بك
+  db = load_db()
+  target_user = next(
+      (
+          u
+          for u in db
+          if str(u.get("id")) == str(user_id)
+          or u.get("username") == str(user_id)
+      ),
+      None,
+  )
+
+  if not target_user:
+    return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
+
+  if target_user.get("is_blocked", 0) == 1:
+    return {"result": {}, "status": 15, "error_message": "User is banned"}
+
+  return {
+      "result": {"balance": round(float(target_user.get("balance", 0.0)), 2)},
+      "status": 0,
+      "error_message": "OK",
+  }
+
+
+# 2. نقطة اتصال تغيير الرصيد (Change Balance)
+@app.post("/change_balance")
+async def change_balance(payload: dict = Body(...)):
+  received_hash = payload.get("hash", "")
+
+  # التحقق من الـ Hash للـ Body القادم[cite: 3]
+  if not verify_hash(payload, received_hash):
+    return {"result": {}, "status": 18, "error_message": "Hash does not match"}
+
+  user_id = payload.get("user_id")
+  transaction_type = payload.get(
+      "transaction_type"
+  )  # debit / credit / cancel_debit / cancel_credit
+  amount = float(payload.get("amount", 0.0))
+  transaction_id = payload.get("transaction_id")
+
+  db = load_db()
+  target_user = next(
+      (
+          u
+          for u in db
+          if str(u.get("id")) == str(user_id)
+          or u.get("username") == str(user_id)
+      ),
+      None,
+  )
+
+  if not target_user:
+    return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
+
+  if target_user.get("is_blocked", 0) == 1:
+    return {"result": {}, "status": 15, "error_message": "User is banned"}
+
+  current_balance = float(target_user.get("balance", 0.0))
+
+  # معالجة أنواع المعاملات المالية[cite: 3]
+  if transaction_type == "debit":
+    if current_balance < amount:
+      return {
+          "result": {},
+          "status": 13,
+          "error_message": "Insufficient Balance",
+      }
+    new_balance = current_balance - amount
+  elif transaction_type in ["credit", "cancel_debit"]:
+    new_balance = current_balance + amount
+  elif transaction_type in ["cancel_credit"]:
+    new_balance = current_balance - amount
+  else:
+    new_balance = current_balance
+
+  # تحديث الرصيد في قاعدة البيانات الخاصة بك
+  target_user["balance"] = round(new_balance, 2)
+  save_db(db)
+
+  # توليد أو استخدام معرف معاملة محلي (`txn_id`)
+  # يمكنك ربطه بجدول Transactions لديك إذا أردت
+  return {
+      "result": {"balance": round(new_balance, 2), "txn_id": random.randint(1, 1000000)},
+      "status": 0,
+      "error_message": "OK",
+  }
+
+@app.post("/change_balance/batch")
+async def change_balance_batch(payload: dict = Body(...)):
+  received_hash = payload.get("hash", "")
+
+  if not verify_hash(payload, received_hash):
+    return {"result": {}, "status": 18, "error_message": "Hash does not match"}
+
+  user_id = payload.get("user_id")
+  transactions = payload.get("transactions", [])
+
+  db = load_db()
+  target_user = next(
+      (
+          u
+          for u in db
+          if str(u.get("id")) == str(user_id)
+          or u.get("username") == str(user_id)
+      ),
+      None,
+  )
+
+  if not target_user:
+    return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
+
+  if target_user.get("is_blocked", 0) == 1:
+    return {"result": {}, "status": 15, "error_message": "User is banned"}
+
+  current_balance = float(target_user.get("balance", 0.0))
+  transactions_result = []
+
+  for tx in transactions:
+    tx_type = tx.get("transaction_type")
+    amount = float(tx.get("amount", 0.0))
+
+    if tx_type == "debit":
+      if current_balance < amount:
+        return {
+            "result": {},
+            "status": 13,
+            "error_message": "Insufficient Balance",
+        }
+      current_balance -= amount
+    elif tx_type in ["credit", "cancel_debit"]:
+      current_balance += amount
+    elif tx_type in ["cancel_credit"]:
+      current_balance -= amount
+
+    transactions_result.append({"txn_id": random.randint(1, 1000000)})
+
+  target_user["balance"] = round(current_balance, 2)
+  save_db(db)
+
+  return {
+      "result": {
+          "balance": round(current_balance, 2),
+          "transactions_result": transactions_result,
+      },
+      "status": 0,
+      "error_message": "OK",
+  } 
+
+  
