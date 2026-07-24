@@ -507,7 +507,7 @@ class ProviderRequest(BaseModel): provider_code: str
 # ==========================================
 @app.post("/api/login")
 @limiter.limit("5/minute")
-async def login_user(req: LoginRequest):
+async def login_user(request: Request, req: LoginRequest):
     uname = req.username.lower().strip()
     db = load_db()
     user = None
