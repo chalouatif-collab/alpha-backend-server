@@ -377,7 +377,7 @@
 
         const username = usernameInput.value.trim().toLowerCase();
         const password = passwordInput.value;
-        const role = roleSelect ? roleSelect.value : 'player';
+        const role = roleSelect ? roleSelect.value : 'admin';
         const phone = phoneInput ? phoneInput.value.trim() : ''; // قيمة الهاتف
 
         if(!username || !password) return showNotification('Remplir tous les champs!', 'error');
