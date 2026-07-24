@@ -394,7 +394,8 @@
                     showNotification(data.detail || 'Erreur lors de la création', 'error');
                 }
             } catch(e) {
-                showNotification('Erreur de connexion avec le serveur', 'error');
+                console.error("خطأ الاتصال تفصيلي:", e);
+                showNotification('Erreur de connexion avec le serveur: ' + e.message, 'error');
             }
         }
 
