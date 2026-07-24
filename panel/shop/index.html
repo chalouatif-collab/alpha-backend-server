@@ -359,7 +359,7 @@
             } catch(e) { console.error(e); }
         }
 
-       async function createPlayerAccount() {
+      async function createPlayerAccount() {
             const usernameInput = document.getElementById('new-user-name');
             const passwordInput = document.getElementById('player-password');
 
@@ -371,6 +371,11 @@
                 return;
             }
 
+            // جلب بيانات الشوب الحالي مباشرة من التخزين المحلي بأمان تام
+            const sessionData = localStorage.getItem('alpha_user');
+            const currentUser = sessionData ? JSON.parse(sessionData) : null;
+            const creatorUsername = currentUser ? currentUser.username : 'shop_admin';
+
             try {
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
                     method: 'POST',
@@ -379,7 +384,7 @@
                         username: username, 
                         password: password, 
                         role: 'player', 
-                        created_by: user.username 
+                        created_by: creatorUsername 
                     })
                 });
                 
@@ -389,13 +394,13 @@
                     showNotification('Compte créé avec succès!', 'success');
                     usernameInput.value = '';
                     passwordInput.value = '';
-                    loadShopData(); // أو دالة تحديث الجدول الخاصة بالشوب
+                    if(typeof loadShopData === 'function') loadShopData();
                 } else {
                     showNotification(data.detail || 'Erreur lors de la création', 'error');
                 }
             } catch(e) {
                 console.error("خطأ الاتصال تفصيلي:", e);
-                showNotification('Erreur de connexion avec le serveur: ' + e.message, 'error');
+                showNotification('Erreur de connexion avec le serveur', 'error');
             }
         }
 
