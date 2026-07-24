@@ -141,7 +141,18 @@ def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_ke
 # ==========================================
 # إعدادات تطبيق FastAPI الأساسية
 # ==========================================
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# إعداد نظام الحد من الطلبات بناءً على عنوان الـ IP للمستخدم
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI()
+
+# تفعيل الجدار الواقي على التطبيق
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
@@ -479,6 +490,7 @@ class ProviderRequest(BaseModel): provider_code: str
 # مسارات المستخدمين والإدارة (Auth & Admin)
 # ==========================================
 @app.post("/api/login")
+@limiter.limit("5/minute")
 async def login_user(req: LoginRequest):
     uname = req.username.lower().strip()
     db = load_db()
@@ -953,6 +965,7 @@ async def show_login_page():
 
 # 2. التحقق من صحة البيانات
 @app.post("/owner-login")
+@limiter.limit("5/minute")
 async def process_login(request: Request, username: str = Form(...), password: str = Form(...)):
     if username == ADMIN_USER and password == ADMIN_PASS:
         # إعطاء المستخدم "تأشيرة دخول" صالحة
