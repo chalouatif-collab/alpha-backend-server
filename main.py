@@ -1010,6 +1010,7 @@ async def admin_home(request: Request):
         return f.read()
 # 2. معالجة تسجيل الدخول والتوجيه حسب الرتبة
 @app.post("/login-router")
+@limiter.limit("5/minute")
 async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
     uname = username.lower().strip()
     db = load_db()
