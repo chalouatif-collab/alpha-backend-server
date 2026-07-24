@@ -461,7 +461,55 @@
             } catch (e) { console.error(e); }
         }
 
-        renderUsers(data)
+      function renderUsers(usersArray) {
+            const listContainer = document.getElementById('owner-network-tbody');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            if (usersArray.length === 0) {
+                listContainer.innerHTML = `<div class="alert alert-dark text-center border-secondary text-muted small">لا يوجد حسابات تابعة لك حالياً.</div>`;
+                return;
+            }
+
+            usersArray.forEach(u => {
+                const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
+                const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
+                const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
+                const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
+                
+                // --- الشارة السحرية مع زر النسخ ---
+                const secretBadge = u.two_factor_secret 
+                    ? `<span class="badge bg-success text-white p-1 rounded small d-inline-flex align-items-center gap-1 ms-2">
+                         <i class="fa-solid fa-key"></i> <span id="code-${u.username}">${u.two_factor_secret}</span>
+                         <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm text-white p-0 ms-1 border-0" title="نسخ الكود">
+                             <i class="fa-regular fa-copy fs-6 cursor-pointer"></i>
+                         </button>
+                       </span>` 
+                    : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
+
+                // --- رسم الكارت الخاص باللاعب ---
+                listContainer.innerHTML += `
+                    <div class="card bg-panel border-secondary mb-2 shadow-sm" style="cursor: pointer;" onclick="selectForControl('${u.username}', ${userRtp})">
+                        <div class="card-body p-2 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="position-relative p-2 rounded-circle bg-dark border border-secondary">
+                                    <i class="fa-solid fa-user text-secondary"></i>
+                                    <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
+                                </div>
+                                <div>
+                                    <div class="text-white fw-bold mb-1 d-flex align-items-center" style="font-size: 0.9rem;">
+                                        ${u.username} ${secretBadge}
+                                    </div>
+                                    <div class="text-amber fw-bold" style="font-size: 0.65rem;">${userRole} | RTP: ${userRtp}%</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-white fw-bold font-monospace" style="font-size: 0.85rem;">${userBalance} TND</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
 
         function renderFilteredUsers() {
             const searchInput = document.getElementById('search-input');
@@ -538,7 +586,7 @@
             } catch(e) { showNotification('Erreur de connexion', 'error'); }
         }
 
-        async function createadminuser() {
+        async function createAdminUser() {
         const usernameInput = document.getElementById('new-user-name');
         const passwordInput = document.getElementById('new-user-pass');
         const roleSelect = document.getElementById('new-user-role');
@@ -624,7 +672,15 @@
                 console.error("Erreur", e);
             }
         }
-        
+        function copySecretCode(secret, event) {
+            event.stopPropagation(); 
+            navigator.clipboard.writeText(secret).then(() => {
+                showNotification(`تم نسخ الكود بنجاح: ${secret}`, 'success');
+            }).catch(err => {
+                showNotification('فشل في نسخ الكود!', 'error');
+            });
+        }
+
         function logout() { 
             localStorage.clear(); 
             window.location.href = '/';  }
