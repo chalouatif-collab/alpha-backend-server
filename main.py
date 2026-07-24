@@ -169,6 +169,22 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
 TICKETS_FILE = "tickets_database.json" 
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import Request, HTTPException
+
+# قائمة عناوين IP المسموح لها (سنضع فيها عناوين الشركة لاحقاً)
+ALLOWED_BSW_IPS = ["127.0.0.1", "192.168.1.1"] 
+
+def verify_bsw_ip(request: Request):
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.client.host
+
+    # if client_ip not in ALLOWED_BSW_IPS:
+    #     raise HTTPException(status_code=403, detail="Access Denied: Unauthorized IP")
+    
+    return client_ip
 
 # --- التوجيه الذكي اليدوي لإجبار الروابط القديمة على العمل بالروابط النظيفة ---
 @app.get("/owner.html")
@@ -1171,6 +1187,7 @@ def verify_hash(data: dict, received_hash: str) -> bool:
 # 1. نقطة اتصال جلب الرصيد (Get Balance)
 @app.get("/player_balance")
 async def player_balance(
+    request: Request = Depends(verify_bsw_ip),
     project_name: str = Query(...),
     provider: str = Query(...),
     user_id: int = Query(...),
@@ -1217,6 +1234,7 @@ async def player_balance(
 # 2. نقطة اتصال تغيير الرصيد (Change Balance)
 @app.post("/change_balance")
 async def change_balance(payload: dict = Body(...)):
+  request: Request = Depends(verify_bsw_ip),
   received_hash = payload.get("hash", "")
 
   # التحقق من الـ Hash للـ Body القادم[cite: 3]
@@ -1279,6 +1297,7 @@ async def change_balance(payload: dict = Body(...)):
 
 @app.post("/change_balance/batch")
 async def change_balance_batch(payload: dict = Body(...)):
+  request: Request = Depends(verify_bsw_ip),
   received_hash = payload.get("hash", "")
 
   if not verify_hash(payload, received_hash):
