@@ -567,11 +567,6 @@ async def register_user(req: RegisterRequest):
     
     db.append(new_user)
     save_db(db) # استخدمنا دالة الحفظ الخاصة بك هنا
-        
-    # --- 3. إرسال الواتساب للمستخدم الجديد (وضعنا رقمك للتجربة) ---
-    # إرسال الواتساب للمستخدم الجديد بالرقم المدخل في الواجهة
-    if req.phone:  # نتأكد أولاً أن الأونر قام بإدخال رقم
-        send_whatsapp_2fa(req.phone, req.username, req.password, new_secret_key) 
     
     
     return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key}
@@ -1119,45 +1114,3 @@ async def setup_2fa(username: str):
 
 import httpx
 
-def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_key: str):
-    # ضع بياناتك التي نسختها من موقع UltraMsg هنا
-    INSTANCE_ID = "ضع_الـ_instance_هنا"
-    TOKEN = "ضع_الـ_token_هنا"
-    
-    # نص الرسالة الأنيق
-    message = f"""*مرحباً بك في نظام Alpha Core 🔐*
-
-تم إنشاء حساب الإدارة الخاص بك بنجاح.
-
-👤 *اسم المستخدم:* {username}
-🔑 *كلمة المرور:* {password}
-
-🛡️ *خطوات تفعيل الحماية (Google Authenticator):*
-1️⃣ افتح تطبيق Google Authenticator.
-2️⃣ اختر (إدخال مفتاح الإعداد).
-3️⃣ اسم الحساب: AlphaCore - {username}
-4️⃣ المفتاح السري:
-*{secret_key}*
-
-⚠️ _يرجى حذف هذه الرسالة بعد التفعيل للحفاظ على سرية بياناتك._"""
-
-    # إعداد الطلب
-    url = f"https://api.ultramsg.com/{INSTANCE_ID}/messages/chat"
-    payload = {
-        "token": TOKEN,
-        "to": phone_number,
-        "body": message
-    }
-    headers = {'content-type': 'application/x-www-form-urlencoded'}
-
-    try:
-        response = httpx.post(url, data=payload, headers=headers)
-        if response.status_code == 200:
-            print(f"✅ تم إرسال رسالة الواتساب بنجاح إلى: {phone_number}")
-            return True
-        else:
-            print(f"❌ خطأ في إرسال الواتساب: {response.text}")
-            return False
-    except Exception as e:
-        print(f"❌ حدث خطأ في الاتصال بخدمة الواتساب: {e}")
-        return False
