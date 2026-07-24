@@ -371,7 +371,7 @@
                 return;
             }
 
-            // جلب بيانات الشوب الحالي مباشرة من التخزين المحلي بأمان تام
+            // جلب اسم الشوب الحالي من التخزين المحلي
             const sessionData = localStorage.getItem('alpha_user');
             const currentUser = sessionData ? JSON.parse(sessionData) : null;
             const creatorUsername = currentUser ? currentUser.username : 'shop_admin';
@@ -384,7 +384,8 @@
                         username: username, 
                         password: password, 
                         role: 'player', 
-                        created_by: creatorUsername 
+                        created_by: creatorUsername,
+                        phone: "00000000" // إضافة حقل الهاتف المطلوب لكي يوافق السيرفر
                     })
                 });
                 
