@@ -447,7 +447,7 @@ function getAuthHeaders() {
 
         async function loadNetworkData() {
             try {
-                const res = await fetch(`${BACKEND_URL}/api/super/users?t=${Date.now()}`, { headers: getAuthHeaders() });
+                const res = await fetch(`${BACKEND_URL}/api/admin/users?t=${Date.now()}`, { headers: getAuthHeaders() });
                 if (res.ok) {
                     allUsers = await res.json();
                     renderFilteredUsers();
