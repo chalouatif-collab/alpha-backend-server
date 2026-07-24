@@ -54,7 +54,7 @@ class User(Base):
     created_by = Column(String)
     last_spin_date = Column(String, default="")
     daily_deposits = Column(Float, default=0.0)
-
+    two_factor_secret = Column(String, nullable=True)
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
