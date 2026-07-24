@@ -359,33 +359,43 @@
             } catch(e) { console.error(e); }
         }
 
-        async function createPlayerAccount() {
-            const username = document.getElementById('player-username').value.trim().toLowerCase();
-            const password = document.getElementById('player-password').value;
-            
-            if(!username || !password) return showNotification('جميع الحقول مطلوبة', 'error');
-            
+       async function createPlayerAccount() {
+            const usernameInput = document.getElementById('new-user-name');
+            const passwordInput = document.getElementById('player-password');
+
+            const username = usernameInput ? usernameInput.value.trim().toLowerCase() : '';
+            const password = passwordInput ? passwordInput.value : '';
+
+            if(!username || !password) {
+                showNotification('Remplir tous les champs!', 'error');
+                return;
+            }
+
             try {
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST', 
+                    method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ 
                         username: username, 
                         password: password, 
-                        role: "player", 
-                        created_by: shopSessionUser.username 
+                        role: 'player', 
+                        created_by: user.username 
                     })
                 });
                 
-                if(res.ok) {
-                    showNotification(`تم تفريع حساب اللاعب بنجاح تحت متجرك!`);
-                    document.getElementById('player-username').value = "";
-                    document.getElementById('player-password').value = "";
-                    await loadShopPlayersData();
+                const data = await res.json(); 
+
+                if(res.ok){
+                    showNotification('Compte créé avec succès!', 'success');
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    loadShopData(); // أو دالة تحديث الجدول الخاصة بالشوب
                 } else {
-                    showNotification('الاسم محجوز مسبقاً أو رُفض الطلب', 'error');
+                    showNotification(data.detail || 'Erreur lors de la création', 'error');
                 }
-            } catch(e) { showNotification('عطل اتصال بالسيرفر', 'error'); }
+            } catch(e) {
+                showNotification('Erreur de connexion avec le serveur', 'error');
+            }
         }
 
         async function changePlayerPasswordFromShop() {
