@@ -100,6 +100,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return payload.get("sub")
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+async def get_admin_user(current_user: str = Depends(get_current_user)):
+    db = load_db()
+    user = next((u for u in db if u["username"] == current_user), None)
+    
+    if not user or user.get("role") not in ["owner", "super_admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
+    
+    return current_user
 import httpx
 import pyotp
 
@@ -241,7 +250,7 @@ class ResettleTicketRequest(BaseModel):
     new_status: str  # 'won', 'lost', 'void'
 
 @app.post("/api/admin/resettle-ticket")
-async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depends(get_current_user)):
+async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depends(get_admin_user)):
     tickets_db = load_tickets_db()
     db = load_db()
     
@@ -320,7 +329,7 @@ from pydantic import BaseModel
 # 1. مسار جلب الطلبات المعلقة للوحة المالك
 # ==========================================
 @app.get("/api/admin/get-pending-deposits")
-async def get_pending_deposits(current_user: str = Depends(get_current_user)):
+async def get_pending_deposits(current_user: str = Depends(get_admin_user)):
     try:
         # تحميل كل التذاكر من قاعدة البيانات
         db = load_tickets_db()
@@ -347,7 +356,7 @@ class ApproveDepositRequest(BaseModel):
     amount: float
 
 @app.post("/api/admin/approve-deposit")
-async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depends(get_current_user)):
+async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depends(get_admin_user)):
     try:
         db = load_tickets_db()
         
@@ -386,7 +395,7 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
         raise HTTPException(status_code=500, detail="حدث خطأ داخلي أثناء الموافقة")
 
 @app.get("/api/admin/get-all-tickets")
-async def get_all_tickets(current_user: str = Depends(get_current_user)):
+async def get_all_tickets(current_user: str = Depends(get_admin_user)):
     tickets_db = load_tickets_db()
     
     # التأكد من إرجاع قائمة فارغة إذا كانت النتيجة None
@@ -616,7 +625,7 @@ async def get_all_network_users(admin_username: Optional[str] = None):
     return load_db()
 
 @app.post("/api/admin/update-balance")
-async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_current_user)):
+async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
     target, admin, amount = req.target_username.lower().strip(), req.admin_username.lower().strip(), float(req.amount)
     db = load_db()
     target_user = next((u for u in db if u.get("username") == target), None)
@@ -665,7 +674,7 @@ async def get_transactions_history(username: str):
     return result
 
 @app.post("/api/admin/request-transaction")
-async def request_transaction(target_username: str = Form(...), action: str = Form(...), amount: float = Form(...), tx_id: str = Form(...), file: UploadFile = File(None), current_user: str = Depends(get_current_user)):
+async def request_transaction(target_username: str = Form(...), action: str = Form(...), amount: float = Form(...), tx_id: str = Form(...), file: UploadFile = File(None), current_user: str = Depends(get_admin_user)):
     db_session = SessionLocal()
     try:
         file_path = ""
@@ -775,7 +784,7 @@ async def change_my_password(req: ChangeMyPasswordRequest):
             return {"status": "success", "message": "Mot de passe modifié avec succès"}
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 @app.get("/api/admin/get-player-tickets")
-async def get_player_tickets(username: str, current_user: str = Depends(get_current_user)):
+async def get_player_tickets(username: str, current_user: str = Depends(get_admin_user)):
     tickets_db = load_tickets_db()
     player_tickets = [t for t in tickets_db if t.get("username") == username.lower().strip()]
     return player_tickets
