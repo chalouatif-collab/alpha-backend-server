@@ -407,7 +407,8 @@ def load_db():
         result.append({
             "username": u.username, "password": u.password, "role": u.role,
             "balance": u.balance, "rtp": u.rtp, "is_blocked": u.is_blocked,
-            "created_by": u.created_by, "last_spin_date": u.last_spin_date, "daily_deposits": u.daily_deposits
+            "created_by": u.created_by, "last_spin_date": u.last_spin_date, "daily_deposits": u.daily_deposits,
+            "two_factor_secret": getattr(u, 'two_factor_secret', None)
         })
     if not result:
         default_users = [
