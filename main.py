@@ -426,11 +426,13 @@ def save_db(data):
             user.created_by = item.get("created_by", user.created_by)
             user.last_spin_date = item.get("last_spin_date", user.last_spin_date)
             user.daily_deposits = item.get("daily_deposits", user.daily_deposits)
+            user.two_factor_secret = item.get("two_factor_secret", getattr(user, "two_factor_secret", None))
         else:
             new_user = User(
                 username=item["username"], password=item["password"], role=item.get("role", "player"),
                 balance=item.get("balance", 0.0), rtp=item.get("rtp", 50), is_blocked=item.get("is_blocked", 0),
-                created_by=item.get("created_by", "System"), last_spin_date=item.get("last_spin_date", ""), daily_deposits=item.get("daily_deposits", 0.0)
+                created_by=item.get("created_by", "System"), last_spin_date=item.get("last_spin_date", ""), daily_deposits=item.get("daily_deposits", 0.0),
+                two_factor_secret=item.get("two_factor_secret")
             )
             db.add(new_user)
     db.commit()
