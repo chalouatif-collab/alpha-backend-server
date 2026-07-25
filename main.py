@@ -590,7 +590,7 @@ class Verify2FARequest(BaseModel):
 
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
-async def verify_2fa_api(req: Verify2FARequest):
+async def verify_2fa_api(request: Request, req: Verify2FARequest):
     db = load_db()
     user = next((u for u in db if u["username"] == req.username), None)
     
