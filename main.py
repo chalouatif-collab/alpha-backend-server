@@ -187,18 +187,23 @@ TICKETS_FILE = "tickets_database.json"
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import Request, HTTPException
 
-# قائمة عناوين IP المسموح لها (سنضع فيها عناوين الشركة لاحقاً)
-ALLOWED_BSW_IPS = ["127.0.0.1", "192.168.1.1"] 
+# 🛡️ قائمة عناوين IP الرسمية المسموح لها بالاتصال (خاصة بشركة Nexus)
+ALLOWED_NEXUS_IPS = [
+    "127.0.0.1",       # للسماح بالاختبار المحلي على جهازك
+    # "192.168.x.x",   # ضع أرقام نيكسيس هنا لاحقاً
+]
 
-def verify_bsw_ip(request: Request):
+def verify_nexus_ip(request: Request):
+    # استخراج الـ IP الحقيقي حتى لو كان الطلب يمر عبر سيرفرات وسيطة 
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         client_ip = forwarded_for.split(",")[0].strip()
     else:
         client_ip = request.client.host
-
-    # if client_ip not in ALLOWED_BSW_IPS:
-    #     raise HTTPException(status_code=403, detail="Access Denied: Unauthorized IP")
+    
+    # 🛑 تفعيل الجدار الناري: طرد أي طلب من IP غير موجود في القائمة فوراً
+    if client_ip not in ALLOWED_NEXUS_IPS:
+        raise HTTPException(status_code=403, detail="Access Denied: Unauthorized IP")
     
     return client_ip
 
@@ -1203,7 +1208,7 @@ def verify_hash(data: dict, received_hash: str) -> bool:
 # 1. نقطة اتصال جلب الرصيد (Get Balance)
 @app.get("/player_balance")
 async def player_balance(
-    request: Request = Depends(verify_bsw_ip),
+    request: Request = Depends(verify_nexus_ip),
     project_name: str = Query(...),
     provider: str = Query(...),
     user_id: int = Query(...),
@@ -1250,7 +1255,7 @@ async def player_balance(
 # 2. نقطة اتصال تغيير الرصيد (Change Balance)
 @app.post("/change_balance")
 async def change_balance(payload: dict = Body(...)):
-  request: Request = Depends(verify_bsw_ip),
+  request: Request = Depends(verify_nexus_ip),
   received_hash = payload.get("hash", "")
 
   # التحقق من الـ Hash للـ Body القادم[cite: 3]
@@ -1313,7 +1318,7 @@ async def change_balance(payload: dict = Body(...)):
 
 @app.post("/change_balance/batch")
 async def change_balance_batch(payload: dict = Body(...)):
-  request: Request = Depends(verify_bsw_ip),
+  request: Request = Depends(verify_nexus_ip),
   received_hash = payload.get("hash", "")
 
   if not verify_hash(payload, received_hash):
