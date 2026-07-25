@@ -575,8 +575,22 @@ class ProviderRequest(BaseModel): provider_code: str
 @app.post("/api/login")
 @limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
+    # 1. تنظيف اسم المستخدم
+    uname = html.escape(req.username.lower().strip())
+    
+    # 2. جلب قاعدة البيانات والبحث عن المستخدم
+    db = load_db()
+    user = next((u for u in db if u["username"] == uname), None)
 
-   uname = html.escape(req.username.lower().strip())
+    # 3. التحقق من صحة الحساب وكلمة المرور
+    if not user or not verify_password(req.password, user["password"]):
+        # 🚨 إنذار فوري عند كتابة كلمة سر خاطئة
+        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
+        asyncio.create_task(send_telegram_alert(bad_alert))
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
+
+    # 4. إذا كان كل شيء صحيح، نعطي الضوء الأخضر للواجهة للانتقال لخطوة (2FA)
+    return {"message": "success", "username": user["username"]}
    
 from pydantic import BaseModel
 from fastapi import HTTPException
