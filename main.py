@@ -631,9 +631,12 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
         good_alert = f"🔐 <b>دخول ناجح للإدارة</b>\n👤 المسؤول: <code>{req.username}</code>\n✅ الحالة: تم تسجيل الدخول بنجاح"
         asyncio.create_task(send_telegram_alert(good_alert))
         
-        return {"username": user["username"], "role": user["role"], "access_token": access_token}
-        
-        return {"username": user["username"], "role": user["role"], "access_token": access_token}
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "username": user["username"], 
+            "role": user["role"]
+        }
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
 
