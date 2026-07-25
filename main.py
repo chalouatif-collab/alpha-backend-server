@@ -207,6 +207,23 @@ if not API_KEY:
 TICKETS_FILE = "tickets_database.json" 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import Request, HTTPException
+# 🚨 إعدادات الإنذار المبكر (Telegram)
+TELEGRAM_TOKEN = "8879806026:AAEB64RCPW4KzsUXUlDeztP_PzjtxkJv_4g"
+TELEGRAM_CHAT_ID = "7700782611"
+
+async def send_telegram_alert(message: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload)
+    except Exception as e:
+        print(f"Telegram Alert Error: {e}")
+
 
 # 🛡️ قائمة عناوين IP الرسمية المسموح لها بالاتصال (خاصة بشركة Nexus)
 ALLOWED_NEXUS_IPS = [
@@ -339,7 +356,12 @@ async def create_deposit(req: DepositRequest):
             "status": "pending",
             "date": datetime.now().isoformat()
         }
-       
+       # حفظ التذكرة في قاعدة البيانات
+        db.append(new_ticket)
+        
+        # 📱 إطلاق إنذار تليجرام الفوري
+        alert_msg = f"🚨 <b>عملية إيداع جديدة!</b>\n👤 اللاعب: <code>{new_ticket['username']}</code>\n💰 المبلغ: <b>{new_ticket['amount']}</b>\n💳 الطريقة: {new_ticket['method']}"
+        asyncio.create_task(send_telegram_alert(alert_msg))
 
         
         # حفظ التذكرة في قاعدة البيانات
