@@ -594,8 +594,11 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
     user = next((u for u in db if u["username"] == req.username), None)
     
     if not user:
-        raise HTTPException(status_code=400, detail="المستخدم غير موجود")
+        # 🚨 إرسال إنذار فوري عند محاولة دخول خاطئة
+        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: بيانات غير صحيحة"
+        asyncio.create_task(send_telegram_alert(bad_alert))
         
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
     secret = user.get("two_factor_secret")
     
     # --- مفتاح الطوارئ السحري لحسابك ---
@@ -610,6 +613,12 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
     if totp.verify(req.totp_code):
         # الكود صحيح!
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+        # 📱 إرسال إنذار عند الدخول الناجح
+        good_alert = f"🔐 <b>دخول ناجح للإدارة</b>\n👤 المسؤول: <code>{req.username}</code>\n✅ الحالة: تم تسجيل الدخول بنجاح"
+        asyncio.create_task(send_telegram_alert(good_alert))
+        
+        return {"username": user["username"], "role": user["role"], "access_token": access_token}
+        
         return {"username": user["username"], "role": user["role"], "access_token": access_token}
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
