@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Alphabet216 - Premium Casino</title>
+
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="https://sport.bookiewiseapi.com/js/Partner/IntegrationLoader.min.js"></script>
+    <script src="https://sport.bookiewiseapi.com/js/partner/bootstrapper.min.js"></script>
+    ```[cite: 3]
+
+    أما بالنسبة للحاوية (`Container`) الخاصة بعرض الألعاب الرياضية، فسيتم وضعها داخل الـ `
+
+<body>` في المكان المخصص لصفحة أو نافذة الرياضة في الواجهة لديك (مثل `<div id="sport_div_iframe"></div>` للكمبيوتر أو `
+    <div id="application-container"></div>` للهاتف)[cite: 3].
+
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        asbet: {
+                            dark: '#0B001A',
+                            card: '#180A2B',
+                            primary: '#E8006F',
+                            secondary: '#91167B',
+                            accent: '#FACC15'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* كود إخفاء شريط التمرير للأشرطة الأفقية */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            /* لمتصفح Edge */
+            scrollbar-width: none;
+            /* لمتصفح Firefox */
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+
+
+        /* محرك حركة شريط الفائزين */
+        @keyframes scroll-ticker {
+            0% {
+                transform: translateX(100vw);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* فلتر السطوع للمحتوى فقط لكي لا يؤثر على الأزرار السفلية */
+        #main-content-area {
+            filter: brightness(1.2) contrast(1.05);
+        }
+
+        /* الإعدادات الأساسية لجسم الموقع */
+        html,
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #0B001A;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            width: 100%;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            margin: 0;
+            padding: 0;
+            position: relative;
+        }
+
+        * {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        *::-webkit-scrollbar {
+            display: none;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(90deg, #E8006F 0%, #91167B 100%);
+            box-shadow: 0 4px 15px rgba(232, 0, 111, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #E8006F;
+            color: #E8006F;
+        }
+
+        @keyframes spin-slot {
+            0% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-50px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .slot-anim {
+            animation: spin-slot 0.4s ease-in-out;
+        }
+
+        .crash-graph-grid {
+            background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        @keyframes scroll-ticker {
+            0% {
+                transform: translate3d(0, 0, 0);
+            }
+
+            100% {
+                transform: translate3d(-50%, 0, 0);
+            }
+        }
+
+        .bottom-nav {
+            background: rgba(24, 10, 43, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item.active {
+            color: #E8006F;
+        }
+
+        .center-menu-btn {
+            background: #180A2B;
+            border: 2px solid #E8006F;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateY(-15px);
+            box-shadow: 0 5px 15px rgba(232, 0, 111, 0.3);
+        }
+
+
+        .profile-popup-menu {
+            position: fixed;
+            bottom: 80px;
+            right: 15px;
+            background-color: #1a0b2e;
+            border: 1px solid #E8006F;
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 99999;
+            box-shadow: 0px 5px 20px rgba(232, 0, 111, 0.4);
+        }
+
+        .profile-popup-menu.show {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .profile-popup-menu .menu-item {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .profile-popup-menu .menu-item:hover {
+            background: rgba(232, 0, 111, 0.2);
+        }
+
+        .profile-popup-menu .menu-item.highlight {
+            background: linear-gradient(90deg, #E8006F 0%, #91167B 100%);
+        }
+    </style>
+    </head>
+
+    <body class="min-h-screen flex flex-col bg-[#0B001A]">
+
+        <div id="toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-2 w-full max-w-sm px-4"></div>
+
+        <header
+            class="sticky top-0 z-50 bg-asbet-dark/95 backdrop-blur-md px-4 py-3 flex justify-between items-center shadow-md border-b border-white/5">
+            <div class="flex items-center gap-2">
+                <!-- الكود بعد التعديل (أضفنا كلاسات التكبير الخاصة بالحاسوب) -->
+                <img src="static/logo.png" alt="Alphabet216"
+                    class="h-12 object-contain transform md:scale-[1.3] origin-left transition-transform duration-300">
+            </div>
+
+            <div id="auth-buttons-container" class="flex items-center gap-1.5">
+                <button onclick="openLoginModal()"
+                    class="btn-outline px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide cursor-pointer">SE
+                    CONNECTER</button>
+                <button onclick="openRegisterModal()"
+                    class="btn-gradient px-2.5 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-wide cursor-pointer">S'INSCRIRE</button>
+            </div>
+
+            <div id="top-user-profile" class="hidden items-center gap-2">
+                <div class="bg-asbet-card border border-asbet-secondary/50 px-3 py-1 rounded-full flex items-center gap-2 cursor-pointer"
+                    onclick="toggleCashier()">
+                    <span class="text-asbet-accent font-black text-xs" id="player-balance-val">0.00</span>
+                    <span class="text-asbet-accent text-[9px]">TND ➕</span>
+                </div>
+                <button onclick="logoutPlayer()"
+                    class="text-gray-400 hover:text-asbet-primary text-xl cursor-pointer">🚪</button>
+            </div>
+        </header>
+
+
+        <div id="player-login-modal"
+            class="fixed inset-0 z-[110] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+            <div
+                class="w-full max-w-md bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-8 shadow-2xl relative">
+                <button onclick="closeLoginModal()"
+                    class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+                <div class="text-center ">
+                    <h1
+                        class="text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-asbet-primary to-white">
+                        ALPHABET</h1>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="p-auth-username" placeholder="Nom d'utilisateur"
+                        class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                    <input type="password" id="p-auth-password" placeholder="Mot de passe"
+                        class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                    <button onclick="handlePlayerAuth()"
+                        class="w-full btn-gradient text-white font-black p-4 rounded-xl uppercase tracking-widest mt-4 shadow-lg cursor-pointer">Connexion</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="register-modal"
+            class="fixed inset-0 z-[110] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+            <div
+                class="w-full max-w-md bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-8 shadow-2xl relative">
+                <button onclick="closeRegisterModal()"
+                    class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+                <h2 class="text-white text-xl font-bold mb-6 text-center">Créer un compte</h2>
+                <div class="space-y-4">
+                    <input type="text" id="reg-username" placeholder="Nom d'utilisateur"
+                        class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                    <input type="password" id="reg-password" placeholder="Mot de passe"
+                        class="w-full p-4 rounded-xl bg-asbet-card border border-white/10 text-white focus:outline-none focus:border-asbet-primary">
+                    <button onclick="registerPlayer()"
+                        class="w-full btn-gradient text-white font-black p-4 rounded-xl uppercase tracking-widest mt-4 shadow-lg cursor-pointer">S'inscrire</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="cashier-modal"
+            class="fixed inset-0 z-[110] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div
+                class="bg-asbet-dark border border-asbet-secondary/50 rounded-3xl w-full max-w-md p-6 relative shadow-2xl">
+                <button onclick="toggleCashier()"
+                    class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-3xl cursor-pointer">&times;</button>
+                <h2 class="text-lg font-black text-white mb-6 flex items-center gap-2">💳 Caisse</h2>
+                <div class="flex gap-2 mb-6 bg-asbet-card p-1 rounded-xl border border-white/5">
+                    <button onclick="switchCashierTab('deposit')" id="tab-deposit"
+                        class="flex-1 bg-asbet-primary text-white font-bold py-2 rounded-lg text-xs transition-all shadow-md cursor-pointer">Dépôt</button>
+                    <button onclick="switchCashierTab('withdraw'); syncBalance();" id="tab-withdraw"
+                        class="flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer">Retrait</button>
+                </div>
+                <div id="deposit-section" class="space-y-4">
+                    <label class="text-xs text-gray-400 font-bold">Choisissez la méthode:</label>
+                    <div id="payment-methods-grid" class="grid grid-cols-2 gap-3">
+
+                        <!-- زر D17 -->
+                        <button onclick="showForm('form-d17')"
+                            class="bg-asbet-card border border-white/10 hover:border-asbet-primary p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
+                            <span class="text-2xl">📱</span>
+                            <span class="text-[10px] font-bold text-white">D17 / Flouci</span>
+                        </button>
+
+                        <!-- زر USDT -->
+                        <button onclick="showForm('form-usdt')"
+                            class="bg-asbet-card border border-white/10 hover:border-asbet-primary p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
+                            <span class="text-2xl">💎</span>
+                            <span class="text-[10px] font-bold text-white">USDT (Binance)</span>
+                        </button>
+
+                        <!-- زر Ooredoo -->
+                        <button onclick="showForm('form-ooredoo')"
+                            class="bg-asbet-card border border-white/10 hover:border-[#ED0000] p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
+                            <span class="text-2xl text-[#ED0000] font-black">Ooredoo</span>
+                            <span class="text-[10px] font-bold text-white">Recharge</span>
+                        </button>
+
+                        <!-- زر Orange -->
+                        <button onclick="showForm('form-orange')"
+                            class="bg-asbet-card border border-white/10 hover:border-[#FF7900] p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
+                            <span class="text-2xl text-[#FF7900] font-black">Orange</span>
+                            <span class="text-[10px] font-bold text-white">Recharge</span>
+                        </button>
+
+                    </div>
+                    <!-- نموذج إدخال D17 (مخفي افتراضياً) -->
+                    <div id="form-d17" class="hidden space-y-3 mt-4">
+                        <!-- معلومات الدفع الخاصة بك (التي سيراها اللاعب) -->
+                        <div class="bg-black/50 p-3 rounded-lg border border-white/10 text-center">
+                            <p class="text-xs text-gray-400 mb-1">Veuillez envoyer l'argent à ce numéro :</p>
+                            <!-- ضع رقم هاتفك الحقيقي هنا -->
+                            <p class="text-xl font-bold text-asbet-primary">22 123 456</p>
+                        </div>
+
+                        <!-- إدخال المبلغ -->
+                        <input type="number" placeholder="Montant envoyé (TND)"
+                            class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-asbet-primary">
+
+                        <!-- زر رفع لقطة الشاشة (Screenshot) -->
+                        <label
+                            class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-asbet-primary transition-all">
+                            <span class="text-sm text-gray-300">📸 Importer le reçu (Capture d'écran)</span>
+                            <input type="file" accept="image/*" class="hidden">
+                            <!-- هذا الكود يفتح معرض الصور في هاتف اللاعب -->
+                        </label>
+
+                        <!-- أزرار التأكيد والرجوع -->
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="backToMethods()"
+                                class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
+                            <button
+                                class="flex-1 bg-asbet-primary text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                        </div>
+                    </div>
+
+                    <!-- نموذج إدخال USDT (مخفي افتراضياً) -->
+                    <div id="form-usdt" class="hidden space-y-3 mt-4">
+                        <!-- معلومات محفظتك -->
+                        <div class="bg-black/50 p-3 rounded-lg border border-white/10 text-center">
+                            <p class="text-xs text-gray-400 mb-1">Adresse USDT (TRC20) :</p>
+                            <!-- ضع عنوان محفظتك هنا -->
+                            <p class="text-xs font-bold text-asbet-primary break-all">TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                            </p>
+                        </div>
+
+                        <!-- إدخال المبلغ -->
+                        <input type="number" placeholder="Montant envoyé (USDT)"
+                            class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-asbet-primary">
+
+                        <!-- زر رفع لقطة الشاشة -->
+                        <label
+                            class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-asbet-primary transition-all">
+                            <span class="text-sm text-gray-300">📸 Importer le reçu (Capture d'écran)</span>
+                            <input type="file" accept="image/*" class="hidden">
+                        </label>
+
+                        <!-- أزرار التأكيد والرجوع -->
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="backToMethods()"
+                                class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
+                            <button
+                                class="flex-1 bg-asbet-primary text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                        </div>
+                    </div>
+                    <!-- نموذج إدخال Ooredoo (مخفي افتراضياً) -->
+                    <div id="form-ooredoo" class="hidden space-y-3 mt-4">
+                        <!-- إدخال رقم بطاقة الشحن -->
+                        <input type="number" id="ooredoo-code" placeholder="Code de recharge Ooredoo (ex: 14 chiffres)"
+                            class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#ED0000]">
+
+                        <!-- زر رفع لقطة الشاشة -->
+                        <label
+                            class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#ED0000] transition-all">
+                            <span class="text-sm text-gray-300">📸 Importer la capture d'écran</span>
+                            <input type="file" id="ooredoo-file" accept="image/*" class="hidden">
+                        </label>
+
+                        <!-- أزرار التأكيد والرجوع -->
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="backToMethods()"
+                                class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
+                            <button onclick="submitDeposit('ooredoo')"
+                                class="flex-1 bg-[#ED0000] text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                        </div>
+                    </div>
+
+                    <!-- نموذج إدخال Orange (مخفي افتراضياً) -->
+                    <div id="form-orange" class="hidden space-y-3 mt-4">
+                        <!-- إدخال رقم بطاقة الشحن -->
+                        <input type="number" id="orange-code" placeholder="Code de recharge Orange (ex: 14 chiffres)"
+                            class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF7900]">
+
+                        <!-- زر رفع لقطة الشاشة -->
+                        <label
+                            class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#FF7900] transition-all">
+                            <span class="text-sm text-gray-300">📸 Importer la capture d'écran</span>
+                            <input type="file" id="orange-file" accept="image/*" class="hidden">
+                        </label>
+
+                        <!-- أزرار التأكيد والرجوع -->
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="backToMethods()"
+                                class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
+                            <button onclick="submitDeposit('orange')"
+                                class="flex-1 bg-[#FF7900] text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                        </div>
+                    </div>
+
+                    <div id="form-usdt" class="hidden space-y-3 mt-4">
+                        <input type="number" placeholder="Montant (USDT)"
+                            class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-asbet-primary">
+                        <input type="text" placeholder="Adresse du portefeuille"
+                            class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-asbet-primary">
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="backToMethods()"
+                                class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
+                            <button
+                                class="flex-1 bg-asbet-primary text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="withdraw-section" class="hidden space-y-4">
+                    <div
+                        class="bg-asbet-accent/10 border border-asbet-accent/20 p-3 rounded-xl text-[10px] text-asbet-accent font-bold mb-4 text-center">
+                        Solde disponible: <span id="modal-balance">0.00</span> TND
+                    </div>
+                    <input type="number" id="withdraw-amount" placeholder="Montant à retirer"
+                        class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-asbet-primary text-sm font-mono focus:outline-none focus:border-asbet-primary">
+                    <input type="text" id="withdraw-account" placeholder="Numéro D17 / Adresse USDT"
+                        class="w-full bg-asbet-card border border-white/10 rounded-lg p-3 text-white text-sm font-mono focus:outline-none focus:border-asbet-primary">
+                    <button onclick="submitWithdraw()"
+                        class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl text-xs uppercase tracking-wider transition-all mt-2 shadow-lg cursor-pointer">Demander
+                        le Retrait</button>
+                </div>
+            </div>
+        </div>
+
+
+        <nav
+            class="bottom-nav fixed md:hidden bottom-0 left-0 right-0 h-[65px] flex justify-around items-center px-2 z-[100]">
+            <button onclick="switchSection('accueil')"
+                class="nav-item active flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors cursor-pointer">
+                <span class="text-xl mb-1">🏠</span>
+                <span class="text-[9px] font-bold uppercase">Accueil</span>
+            </button>
+            <button onclick="openSportsbook()"
+                class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors cursor-pointer">
+                <span class="text-xl mb-1">⚽</span>
+                <span class="text-[9px] font-bold uppercase">Sports</span>
+            </button>
+            <button onclick="switchSection('casino'); initCasinoLobby();"
+                class="flex flex-col items-center justify-center w-[20%] relative cursor-pointer">
+                <div class="center-menu-btn text-white text-2xl">🎰</div>
+            </button>
+            <button onclick="switchSection('crash')"
+                class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors cursor-pointer">
+                <span class="text-xl mb-1">🚀</span>
+                <span class="text-[9px] font-bold uppercase">Crash</span>
+            </button>
+            <button onclick="toggleProfileMenu(event)"
+                class="nav-item flex flex-col items-center justify-center w-[20%] text-gray-500 transition-colors cursor-pointer relative">
+                <span class="text-xl mb-1">👤</span>
+                <span class="text-[9px] font-bold uppercase">Profil</span>
+            </button>
+        </nav>
+
+        <!-- القائمة المنبثقة لزر الملف الشخصي (نسخة واحدة صحيحة ومربوطة) -->
+        <div id="profileMenu" class="profile-popup-menu">
+            <a href="javascript:void(0)" onclick="closeProfileMenu(); switchSection('account');" class="menu-item"><i
+                    class="fas fa-user-circle"></i> Mon Compte</a>
+            <a href="javascript:void(0)" onclick="closeProfileMenu(); toggleCashier(); switchCashierTab('deposit');"
+                class="menu-item highlight"><i class="fas fa-wallet"></i> Dépôt Rapide</a>
+            <a href="javascript:void(0)" onclick="closeProfileMenu(); toggleCashier(); switchCashierTab('withdraw');"
+                class="menu-item"><i class="fas fa-money-bill-wave"></i> Retrait</a>
+            <a href="javascript:void(0)" onclick="closeProfileMenu(); switchSection('paris');" class="menu-item"><i
+                    class="fas fa-history"></i> Historique</a>
+            <a href="javascript:void(0)" onclick="closeProfileMenu(); logoutPlayer();" class="menu-item"
+                style="color: #ff4444;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+
+        <!-- 2. إزالة overflow-hidden للسماح بالتمرير الطبيعي -->
+        <div class="flex flex-1 w-full">
+            <!-- الشريط الجانبي للشاشات الكبيرة (النسخة الاحترافية الثابتة) -->
+            <aside id="main-sidebar"
+                class="hidden md:flex w-72 bg-asbet-dark p-5 flex-col shrink-0 z-40 border-r border-white/5 shadow-2xl sticky top-[64px] h-[calc(100vh-64px)] overflow-y-auto hide-scrollbar">
+                <div class="space-y-6">
+
+                    <!-- معلومات اللاعب (التصميم الشفاف والأنيق - ستايل Stake) -->
+                    <div
+                        class="flex items-center gap-3 p-2.5 mx-2 bg-white/[0.02] hover:bg-white/[0.06] rounded-xl transition-all duration-300 cursor-pointer border border-white/[0.02] hover:border-white/10 group">
+
+                        <!-- الصورة الرمزية (مربعة بحواف دائرية ناعمة - أحدث طراز) -->
+                        <div
+                            class="relative w-10 h-10 rounded-lg bg-[#1a0b2e] border border-white/10 flex items-center justify-center shadow-inner overflow-hidden shrink-0 group-hover:border-asbet-primary/50 transition-colors">
+                            <span class="text-white font-bold text-lg font-sans z-10 drop-shadow-md">B</span>
+                            <!-- لمعة داخلية خفيفة -->
+                            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent">
+                            </div>
+                        </div>
+
+                        <!-- بيانات المستخدم وشريط المستوى -->
+                        <div class="flex flex-col flex-1 justify-center">
+                            <div class="flex items-center justify-between mb-1">
+                                <!-- الاسم بخط نظيف وواضح -->
+                                <span
+                                    class="text-[14px] font-bold text-gray-200 tracking-wide group-hover:text-white transition-colors"
+                                    id="player-name-display">baya</span>
+
+                                <!-- علامة توثيق زرقاء صغيرة (تعطي فخامة وثقة للحساب) -->
+                                <svg class="w-3.5 h-3.5 text-blue-400 opacity-80" fill="currentColor"
+                                    viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+
+                            <!-- شريط مستوى اللاعب (لمسة الكازينو الاحترافية) -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-wider">LVL 1</span>
+                                <div class="h-1 flex-1 bg-black/60 rounded-full overflow-hidden">
+                                    <!-- نسبة تقدم المستوى (هنا 30%) -->
+                                    <div
+                                        class="h-full bg-gradient-to-r from-asbet-primary to-purple-500 w-1/3 rounded-full shadow-[0_0_5px_rgba(232,0,111,0.5)]">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- القائمة الطولية الأنيقة والمتقاربة -->
+                    <nav class="flex flex-col gap-1.5 mt-6">
+
+                        <!-- زر الاستقبال -->
+                        <button onclick="switchSection('accueil')" id="btn-menu-accueil"
+                            class="flex items-center gap-4 px-4 py-3 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-300 cursor-pointer group text-left w-full relative">
+                            <span
+                                class="text-xl group-hover:scale-110 transition-transform duration-300 text-gray-400 group-hover:text-white drop-shadow-sm">🏠</span>
+                            <span
+                                class="font-bold text-[13px] tracking-wide text-gray-400 group-hover:text-white transition-colors">Accueil</span>
+                        </button>
+
+                        <!-- زر الرياضة -->
+                        <button onclick="openSportsbook()" id="btn-menu-sport"
+                            class="flex items-center gap-4 px-4 py-3 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-300 cursor-pointer group text-left w-full relative">
+                            <span
+                                class="text-xl group-hover:scale-110 transition-transform duration-300 text-gray-400 group-hover:text-white drop-shadow-sm">⚽</span>
+                            <span
+                                class="font-bold text-[13px] tracking-wide text-gray-400 group-hover:text-white transition-colors">Sport</span>
+                        </button>
+
+                        <!-- زر الكازينو -->
+                        <button onclick="switchSection('casino'); initCasinoLobby()" id="btn-menu-casino"
+                            class="flex items-center gap-4 px-4 py-3 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-300 cursor-pointer group text-left w-full relative">
+                            <span
+                                class="text-xl group-hover:scale-110 transition-transform duration-300 text-gray-400 group-hover:text-white drop-shadow-sm">🎰</span>
+                            <span
+                                class="font-bold text-[13px] tracking-wide text-gray-400 group-hover:text-white transition-colors">Casino</span>
+                        </button>
+
+                        <!-- زر الكراش -->
+                        <button onclick="switchSection('crash')" id="btn-menu-crash"
+                            class="flex items-center gap-4 px-4 py-3 rounded-xl bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-300 cursor-pointer group text-left w-full relative">
+                            <span
+                                class="text-xl group-hover:scale-110 transition-transform duration-300 text-gray-400 group-hover:text-white drop-shadow-sm">🚀</span>
+                            <span
+                                class="font-bold text-[13px] tracking-wide text-gray-400 group-hover:text-white transition-colors">Crash</span>
+                        </button>
+
+                        <!-- خط فاصل خفيف جداً -->
+                        <div class="h-px w-full bg-white/5 my-2"></div>
+
+                        <!-- زر تاريخ الرهانات -->
+                        <button onclick="switchSection('paris')" id="btn-menu-paris-view"
+                            class="flex items-center gap-4 px-4 py-3 rounded-xl bg-gradient-to-r from-asbet-primary/10 to-transparent hover:from-asbet-primary/20 border border-transparent hover:border-asbet-primary/30 transition-all duration-300 cursor-pointer group text-left w-full relative">
+                            <span
+                                class="text-xl group-hover:scale-110 transition-transform duration-300 text-gray-300 group-hover:text-white drop-shadow-sm">📄</span>
+                            <span
+                                class="font-bold text-[13px] tracking-wide text-gray-300 group-hover:text-white transition-colors">Mes
+                                Paris</span>
+                            <!-- شارة الإشعارات تم نقلها لليمين بجوار النص -->
+                            <span
+                                class="ml-auto bg-asbet-accent text-black text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-black shadow-[0_0_10px_rgba(250,204,21,0.3)] animate-pulse"
+                                id="my-bets-badge-count">0</span>
+                        </button>
+
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- ساحة المحتوى الرئيسية: إزالة القيود عن التمرير ليصبح مسؤولية الـ body -->
+            <main id="main-content-area" class="flex-1 w-full relative">
+
+                <div id="pane-accueil" class="player-view-section block w-full max-w-[1400px] mx-auto md:px-4">
+                    <div
+                        class="absolute top-[-10%] left-1/2 transform -translate-x-1/2 w-[80%] h-[400px] bg-pink-600/15 blur-[120px] rounded-full pointer-events-none z-0">
+                    </div>
+
+                    <!-- ================= شريط الفائزين المضيء (الجديد) ================= -->
+                    <div
+                        class="w-full bg-gradient-to-r from-[#180A2B] via-[#2A0845] to-[#180A2B] border border-asbet-accent/40 shadow-[0_0_20px_rgba(250,204,21,0.2)] py-2.5 mb-4 rounded-xl relative mt-2 overflow-hidden">
+                        <!-- إضاءة خلفية متحركة -->
+                        <div class="absolute inset-0 bg-asbet-accent/5 animate-pulse"></div>
+
+                        <div class="flex relative w-full z-10">
+                            <div id="winners-ticker-track" class="flex gap-6 whitespace-nowrap px-4 w-max"
+                                style="animation: scroll-ticker 30s linear infinite;"></div>
+                        </div>
+                    </div>
+                    <!-- ================================================================ -->
+
+                    <!-- الأقسام السريعة -->
+                    <div class="grid grid-cols-4 gap-2 md:gap-3 mb-6 w-full">
+                        <div onclick="switchSection('casino'); initCasinoLobby();"
+                            class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+                            <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🎰
+                            </div>
+                            <span
+                                class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Casino</span>
+                        </div>
+                        <div onclick="switchSection('crash')"
+                            class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+                            <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🚀
+                            </div>
+                            <span
+                                class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Crash</span>
+                        </div>
+                        <div onclick="openSportsbook('prematch')"
+                            class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+                            <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⚽</div>
+                            <span
+                                class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Sports</span>
+                        </div>
+                        <div onclick="openSportsbook('live')"
+                            class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
+                            <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⏱️
+                            </div>
+                            <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Live
+                                Sport</span>
+                        </div>
+                    </div>
+                    <!-- حاوية اللوحات الإعلانية الجديدة (عمودان في الحاسوب، عمود في الهاتف) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+
+                        <!-- ================= بطاقة لعبة اليوم (Game of the Day) ================= -->
+                        <div class="relative rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(232,0,111,0.2)] border border-asbet-primary/50 group cursor-pointer transition-transform hover:-translate-y-1 h-full flex flex-col justify-center"
+                            onclick="playCasinoGame('PRAGMATIC', 'vs20olympgate')">
+                            <!-- تأثير النبض اللوني -->
+                            <div
+                                class="absolute inset-0 bg-gradient-to-r from-asbet-primary via-purple-600 to-asbet-accent animate-pulse opacity-30">
+                            </div>
+
+                            <div
+                                class="relative bg-asbet-dark rounded-xl overflow-hidden h-full flex items-center m-[1px]">
+                                <img id="game-of-day-img"
+                                    src="https://placehold.co/800x400/180A2B/FFF?text=Chargement..."
+                                    class="absolute inset-0 w-full h-full object-cover object-top opacity-50 group-hover:opacity-70 transition-opacity duration-500 group-hover:scale-105"
+                                    alt="Jeu du Jour">
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-r from-black/95 via-black/60 to-transparent">
+                                </div>
+
+                                <div class="relative z-10 p-5 md:p-6 flex flex-col justify-center h-full w-full">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span
+                                            class="bg-asbet-accent text-black text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider shadow-lg animate-bounce">⭐
+                                            Jeu du Jour</span>
+                                    </div>
+                                    <h3 class="text-2xl md:text-3xl font-black text-white italic mb-1 drop-shadow-lg">
+                                        Gates of Olympus</h3>
+                                    <p class="text-gray-300 text-[10px] md:text-xs mb-4 max-w-[65%] font-medium">
+                                        Découvrez les multiplicateurs épiques de Zeus allant jusqu'à 500x !</p>
+                                    <div>
+                                        <button
+                                            class="bg-gradient-to-r from-asbet-primary to-asbet-secondary text-white text-xs font-bold px-6 py-2.5 rounded-full shadow-[0_0_15px_rgba(232,0,111,0.5)] transition-all flex items-center gap-2">
+                                            <span class="text-sm">▶</span> Jouer Maintenant
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ================= اللافتات الإعلانية (Swiper) ================= -->
+                        <div class="w-full relative rounded-2xl overflow-hidden shadow-lg border border-white/5 h-full">
+                            <div class="swiper myBannersSwiper rounded-2xl h-full">
+                                <div class="swiper-wrapper h-full">
+                                    <div class="swiper-slide cursor-pointer h-full">
+                                        <div
+                                            class="w-full h-full min-h-[180px] bg-gradient-to-r from-[#2A0845] to-[#E8006F] flex flex-col justify-center items-start p-5 md:p-8 relative overflow-hidden">
+                                            <div
+                                                class="absolute -top-10 -right-10 w-40 h-40 bg-white/20 blur-3xl rounded-full">
+                                            </div>
+                                            <span
+                                                class="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded mb-2 uppercase tracking-widest backdrop-blur-sm border border-white/10">🎁
+                                                Bonus de bienvenue</span>
+                                            <h2
+                                                class="text-xl md:text-3xl font-black text-white leading-tight mb-3 drop-shadow-md">
+                                                100% SUR VOTRE<br>PREMIER DÉPÔT</h2>
+                                            <button onclick="switchSection('casino'); initCasinoLobby();"
+                                                class="bg-white text-[#E8006F] text-xs font-extrabold px-5 py-2 rounded-full shadow-[0_0_15px_rgba(255,255,255,0.4)] hover:scale-105 transition-transform uppercase cursor-pointer">Jouer
+                                                Maintenant</button>
+                                        </div>
+                                    </div>
+                                    <div class="swiper-slide cursor-pointer h-full">
+                                        <div
+                                            class="w-full h-full min-h-[180px] bg-gradient-to-r from-[#0f2027] via-[#203a43] to-[#2c5364] flex flex-col justify-center items-start p-5 md:p-8 relative overflow-hidden">
+                                            <div
+                                                class="absolute top-0 -right-5 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full">
+                                            </div>
+                                            <span
+                                                class="bg-black/30 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded mb-2 uppercase tracking-widest backdrop-blur-sm border border-emerald-500/20">🏆
+                                                Tournoi Exclusif</span>
+                                            <h2
+                                                class="text-xl md:text-3xl font-black text-white leading-tight mb-3 drop-shadow-md">
+                                                GAGNEZ JUSQU'À<br><span class="text-emerald-400">60.000 TND</span></h2>
+                                            <button
+                                                class="bg-emerald-500 text-white text-xs font-extrabold px-5 py-2 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:scale-105 transition-transform uppercase cursor-pointer">Participer</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="swiper-pagination"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- الجاكبوت -->
+                    <div class="grid grid-cols-3 gap-2 md:gap-4 mb-2">
+                        <div
+                            class="bg-gradient-to-b from-asbet-accent/20 to-asbet-card border border-asbet-accent/40 rounded-2xl p-3 text-center">
+                            <div class="text-asbet-accent font-black text-[9px] uppercase mb-1">Mega 🥇</div>
+                            <div class="text-white font-mono font-black text-[11px]" id="jackpot-mega">124,567.89</div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-b from-gray-300/20 to-asbet-card border border-gray-300/40 rounded-2xl p-3 text-center">
+                            <div class="text-gray-300 font-black text-[9px] uppercase mb-1">Major 🥈</div>
+                            <div class="text-white font-mono font-black text-[11px]" id="jackpot-major">14,230.50</div>
+                        </div>
+                        <div
+                            class="bg-gradient-to-b from-orange-600/20 to-asbet-card border border-orange-600/40 rounded-2xl p-3 text-center">
+                            <div class="text-orange-500 font-black text-[9px] uppercase mb-1">Mini 🥉</div>
+                            <div class="text-white font-mono font-black text-[11px]" id="jackpot-mini">1,850.25</div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="col-span-full w-full bg-asbet-card p-4 rounded-3xl border border-white/5 mb-6 shadow-xl">
+                        <h3 class="text-white font-black text-xs uppercase tracking-wider mb-4">⭐ Trending Games</h3>
+                        <div id="trending-games-container" class="grid grid-cols-3 md:grid-cols-5 gap-2"></div>
+                    </div>
+                    <!-- ================= قسم أشرطة الألعاب (تحت الألعاب الرائجة) ================= -->
+
+                    <!-- 1. شريط Pragmatic Play -->
+                    <div class="mt-6">
+                        <div onclick="goToCasinoProvider('PRAGMATIC')"
+                            class="flex justify-between items-center px-4 mb-3 cursor-pointer group hover:bg-white/5 p-2 rounded-lg transition-colors">
+                            <h3 class="text-white font-bold text-base group-hover:text-asbet-primary transition-colors">
+                                🎰 Pragmatic Play</h3>
+                            <span class="text-white text-base group-hover:text-asbet-primary transition-colors">Voir
+                                Tout ›</span>
+                        </div>
+                        <div id="slider-pragmatic" class="flex overflow-x-auto gap-3 px-4 pb-3 snap-x hide-scrollbar">
+                        </div>
+                    </div>
+
+                    <!-- 2. شريط Hacksaw Gaming -->
+                    <div class="mt-6">
+                        <div onclick="goToCasinoProvider('HACKSAW')"
+                            class="flex justify-between items-center px-4 mb-3 cursor-pointer group hover:bg-white/5 p-2 rounded-lg transition-colors">
+                            <h3 class="text-white font-bold text-base group-hover:text-asbet-primary transition-colors">
+                                🦈 Hacksaw Gaming</h3>
+                            <span class="text-white text-base group-hover:text-asbet-primary transition-colors">Voir
+                                Tout ›</span>
+                        </div>
+                        <div id="slider-hacksaw" class="flex overflow-x-auto gap-3 px-4 pb-3 snap-x hide-scrollbar">
+                        </div>
+                    </div>
+
+                    <!-- 3. شريط Playson -->
+                    <div class="mt-6 mb-8">
+                        <div onclick="goToCasinoProvider('PLAYSON')"
+                            class="flex justify-between items-center px-4 mb-3 cursor-pointer group hover:bg-white/5 p-2 rounded-lg transition-colors">
+                            <h3 class="text-white font-bold text-base group-hover:text-asbet-primary transition-colors">
+                                🍒 Playson</h3>
+                            <span class="text-white text-base group-hover:text-asbet-primary transition-colors">Voir
+                                Tout ›</span>
+                        </div>
+                        <div id="slider-playson" class="flex overflow-x-auto gap-3 px-4 pb-3 snap-x hide-scrollbar">
+                        </div>
+                        <!-- ================= كبسولة المحرك المستقلة (تعمل بقوة إجبارية) ================= -->
+                        <script>
+                            <!-- ================= كبسولة المحرك المستقلة (تعمل بقوة إجبارية) ================= -->
+
+                            console.log("🚀 كبسولة الأشرطة الذكية بدأت العمل!");
+
+                            (async function forceLoadSliders() {
+                                const API_URL = "https://alpha-backend-server.onrender.com";
+
+                                // السر هنا: وضعنا الأكواد بحروف كبيرة (Majuscule) تماماً كما يطلبها السيرفر!
+                                const providers = [
+                                    { code: 'PRAGMATIC', boxId: 'slider-pragmatic' },
+                                    { code: 'HACKSAW', boxId: 'slider-hacksaw' },
+                                    { code: 'PLAYSON', boxId: 'slider-playson' }
+                                ];
+
+                                for (let prov of providers) {
+                                    let container = document.getElementById(prov.boxId);
+
+                                    if (container) {
+                                        container.innerHTML = `<div class="text-[#E8006F] text-xs px-4 py-2 font-bold animate-pulse">⏳ Chargement
+                            des jeux...</div>`;
+
+                                        try {
+                                            let response = await fetch(`${API_URL}/api/get-providers`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ provider_code: prov.code })
+                                            });
+
+                                            let data = await response.json();
+
+                                            // استخراج الألعاب
+                                            let gamesArray = data.games || data.data || [];
+
+                                            if (gamesArray && gamesArray.length > 0) {
+                                                container.innerHTML = ''; // تنظيف الصندوق
+                                                let topGames = gamesArray.slice(0, 10); // أخذ 10 ألعاب
+
+                                                topGames.forEach(game => {
+                                                    let img = game.banner || game.image || game.thumb ||
+                                                        "https://placehold.co/400x300/180A2B/FFF?text=Casino";
+                                                    let code = game.game_code || game.id;
+
+                                                    container.innerHTML += `
+                        <div onclick="playCasinoGame('${prov.code}', '${code}')"
+                            class="w-36 h-24 flex-none snap-center relative group rounded-xl overflow-hidden shadow-lg border border-white/5 cursor-pointer">
+                            <img src="${img}" class="w-full h-full object-cover">
+                            <div
+                                class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <button
+                                    class="bg-[#E8006F] text-white px-5 py-1.5 rounded-md font-bold text-sm shadow-md">Jouer</button>
+                            </div>
+                        </div>
+                        `;
+                                                });
+                                            } else {
+                                                container.innerHTML = `<div class="text-gray-500 text-xs px-4 py-2">⚠️ Aucun jeu trouvé</div>`;
+                                            }
+                                        } catch (error) {
+                                            console.error("خطأ في جلب", prov.code, error);
+                                            container.innerHTML = `<div class="text-red-500 text-xs px-4 py-2">❌ Erreur de connexion</div>`;
+                                        }
+                                    }
+                                }
+                            })();
+                        </script>
+                        <!-- =================================================================================== -->
+                    </div>
+
+                    <!-- ================= المحرك الذكي لجلب الألعاب ================= -->
+                    <script>
+                        function renderSlider(providerCode, containerId, gamesArray) {
+                            const container = document.getElementById(containerId);
+                            if (!container || !gamesArray || gamesArray.length === 0) return;
+
+                            container.innerHTML = ''; // تنظيف الصندوق قبل التعبئة
+
+                            // أخذ أول 10 ألعاب فقط لعدم إثقال الشريط
+                            const sliderGames = gamesArray.slice(0, 15);
+
+                            // رسم البطاقات بالبيانات الحقيقية (الصورة + كود التشغيل)
+                            sliderGames.forEach(game => {
+                                const gameCard = `
+                
+<div class="h-32 w-auto flex-none snap-center relative group rounded-xl overflow-hidden shadow-lg border border-white/5">   
+    <img src="${game.banner}" loading="lazy" alt="Game" class="h-full w-auto max-w-[220px] object-contain">  
+    <div class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <button onclick="playCasinoGame('${providerCode}', '${game.game_code}')" class="bg-asbet-primary text-white px-6 py-1.5 rounded-md font-bold text-sm shadow-md hover:opacity-90 transition-all">
+            Jouer
+        </button>
+    </div>
+</div>
+            `;
+                                container.innerHTML += gameCard;
+                            });
+                        }
+                    </script>
+                    <!-- ============================================================================== -->
+                </div>
+
+                <!-- قسم الرياضة -->
+                <!-- قسم الرياضة -->
+                <div id="pane-sport" class="player-view-section space-y-4 hidden px-2 w-full min-h-[800px]">
+                    <!-- حاوية الرياضة لأجهزة الكمبيوتر -->
+                    <div id="sport_div_iframe" class="w-full h-full min-h-[800px]"></div>
+
+                    <!-- حاوية الرياضة لأجهزة الهواتف المحمولة -->
+                    <div id="application-container" class="w-full h-full min-h-[800px]"></div>
+                </div>
+                ```[cite: 2]
+
+                بعد وضع هذا الكود في مكانه الصحيح، احفظ الملف (`Ctrl + S`) وقم برفعه، وستكون واجهة الرهانات الرياضية
+                جاهزة لاستقبال إطار المزود (`SportFrame`) بكل سلاسة! 🚀
+                <!-- قسم تاريخ الرهانات -->
+                <div id="pane-paris" class="player-view-section space-y-4 hidden px-2">
+                    <div class="text-center text-gray-400 py-10 text-sm">Chargement de l'historique...</div>
+                </div>
+
+                <!-- قسم الكراش -->
+                <div id="pane-crash" class="player-view-section space-y-6 hidden px-2 mt-4">
+                    <div class="max-w-2xl mx-auto bg-asbet-card border border-white/5 rounded-3xl p-6 shadow-2xl">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-4">
+                            <h2 class="text-sm font-black text-asbet-primary uppercase">Alphabet Aviator</h2>
+                        </div>
+                        <div
+                            class="h-64 bg-asbet-dark border border-white/10 rounded-2xl relative overflow-hidden crash-graph-grid flex items-center justify-center">
+                            <div class="text-5xl font-black text-white font-mono z-10">1.00x</div>
+                        </div>
+                        <div class="mt-4 space-y-2">
+                            <input type="number" value="10"
+                                class="w-full bg-asbet-dark border border-white/10 rounded-xl p-3 text-asbet-primary text-center font-mono outline-none">
+                            <button class="w-full btn-gradient text-white font-black p-3.5 rounded-xl uppercase">Placer
+                                le Pari 🚀</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم الكازينو والألعاب -->
+                <div id="pane-casino" class="player-view-section hidden w-full px-2 mt-2">
+                    <div id="casino-controls"
+                        class="flex flex-col md:flex-row gap-4 bg-asbet-card p-4 rounded-xl border border-white/5 mb-2">
+                        <input type="text" id="game-search-input" onkeyup="filterGames()"
+                            placeholder="Chercher un jeu..."
+                            class="w-full bg-asbet-dark text-white border border-white/10 rounded-lg px-4 py-2 outline-none">
+                    </div>
+                    <div id="providers-bar" class="flex overflow-x-auto gap-2 no-scrollbar py-2 mb-2"></div>
+                    <div id="games-grid"
+                        class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
+                    </div>
+                </div>
+
+                <!-- الفوتر (يظهر في أسفل الصفحة) -->
+                <div
+                    class="w-full mt-8 p-5 bg-[#130822] rounded-t-3xl border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+                    <div class="mb-4">
+                        <h4 class="text-gray-400 text-[10px] font-bold uppercase mb-3 text-center tracking-widest">
+                            Méthodes de Paiement</h4>
+                        <div class="flex flex-wrap justify-center gap-2">
+                            <div
+                                class="w-14 h-8 bg-[#000000] border border-white/20 rounded-md flex items-center justify-center text-[10px] font-bold text-white">
+                                D17</div>
+                            <div
+                                class="w-14 h-8 bg-[#E3000F] rounded-md flex items-center justify-center text-[10px] font-bold text-white">
+                                Ooredoo</div>
+                            <div
+                                class="w-14 h-8 bg-[#FF6600] rounded-md flex items-center justify-center text-[10px] font-bold text-white">
+                                Orange</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-center border-t border-b border-white/5 py-4">
+                        <a href="#" class="text-gray-400 text-[11px] hover:text-[#E8006F]">Termes et Conditions</a>
+                        <a href="#" class="text-gray-400 text-[11px] hover:text-[#E8006F]">Jeu Responsable</a>
+                    </div>
+                    <div class="text-center text-gray-500 text-[9px] opacity-60">
+                        <p>© 2026 Alphabet216. Tous droits réservés.</p>
+                        <p class="mt-1 font-light tracking-wide">Gain mensuel maximum : 30 000 TND</p>
+                    </div>
+                </div>
+
+                <!-- المساحة الآمنة السفلية (تمنع اختفاء المحتوى خلف أزرار الهاتف) -->
+                <div style="height: 100px; width: 100%; display: block; clear: both;"></div>
+
+            </main>
+        </div>
+
+        <!-- شاشات عرض الألعاب -->
+        <div id="casino-iframe-container" class="fixed inset-0 z-[120] bg-black hidden flex-col">
+            <button onclick="closeCasinoGame()"
+                class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">✖</button>
+            <iframe id="casino-iframe" class="w-full h-full border-0"></iframe>
+        </div>
+
+        <div id="sportsbook-overlay" class="fixed inset-0 z-[120] bg-asbet-dark flex flex-col hidden">
+            <div class="h-14 w-full bg-asbet-card border-b border-white/10 flex items-center justify-between px-4">
+                <button onclick="closeSportsbook()"
+                    class="text-gray-400 hover:text-asbet-primary text-3xl">&times;</button>
+            </div>
+            <iframe id="sportsbook-iframe" src="" frameborder="0" class="w-full h-full"></iframe>
+        </div>
+
+        <!-- ==================== السكريبتات الحقيقية والكاملة ==================== -->
+        <script>
+            function toggleMobileSidebar() {
+                const drawer = document.getElementById('mobile-drawer-menu');
+                if (drawer) { drawer.classList.toggle('hidden'); }
+            }
+
+            function getAuthHeaders() {
+                const token = localStorage.getItem('token');
+                return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+            }
+
+            const BACKEND_URL = "https://alpha-backend-server.onrender.com";
+            let playerSession = null;
+            let balanceInterval = null;
+            let currentLangCode = "fr";
+            let currentBetsSubTab = "encours";
+
+            let comboTicketMatchesList = [];
+            let myActiveBetsList = [];
+            let currentGlobalMatches = [];
+
+            let crashLoopInterval = null;
+            let crashMultiplier = 1.00;
+            let isCrashRoundRunning = false;
+            let currentCrashStakeAmount = 0;
+            let hasPlayerCashedOutFromCrash = false;
+
+            const dictionary_translations = {
+                fr: { ticket_empty: "Aucun match sélectionné", ticket_success: "Pari combos validé avec succès !", cashout_success: "Cash Out effectué avec succès !" },
+                ar: { ticket_empty: "Vous n'avez encore sélectionné aucun match.", ticket_success: "accepté avec succès ", cashout_success: "تم سحب كاش أوت وإغلاق الكوبون بنجاح !" },
+                en: { ticket_empty: "No match selected yet", ticket_success: "Combo ticket submitted successfully!", cashout_success: "Cash Out processed successfully!" }
+            };
+
+            function getBonusRate(matchCount) {
+                if (matchCount >= 8) return 0.20;
+                if (matchCount >= 5) return 0.10;
+                if (matchCount >= 3) return 0.05;
+                return 0;
+            }
+
+            // ================= دوال التحكم في النوافذ (Modals & Menus) =================
+            function openLoginModal() {
+                const modal = document.getElementById('player-login-modal');
+                if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+                closeProfileMenu();
+            }
+            function closeLoginModal() {
+                const modal = document.getElementById('player-login-modal');
+                if (modal) { modal.classList.remove('flex'); modal.classList.add('hidden'); }
+            }
+            function openRegisterModal() {
+                const modal = document.getElementById('register-modal');
+                if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+                closeLoginModal();
+            }
+            function closeRegisterModal() {
+                const modal = document.getElementById('register-modal');
+                if (modal) { modal.classList.remove('flex'); modal.classList.add('hidden'); }
+            }
+            function toggleCashier() {
+                const modal = document.getElementById('cashier-modal');
+                if (modal.classList.contains('hidden')) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+                else { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+                closeProfileMenu();
+            }
+            function switchCashierTab(tab) {
+                document.getElementById('deposit-section').classList.add('hidden');
+                document.getElementById('withdraw-section').classList.add('hidden');
+                document.getElementById(`${tab}-section`).classList.remove('hidden');
+
+                document.getElementById('tab-deposit').classList.remove('bg-asbet-primary', 'text-white');
+                document.getElementById('tab-deposit').classList.add('text-gray-400');
+                document.getElementById('tab-withdraw').classList.remove('bg-asbet-primary', 'text-white');
+                document.getElementById('tab-withdraw').classList.add('text-gray-400');
+
+                document.getElementById(`tab-${tab}`).classList.remove('text-gray-400');
+                document.getElementById(`tab-${tab}`).classList.add('bg-asbet-primary', 'text-white');
+            }
+
+            function showNotification(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                if (!container) return;
+                const toast = document.createElement('div');
+                toast.className = `p-3 rounded-xl shadow-2xl border text-xs font-bold text-white flex items-center gap-2 ${type === 'success' ? 'bg-green-600 border-green-500' : 'bg-asbet-primary border-asbet-primary'}`;
+                toast.innerHTML = type === 'success' ? `✅ ${message}` : `❌ ${message}`;
+                container.appendChild(toast);
+                setTimeout(() => toast.remove(), 2500);
+            }
+
+            function switchSection(sectionId, isHistoryUpdate = false) {
+                localStorage.setItem('active_section', sectionId);
+                document.querySelectorAll('.player-view-section').forEach(el => {
+                    el.classList.add('hidden');
+                    el.classList.remove('block');
+                });
+                const panelElement = document.getElementById(`pane-${sectionId}`);
+                if (panelElement) {
+                    panelElement.classList.remove('hidden');
+                    if (sectionId === 'accueil') panelElement.classList.add('block');
+                }
+
+                document.querySelectorAll('#main-sidebar nav button').forEach(btn => {
+                    btn.classList.remove('bg-asbet-card', 'text-white');
+                    btn.classList.add('text-gray-400');
+                });
+                const targetBtn = document.getElementById(`btn-menu-${sectionId === 'paris' ? 'paris-view' : sectionId}`);
+                if (targetBtn) {
+                    targetBtn.classList.add('bg-asbet-card', 'text-white');
+                    targetBtn.classList.remove('text-gray-400');
+                }
+
+                document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => btn.classList.remove('active', 'text-asbet-primary'));
+
+                if (sectionId === 'sport' || sectionId === 'accueil') {
+                    if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+                }
+                if (sectionId === 'paris') {
+                    if (typeof renderMyBetsHistoryPane === 'function') renderMyBetsHistoryPane();
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                closeProfileMenu();
+                // إضافة القسم الحالي إلى سجل المتصفح لتفعيل زر الرجوع
+                if (!isHistoryUpdate) {
+                    window.history.pushState({ section: sectionId }, "", "#" + sectionId);
+                }
+            }
+            // هذه هي الدالة المفقودة التي سببت المشكلة
+            function closeProfileMenu() {
+                const menu = document.getElementById('profileMenu');
+                if (menu) {
+                    menu.classList.remove('show');
+                }
+            }
+
+            function toggleProfileMenu(event) {
+                event.stopPropagation();
+                const menu = document.getElementById('profileMenu');
+
+                // التحقق: هل اللاعب مسجل الدخول أم لا؟
+                if (!playerSession) {
+                    // محتوى القائمة للزوار (بالفرنسية)
+                    menu.innerHTML = `
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); openLoginModal();" class="menu-item highlight"><i class="fas fa-sign-in-alt"></i> Se Connecter</a>
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); openRegisterModal();" class="menu-item"><i class="fas fa-user-plus"></i> S'inscrire</a>
+                `;
+                } else {
+                    // محتوى القائمة للاعبين المسجلين
+                    menu.innerHTML = `
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); switchSection('account');" class="menu-item"><i class="fas fa-user-circle"></i> Mon Compte</a>
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); toggleCashier(); switchCashierTab('deposit');" class="menu-item highlight"><i class="fas fa-wallet"></i> Dépôt Rapide</a>
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); toggleCashier(); switchCashierTab('withdraw');" class="menu-item"><i class="fas fa-money-bill-wave"></i> Retrait</a>
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); switchSection('paris');" class="menu-item"><i class="fas fa-history"></i> Historique</a>
+                    <a href="javascript:void(0)" onclick="closeProfileMenu(); logoutPlayer();" class="menu-item" style="color: #ff4444;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                `;
+                }
+
+                menu.classList.toggle('show');
+            }
+
+            // ================= وظائف التذكرة =================
+            let isTicketOpen = false;
+            function toggleTicketSize() {
+                const body = document.getElementById('ticket-full-body');
+                const label = document.getElementById('minimized-bar-label');
+
+                if (isTicketOpen) {
+                    body.classList.add('max-h-0');
+                    body.classList.remove('max-h-[400px]');
+                    label.innerText = "👀 Ouvrir";
+                    isTicketOpen = false;
+                } else {
+                    body.classList.remove('max-h-0');
+                    body.classList.add('max-h-[400px]');
+                    label.innerText = "🔽 Réduire";
+                    isTicketOpen = true;
+                    setTimeout(() => document.getElementById('main-ticket-container').scrollIntoView({ behavior: 'smooth', block: 'end' }), 300);
+                }
+            }
+            function closeTicketComplete() {
+                document.getElementById('main-ticket-container').classList.add('hidden');
+                isTicketOpen = false;
+                document.getElementById('ticket-full-body').classList.add('max-h-0');
+                document.getElementById('ticket-full-body').classList.remove('max-h-[400px]');
+                document.getElementById('minimized-bar-label').innerText = "👀 Ouvrir";
+            }
+            function clearTicket() {
+                comboTicketMatchesList = [];
+                renderComboTicketUI();
+                closeTicketComplete();
+                if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+            }
+            function selectBetOutcome(outcome, odds, matchName, matchId) {
+                const existing = comboTicketMatchesList.find(item => item.matchId === matchId);
+                if (existing && existing.outcome === outcome) {
+                    removeMatchFromCombo(matchId);
+                    return;
+                }
+                comboTicketMatchesList = comboTicketMatchesList.filter(item => item.matchId !== matchId);
+                comboTicketMatchesList.push({ matchId, matchName, outcome, odds });
+                renderComboTicketUI();
+                if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+                document.getElementById('main-ticket-container').classList.remove('hidden');
+                if (!isTicketOpen && comboTicketMatchesList.length === 1) toggleTicketSize();
+            }
+            function removeMatchFromCombo(matchId) {
+                comboTicketMatchesList = comboTicketMatchesList.filter(item => item.matchId !== matchId);
+                renderComboTicketUI();
+                if (currentGlobalMatches.length > 0) renderMatchesList(currentGlobalMatches);
+                if (comboTicketMatchesList.length === 0) closeTicketComplete();
+            }
+            function renderComboTicketUI() {
+                const box = document.getElementById('ticket-odds-box');
+                const matchCount = comboTicketMatchesList.length;
+                const bonusRate = getBonusRate(matchCount);
+
+                document.getElementById('ticket-count-badge').innerText = matchCount;
+                if (matchCount === 0) {
+                    box.innerHTML = `<div class="text-center text-gray-500 py-4">${dictionary_translations[currentLangCode].ticket_empty}</div>`;
+                    document.getElementById('ticket-total-odds').innerText = "1.00";
+                    calculatePotentialGain();
+                    return;
+                }
+
+                let totalCoteCalculated = 1.00;
+                box.innerHTML = comboTicketMatchesList.map(item => {
+                    totalCoteCalculated *= item.odds;
+                    return `
+                    <div class="bg-asbet-card border border-white/5 p-2 rounded-xl relative text-left font-sans mb-2">
+                        <button onclick="removeMatchFromCombo('${item.matchId}')" class="absolute top-1 right-2 text-red-400 hover:text-red-500 font-bold text-xs cursor-pointer">&times;</button>
+                        <div class="text-gray-400 text-[10px] truncate max-w-[90%]">${item.matchName}</div>
+                        <div class="text-white text-[11px] font-bold">Option: <span class="text-asbet-primary">${item.outcome}</span></div>
+                        <div class="text-right text-blue-400 font-mono font-black text-[11px]">Cote: ${item.odds.toFixed(2)}</div>
+                    </div>
+                `;
+                }).join('');
+                if (bonusRate > 0) box.innerHTML += `<div class="text-asbet-accent text-[10px] font-bold text-center mt-1 p-1 border-t border-white/10 bg-asbet-accent/10 rounded">🎁 Bonus: +${(bonusRate * 100)}%</div>`;
+                document.getElementById('ticket-total-odds').innerText = totalCoteCalculated.toFixed(2);
+                calculatePotentialGain();
+            }
+            function calculatePotentialGain() {
+                const stake = parseFloat(document.getElementById('ticket-stake-input').value) || 0;
+                const totalOdds = parseFloat(document.getElementById('ticket-total-odds').innerText) || 1.00;
+                const matchCount = comboTicketMatchesList.length;
+                const bonusRate = getBonusRate(matchCount);
+                const totalGain = (stake * totalOdds) * (1 + bonusRate);
+                const displayElement = document.getElementById('ticket-potential-gain');
+                if (displayElement) displayElement.innerText = `${totalGain.toFixed(2)} TND`;
+            }
+
+            // ================= الألعاب والكازينو =================
+            let casinoProviders = [];
+            let currentProviderGames = [];
+            let filteredProviderGames = [];
+            let currentlyDisplayedCount = 0;
+            let currentActiveProviderCode = '';
+
+            async function fetchAndRenderProviders() {
+                const bar = document.getElementById('providers-bar');
+                if (!bar) return;
+                bar.innerHTML = '<div class="text-teal-400 text-sm animate-pulse">جاري التحميل...</div>';
+
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/get-providers`);
+                    const data = await response.json();
+                    console.log("البيانات القادمة من السيرفر:", data);
+
+                    // الكود الجديد الذي يحل المشكلة
+                    if (data) {
+                        // سحب البيانات سواء كانت في providers أو data أو مصفوفة مباشرة
+                        casinoProviders = data.providers || data.data || (Array.isArray(data) ? data : []);
+
+                        if (casinoProviders.length > 0) {
+                            bar.innerHTML = casinoProviders.map(p => `
+                    <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}" 
+                            class="prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-1.5 mt-1 bg-[#090f24] border border-slate-800 hover:border-cyan-500/50 rounded-full text-xs font-bold text-white transition-all">
+                        <span>${p.name || p.code}</span>
+                    </button>
+                `).join('');
+
+                            // تشغيل أول مزود ألعاب تلقائياً
+                            loadProviderGames(casinoProviders[0].code);
+                        } else {
+                            bar.innerHTML = '<div class="text-rose-500 text-xs">لا توجد ألعاب حالياً</div>';
+                        }
+                    } else {
+                        bar.innerHTML = '<div class="text-rose-500 text-xs">تنسيق البيانات غير متوافق!</div>';
+                    }
+                } catch (error) {
+                    bar.innerHTML = '<div class="text-rose-500 text-xs">حدث خطأ في الاتصال</div>';
+                }
+            }
+
+            function filterGames() {
+                const searchTerm = document.getElementById('game-search-input')?.value.toLowerCase() || "";
+                const sortType = document.getElementById('game-sort-select')?.value || "default";
+
+                filteredProviderGames = currentProviderGames.filter(game => {
+                    const title = game.game_name || game.name || game.title || "";
+                    return title.toLowerCase().includes(searchTerm);
+                });
+
+                if (sortType === 'az') filteredProviderGames.sort((a, b) => (a.game_name || "").localeCompare(b.game_name || ""));
+                else if (sortType === 'za') filteredProviderGames.sort((a, b) => (b.game_name || "").localeCompare(a.game_name || ""));
+
+                currentlyDisplayedCount = 0;
+                const container = document.getElementById('games-grid');
+                if (container) {
+                    container.innerHTML = '';
+                    if (filteredProviderGames.length === 0) {
+                        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé</div>`;
+                        return;
+                    }
+                    loadMoreGames();
+                }
+            }
+
+            async function loadProviderGames(providerCode) {
+                document.querySelectorAll('.prov-tab-btn').forEach(btn => {
+                    btn.className = "prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
+                });
+
+                const activeBtn = document.getElementById(`btn-prov-${providerCode}`);
+                if (activeBtn) {
+                    activeBtn.className = "prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 btn-gradient border-none text-white rounded-full text-xs font-black transition-all duration-300 cursor-pointer whitespace-nowrap shadow-lg transform scale-105";
+                }
+
+                const container = document.getElementById('games-grid');
+                if (!container) return;
+
+                const cacheKey = 'alpha_games_' + providerCode;
+                const cachedGames = localStorage.getItem(cacheKey);
+
+                currentActiveProviderCode = providerCode;
+
+                const renderGames = (gamesList) => {
+                    currentProviderGames = gamesList;
+                    filteredProviderGames = [...gamesList];
+                    currentlyDisplayedCount = 0;
+                    container.innerHTML = '';
+                    loadMoreGames();
+                };
+
+                if (cachedGames) {
+                    renderGames(JSON.parse(cachedGames));
+                } else {
+                    container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Chargement... ⏳</div>';
+                }
+
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider_code: providerCode })
+                    });
+                    const rawText = await response.text();
+                    if (rawText) {
+                        const data = JSON.parse(rawText);
+                        if (data && data.games && data.games.length > 0) {
+                            localStorage.setItem(cacheKey, JSON.stringify(data.games));
+                            if (!cachedGames) renderGames(data.games);
+                            renderTrendingGames();
+                        }
+                    }
+                } catch (error) { }
+            }
+
+            function loadMoreGames() {
+                if (currentlyDisplayedCount >= filteredProviderGames.length) return;
+                const container = document.getElementById('games-grid');
+                if (!container) return;
+
+                // زيادة العدد إلى 100 لتفادي مشكلة المساحة الفارغة
+                const nextBatch = filteredProviderGames.slice(currentlyDisplayedCount, currentlyDisplayedCount + 100);
+                let htmlChunk = '';
+
+                nextBatch.forEach(game => {
+                    const title = game.game_name || game.name || game.title || "Game";
+                    const img = game.banner || game.image || game.thumb || "https://placehold.co/400x300/180A2B/FFF?text=Game";
+                    const code = game.game_code || game.id;
+
+                    htmlChunk += `
+                   <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
+                        
+                        <!-- 1. الجزء العلوي: حاوية الصورة (مربعة تماماً aspect-square) -->
+                        <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
+                            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            
+                            <!-- شارة جذابة (مثل شارة NOUVEAU في صورتك) -->
+                            <div class="absolute top-0 right-0 bg-gradient-to-r from-orange-500 to-yellow-500 text-black text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-md z-10">HOT 🔥</div>
+
+                            <!-- زر اللعب عند التمرير -->
+                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-20">
+                                <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. الجزء السفلي: شريط الاسم (مستقل تماماً لكي لا يغطي الصورة) -->
+                        <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
+                            <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${title}</span>
+                            <span class="text-green-500 text-[11px]">⭐</span>
+                        </div>
+                        
+                    </div>
+                `;
+                });
+
+                container.insertAdjacentHTML('beforeend', htmlChunk);
+                currentlyDisplayedCount += nextBatch.length;
+            }
+
+            // ================= الانفينت سكرول الحقيقي المربوط بالنافذة =================
+            window.addEventListener('scroll', () => {
+                // نتحقق مما إذا كان المستخدم قد وصل تقريباً لأسفل الصفحة (Window)
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 800) {
+                    loadMoreGames();
+                }
+            });
+
+            // ================= الألعاب المباشرة والرياضة والجاكبوت =================
+            function startJackpots() {
+                setInterval(() => {
+                    const now = new Date();
+                    let miniProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+                    const m = document.getElementById('jackpot-mega');
+                    if (m) m.innerText = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000).toFixed(2);
+                    const maj = document.getElementById('jackpot-major');
+                    if (maj) maj.innerText = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350).toFixed(2);
+                    const min = document.getElementById('jackpot-mini');
+                    if (min) min.innerText = (miniProgress * 120).toFixed(2);
+                }, 1000);
+            }
+
+            function generateLiveWinnersTicker() {
+                const track = document.getElementById('winners-ticker-track');
+                if (!track) return;
+
+                const fakeNames = ["fethi", "ahmed", "samir", "karim", "yassine", "mohamed", "ali", "baya"];
+                const gamesList = ["Aviator 🚀", "Gates of Olympus ⚡", "Sport ⚽", "Roulette 🎡", "Sweet Bonanza 🍬"];
+                let tickerHTML = '';
+
+                for (let i = 0; i < 15; i++) {
+                    const name = fakeNames[Math.floor(Math.random() * fakeNames.length)] + "***";
+                    const game = gamesList[Math.floor(Math.random() * gamesList.length)];
+                    const amount = (Math.random() * 800 + 50).toFixed(2);
+
+                    // تصميم البطاقة الصغيرة لكل فائز مع تأثيرات نيون
+                    tickerHTML += `
+            <div class="flex items-center gap-2 bg-black/40 backdrop-blur-sm border border-asbet-accent/30 px-4 py-1.5 rounded-full text-xs font-mono whitespace-nowrap shadow-[0_0_10px_rgba(250,204,21,0.1)]">
+                <span class="text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">🎉 ${name}</span>
+                <span class="text-gray-400">gagné sur <span class="text-asbet-primary font-bold">${game}</span></span>
+                <span class="text-asbet-accent font-black drop-shadow-[0_0_8px_rgba(250,204,21,0.9)] animate-pulse">+${amount} TND</span>
+            </div>
+        `;
+                }
+                track.innerHTML = tickerHTML;
+            }
+
+            function renderTrendingGames() {
+                const container = document.getElementById('trending-games-container');
+                if (!container || currentProviderGames.length === 0) return;
+
+                // هنا نحدد عدد الألعاب (تم تغييره من 4 إلى 6 ألعاب)
+                // يمكنك تغييره إلى 10 أو 12 كما تشاء
+                const trending = currentProviderGames.slice(0, 9);
+
+                container.innerHTML = trending.map(game => {
+                    const title = game.game_name || game.name || game.title || "Game";
+                    const img = game.banner || game.image || game.thumb || "https://placehold.co/400x300/180A2B/FFF?text=Game";
+                    const code = game.game_code || game.id;
+
+                    return `
+                <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
+                    
+                    <!-- صورة مربعة احترافية -->
+                    <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
+                        <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        
+                        <!-- شارة HOT -->
+                        <div class="absolute top-0 right-0 bg-gradient-to-r from-red-600 to-orange-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-md z-10">HOT 🔥</div>
+
+                        <!-- زر اللعب -->
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-20">
+                            <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                        </div>
+                    </div>
+
+                    <!-- شريط الاسم بالأسفل -->
+                    <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
+                        <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${title}</span>
+                        <span class="text-orange-500 text-[11px]">🔥</span>
+                    </div>
+                    
+                </div>
+                `;
+                }).join('');
+            }
+            // ================= دوال المصادقة الحقيقية (Authentication) =================
+            async function handlePlayerAuth() {
+                const username = document.getElementById('p-auth-username').value.trim().toLowerCase();
+                const password = document.getElementById('p-auth-password').value;
+                if (!username || !password) return showNotification('الرجاء ملء جميع الحقول', 'error');
+
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/login`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password })
+                    });
+                    const responseText = await res.text();
+                    let data;
+                    try { data = JSON.parse(responseText); } catch (e) { return showNotification('Erreur Serveur', 'error'); }
+
+                    if (res.ok) {
+                        if (data.role === 'owner' || data.role === 'admin' || data.role === 'shop') {
+                            return showNotification('Accès refusé. Vous n\'êtes pas un joueur !', 'error');
+                        }
+                        playerSession = data;
+                        localStorage.setItem('alpha_player_session', JSON.stringify(data));
+                        localStorage.setItem('token', data.access_token);
+                        setupLoggedInUI();
+
+                        if (typeof fetchPlayerTicketsFromServer === 'function') {
+                            await fetchPlayerTicketsFromServer();
+                        }
+                        showNotification('Connexion réussie 🟢', 'success');
+                    } else {
+                        showNotification(typeof data === 'object' ? JSON.stringify(data.detail || data.message || data) : data, 'error');
+                    }
+                } catch (e) { showNotification('Erreur réseau', 'error'); }
+            }
+
+            async function registerPlayer() {
+                const username = document.getElementById('reg-username').value.trim().toLowerCase();
+                const password = document.getElementById('reg-password').value;
+
+                if (!username || !password) return showNotification('الرجاء ملء جميع الحقول', 'error');
+
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: username, password: password, role: 'player', created_by: 'Self-Register' })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        showNotification('Compte créé! Connexion en cours...', 'success');
+                        closeRegisterModal();
+
+                        document.getElementById('p-auth-username').value = username;
+                        document.getElementById('p-auth-password').value = password;
+                        await handlePlayerAuth();
+                    } else {
+                        let errorMsg = data.detail || data.message || 'Erreur lors de l\'inscription';
+                        showNotification(errorMsg, 'error');
+                    }
+                } catch (error) {
+                    showNotification('Erreur réseau', 'error');
+                }
+            }
+
+            function setupLoggedInUI() {
+                closeLoginModal();
+                const authContainer = document.getElementById('auth-buttons-container');
+                if (authContainer) authContainer.classList.add('hidden');
+
+                const topProfile = document.getElementById('top-user-profile');
+                if (topProfile) { topProfile.classList.remove('hidden'); topProfile.classList.add('flex'); }
+
+                const playerDisplay = document.getElementById('player-name-display');
+                if (playerDisplay) { playerDisplay.innerText = `${playerSession.username}`; playerDisplay.classList.remove('hidden'); }
+
+                const balanceDisplay = document.getElementById('player-balance-val');
+                if (balanceDisplay) balanceDisplay.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+
+                if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 4000);
+            }
+
+            function logoutPlayer() {
+                if (balanceInterval) clearInterval(balanceInterval);
+                if (typeof crashLoopInterval !== 'undefined' && crashLoopInterval) clearInterval(crashLoopInterval);
+
+                localStorage.removeItem('token');
+                localStorage.removeItem('alpha_player_session');
+                playerSession = null;
+                if (typeof myActiveBetsList !== 'undefined') myActiveBetsList = [];
+
+                const badge = document.getElementById('my-bets-badge-count');
+                if (badge) badge.innerText = "0";
+
+                const playerDisplay = document.getElementById('player-name-display');
+                if (playerDisplay) { playerDisplay.innerText = "Visitor"; }
+
+                const balVal = document.getElementById('player-balance-val');
+                if (balVal) balVal.innerText = "0.00";
+
+                document.getElementById('top-user-profile')?.classList.add('hidden');
+                document.getElementById('top-user-profile')?.classList.remove('flex');
+
+                document.getElementById('auth-buttons-container')?.classList.remove('hidden');
+                document.getElementById('auth-buttons-container')?.classList.add('flex');
+
+                switchSection('accueil');
+                showNotification('Déconnexion réussie', 'success');
+                closeProfileMenu();
+            }
+
+            async function refreshPlayerBalance() {
+                if (!playerSession || !playerSession.username) return;
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/admin/users?timestamp=${new Date().getTime()}`, { method: 'GET', headers: getAuthHeaders() });
+                    if (res.ok) {
+                        const users = await res.json();
+                        const currentMe = users.find(u => u.username === playerSession.username);
+
+                        if (currentMe) {
+                            playerSession.balance = currentMe.balance;
+                            localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+                            const balVal = document.getElementById('player-balance-val');
+                            if (balVal) balVal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+                        }
+                    }
+                } catch (e) { }
+            }
+
+            // ================= تشغيل الكازينو والرياضة =================
+            async function playCasinoGame(providerCode, gameCode) {
+                if (!playerSession) return openLoginModal();
+                const container = document.getElementById('casino-iframe-container');
+                const iframe = document.getElementById('casino-iframe');
+                const loader = document.getElementById('casino-loader');
+
+                if (!container || !iframe) return;
+
+                container.classList.remove('hidden'); container.classList.add('flex');
+                if (loader) loader.style.display = 'flex';
+                iframe.style.opacity = '0';
+
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/provider/launch-casino`, {
+                        method: 'POST', headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            game_code: gameCode,
+                            provider_code: providerCode,
+                            user_code: playerSession.username
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.launch_url) {
+                        iframe.src = data.launch_url;
+                        iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
+                    } else { showNotification("Jeu non disponible", "error"); closeCasinoGame(); }
+                } catch (error) { showNotification("Erreur de connexion", "error"); closeCasinoGame(); }
+            }
+
+            function closeCasinoGame() {
+                const container = document.getElementById('casino-iframe-container');
+                const iframe = document.getElementById('casino-iframe');
+                if (!container || !iframe) return;
+                container.classList.add('hidden'); container.classList.remove('flex');
+                iframe.src = "";
+                refreshPlayerBalance();
+            }
+
+            async function openSportsbook(type = 'prematch') {
+                if (!playerSession) return openLoginModal();
+                try {
+                    document.getElementById('sportsbook-overlay').classList.remove('hidden');
+                    document.getElementById('sportsbook-overlay').classList.add('flex');
+
+                    const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
+                        method: 'POST', headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            provider_code: 'BETBY', // تأكد من وضع كود مزود الرياضة الخاص بك هنا إذا كان مختلفاً
+                            player_id: playerSession.username
+                        })
+                    });
+                    const data = await response.json();
+
+                    if (data.launch_url) {
+                        document.getElementById('sportsbook-iframe').src = data.launch_url;
+                    }
+                } catch (error) { }
+            }
+
+            function closeSportsbook() {
+                document.getElementById('sportsbook-overlay').classList.add('hidden');
+                document.getElementById('sportsbook-overlay').classList.remove('flex');
+                document.getElementById('sportsbook-iframe').src = "about:blank";
+            }
+
+            function initCasinoLobby() {
+                if (casinoProviders.length === 0) {
+                    fetchAndRenderProviders();
+                }
+            }
+
+            // ================= الإعدادات عند تحميل الصفحة =================
+            document.addEventListener('DOMContentLoaded', () => {
+                // التحقق من وجود جلسة محفوظة
+                const savedSession = localStorage.getItem('alpha_player_session');
+                if (savedSession) {
+                    playerSession = JSON.parse(savedSession);
+                    setupLoggedInUI();
+                }
+
+                // تشغيل اللافتات
+                new Swiper('.myBannersSwiper', {
+                    loop: true,
+                    autoplay: { delay: 3500, disableOnInteraction: false },
+                    pagination: { el: '.swiper-pagination', clickable: true },
+                    spaceBetween: 10,
+                });
+
+                const savedSection = localStorage.getItem('active_section') || 'accueil';
+                switchSection(savedSection);
+                startJackpots();
+                generateLiveWinnersTicker();
+            });
+
+            // 1. وظيفة فتح نموذج الدفع
+            function selectPaymentMethod(method) {
+                document.getElementById('payment-methods-grid').style.display = 'none';
+
+                // إظهار النموذج المطلوب
+                if (method === 'd17') {
+                    document.getElementById('form-d17').classList.remove('hidden');
+                } else if (method === 'usdt') {
+                    document.getElementById('form-usdt').classList.remove('hidden');
+                } else if (method === 'ooredoo') {
+                    document.getElementById('form-ooredoo').classList.remove('hidden');
+                } else if (method === 'orange') {
+                    document.getElementById('form-orange').classList.remove('hidden');
+                }
+            }
+
+            // 2. وظيفة زر الرجوع (Retour)
+            function backToMethods() {
+                // إخفاء كل النماذج
+                document.getElementById('form-d17').classList.add('hidden');
+                document.getElementById('form-usdt').classList.add('hidden');
+                document.getElementById('form-ooredoo').classList.add('hidden');
+                document.getElementById('form-orange').classList.add('hidden');
+
+                // إعادة إظهار الأزرار الأساسية
+                document.getElementById('payment-methods-grid').style.display = 'grid';
+            }
+
+            function showForm(formId) {
+                // إخفاء شبكة الأزرار
+                document.getElementById('payment-methods-grid').classList.add('hidden');
+
+                // إظهار النموذج المطلوب
+                document.getElementById(formId).classList.remove('hidden');
+            }
+
+            function backToMethods() {
+                // إظهار شبكة الأزرار من جديد
+                document.getElementById('payment-methods-grid').classList.remove('hidden');
+
+                // إخفاء جميع النماذج لكي لا تتداخل
+                document.getElementById('form-d17').classList.add('hidden');
+                document.getElementById('form-usdt').classList.add('hidden');
+                document.getElementById('form-ooredoo').classList.add('hidden');
+                document.getElementById('form-orange').classList.add('hidden');
+            }
+
+            function syncBalance() {
+                let mainBalanceElement = document.getElementById('main-balance');
+                if (mainBalanceElement) {
+                    document.getElementById('modal-balance').innerText = mainBalanceElement.innerText;
+                }
+            }
+
+            // 1. دالة رسم المربعات في الشاشة
+            function renderSlider(providerCode, containerId, gamesArray) {
+                const container = document.getElementById(containerId);
+                if (!container || !gamesArray || gamesArray.length === 0) return;
+
+                container.innerHTML = '';
+                const sliderGames = gamesArray.slice(0, 10);
+
+                sliderGames.forEach(game => {
+                    const gameCard = `
+                <div class="w-28 h-40 flex-none snap-center relative group rounded-xl overflow-hidden shadow-lg border border-white/5">
+                    <img src="${game.banner}" loading="lazy" alt="Game" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button onclick="playCasinoGame('${providerCode}', '${game.game_code}')" class="bg-asbet-primary text-white px-6 py-1.5 rounded-md font-bold text-sm shadow-md hover:opacity-90 transition-all">
+                            Jouer
+                        </button>
+                    </div>
+                </div>
+            `;
+                    container.innerHTML += gameCard;
+                });
+            }
+
+            // 2. دالة الإقلاع لجلب ألعاب الأشرطة الثلاثة بصمت
+            async function loadHomeSliders() {
+                const homeProviders = [
+                    { code: 'pragmatic', container: 'slider-pragmatic' },
+                    { code: 'hacksaw', container: 'slider-hacksaw' },
+                    { code: 'playson', container: 'slider-playson' }
+                ];
+
+                for (const prov of homeProviders) {
+                    try {
+                        const cacheKey = 'alpha_games_' + prov.code;
+                        const cachedGames = localStorage.getItem(cacheKey);
+
+                        if (cachedGames) {
+                            renderSlider(prov.code, prov.container, JSON.parse(cachedGames));
+                        }
+
+                        const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ provider_code: prov.code })
+                        });
+
+                        const rawText = await response.text();
+                        if (rawText) {
+                            const data = JSON.parse(rawText);
+                            if (data && data.games && data.games.length > 0) {
+                                localStorage.setItem(cacheKey, JSON.stringify(data.games));
+                                renderSlider(prov.code, prov.container, data.games);
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Erreur chargement slider:", error);
+                    }
+                }
+            }
+
+            // 3. تشغيل المحرك تلقائياً 
+            setTimeout(loadHomeSliders, 500);
+            // ================= جلب صورة لعبة اليوم من المزود =================
+            async function fetchGameOfDayImage() {
+                const bannerImg = document.getElementById('game-of-day-img');
+                if (!bannerImg) return;
+
+                try {
+                    let response = await fetch('https://alpha-backend-server.onrender.com/api/get-providers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider_code: 'PRAGMATIC' }) // نبحث داخل براغماتيك
+                    });
+
+                    let data = await response.json();
+                    let gamesArray = data.games || data.data || [];
+
+                    // البحث عن لعبة بوابات أوليمبوس عبر الكود الخاص بها
+                    let olympusGame = gamesArray.find(game => game.game_code === 'vs20olympgate' || game.id === 'vs20olympgate');
+
+                    if (olympusGame) {
+                        // سحب الصورة الرسمية ووضعها في البانر
+                        let officialImg = olympusGame.banner || olympusGame.image || olympusGame.thumb;
+                        if (officialImg) {
+                            bannerImg.src = officialImg;
+                            console.log("✅ تم جلب صورة لعبة اليوم بنجاح!");
+                        }
+                    }
+                } catch (error) {
+                    console.error("❌ خطأ في جلب صورة لعبة اليوم:", error);
+                }
+            }
+
+            // تشغيل الدالة فوراً عند فتح الصفحة
+            fetchGameOfDayImage();
+            // =================================================================
+
+            // ================= 1. دالة الانتقال السريع لمزود محدد في الكازينو =================
+            function goToCasinoProvider(providerCode) {
+                // 1. فتح قسم الكازينو
+                switchSection('casino');
+                initCasinoLobby();
+
+                // 2. الانتظار قليلاً حتى يتم تحميل واجهة الكازينو ثم تفعيل المزود المطلوب
+                setTimeout(() => {
+                    loadProviderGames(providerCode);
+                    // النزول برفق إلى قسم الألعاب
+                    document.getElementById('games-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 400);
+            }
+
+            // ================= 2. دالة تفعيل السحب بالفأرة للأشرطة الأفقية في الحاسوب =================
+            function enableMouseDragScroll(sliderId) {
+                const slider = document.getElementById(sliderId);
+                if (!slider) return;
+
+                let isDown = false;
+                let startX;
+                let scrollLeft;
+
+                slider.addEventListener('mousedown', (e) => {
+                    isDown = true;
+                    slider.style.cursor = 'grabbing'; // تغيير شكل الفأرة لعلامة الإمساك
+                    startX = e.pageX - slider.offsetLeft;
+                    scrollLeft = slider.scrollLeft;
+                });
+
+                slider.addEventListener('mouseleave', () => {
+                    isDown = false;
+                    slider.style.cursor = 'pointer';
+                });
+
+                slider.addEventListener('mouseup', () => {
+                    isDown = false;
+                    slider.style.cursor = 'pointer';
+                });
+
+                slider.addEventListener('mousemove', (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const x = e.pageX - slider.offsetLeft;
+                    const walk = (x - startX) * 2; // تسريع السحب (يمكنك تغيير الرقم 2 لزيادة السرعة)
+                    slider.scrollLeft = scrollLeft - walk;
+                });
+            }
+
+            // تشغيل ميزة السحب على الأشرطة الثلاثة بعد تحميل الصفحة
+            document.addEventListener('DOMContentLoaded', () => {
+                // نعطي المتصفح وقتاً صغيراً جداً ليرسم الأشرطة ثم نطبق عليها السحب
+                setTimeout(() => {
+                    enableMouseDragScroll('slider-pragmatic');
+                    enableMouseDragScroll('slider-hacksaw');
+                    enableMouseDragScroll('slider-playson');
+                }, 1000);
+            });
+
+            // ================= التعامل مع زر الرجوع في المتصفح =================
+            window.addEventListener('popstate', function (event) {
+                if (event.state && event.state.section) {
+                    // إذا ضغط اللاعب على رجوع، نفتح القسم السابق بدون تسجيله مرة أخرى في السجل
+                    switchSection(event.state.section, true);
+                } else {
+                    // إذا لم يكن هناك سجل سابق، نرجعه لصفحة الاستقبال
+                    switchSection('accueil', true);
+                }
+            });
+
+            // ================= تسجيل الصفحة عند أول دخول للموقع =================
+            document.addEventListener('DOMContentLoaded', () => {
+                // ننتظر قليلاً لضمان تحميل باقي الدوال
+                setTimeout(() => {
+                    if (!window.location.hash) {
+                        // تسجيل صفحة الاستقبال كأول صفحة
+                        window.history.replaceState({ section: 'accueil' }, "", "#accueil");
+                    } else {
+                        // إذا قام اللاعب بنسخ رابط قسم معين (مثل #casino) ودخل إليه مباشرة
+                        const hashSection = window.location.hash.replace('#', '');
+                        switchSection(hashSection, true);
+                    }
+                }, 100);
+            });
+
+            // ================= دوال التحكم في نافذة الدفع (الكاشير) =================
+
+            // 1. دالة فتح وإغلاق النافذة
+            function toggleCashier() {
+                const modal = document.getElementById('cashier-modal');
+                if (modal) {
+                    modal.classList.toggle('hidden');
+                }
+            }
+
+            // 2. دالة التبديل بين الإيداع (Dépôt) والسحب (Retrait)
+            function switchCashierTab(tabName) {
+                const tabDeposit = document.getElementById('tab-deposit');
+                const tabWithdraw = document.getElementById('tab-withdraw');
+                const sectionDeposit = document.getElementById('deposit-section');
+                const sectionWithdraw = document.getElementById('withdraw-section'); // تأكد أن قسم السحب يحمل هذا المعرف
+
+                if (tabName === 'deposit') {
+                    // تفعيل زر الإيداع
+                    if (tabDeposit) {
+                        tabDeposit.classList.add('bg-asbet-primary', 'text-white');
+                        tabDeposit.classList.remove('text-gray-400', 'hover:text-white');
+                    }
+                    // إيقاف زر السحب
+                    if (tabWithdraw) {
+                        tabWithdraw.classList.add('text-gray-400', 'hover:text-white');
+                        tabWithdraw.classList.remove('bg-asbet-primary', 'text-white');
+                    }
+
+                    // إظهار المحتوى
+                    if (sectionDeposit) sectionDeposit.classList.remove('hidden');
+                    if (sectionWithdraw) sectionWithdraw.classList.add('hidden');
+
+                } else if (tabName === 'withdraw') {
+                    // تفعيل زر السحب
+                    if (tabWithdraw) {
+                        tabWithdraw.classList.add('bg-asbet-primary', 'text-white');
+                        tabWithdraw.classList.remove('text-gray-400', 'hover:text-white');
+                    }
+                    // إيقاف زر الإيداع
+                    if (tabDeposit) {
+                        tabDeposit.classList.add('text-gray-400', 'hover:text-white');
+                        tabDeposit.classList.remove('bg-asbet-primary', 'text-white');
+                    }
+
+                    // إظهار المحتوى
+                    if (sectionWithdraw) sectionWithdraw.classList.remove('hidden');
+                    if (sectionDeposit) sectionDeposit.classList.add('hidden');
+                }
+            }
+
+            // ================= دالة إرسال طلب الإيداع الحقيقي للسيرفر =================
+            async function submitDeposit(method) {
+                const codeInputId = method + "-code";
+                const codeInput = document.getElementById(codeInputId);
+
+                if (!codeInput) return;
+                const pinCode = codeInput.value;
+
+                const playerNameElement = document.getElementById('player-name-display');
+                const playerName = playerNameElement ? playerNameElement.innerText : "Joueur Inconnu";
+
+                if (!pinCode) {
+                    alert("⚠️ Veuillez entrer le code de recharge !");
+                    return;
+                }
+
+                try {
+                    // الرابط الصحيح للسيرفر المرفوع
+                    const API_URL = 'https://alpha-backend-server.onrender.com/api/deposit';
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            player: playerName,
+                            method: method.toUpperCase(),
+                            amount: 0,
+                            code: pinCode
+                        })
+                    });
+
+                    if (response.ok) {
+                        alert("✅ Votre demande a été envoyée au gérant avec succès !");
+                        const modal = document.getElementById('cashier-modal');
+                        if (modal) modal.classList.add('hidden');
+                        codeInput.value = "";
+                    } else {
+                        alert("❌ Une erreur s'est produite côté serveur.");
+                    }
+
+                } catch (error) {
+                    console.error("Erreur de connexion:", error);
+                    alert("❌ Impossible de contacter le serveur. تأكد أن سيرفر Render يعمل.");
+                }
+            }
+        </script>
+    </body>
+
+</html>
