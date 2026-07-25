@@ -179,7 +179,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    
+    # 🛡️ منع فتح الموقع داخل إطار (Iframe) في مواقع أخرى (Clickjacking)
+    response.headers["X-Frame-Options"] = "DENY"
+    
+    # 🛡️ تفعيل حماية المتصفح التلقائية ضد ثغرات حقن السكريبتات (XSS)
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    
+    # 🛡️ منع المتصفح من تخمين أنواع الملفات 
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    
+    # 🛡️ إجبار المتصفح على استخدام الاتصال المشفر (HTTPS) فقط
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    
+    return response
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
