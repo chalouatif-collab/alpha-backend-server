@@ -569,6 +569,7 @@ class Verify2FARequest(BaseModel):
     totp_code: str
 
 @app.post("/api/verify-2fa")
+@limiter.limit("5/minute")
 async def verify_2fa_api(req: Verify2FARequest):
     db = load_db()
     user = next((u for u in db if u["username"] == req.username), None)
