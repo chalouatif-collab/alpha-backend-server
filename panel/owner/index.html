@@ -399,13 +399,10 @@ async function fetchAllTickets() {
         let allTransactionsCache = []; 
         let user = JSON.parse(localStorage.getItem('alpha_user')) || { username: 'fethi', role: 'owner' };
 function getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    // إضافة تنبيه إذا كان التوكين يبدو غير صحيح
-    if (!token) console.error("لا يوجد توكين!");
-    
-    return { 
+    const myToken = localStorage.getItem('token');
+    return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
+        'Authorization': `Bearer ${myToken}`
     };
 }
 
