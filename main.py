@@ -339,15 +339,7 @@ async def create_deposit(req: DepositRequest):
             "status": "pending",
             "date": datetime.now().isoformat()
         }
-        "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
-        "type": "deposit",
-        "username": req.player,
-        "method": req.method,
-        "amount": req.amount,
-        "code": req.code, # رقم بطاقة Ooredoo أو غيرها
-        "status": "pending", # الحالة: قيد الانتظار
-        "date": datetime.now().isoformat()
-        }    
+       
 
         
         # حفظ التذكرة في قاعدة البيانات
@@ -563,38 +555,7 @@ class ProviderRequest(BaseModel): provider_code: str
 async def login_user(request: Request, req: LoginRequest):
 
    uname = html.escape(req.username.lower().strip())
-
-    uname = req.username.lower().strip()
-
-    db = load_db()
-    user = None
-    for u in db:
-        if u["username"] == uname:
-            try:
-                is_valid = verify_password(req.password, u.get("password", ""))
-            except ValueError:
-                is_valid = False
-            if is_valid:
-                if u.get("is_blocked") == 1:
-                    raise HTTPException(status_code=403, detail="Ce compte est bloqué")
-                user = u
-                break
-    if not user:
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
-    role = user.get("role")
-    
-    # --- جدار التحقق الثنائي للإدارة ---
-    if role in ["owner", "super_admin", "admin"]:
-        # نأمر الواجهة بطلب الكود بدلاً من تسجيل الدخول فوراً
-        return {"require_2fa": True, "username": user["username"], "role": role}
-    # -----------------------------------
-    
-    token = create_access_token(data={"sub": user["username"]})
-    return {
-        "access_token": token, "token_type": "bearer", "username": user["username"],
-        "role": user["role"], "balance": user["balance"], "created_by": user.get("created_by", "System")
-    }
-
+   
 from pydantic import BaseModel
 from fastapi import HTTPException
 import pyotp
