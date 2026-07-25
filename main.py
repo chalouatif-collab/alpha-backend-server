@@ -198,7 +198,11 @@ async def add_security_headers(request: Request, call_next):
     return response
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-API_KEY = os.environ.get("API_KEY", "f9afe7e1bc006f79f75bafe764b0f117")
+API_KEY = os.environ.get("API_KEY")
+
+# 🛡️ إيقاف السيرفر فوراً إذا حاول شخص تشغيله بدون مفتاح حماية حقيقي
+if not API_KEY:
+    raise ValueError("⚠️ تنبيه أمني: مفتاح API_KEY مفقود من إعدادات الخادم (Environment Variables)!")
 TICKETS_FILE = "tickets_database.json" 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import Request, HTTPException
