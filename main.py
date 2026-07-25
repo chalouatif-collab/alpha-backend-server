@@ -329,16 +329,26 @@ async def create_deposit(req: DepositRequest):
         
         # إنشاء تذكرة إيداع جديدة
         new_ticket = {
+            "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
+            "type": "deposit",
+            # 🛡️ تطهير اسم اللاعب وطريقة الدفع والرمز
+            "username": html.escape(req.player.strip()),
+            "method": html.escape(req.method.strip()),
+            "amount": req.amount,
+            "code": html.escape(req.code.strip()) if hasattr(req, 'code') and req.code else "",
+            "status": "pending",
+            "date": datetime.now().isoformat()
+        }
         "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
         "type": "deposit",
-        # 🛡️ تطهير اسم اللاعب وطريقة الدفع والرمز
-        "username": html.escape(req.player.strip()),
-        "method": html.escape(req.method.strip()),
+        "username": req.player,
+        "method": req.method,
         "amount": req.amount,
-        "code": html.escape(req.code.strip()) if hasattr(req, 'code') and req.code else "",
-        "status": "pending",
+        "code": req.code, # رقم بطاقة Ooredoo أو غيرها
+        "status": "pending", # الحالة: قيد الانتظار
         "date": datetime.now().isoformat()
-    }
+        }    
+
         
         # حفظ التذكرة في قاعدة البيانات
         db.append(new_ticket)
@@ -551,7 +561,11 @@ class ProviderRequest(BaseModel): provider_code: str
 @app.post("/api/login")
 @limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
+
    uname = html.escape(req.username.lower().strip())
+
+    uname = req.username.lower().strip()
+
     db = load_db()
     user = None
     for u in db:
@@ -619,7 +633,11 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
 
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
+
     uname = html.escape(req.username.lower().strip())
+
+    uname = req.username.lower().strip()
+
     db = load_db()
     
     for u in db:
