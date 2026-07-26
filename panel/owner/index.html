@@ -32,13 +32,27 @@
         .cursor-pointer { cursor: pointer; }
         .cursor-pointer { cursor: pointer; }
 
-    /* إصلاح مشكلة الملء التلقائي في المتصفحات (Autofill) */
+    /* إصلاح شامل لخانات الإدخال: اللون، الخلفية، وأثناء الكتابة (Focus) */
+    .input-blue {
+        background-color: #040a18 !important;
+        color: #ffffff !important;
+    }
+    
+    .input-blue:focus {
+        background-color: #040a18 !important;
+        color: #ffffff !important;
+        border-color: #f43f5e !important;
+        outline: none !important;
+        box-shadow: 0 0 0 0.25rem rgba(244, 63, 94, 0.25) !important;
+    }
+
+    /* منع خلفية المتصفح البيضاء أثناء الكتابة أو الملء التلقائي */
     input:-webkit-autofill,
     input:-webkit-autofill:hover, 
     input:-webkit-autofill:focus, 
     input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px #040a18 inset !important;
-        -webkit-text-fill-color: #bfdbfe !important;
+        -webkit-text-fill-color: #ffffff !important;
         transition: background-color 5000s ease-in-out 0s;
     }
 
