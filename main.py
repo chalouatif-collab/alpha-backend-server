@@ -1412,3 +1412,79 @@ async def change_balance_batch(
       "error_message": "OK",
   } 
 
+from datetime import datetime
+from pydantic import BaseModel
+
+class ShopWithdrawRequest(BaseModel):
+    admin_username: str
+    shop_username: str
+    amount: float
+
+class HandleShopWithdrawModel(BaseModel):
+    request_id: int
+    decision: str  # "accept" or "reject"
+    shop_username: str
+
+# 1. إرسال طلب سحب من الأدمن إلى الشوب
+@app.post("/api/admin/request-shop-withdrawal")
+async def request_shop_withdrawal(req: ShopWithdrawRequest):
+    db = load_db()
+    # التحقق من وجود الشوب
+    shop = next((u for u in db if u.get("username") == req.shop_username.lower() and u.get("role") == "shop"), None)
+    if not shop:
+        raise HTTPException(status_code=404, detail="Shop non trouvé")
+    
+    # حفظ الطلب في قاعدة البيانات (يمكنك إنشاء جدول أو مصفوفة للطلبات المعلقة في الـ JSON)
+    if "shop_withdrawals" not in db:
+        db["shop_withdrawals"] = []
+    
+    new_req = {
+        "id": int(datetime.now().timestamp()),
+        "admin_username": req.admin_username,
+        "shop_username": req.shop_username.lower(),
+        "amount": req.amount,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "status": "pending"
+    }
+    db["shop_withdrawals"].append(new_req)
+    save_db(db)
+    return {"status": "success", "message": "Demande envoyée avec succès"}
+
+# 2. جلب الطلبات المعلقة الخاصة بالشوب
+@app.get("/api/shop/pending-withdrawals")
+async def get_pending_withdrawals(username: str):
+    db = load_db()
+    withdrawals = db.get("shop_withdrawals", [])
+    pending = [w for w in withdrawals if w.get("shop_username") == username.lower() and w.get("status") == "pending"]
+    return pending
+
+# 3. معالجة الطلب (قبول أو رفض) من قبل الشوب
+@app.post("/api/shop/handle-withdrawal")
+async def handle_shop_withdrawal(req: HandleShopWithdrawModel):
+    db = load_db()
+    withdrawals = db.get("shop_withdrawals", [])
+    target_req = next((w for w in withdrawals if w.get("id") == req.request_id), None)
+    
+    if not target_req:
+        raise HTTPException(status_code=404, detail="Demande non trouvée")
+    
+    if req.decision == "accept":
+        shop = next((u for u in db if u.get("username") == target_req["shop_username"]), None)
+        admin = next((u for u in db if u.get("username") == target_req["admin_username"]), None)
+        
+        if not shop or not admin:
+            raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        
+        amount = target_req["amount"]
+        if shop.get("balance", 0) < amount:
+            raise HTTPException(status_code=400, detail="Solde insuffisant chez le shop")
+        
+        # خصم المبلغ من الشوب وإضافته للأدمن
+        shop["balance"] = float(shop.get("balance", 0)) - amount
+        admin["balance"] = float(admin.get("balance", 0)) + amount
+        target_req["status"] = "accepted"
+    else:
+        target_req["status"] = "rejected"
+        
+    save_db(db)
+    return {"status": "success", "message": "Traité avec succès"}
