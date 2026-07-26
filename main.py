@@ -18,33 +18,41 @@ import shutil
 from fastapi.staticfiles import StaticFiles
 import httpx
 from fastapi.responses import JSONResponse,HTMLResponse,FileResponse,RedirectResponse
-import os
 from dotenv import load_dotenv
 import pyotp
 import qrcode
 import io
 from fastapi import Body, Depends, File, Form, HTTPException, Request, UploadFile
 import html
-import json
-import os
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+
+# 1. إعداد الاتصال بـ Firebase
+if not firebase_admin._apps:
+    # اسم ملف المفتاح السري الذي قمنا بتحميله
+    cred = credentials.Certificate("firebase-key.json") 
+    firebase_admin.initialize_app(cred, {
+        # الصق رابط قاعدة البيانات الذي نسخته في الخطوة 1 هنا 👇
+        'databaseURL': 'https://alphabet-xxxxx-default-rtdb.firebaseio.com/' 
+    })
+
+# 2. دالة جلب البيانات من السحابة
+def load_db():
+    ref = db.reference('/') 
+    data = ref.get()
+    
+    if data is None:
+        return {"users": [], "shop_withdrawals": [], "tickets": []}
+    return data
+
+# 3. دالة الحفظ السحابي الفوري
+def save_db(data):
+    ref = db.reference('/')
+    ref.set(data)
 
 # اسم ملف التخزين الموجود في مشروعك
 DB_FILE = "tickets_database.json"
-
-# دالة قراءة البيانات من الملف
-def load_db():
-    if not os.path.exists(DB_FILE):
-        return [] # إذا لم يكن الملف موجوداً، نرجع مصفوفة فارغة
-    try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-            return []
-
-# دالة حفظ وتحديث البيانات في الملف
-def save_db(data):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
 
 # تحميل الأسرار من ملف .env
 load_dotenv()
