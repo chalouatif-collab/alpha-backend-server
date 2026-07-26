@@ -27,7 +27,7 @@ from fastapi import Body, Depends, File, Form, HTTPException, Request, UploadFil
 import html
 # تحميل الأسرار من ملف .env
 load_dotenv()
-
+from fastapi import HTTPException
 # سحب الأسرار لحفظها في متغيرات داخل الكود
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
@@ -110,8 +110,7 @@ async def get_admin_user(current_user: str = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
     
     return current_user
-import httpx
-import pyotp
+
 
 def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_key: str):
     INSTANCE_ID = "instance185867"
@@ -327,8 +326,7 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     save_db(db)
     
     return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}    
-    from pydantic import BaseModel
-from datetime import datetime
+
 
 # 1. تحديد شكل البيانات التي ستصل من اللاعب
 class DepositRequest(BaseModel):
@@ -362,11 +360,7 @@ async def create_deposit(req: DepositRequest):
         # 📱 إطلاق إنذار تليجرام الفوري
         alert_msg = f"🚨 <b>عملية إيداع جديدة!</b>\n👤 اللاعب: <code>{new_ticket['username']}</code>\n💰 المبلغ: <b>{new_ticket['amount']}</b>\n💳 الطريقة: {new_ticket['method']}"
         asyncio.create_task(send_telegram_alert(alert_msg))
-
-        
-        # حفظ التذكرة في قاعدة البيانات
-        db.append(new_ticket)
-        
+ 
         # كتابة البيانات الجديدة في الملف (تأكد من وجود دالة الحفظ لديك، أو استخدم هذه الطريقة)
         import json
         with open(TICKETS_FILE, "w", encoding="utf-8") as f:
@@ -376,8 +370,6 @@ async def create_deposit(req: DepositRequest):
     except Exception as e:
         print(f"Error in create_deposit: {e}")
         return {"status": "error", "message": "حدث خطأ أثناء معالجة الطلب"}
-    from fastapi import HTTPException, Depends
-from pydantic import BaseModel
 
 # ==========================================
 # 1. مسار جلب الطلبات المعلقة للوحة المالك
@@ -592,9 +584,8 @@ async def login_user(request: Request, req: LoginRequest):
     # 4. إذا كان كل شيء صحيح، نعطي الضوء الأخضر للواجهة للانتقال لخطوة (2FA)
     return {"message": "success", "username": user["username"]}
    
-from pydantic import BaseModel
-from fastapi import HTTPException
-import pyotp
+
+
 
 # نموذج استقبال البيانات من النافذة المنبثقة
 class Verify2FARequest(BaseModel):
@@ -642,11 +633,7 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
 
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
-
-    uname = html.escape(req.username.lower().strip())
-
     uname = req.username.lower().strip()
-
     db = load_db()
     
     for u in db:
@@ -760,9 +747,6 @@ async def get_pending_requests():
     db_session.close()
     return result
 
-@app.get("/api/admin/get-pending-deposits")
-async def get_pending_deposits_alias():
-    return await get_pending_requests()
 
 @app.post("/api/admin/handle-request")
 async def handle_pending_request(req: HandleRequestModel):
@@ -1146,8 +1130,6 @@ async def process_login_router(request: Request, username: str = Form(...), pass
     else:
         return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
 
-    import pyotp  # تذكر إضافتها في أعلى الملف إذا لم تفعل
-
 @app.post("/verify-2fa")
 async def verify_2fa(request: Request, totp_code: str = Form(...)):
     uname = request.session.get("pending_user")
@@ -1188,7 +1170,6 @@ async def verify_2fa(request: Request, totp_code: str = Form(...)):
 
     import io
 from fastapi.responses import StreamingResponse
-import pyotp
 import qrcode
 
 @app.get("/setup-2fa/{username}")
@@ -1302,10 +1283,11 @@ async def player_balance(
   }
 
 
-# 2. نقطة اتصال تغيير الرصيد (Change Balance)
 @app.post("/change_balance")
-async def change_balance(payload: dict = Body(...)):
-  request: Request = Depends(verify_nexus_ip),
+async def change_balance(
+    payload: dict = Body(...),
+    request: Request = Depends(verify_nexus_ip)
+):
   received_hash = payload.get("hash", "")
 
   # التحقق من الـ Hash للـ Body القادم[cite: 3]
@@ -1367,8 +1349,10 @@ async def change_balance(payload: dict = Body(...)):
   }
 
 @app.post("/change_balance/batch")
-async def change_balance_batch(payload: dict = Body(...)):
-  request: Request = Depends(verify_nexus_ip),
+async def change_balance_batch(
+    payload: dict = Body(...),
+    request: Request = Depends(verify_nexus_ip)
+):
   received_hash = payload.get("hash", "")
 
   if not verify_hash(payload, received_hash):
