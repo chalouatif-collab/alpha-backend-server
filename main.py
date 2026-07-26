@@ -1512,12 +1512,21 @@ async def get_shop_withdraw_requests(current_user: dict = Depends(get_current_us
     db = load_db()
     shop_username = current_user.get("username").lower()
     
-    all_requests = db.get("shop_withdrawals", [])
+    # 1. جلب البيانات من فايربيز
+    all_requests = db.get("shop_withdrawals")
     
-    # جلب الطلبات الموجهة لهذا الشوب تحديداً
-    my_requests = [req for req in all_requests if req.get("shop_username") == shop_username]
+    # 2. حماية من قيمة None (إذا كانت القاعدة فارغة)
+    if not all_requests:
+        all_requests = []
+        
+    # 3. حماية من تحويل فايربيز للمصفوفات إلى قواميس
+    if isinstance(all_requests, dict):
+        all_requests = list(all_requests.values())
     
-    # عكس الترتيب لتظهر الطلبات الجديدة أولاً
+    # 4. جلب طلبات الشوب المطلوب فقط بأمان
+    my_requests = [req for req in all_requests if req and req.get("shop_username") == shop_username]
+    
+    # 5. عكس الترتيب لتظهر الطلبات الجديدة أولاً
     my_requests.reverse()
     
     return my_requests
