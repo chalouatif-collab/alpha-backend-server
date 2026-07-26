@@ -25,6 +25,27 @@ import qrcode
 import io
 from fastapi import Body, Depends, File, Form, HTTPException, Request, UploadFile
 import html
+import json
+import os
+
+# اسم ملف التخزين الموجود في مشروعك
+DB_FILE = "tickets_database.json"
+
+# دالة قراءة البيانات من الملف
+def load_db():
+    if not os.path.exists(DB_FILE):
+        return [] # إذا لم يكن الملف موجوداً، نرجع مصفوفة فارغة
+    try:
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+            return []
+
+# دالة حفظ وتحديث البيانات في الملف
+def save_db(data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
 # تحميل الأسرار من ملف .env
 load_dotenv()
 from fastapi import HTTPException
