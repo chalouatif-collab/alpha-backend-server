@@ -1503,6 +1503,25 @@ async def get_pending_withdrawals(username: str):
     pending = [w for w in withdrawals if w.get("shop_username") == username.lower() and w.get("status") == "pending"]
     return pending
 
+@app.get("/api/shop/withdraw-requests")
+async def get_shop_withdraw_requests(current_user: dict = Depends(get_current_user)):
+    # التحقق من أن المستخدم هو شوب
+    if current_user.get("role") != "shop":
+        raise HTTPException(status_code=403, detail="Accès refusé")
+        
+    db = load_db()
+    shop_username = current_user.get("username").lower()
+    
+    all_requests = db.get("shop_withdrawals", [])
+    
+    # جلب الطلبات الموجهة لهذا الشوب تحديداً
+    my_requests = [req for req in all_requests if req.get("shop_username") == shop_username]
+    
+    # عكس الترتيب لتظهر الطلبات الجديدة أولاً
+    my_requests.reverse()
+    
+    return my_requests
+
 # 3. معالجة الطلب (قبول أو رفض) من قبل الشوب
 @app.post("/api/shop/handle-withdrawal")
 async def handle_shop_withdrawal(req: HandleShopWithdrawModel):
