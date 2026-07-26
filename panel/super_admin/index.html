@@ -35,13 +35,27 @@
             border-color: #233f75 !important;
             color: #60a5fa !important;
         }
-        /* إصلاح مشكلة الملء التلقائي في المتصفحات (Autofill) للوحة Super Admin */
+       /* إصلاح شامل لخانات الإدخال: اللون، الخلفية، وأثناء الكتابة (Focus) لوحة Super Admin */
+    .input-blue {
+        background-color: #040a18 !important;
+        color: #ffffff !important;
+    }
+    
+    .input-blue:focus {
+        background-color: #040a18 !important;
+        color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        outline: none !important;
+        box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+    }
+
+    /* منع خلفية المتصفح البيضاء أثناء الكتابة أو الملء التلقائي */
     input:-webkit-autofill,
     input:-webkit-autofill:hover, 
     input:-webkit-autofill:focus, 
     input:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px #040a18 inset !important;
-        -webkit-text-fill-color: #bfdbfe !important;
+        -webkit-text-fill-color: #ffffff !important;
         transition: background-color 5000s ease-in-out 0s;
     }
     </style>
