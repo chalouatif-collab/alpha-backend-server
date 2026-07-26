@@ -630,7 +630,23 @@ async function handleShopWithdraw(reqId, decision) {
     } catch (e) {
         showNotification('خطأ في الاتصال بالسيرفر', 'error');
     }
-}
+ }
+    </script>
+
 </script>
+<!-- نافذة السجلات وطلبات السحب (Modal) -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-card-blue border-blue-custom text-white" style="background-color: #040a18;">
+            <div class="modal-header border-bottom border-secondary">
+                <h6 class="modal-title fw-bold text-warning" id="modal-title">Demandes</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3" id="modal-dynamic-content">
+                <!-- سيتم حقن الطلبات هنا برمجياً -->
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

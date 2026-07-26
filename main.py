@@ -1446,18 +1446,24 @@ class HandleShopWithdrawModel(BaseModel):
     decision: str  # "accept" or "reject"
     shop_username: str
 
-# 1. إرسال طلب سحب من الأدمن إلى الشوب
+from pydantic import BaseModel
+
+# تعريف هيكل البيانات المطلوب
+class AdminWithdrawRequest(BaseModel):
+    admin_username: str
+    amount: float
+
 @app.post("/api/admin/request-shop-withdrawal")
-async def request_shop_withdrawal(req: dict):
+async def request_shop_withdrawal(req: AdminWithdrawRequest):
     db = load_db()
-    admin_username = req.get("admin_username", "").lower()
-    amount = float(req.get("amount", 0))
+    admin_username = req.admin_username.lower()
+    amount = float(req.amount)
     
     admin = next((u for u in db if u.get("username") == admin_username), None)
     if not admin:
         raise HTTPException(status_code=404, detail="Admin non trouvé")
     
-    # البحث عن الشوب المسؤول عن هذا الأدمن تلقائياً عبر created_by أو أول شوب متاح
+    # البحث عن الشوب المسؤول
     shop_username = admin.get("created_by")
     shop = next((u for u in db if u.get("username") == shop_username and u.get("role") == "shop"), None)
     if not shop:
