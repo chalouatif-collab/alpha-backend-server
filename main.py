@@ -1427,22 +1427,32 @@ class HandleShopWithdrawModel(BaseModel):
 
 # 1. إرسال طلب سحب من الأدمن إلى الشوب
 @app.post("/api/admin/request-shop-withdrawal")
-async def request_shop_withdrawal(req: ShopWithdrawRequest):
+async def request_shop_withdrawal(req: dict):
     db = load_db()
-    # التحقق من وجود الشوب
-    shop = next((u for u in db if u.get("username") == req.shop_username.lower() and u.get("role") == "shop"), None)
-    if not shop:
-        raise HTTPException(status_code=404, detail="Shop non trouvé")
+    admin_username = req.get("admin_username", "").lower()
+    amount = float(req.get("amount", 0))
     
-    # حفظ الطلب في قاعدة البيانات (يمكنك إنشاء جدول أو مصفوفة للطلبات المعلقة في الـ JSON)
+    admin = next((u for u in db if u.get("username") == admin_username), None)
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin non trouvé")
+    
+    # البحث عن الشوب المسؤول عن هذا الأدمن تلقائياً عبر created_by أو أول شوب متاح
+    shop_username = admin.get("created_by")
+    shop = next((u for u in db if u.get("username") == shop_username and u.get("role") == "shop"), None)
+    if not shop:
+        shop = next((u for u in db if u.get("role") == "shop"), None)
+        
+    if not shop:
+        raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
+        
     if "shop_withdrawals" not in db:
         db["shop_withdrawals"] = []
-    
+        
     new_req = {
         "id": int(datetime.now().timestamp()),
-        "admin_username": req.admin_username,
-        "shop_username": req.shop_username.lower(),
-        "amount": req.amount,
+        "admin_username": admin_username,
+        "shop_username": shop.get("username"),
+        "amount": amount,
         "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "status": "pending"
     }
@@ -1488,3 +1498,11 @@ async def handle_shop_withdrawal(req: HandleShopWithdrawModel):
         
     save_db(db)
     return {"status": "success", "message": "Traité avec succès"}
+
+# 4. جلب طلبات السحب الخاصة بالأدمن لكي يراها في الزر الجانبي
+@app.get("/api/admin/my-withdrawal-requests")
+async def get_my_withdrawal_requests(username: str):
+    db = load_db()
+    withdrawals = db.get("shop_withdrawals", [])
+    my_reqs = [w for w in withdrawals if w.get("admin_username") == username.lower()]
+    return my_reqs

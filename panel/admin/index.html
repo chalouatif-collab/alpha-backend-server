@@ -199,6 +199,9 @@
                                 class="btn btn-dark text-start border-secondary text-secondary">
                                 ⚽ Tickets en cours
                             </button>
+                            <button onclick="openAdminWithdrawRequests()" class="btn text-start text-warning fw-bold w-100 border border-transparent hover-bg-dark mt-1">
+                                <i class="fas fa-clock me-2"></i> Demandes de retrait
+                            </button>
                             <button onclick="openPasswordModal()"
                                 class="btn btn-dark text-start border-secondary text-secondary mt-3">
                                 🔑 Modifier mon mot de passe
@@ -658,28 +661,52 @@
         }
 
         async function executeAction(action) {
-            const target_username = document.getElementById('target-action-user').value;
-            const amountInput = document.getElementById('target-action-amount').value;
-            if (!target_username) return showNotification('Sélectionnez un compte!', 'error');
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if (amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
-
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ admin_username: user.username, target_username: target_username, action: action, amount: amount })
-                });
-                if (res.ok) {
-                    showNotification('Opération réussie!');
-                    document.getElementById('target-action-amount').value = '';
-                    await loadNetworkData();
-                } else {
-                    const err = await res.json();
-                    showNotification(err.detail || 'Erreur lors de l\'opération', 'error');
-                }
-            } catch (e) { showNotification('Erreur de connexion', 'error'); }
+    const target_username = document.getElementById('target-action-user').value;
+    const amountInput = document.getElementById('target-action-amount').value;
+    if(!target_username) return showNotification('Sélectionnez un compte!', 'error');
+    const amount = amountInput ? parseFloat(amountInput) : 0;
+    if(amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
+    
+    // إذا كانت العملية سحب (withdraw)، يتم إرسالها للشوب للموافقة ولا تتم مباشراً
+    if (action === 'withdraw') {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/admin/request-shop-withdrawal`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    admin_username: user.username,
+                    amount: amount
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showNotification('تم إرسال طلب السحب إلى الشوب بنجاح، في انتظار الموافقة! ⏳');
+                document.getElementById('target-action-amount').value = '';
+            } else {
+                showNotification(data.detail || 'فشلت العملية', 'error');
+            }
+        } catch(e) {
+            showNotification('Erreur de connexion', 'error');
         }
+        return;
+    }
+
+    // أما عملية الشحن (charge) فتبقى كما هي تعمل بشكل طبيعي
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, { 
+            method: 'POST', headers: getAuthHeaders(), 
+            body: JSON.stringify({ admin_username: user.username, target_username, action, amount }) 
+        });
+        if (res.ok) {
+            showNotification('Opération réussie!');
+            document.getElementById('target-action-amount').value = '';
+            await loadNetworkData();
+        } else {
+            const err = await res.json();
+            showNotification(err.detail || 'Erreur lors de l\'opération', 'error');
+        }
+    } catch (e) { showNotification('Erreur de connexion', 'error'); }
+}
 
         async function createAdminUser() {
             const usernameInput = document.getElementById('new-user-name');
@@ -815,6 +842,49 @@ async function createNetworkUser() {
                 showNotification('Erreur de connexion avec le serveur', 'error');
             }
         }
+
+        async function openAdminWithdrawRequests() {
+    const modalEl = document.getElementById('historyModal');
+    const myModal = new bootstrap.Modal(modalEl);
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-dynamic-content');
+    
+    title.innerText = "Mes Demandes de Retrait";
+    body.innerHTML = '<div class="text-center p-4 text-info fw-bold">Chargement en cours... ⏳</div>';
+    myModal.show();
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/my-withdrawal-requests?username=${user.username}`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            const requests = await res.json();
+            if (requests && requests.length > 0) {
+                let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
+                requests.forEach(req => {
+                    let statusBadge = req.status === 'accepted' ? '<span class="badge bg-success">Accepté ✅</span>' :
+                    (req.status === 'rejected' ? '<span class="badge bg-danger">Refusé ❌</span>' : '<span class="badge bg-warning text-dark">En attente ⏳</span>');
+                    html += `
+                    <div class="card bg-transparent border-secondary shadow-sm" style="background-color: #040a18 !important;">
+                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white fw-bold">المبلغ: <span class="text-danger font-monospace">${parseFloat(req.amount).toFixed(2)} TND</span></div>
+                                <div class="text-secondary small">🕒 ${req.date}</div>
+                            </div>
+                            <div>${statusBadge}</div>
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+                body.innerHTML = html;
+            } else {
+                body.innerHTML = '<div class="text-center p-4 text-white fw-bold">Aucune demande de retrait. (لا توجد طلبات)</div>';
+            }
+        } else {
+            body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur serveur.</div>';
+        }
+    } catch (e) {
+        body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur de connexion.</div>';
+    }
+}
     </script>
 </body>
 
