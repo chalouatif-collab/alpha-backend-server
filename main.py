@@ -1504,29 +1504,34 @@ async def get_pending_withdrawals(username: str):
     return pending
 
 @app.get("/api/shop/withdraw-requests")
-async def get_shop_withdraw_requests(current_user: dict = Depends(get_current_user)):
-    # التحقق من أن المستخدم هو شوب
-    if current_user.get("role") != "shop":
+async def get_shop_withdraw_requests(current_user: str = Depends(get_current_user)):
+    db = load_db()
+    
+    # 1. جلب قائمة المستخدمين للبحث عن المستخدم الحالي
+    users = db.get("users")
+    if not users:
+        users = []
+    if isinstance(users, dict):
+        users = list(users.values())
+        
+    # 2. إيجاد بيانات المستخدم للتحقق من الصلاحيات
+    user_info = next((u for u in users if u and u.get("username") == current_user), None)
+    
+    if not user_info or user_info.get("role") != "shop":
         raise HTTPException(status_code=403, detail="Accès refusé")
         
-    db = load_db()
-    shop_username = current_user.get("username").lower()
+    shop_username = current_user.lower()
     
-    # 1. جلب البيانات من فايربيز
+    # 3. جلب طلبات السحب
     all_requests = db.get("shop_withdrawals")
     
-    # 2. حماية من قيمة None (إذا كانت القاعدة فارغة)
     if not all_requests:
         all_requests = []
-        
-    # 3. حماية من تحويل فايربيز للمصفوفات إلى قواميس
     if isinstance(all_requests, dict):
         all_requests = list(all_requests.values())
     
-    # 4. جلب طلبات الشوب المطلوب فقط بأمان
+    # 4. جلب طلبات الشوب المطلوب فقط
     my_requests = [req for req in all_requests if req and req.get("shop_username") == shop_username]
-    
-    # 5. عكس الترتيب لتظهر الطلبات الجديدة أولاً
     my_requests.reverse()
     
     return my_requests
