@@ -193,8 +193,6 @@
                 <!-- Section de Recherche -->
                 <div class="input-group mb-4">
 
-                    <input type="text" id="ticket-search-input" class="form-control input-blue" style="color: #e8006f !important; font-weight: bold;" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)">
-
                     <input type="text" id="ticket-search-input" class="form-control input-blue" placeholder="Entrez l'ID du Ticket (ex: TCK-98765)">
 
                     <button class="btn bg-owner-primary text-white fw-bold px-4" onclick="searchTicket()">
@@ -299,11 +297,6 @@ function showResettlementPanel() {
     fetchAllTickets(); // إضافة هذا السطر لجلب التذاكر
 }
 
-        function showResettlementPanel() {
-            document.getElementById('default-dashboard-view').classList.add('d-none');
-            document.getElementById('admin-resettlement-panel').classList.remove('d-none');
-        }
-
 
         function hideResettlementPanel() {
             document.getElementById('admin-resettlement-panel').classList.add('d-none');
@@ -350,21 +343,18 @@ async function fetchAllTickets() {
     listContainer.innerHTML = '<div class="text-info text-center p-3">جاري التحميل... ⏳</div>';
 
     try {
-        const authHeaders = getAuthHeaders();
-        console.log("Headers being sent:", authHeaders);
         const res = await fetch(`${BACKEND_URL}/api/admin/get-all-tickets`, { headers: getAuthHeaders() });
         const tickets = await res.json();
         
-        // تصحيح: هنا نطبع أول تذكرة لنعرف أسماء الحقول الحقيقية
-        console.log("هيكل التذكرة:", tickets[0]); 
-
         if (tickets.length === 0) {
             listContainer.innerHTML = '<div class="text-secondary text-center p-3">لا توجد أوراق حالياً.</div>';
             return;
         }
 
+        // 🔍 طباعة هيكل التذكرة لمعاينة البيانات القادمة من السيرفر
+        console.log("هيكل التذكرة:", tickets[0]); 
+
         listContainer.innerHTML = tickets.map(t => {
-            // سنستخدم || لضمان عدم ظهور undefined إذا كان الاسم مختلفاً
             const tId = t.ticket_id || t.id || "N/A";
             const user = t.username || t.user || "Unknown";
             const status = t.status || "N/A";
@@ -386,14 +376,9 @@ async function fetchAllTickets() {
     }
 }
 
-        function resettleTicket() {
-            alert("✅ Succès ! Le ticket a été recalculé et les gains ont été ajoutés au solde du joueur.");
-            hideResettlementPanel();
-        }
-
         // ======================================================================
 
-        const BACKEND_URL = "https://alpha-backend-server.onrender.com";
+    const BACKEND_URL = "https://alpha-backend-server.onrender.com";
 
         let allUsers = []; 
         let allTransactionsCache = []; 
@@ -642,23 +627,13 @@ const secretBadge = u.two_factor_secret
                     } else {
                         body.innerHTML = `<div class="text-center p-4 text-danger fw-bold">خطأ في جلب البيانات</div>`;
                     }
-                } catch(e) { body.innerHTML = `<div class="text-center p-4 text-danger fw-bold">Erreur de connexion API</div>`; }
-            }
-            else if (safeType === 'pending') {
-                try {
-                    const res = await fetch(`${BACKEND_URL}/api/admin/pending-requests`, { headers: getAuthHeaders() });
-                    if (res.ok) {
-                        const requests = await res.json();
-                        renderPendingRequestsUI(body, requests);
-                    } else {
-                        body.innerHTML = `<div class="text-center p-4 text-danger fw-bold">Erreur de chargement</div>`;
-                    }
-                } catch(e) { body.innerHTML = `<div class="text-center p-4 text-danger fw-bold">Erreur de connexion API</div>`; }
-            }
-            else {
-                body.innerHTML = `<div class="text-center p-4 text-secondary fw-bold">Fonctionnalité de Casino en cours de maintenance...</div>`;
-            }
-        }
+            } catch(e) { body.innerHTML = `<div class="text-center p-4 text-danger fw-bold">Erreur de connexion API</div>`; }
+    }
+    else {
+        body.innerHTML = `<div class="text-center p-4 text-secondary fw-bold">Fonctionnalité de Casino en cours de maintenance...</div>`;
+    }
+}
+        
 
         function renderPendingRequestsUI(container, requests) {
             if (!requests || requests.length === 0) {
