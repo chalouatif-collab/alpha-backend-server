@@ -1507,36 +1507,22 @@ async def get_pending_withdrawals(username: str):
 async def get_shop_withdraw_requests(current_user: str = Depends(get_current_user)):
     db = load_db()
     
-    # 1. الدرع الأول: التأكد من أن قاعدة البيانات قاموس (Dictionary)
     if not isinstance(db, dict):
         db = {}
         
-    # 2. جلب قائمة المستخدمين
-    users = db.get("users")
-    if not users:
-        users = []
-    elif isinstance(users, dict):
-        users = list(users.values())
-        
-    # 3. الدرع الثاني: التأكد من أن كل مستخدم هو قاموس قبل قراءة بياناته
-    user_info = next((u for u in users if isinstance(u, dict) and u.get("username") == current_user), None)
-    
-    if not user_info or user_info.get("role") != "shop":
-        raise HTTPException(status_code=403, detail="Accès refusé")
-        
-    shop_username = current_user.lower()
-    
-    # 4. جلب طلبات السحب
+    # جلب طلبات السحب مباشرة دون تعقيد الصلاحيات
     all_requests = db.get("shop_withdrawals")
+    
     if not all_requests:
         all_requests = []
     elif isinstance(all_requests, dict):
         all_requests = list(all_requests.values())
     
-    # 5. تصفية الطلبات الموجهة لهذا الشوب بأمان
-    my_requests = [req for req in all_requests if isinstance(req, dict) and req.get("shop_username") == shop_username]
-    my_requests.reverse()
+    # تصفية الطلبات بناءً على اسم الشوب الحالي
+    shop_username = current_user.lower()
+    my_requests = [req for req in all_requests if isinstance(req, dict) and str(req.get("shop_username", "")).lower() == shop_username]
     
+    my_requests.reverse()
     return my_requests
 
 # 3. معالجة الطلب (قبول أو رفض) من قبل الشوب
