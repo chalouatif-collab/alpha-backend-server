@@ -35,6 +35,15 @@
             border-color: #233f75 !important;
             color: #60a5fa !important;
         }
+        /* إصلاح مشكلة الملء التلقائي في المتصفحات (Autofill) للوحة Super Admin */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus, 
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #040a18 inset !important;
+        -webkit-text-fill-color: #bfdbfe !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100 position-relative">
