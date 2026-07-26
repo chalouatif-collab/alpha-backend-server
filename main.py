@@ -1507,31 +1507,34 @@ async def get_pending_withdrawals(username: str):
 async def get_shop_withdraw_requests(current_user: str = Depends(get_current_user)):
     db = load_db()
     
-    # 1. جلب قائمة المستخدمين للبحث عن المستخدم الحالي
+    # 1. الدرع الأول: التأكد من أن قاعدة البيانات قاموس (Dictionary)
+    if not isinstance(db, dict):
+        db = {}
+        
+    # 2. جلب قائمة المستخدمين
     users = db.get("users")
     if not users:
         users = []
-    if isinstance(users, dict):
+    elif isinstance(users, dict):
         users = list(users.values())
         
-    # 2. إيجاد بيانات المستخدم للتحقق من الصلاحيات
-    user_info = next((u for u in users if u and u.get("username") == current_user), None)
+    # 3. الدرع الثاني: التأكد من أن كل مستخدم هو قاموس قبل قراءة بياناته
+    user_info = next((u for u in users if isinstance(u, dict) and u.get("username") == current_user), None)
     
     if not user_info or user_info.get("role") != "shop":
         raise HTTPException(status_code=403, detail="Accès refusé")
         
     shop_username = current_user.lower()
     
-    # 3. جلب طلبات السحب
+    # 4. جلب طلبات السحب
     all_requests = db.get("shop_withdrawals")
-    
     if not all_requests:
         all_requests = []
-    if isinstance(all_requests, dict):
+    elif isinstance(all_requests, dict):
         all_requests = list(all_requests.values())
     
-    # 4. جلب طلبات الشوب المطلوب فقط
-    my_requests = [req for req in all_requests if req and req.get("shop_username") == shop_username]
+    # 5. تصفية الطلبات الموجهة لهذا الشوب بأمان
+    my_requests = [req for req in all_requests if isinstance(req, dict) and req.get("shop_username") == shop_username]
     my_requests.reverse()
     
     return my_requests
