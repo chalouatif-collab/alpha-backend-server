@@ -1,424 +1,397 @@
 <!DOCTYPE html>
 <html lang="fr" dir="ltr" data-bs-theme="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alpha Core - Admin Control Panel</title>
 
-    <!-- مكتبة Bootstrap 5 -->
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- مكتبة الأيقونات FontAwesome -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
+        /* الألوان المخصصة - الهوية الزمردية الموحدة */
+        :root {
+            --emerald-primary: #10b981;
+            --emerald-hover: #059669;
+            --bg-main: #060913;
+            --bg-sidebar: #090d1a;
+            --bg-card: #0b101f;
+            --bg-input: #0f172a; 
+            --border-dark: #1e293b;
+        }
+
         body {
-            background-color: #090d16;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-main);
+            color: #e2e8f0;
+            font-family: system-ui, -apple-system, sans-serif;
         }
 
-        .bg-panel {
-            background-color: #121826;
-            border: 1px solid #1f2937;
+        /* تنسيقات مخصصة */
+        .bg-card-custom { background-color: var(--bg-card); }
+        .bg-input-custom { background-color: var(--bg-input); }
+        .border-custom { border: 1px solid var(--border-dark); }
+        .text-emerald { color: var(--emerald-primary) !important; }
+        
+        /* الأزرار الخضراء */
+        .btn-emerald {
+            background-color: var(--emerald-primary);
+            color: #060913;
+            font-weight: 900;
+            border: none;
+            transition: all 0.3s;
+        }
+        .btn-emerald:hover {
+            background-color: var(--emerald-hover);
+            color: #060913;
+            transform: translateY(-1px);
         }
 
-        .text-amber {
-            color: #f59e0b;
-        }
-
-        .bg-amber {
-            background-color: #f59e0b;
-            color: #000;
-        }
-
-        .bg-amber:hover {
-            background-color: #d97706;
-            color: #000;
-        }
-
-        /* إخفاء شريط التمرير مع الحفاظ على وظيفته (السحب بالأصابع) */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        .active-admin-btn {
-            background-color: rgba(245, 158, 11, 0.15) !important;
-            border-color: #f59e0b !important;
-            color: #f59e0b !important;
+        /* حقول الإدخال */
+        .form-control, .form-select {
+            background-color: var(--bg-input) !important;
+            border: 1px solid #334155 !important;
+            color: #ffffff !important; 
+            font-family: monospace;
             font-weight: bold;
         }
+        .form-control::placeholder {
+            color: #64748b !important;
+            font-weight: normal;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #1e293b !important;
+            border-color: var(--emerald-primary) !important;
+            box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.25) !important;
+        }
 
-        /* الإشعارات العائمة */
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
+        /* القائمة الجانبية */
+        .sidebar-link {
+            color: #cbd5e1;
+            background-color: rgba(11, 16, 31, 0.6);
+            border: 1px solid rgba(30, 41, 59, 0.6);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .custom-toast {
-            min-width: 250px;
-            padding: 15px;
-            border-radius: 10px;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            font-size: 0.875rem;
             font-weight: bold;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s, transform 0.3s;
-            opacity: 0;
-            transform: translateY(20px);
+            transition: all 0.2s;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+        .sidebar-link:hover {
+            background-color: #1e293b;
+            color: #fff;
+        }
+        .active-shop-btn {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            border-color: var(--emerald-primary) !important;
+            color: var(--emerald-primary) !important;
         }
 
-        .toast-show {
-            opacity: 1;
-            transform: translateY(0);
+        /* إخفاء شريط التمرير */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .offcanvas { background-color: var(--bg-sidebar); border-right: 1px solid var(--border-dark); }
+        
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+            -webkit-text-fill-color: #e2e8f0 !important;
+            transition: background-color 5000s ease-in-out 0s;
         }
 
-        .toast-success {
-            background-color: #10b981;
-            color: white;
-            border: 1px solid #059669;
+        /* شريط التمرير لـ RTP */
+        input[type=range] {
+            accent-color: var(--emerald-primary);
         }
-
-        .toast-error {
-            background-color: #ef4444;
-            color: white;
-            border: 1px solid #b91c1c;
-        }
-
-        .form-control,
-        .form-select {
-            background-color: #1f2937;
-            border: 1px solid #374151;
-            color: white;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            background-color: #1f2937;
-            border-color: #f59e0b;
-            box-shadow: 0 0 0 0.25rem rgba(245, 158, 11, 0.25);
-            color: white;
-        }
-        /* إصلاح مشكلة الملء التلقائي في المتصفحات (Autofill) للوحة Admin */
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover, 
-    input:-webkit-autofill:focus, 
-    input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #121826 inset !important;
-        -webkit-text-fill-color: #ffffff !important;
-        transition: background-color 5000s ease-in-out 0s;
-    }
     </style>
 </head>
+<body class="d-flex flex-column flex-md-row min-vh-100">
 
-<body>
+    <!-- حاوية الإشعارات -->
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055; width: 100%; max-width: 400px;"></div>
 
-    <div id="toast-container"></div>
-
-    <!-- شريط التنقل العلوي -->
-    <nav class="navbar navbar-dark bg-panel sticky-top p-3 mb-4 shadow-sm">
-        <div class="container-fluid">
-            <!-- زر فتح القائمة الجانبية للهاتف -->
-            <button class="navbar-toggler d-md-none border-0" type="button" data-bs-toggle="offcanvas"
-                data-bs-target="#mobileSidebar">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="d-flex align-items-center gap-2">
-                <h1 class="h5 mb-0 fw-black text-amber m-0">ALPHA <span class="text-white fw-light">ADMIN</span></h1>
-                <span class="badge bg-warning text-dark border border-warning" id="owner-username">En attente...</span>
+    <!-- القائمة الجانبية (للكمبيوتر) -->
+    <aside class="d-none d-md-flex flex-column justify-content-between p-4" style="width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-dark);">
+        <div class="d-flex flex-column gap-4">
+            <div class="bg-card-custom border-custom rounded-3 p-2 d-flex align-items-center justify-content-between">
+                <span class="small fw-bold text-secondary"><i class="fa-solid fa-globe"></i> Langue:</span>
+                <select id="lang-select" onchange="changeLanguage(this.value)" class="form-select form-select-sm w-auto border-0 shadow-none cursor-pointer">
+                    <option value="fr">Français</option>
+                    <option value="ar">العربية</option>
+                    <option value="en">English</option>
+                </select>
             </div>
 
-            <div class="d-flex align-items-center gap-3">
-                <div class="bg-dark px-2 py-1 rounded border border-secondary text-center"
-                    style="line-height: 1.1; min-width: 80px;">
-                    <span class="text-muted d-block" style="font-size: 0.55rem;">الرصيد المتاح</span>
-                    <span class="text-amber fw-bold" id="admin-balance-val" style="font-size: 0.75rem;">0.00 TND</span>
-                </div>
+            <div>
+                <p class="text-secondary fw-black small mb-3 text-uppercase" style="letter-spacing: 2px;" id="menu-title">Gestion Admin</p>
+                <nav id="admin-sidebar-nav" class="d-flex flex-column">
+                    <button onclick="switchAdminPanelSection('reseau')" id="btn-admin-reseau" class="sidebar-link active-shop-btn">
+                        👑 Network Created
+                    </button>
+                    <button onclick="switchAdminPanelSection('casino')" id="btn-admin-casino" class="sidebar-link">
+                        🎰 Historique de casino
+                    </button>
+                    <button onclick="switchAdminPanelSection('transfert')" id="btn-admin-transfert" class="sidebar-link">
+                        💸 Historique de transfére
+                    </button>
+                    <button onclick="switchAdminPanelSection('transaction')" id="btn-admin-transaction" class="sidebar-link">
+                        📊 Historique transaction
+                    </button>
+                    <button onclick="switchAdminPanelSection('sport')" id="btn-admin-sport" class="sidebar-link">
+                        ⚽ Tickets en cours
+                    </button>
+                    <button onclick="openAdminWithdrawRequests()" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-1" style="color: #ffc107;">
+                        <i class="fas fa-hand-holding-usd me-2"></i> Demandes retrait
+                    </button>
+                    <button onclick="openPasswordModal()" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-3 text-secondary small">
+                        🔑 Modifier mon mot de passe
+                    </button>
+                </nav>
             </div>
         </div>
-    </nav>
 
-    <div class="container-fluid pb-5">
-        <div class="row g-4">
+        <div class="pt-3 border-top border-custom mt-auto">
+            <button onclick="logout()" class="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: rgba(225, 29, 72, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: #fb7185;" id="btn-logout">
+                🚪 Déconnexion
+            </button>
+        </div>
+    </aside>
 
-            <!-- القائمة الجانبية -->
-            <div class="col-md-3">
-                <div class="offcanvas-md offcanvas-start bg-panel rounded-4 p-3 h-100 shadow" tabindex="-1"
-                    id="mobileSidebar">
+    <!-- القائمة الجانبية (للهاتف - Offcanvas) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar">
+        <div class="offcanvas-header border-bottom border-custom">
+            <h5 class="offcanvas-title text-emerald fw-bold"><i class="fa-solid fa-bars-staggered"></i> Menu Admin</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column justify-content-between p-4">
+            <div class="d-flex flex-column gap-4">
+                <nav id="admin-sidebar-nav-mobile" class="d-flex flex-column">
+                    <button onclick="switchAdminPanelSection('reseau'); closeSidebarManually();" class="sidebar-link active-shop-btn">👑 Network Created</button>
+                    <button onclick="switchAdminPanelSection('casino'); closeSidebarManually();" class="sidebar-link">🎰 Historique de casino</button>
+                    <button onclick="switchAdminPanelSection('transfert'); closeSidebarManually();" class="sidebar-link">💸 Historique de transfére</button>
+                    <button onclick="switchAdminPanelSection('transaction'); closeSidebarManually();" class="sidebar-link">📊 Historique transaction</button>
+                    <button onclick="switchAdminPanelSection('sport'); closeSidebarManually();" class="sidebar-link">⚽ Tickets en cours</button>
+                    <button onclick="openAdminWithdrawRequests(); closeSidebarManually();" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-1" style="color: #ffc107;">
+                        <i class="fas fa-hand-holding-usd me-2"></i> Demandes retrait
+                    </button>
+                </nav>
+            </div>
+            <div class="pt-3 border-top border-custom mt-auto">
+                <button onclick="logout()" class="btn w-100 fw-bold" style="background-color: rgba(225, 29, 72, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: #fb7185;">🚪 Déconnexion</button>
+            </div>
+        </div>
+    </div>
 
-                    <!-- رأس القائمة للهاتف مع زر إغلاق صريح يعمل بالجافاسكربت -->
-                    <div class="offcanvas-header d-md-none border-bottom border-secondary mb-3 pb-2">
-                        <h5 class="offcanvas-title text-amber fw-bold"><i class="fa-solid fa-bars-staggered"></i> Menu
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white"
-                            onclick="closeSidebarManually()"></button>
+    <!-- منطقة المحتوى الرئيسية -->
+    <div class="flex-grow-1 d-flex flex-column position-relative">
+        
+        <!-- الهيدر العلوي -->
+        <header class="bg-card-custom border-bottom border-custom px-3 py-2 d-flex justify-content-between align-items-center shadow-sm flex-shrink-0">
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary d-md-none border-0 text-white px-2 py-1 fs-4" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
+                    ☰
+                </button>
+                <span class="badge text-emerald fw-bold px-2 py-1 border rounded-2" style="background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); font-size: 0.65rem;">Admin: <span id="owner-username">Connected</span></span>
+            </div>
+            <div class="border-custom px-2 py-1 rounded-2 d-flex align-items-center gap-2" style="background-color: #04060c;">
+                <span class="text-secondary font-sans" style="font-size: 0.65rem;">الرصيد:</span>
+                <span class="text-emerald fw-black font-monospace" style="font-size: 0.75rem;" id="admin-balance-val">0.00 TND</span>
+            </div>
+        </header>
+
+        <!-- مساحة العمل -->
+        <main class="flex-grow-1 overflow-y-auto p-2 p-md-4 no-scrollbar">
+
+            <!-- القسم 1: الشبكة (Network) -->
+            <div id="panel-admin-reseau" class="admin-main-view d-flex flex-column gap-3">
+                
+                <!-- أزرار التحكم السريع والـ RTP -->
+                <div class="bg-card-custom border-custom rounded-3 p-3 shadow-sm">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-6 col-lg-3">
+                            <label class="small text-secondary mb-1 fw-bold" id="lbl-selected-user">Compte Sélectionné:</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-input-custom border-custom"><i class="fa-solid fa-crosshairs text-emerald"></i></span>
+                                <input type="text" id="ctrl-target-user" class="form-control fw-bold text-emerald bg-input-custom border-custom" placeholder="Sélectionnez..." readonly>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 col-lg-4">
+                            <label class="small text-secondary mb-1 fw-bold d-flex justify-content-between">
+                                <span><i class="fa-solid fa-percent"></i> RTP:</span>
+                                <span id="rtp-val-label" class="text-info fw-bold">50%</span>
+                            </label>
+                            <div class="d-flex gap-2">
+                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50" oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'" class="form-range mt-1 w-100">
+                                <button onclick="saveRtpAndBlock(0)" class="btn btn-sm btn-emerald px-3"><i class="fa-solid fa-check"></i></button>
+                                <button onclick="saveRtpAndBlock(1)" class="btn btn-sm btn-danger px-3"><i class="fa-solid fa-ban"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-12 col-lg-5">
+                            <label class="small text-secondary fw-bold mb-1">Mot de passe du joueur:</label>
+                            <div class="input-group input-group-sm">
+                                <input type="password" id="ctrl-player-new-pass" placeholder="Nouveau mot de passe" class="form-control">
+                                <button onclick="changePlayerPasswordFromAdmin()" class="btn btn-info text-dark fw-bold"><i class="fa-solid fa-key"></i> Modifier</button>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="offcanvas-body flex-column p-0">
-                        <!-- اختيار اللغة -->
-                        <div
-                            class="d-flex justify-content-between align-items-center bg-dark p-2 rounded mb-4 border border-secondary">
-                            <span class="small text-muted fw-bold"><i class="fa-solid fa-globe"></i> Langue:</span>
-                            <select id="lang-select" onchange="changeLanguage(this.value)"
-                                class="form-select form-select-sm w-auto bg-dark border-secondary text-white shadow-none">
-                                <option value="fr">Français</option>
-                                <option value="ar">العربية</option>
-                                <option value="en">English</option>
+                <!-- إنشاء حساب جديد -->
+                <div class="bg-card-custom border-custom rounded-3 p-3 shadow-sm border-start border-emerald border-4">
+                    <h5 class="fw-bold text-light mb-3" style="font-size: 0.9rem;" id="title-create-user">👑 Créer un compte (Shop / Player)</h5>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="small text-secondary mb-1 fw-bold" id="lbl-username">Nom d'utilisateur</label>
+                            <input type="text" id="new-user-name" class="form-control form-control-sm" placeholder="Ex: shop_beja">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small text-secondary mb-1 fw-bold" id="lbl-password">Mot de passe</label>
+                            <input type="password" id="new-user-pass" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small text-secondary mb-1 fw-bold">Type</label>
+                            <select id="new-user-role" class="form-select form-select-sm">
+                                <option value="shop">Shop (محل)</option>
+                                <option value="player">Player (لاعب مباشر)</option>
                             </select>
                         </div>
+                        <div class="col-md-2">
+                            <label class="small text-secondary mb-1 fw-bold">Téléphone</label>
+                            <input type="text" id="new_phone" class="form-control form-control-sm" placeholder="+216...">
+                        </div>
+                        <div class="col-md-2">
+                            <button onclick="createNetworkUser()" class="btn btn-sm btn-emerald w-100 py-1 fw-bold" id="btn-create"><i class="fa-solid fa-plus"></i> Créer</button>
+                        </div>
+                    </div>
+                </div>
 
-                        <!-- أزرار التنقل -->
-                        <h6 class="text-muted text-uppercase fw-bold mb-3 small" id="menu-title">Gestion Admin</h6>
-                        <nav class="nav flex-column gap-2 mb-auto" id="admin-sidebar-nav">
-                            <button onclick="switchAdminPanelSection('reseau')" id="btn-admin-reseau"
-                                class="btn btn-dark text-start border-secondary active-admin-btn">
-                                👑 Network Created
-                            </button>
-                            <button onclick="switchAdminPanelSection('casino')" id="btn-admin-casino"
-                                class="btn btn-dark text-start border-secondary text-secondary">
-                                🎰 Historique de casino
-                            </button>
-                            <button onclick="switchAdminPanelSection('transfert')" id="btn-admin-transfert"
-                                class="btn btn-dark text-start border-secondary text-secondary">
-                                💸 Historique de transfére
-                            </button>
-                            <button onclick="switchAdminPanelSection('transaction')" id="btn-admin-transaction"
-                                class="btn btn-dark text-start border-secondary text-secondary">
-                                📊 Historique de transaction
-                            </button>
-                            <button onclick="switchAdminPanelSection('sport')" id="btn-admin-sport"
-                                class="btn btn-dark text-start border-secondary text-secondary">
-                                ⚽ Tickets en cours
-                            </button>
-                            <button onclick="openAdminWithdrawRequests()" class="btn text-start text-warning fw-bold w-100 border border-transparent hover-bg-dark mt-1">
-                                <i class="fas fa-clock me-2"></i> Demandes de retrait
-                            </button>
-                            <button onclick="openPasswordModal()"
-                                class="btn btn-dark text-start border-secondary text-secondary mt-3">
-                                🔑 Modifier mon mot de passe
-                            </button>
-                        </nav>
+                <!-- شحن/سحب وجدول المستخدمين -->
+                <div class="bg-card-custom border-custom rounded-3 overflow-hidden shadow-sm">
+                    <!-- الشريط المالي -->
+                    <div class="p-2 border-bottom border-custom" style="background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);">
+                        <div class="mb-2">
+                            <span class="fw-bold text-white small" id="title-table-console"><i class="fa-solid fa-wallet"></i> Console financière des Comptes</span>
+                        </div>
+                        <div class="d-flex flex-nowrap gap-2 overflow-x-auto pb-1 no-scrollbar align-items-center">
+                            <input type="text" id="target-action-user" class="form-control form-control-sm text-center fw-bold text-warning flex-shrink-0" style="width: 120px;" readonly placeholder="Sélectionnez...">
+                            <input type="number" id="target-action-amount" class="form-control form-control-sm text-center text-emerald fw-bold flex-shrink-0" style="width: 100px;" placeholder="Montant TND">
+                            <button onclick="executeAction('charge')" class="btn btn-sm btn-emerald fw-bold flex-shrink-0 px-3" id="btn-credit">Créditer</button>
+                            <button onclick="executeAction('withdraw')" class="btn btn-sm btn-danger fw-bold flex-shrink-0 px-3" id="btn-retirer">Retirer</button>
+                        </div>
+                    </div>
+                    
+                    <!-- حقل البحث -->
+                    <div class="p-2 border-bottom border-custom bg-input-custom">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-transparent border-custom text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control border-custom">
+                        </div>
+                    </div>
 
-                        <hr class="border-secondary mt-4 mb-3">
-                        <button onclick="logout()" class="btn btn-outline-danger w-100 fw-bold" id="btn-logout">
-                            🚪 Déconnexion
-                        </button>
+                    <!-- الحاوية التي سيتم رسم كروت المستخدمين داخلها -->
+                    <div id="owner-network-tbody" class="p-2 d-flex flex-column gap-1" style="max-height: 500px; overflow-y: auto;">
+                        <!-- Data -->
                     </div>
                 </div>
             </div>
 
-            <!-- محتوى لوحة التحكم (الجهة اليمنى) -->
-            <div class="col-md-9">
-
-                <!-- القسم 1: الشبكة (Network) -->
-                <div id="panel-admin-reseau" class="admin-main-view">
-
-                    <!-- أزرار التحكم السريع والـ RTP -->
-                    <div class="bg-panel rounded-4 p-3 mb-4 shadow-sm">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-sm-6 col-lg-3">
-                                <label class="small text-muted mb-1" id="lbl-selected-user">Compte Sélectionné:</label>
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-dark border-secondary"><i
-                                            class="fa-solid fa-crosshairs text-amber"></i></span>
-                                    <input type="text" id="ctrl-target-user"
-                                        class="form-control fw-bold text-amber bg-dark border-secondary"
-                                        placeholder="Sélectionnez..." readonly>
-                                </div>
-                            </div>
-
-                            <div class="col-sm-6 col-lg-4">
-                                <label class="small text-muted mb-1 d-flex justify-content-between">
-                                    <span><i class="fa-solid fa-percent"></i> RTP:</span>
-                                    <span id="rtp-val-label" class="text-info fw-bold">50%</span>
-                                </label>
-                                <div class="d-flex gap-2">
-                                    <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50"
-                                        oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'"
-                                        class="form-range mt-1 w-100">
-                                    <button onclick="saveRtpAndBlock(0)" class="btn btn-sm btn-success px-3"><i
-                                            class="fa-solid fa-check"></i></button>
-                                    <button onclick="saveRtpAndBlock(1)" class="btn btn-sm btn-danger px-3"><i
-                                            class="fa-solid fa-ban"></i></button>
-                                </div>
-                            </div>
-
-                            <div class="col-sm-12 col-lg-5">
-                                <label class="small text-muted mb-1">Mot de passe du joueur:</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="password" id="ctrl-player-new-pass" placeholder="Nouveau mot de passe"
-                                        class="form-control">
-                                    <button onclick="changePlayerPasswordFromAdmin()"
-                                        class="btn btn-info text-dark fw-bold"><i class="fa-solid fa-key"></i>
-                                        Modifier</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- إنشاء حساب جديد -->
-                    <div class="bg-panel rounded-4 p-4 mb-4 shadow-sm border-start border-warning border-4">
-                        <h5 class="h6 fw-bold mb-3" id="title-create-user"><i
-                                class="fa-solid fa-user-plus text-amber"></i> Créer un compte (Shop / Player)</h5>
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-3">
-                                <label class="small text-muted mb-1" id="lbl-username">Nom d'utilisateur</label>
-                                <input type="text" id="new-user-name" class="form-control form-control-sm"
-                                    placeholder="Ex: shop_beja">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small text-muted mb-1" id="lbl-password">Mot de passe</label>
-                                <input type="password" id="new-user-pass" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small text-muted mb-1">Type de compte</label>
-                                <select id="new-user-role" class="form-select form-select-sm">
-                                    <option value="shop">Shop (محل)</option>
-                                    <option value="player">Player (لاعب مباشر)</option>
-                                </select>
-                                <div class="col-md-3">
-                                    <label class="small text-muted mb-1">Téléphone (WhatsApp)</label>
-                                    <input type="text" id="new_phone" class="form-control form-control-sm"
-                                        placeholder="Ex: +216...">
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <button onclick="createNetworkUser()" class="btn btn-sm btn-warning w-100 fw-bold"
-                                    id="btn-create"><i class="fa-solid fa-plus"></i> Créer</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- شحن/سحب وجدول المستخدمين -->
-                    <div class="bg-panel rounded-4 shadow-sm overflow-hidden mb-4">
-
-                        <!-- التعديل الأهم: قسم الشحن والسحب أصبح قابلاً للتمرير بدون أن ينضغط -->
-                        <div class="bg-amber p-3">
-                            <div class="mb-2">
-                                <span class="fw-bold small" id="title-table-console"><i class="fa-solid fa-wallet"></i>
-                                    Console financière des Comptes</span>
-                            </div>
-
-                            <!-- حاوية التمرير الأفقي السلس -->
-                            <div class="d-flex flex-nowrap gap-2 overflow-x-auto pb-1 no-scrollbar align-items-center">
-                                <input type="text" id="target-action-user"
-                                    class="form-control form-control-sm text-center fw-bold flex-shrink-0"
-                                    style="width: 140px;" readonly placeholder="Sélectionnez...">
-                                <input type="number" id="target-action-amount"
-                                    class="form-control form-control-sm text-center flex-shrink-0" style="width: 120px;"
-                                    placeholder="Montant TND">
-                                <button onclick="executeAction('charge')"
-                                    class="btn btn-sm btn-dark fw-bold flex-shrink-0 px-3"
-                                    id="btn-credit">Créditer</button>
-                                <button onclick="executeAction('withdraw')"
-                                    class="btn btn-sm btn-danger fw-bold flex-shrink-0 px-3"
-                                    id="btn-retirer">Retirer</button>
-                            </div>
-                        </div>
-
-                        <div class="p-3 bg-dark border-bottom border-secondary">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-panel border-secondary text-muted"><i
-                                        class="fa-solid fa-magnifying-glass"></i></span>
-                                <input type="text" id="search-input" oninput="renderFilteredUsers()"
-                                    placeholder="Rechercher un compte..." class="form-control border-secondary">
-                            </div>
-                        </div>
-
-                        <!-- الحاوية التي سيتم رسم كروت المستخدمين داخلها -->
-                        <div id="owner-network-tbody" class="p-3 d-flex flex-column gap-2"
-                            style="max-height: 500px; overflow-y: auto;">
-                            <!-- Data -->
-                        </div>
-                    </div>
+            <!-- باقي الأقسام (مخفية افتراضياً) -->
+            <div id="panel-admin-casino" class="admin-main-view d-none">
+                <div class="bg-card-custom border-custom rounded-3 p-5 text-center text-secondary mt-3 shadow-sm">
+                    <i class="fa-solid fa-ghost fs-1 mb-3"></i><br>
+                    <span class="fw-bold text-uppercase small">Aucun pari de casino enregistré sur l'ensemble de la plateforme.</span>
                 </div>
-
-                <!-- باقي الأقسام (تظهر فارغة حالياً) -->
-                <div id="panel-admin-casino" class="admin-main-view d-none">
-                    <div class="alert alert-dark text-center border-secondary text-muted mt-4">
-                        <i class="fa-solid fa-ghost fs-1 mb-3"></i><br>
-                        Aucun pari de casino enregistré sur l'ensemble de la plateforme.
-                    </div>
-                </div>
-
-                <div id="panel-admin-transfert" class="admin-main-view d-none">
-                    <div class="bg-panel rounded-4 shadow-sm overflow-hidden mt-4">
-                        <div
-                            class="bg-dark p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0 text-white"><i class="fa-solid fa-money-bill-transfer text-amber"></i>
-                                Historique de transfére</h6>
-                            <button onclick="loadTransactionsHistory()"
-                                class="btn btn-sm btn-outline-light px-2 py-0"><i
-                                    class="fa-solid fa-rotate-right"></i></button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover mb-0 text-center align-middle">
-                                <thead>
-                                    <tr class="text-muted small">
-                                        <th>Date</th>
-                                        <th>De / À</th>
-                                        <th>Type</th>
-                                        <th>Montant</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="transactions-tbody">
-                                    <!-- البيانات ستظهر هنا تلقائياً -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="panel-admin-transaction" class="admin-main-view d-none">
-                    <div class="alert alert-dark text-center border-secondary text-muted mt-4">
-                        <i class="fa-solid fa-chart-line fs-1 mb-3"></i><br>
-                        Aucune transaction comptable enregistrée.
-                    </div>
-                </div>
-
-                <div id="panel-admin-sport" class="admin-main-view d-none">
-                    <div class="alert alert-dark text-center border-secondary text-muted mt-4">
-                        <i class="fa-solid fa-futbol fs-1 mb-3"></i><br>
-                        Aucun ticket actif en attente de traitement.
-                    </div>
-                </div>
-
             </div>
-        </div>
+
+            <div id="panel-admin-transfert" class="admin-main-view d-none">
+                <div class="bg-card-custom border-custom rounded-3 shadow-sm overflow-hidden mt-3">
+                    <div class="bg-input-custom p-3 border-bottom border-custom d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 text-white fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-money-bill-transfer text-emerald"></i> Historique de transfére</h6>
+                        <button onclick="loadTransactionsHistory()" class="btn btn-sm btn-outline-secondary px-2 py-0"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-sm mb-0 text-center align-middle" style="background-color: transparent;">
+                            <thead>
+                                <tr class="text-secondary small">
+                                    <th>Date</th>
+                                    <th>De / À</th>
+                                    <th>Type</th>
+                                    <th>Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-tbody">
+                                <!-- البيانات ستظهر هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-admin-transaction" class="admin-main-view d-none">
+                <div class="bg-card-custom border-custom rounded-3 p-5 text-center text-secondary mt-3 shadow-sm">
+                    <i class="fa-solid fa-chart-line fs-1 mb-3"></i><br>
+                    <span class="fw-bold text-uppercase small">Aucune transaction comptable enregistrée.</span>
+                </div>
+            </div>
+
+            <div id="panel-admin-sport" class="admin-main-view d-none">
+                <div class="bg-card-custom border-custom rounded-3 p-5 text-center text-secondary mt-3 shadow-sm">
+                    <i class="fa-solid fa-futbol fs-1 mb-3"></i><br>
+                    <span class="fw-bold text-uppercase small">Aucun ticket actif en attente de traitement.</span>
+                </div>
+            </div>
+
+        </main>
     </div>
 
     <!-- نافذة تعديل كلمة المرور (Modal) -->
     <div class="modal fade" id="passwordModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content bg-panel border-secondary">
-                <div class="modal-header border-secondary">
-                    <h6 class="modal-title text-white"><i class="fa-solid fa-key text-amber"></i> Modifier le mot de
-                        passe</h6>
+            <div class="modal-content bg-card-custom border-custom shadow">
+                <div class="modal-header border-bottom border-custom">
+                    <h6 class="modal-title text-white fw-bold"><i class="fa-solid fa-key text-emerald"></i> Modifier le mot de passe</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe"
-                        class="form-control mb-3">
-                    <button onclick="submitNewPassword()" class="btn btn-warning w-100 fw-bold">Mettre à jour</button>
+                <div class="modal-body p-3">
+                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe" class="form-control form-control-sm mb-3">
+                    <button onclick="submitNewPassword()" class="btn btn-emerald btn-sm w-100 fw-bold">Mettre à jour</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- مكتبات الجافاسكربت لـ Bootstrap -->
+    <!-- نافذة السجلات وطلبات السحب (Modal) -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-card-custom border-custom shadow">
+                <div class="modal-header border-bottom border-custom">
+                    <h6 class="modal-title fw-bold text-warning" id="modal-title">Demandes</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3" id="modal-dynamic-content">
+                    <!-- سيتم حقن الطلبات هنا برمجياً -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // المتغيرات الأساسية
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         let sessionData = localStorage.getItem('alpha_user');
         let user = sessionData ? JSON.parse(sessionData) : null;
@@ -442,102 +415,89 @@
             loadNetworkData();
         });
 
+        // دالة الإشعارات الأنيقة المتوافقة مع التصميم الجديد
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+            const toast = document.createElement('div');
+            const icon = type === 'success' ? '✅' : '❌';
+            
+            toast.className = `toast align-items-center text-bg-dark border-0 mb-2 show shadow-lg`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex ${type === 'success' ? 'border-success' : 'border-danger'} border-start border-4 rounded" style="background-color: var(--bg-card);">
+                    <div class="toast-body fw-bold d-flex gap-2" style="font-size: 0.75rem; color: white;">
+                        <span>${icon}</span> ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
         const translations = {
             fr: {
-                menu: "Gestion Admin", selected: "Compte Sélectionné:", create: "👑 Créer un compte (Shop / Player)",
-                user: "Nom d'utilisateur", pass: "Mot de passe", console: "📋 Console financière des Comptes",
-                credit: "Créditer", retirer: "Retirer", out: "🚪 Déconnexion"
+                menu: "Gestion Admin", selected: "Compte Sélectionné:", create: "Créer un compte",
+                user: "Nom d'utilisateur", pass: "Mot de passe", console: "Console financière des Comptes",
+                credit: "Créditer", retirer: "Retirer", out: "Déconnexion"
             },
             ar: {
-                menu: "إدارة الأدمن", selected: "الحساب المختار:", create: "👑 إنشاء حساب تحت إشرافك",
-                user: "اسم المستخدم", pass: "كلمة المرور", console: "📋 لوحة الشحن والسحب للحسابات التابعة لك",
-                credit: "شحن رصيد", retirer: "سحب رصيد", out: "🚪 تسجيل الخروج"
+                menu: "إدارة الأدمن", selected: "الحساب المختار:", create: "إنشاء حساب تحت إشرافك",
+                user: "اسم المستخدم", pass: "كلمة المرور", console: "لوحة الشحن والسحب للحسابات التابعة لك",
+                credit: "شحن رصيد", retirer: "سحب رصيد", out: "تسجيل الخروج"
             },
             en: {
-                menu: "Admin Menu", selected: "Selected Account:", create: "👑 Create Sub-Account",
-                user: "Username", pass: "Password", console: "📋 Balance Control Console",
-                credit: "Charge", retirer: "Withdraw", out: "🚪 Logout"
+                menu: "Admin Menu", selected: "Selected Account:", create: "Create Sub-Account",
+                user: "Username", pass: "Password", console: "Balance Control Console",
+                credit: "Charge", retirer: "Withdraw", out: "Logout"
             }
         };
 
         function changeLanguage(lang) {
             document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
-            document.getElementById('menu-title').innerText = translations[lang].menu;
-            document.getElementById('lbl-selected-user').innerText = translations[lang].selected;
-            document.getElementById('title-create-user').innerHTML = `<i class="fa-solid fa-user-plus text-amber"></i> ${translations[lang].create}`;
-            document.getElementById('lbl-username').innerText = translations[lang].user;
-            document.getElementById('lbl-password').innerText = translations[lang].pass;
+            document.getElementById('menu-title').innerHTML = translations[lang].menu;
+            document.getElementById('lbl-selected-user').innerHTML = translations[lang].selected;
+            document.getElementById('title-create-user').innerHTML = `👑 ${translations[lang].create}`;
+            document.getElementById('lbl-username').innerHTML = translations[lang].user;
+            document.getElementById('lbl-password').innerHTML = translations[lang].pass;
             document.getElementById('title-table-console').innerHTML = `<i class="fa-solid fa-wallet"></i> ${translations[lang].console}`;
-            document.getElementById('btn-credit').innerText = translations[lang].credit;
-            document.getElementById('btn-retirer').innerText = translations[lang].retirer;
-            document.getElementById('btn-logout').innerText = translations[lang].out;
+            document.getElementById('btn-credit').innerHTML = translations[lang].credit;
+            document.getElementById('btn-retirer').innerHTML = translations[lang].retirer;
+            // زر الخروج موجود في مكانين (ديسكتوب وموبايل)
+            document.querySelectorAll('#btn-logout').forEach(btn => {
+                btn.innerHTML = `🚪 ${translations[lang].out}`;
+            });
         }
 
-        function showNotification(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `custom-toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
-            toast.innerHTML = type === 'success' ? `<i class="fa-solid fa-circle-check"></i> ${message}` : `<i class="fa-solid fa-circle-exclamation"></i> ${message}`;
-            container.appendChild(toast);
-
-            setTimeout(() => { toast.classList.add('toast-show'); }, 10);
-            setTimeout(() => {
-                toast.classList.remove('toast-show');
-                setTimeout(() => { toast.remove(); }, 300);
-            }, 3000);
-        }
-
-        // --- إصلاحات إغلاق القائمة الجانبية (Sidebar) ---
-        // الدالة التي يتم استدعاؤها عند الضغط على زر X
         function closeSidebarManually() {
             const offcanvasElement = document.getElementById('mobileSidebar');
-            const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement) || new bootstrap.Offcanvas(offcanvasElement);
-            bsOffcanvas.hide();
+            if(offcanvasElement) {
+                const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
+                if(bsOffcanvas) bsOffcanvas.hide();
+            }
         }
 
-        // التنقل بين الأقسام
         function switchAdminPanelSection(sectionId) {
-            document.querySelectorAll('.admin-main-view').forEach(el => el.classList.add('d-none'));
-            document.getElementById('admin-sidebar-nav').querySelectorAll('button').forEach(btn => {
-                btn.classList.remove('active-admin-btn');
-                btn.classList.add('text-secondary');
-                if (sectionId === 'transfert') loadTransactionsHistory();
+            document.querySelectorAll('.admin-main-view').forEach(el => {
+                el.classList.add('d-none');
+                el.classList.remove('d-flex');
             });
-
+            
+            document.querySelectorAll('.sidebar-link').forEach(btn => btn.classList.remove('active-shop-btn'));
+            
             const targetSection = document.getElementById(`panel-admin-${sectionId}`);
-            const targetBtn = document.getElementById(`btn-admin-${sectionId}`);
-            if (targetSection) targetSection.classList.remove('d-none');
-            if (targetBtn) {
-                targetBtn.classList.remove('text-secondary');
-                targetBtn.classList.add('active-admin-btn');
+            if (targetSection) {
+                targetSection.classList.remove('d-none');
+                if(sectionId === 'reseau') targetSection.classList.add('d-flex');
             }
-
-            // إغلاق القائمة الجانبية تلقائياً في الموبايل عند اختيار قسم
-            if (window.innerWidth < 768) {
-                closeSidebarManually();
-                function switchAdminPanelSection(sectionId) {
-                    document.querySelectorAll('.admin-main-view').forEach(el => el.classList.add('d-none'));
-                    document.getElementById('admin-sidebar-nav').querySelectorAll('button').forEach(btn => {
-                        btn.classList.remove('active-admin-btn');
-                        btn.classList.add('text-secondary');
-                    });
-
-                    const targetSection = document.getElementById(`panel-admin-${sectionId}`);
-                    const targetBtn = document.getElementById(`btn-admin-${sectionId}`);
-                    if (targetSection) targetSection.classList.remove('d-none');
-                    if (targetBtn) {
-                        targetBtn.classList.remove('text-secondary');
-                        targetBtn.classList.add('active-admin-btn');
-                    }
-
-                    if (window.innerWidth < 768) {
-                        closeSidebarManually();
-                    }
-
-                    // --- السطر الجديد الذي يجب إضافته ---
-                    if (sectionId === 'transfert') loadTransactionsHistory();
-                }
-            }
+            
+            document.querySelectorAll(`[onclick*="switchAdminPanelSection('${sectionId}')"]`).forEach(btn => btn.classList.add('active-shop-btn'));
+            
+            if (sectionId === 'transfert') loadTransactionsHistory();
         }
 
         async function loadNetworkData() {
@@ -565,7 +525,7 @@
             listContainer.innerHTML = '';
 
             if (usersArray.length === 0) {
-                listContainer.innerHTML = `<div class="alert alert-dark text-center border-secondary text-muted small">لا يوجد حسابات تابعة لك حالياً.</div>`;
+                listContainer.innerHTML = `<div class="alert alert-dark text-center border-custom text-secondary small">لا يوجد حسابات تابعة لك حالياً.</div>`;
                 return;
             }
 
@@ -575,35 +535,35 @@
                 const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
-                // --- الشارة السحرية مع زر النسخ ---
-               const secretBadge = u.two_factor_secret
-    ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 170px; overflow: hidden;" onclick="event.stopPropagation()">
-           <i class="fa-solid fa-key text-success px-2" style="font-size: 0.75rem;"></i>
-           <input type="text" value="${u.two_factor_secret}" class="bg-transparent border-0 text-warning p-0 m-0" style="width: 105px; font-size: 0.75rem; outline: none;" readonly>
-           <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm btn-success rounded-0 py-0 px-2 m-0 border-0" title="نسخ الكود">
-               <i class="fa-regular fa-copy"></i>
-           </button>
-       </div>`
-    : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
-                // --- رسم الكارت الخاص باللاعب ---
+                const secretBadge = u.two_factor_secret
+                    ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 170px; overflow: hidden;" onclick="event.stopPropagation()">
+                           <i class="fa-solid fa-key text-success px-2" style="font-size: 0.75rem;"></i>
+                           <input type="text" value="${u.two_factor_secret}" class="bg-transparent border-0 text-warning p-0 m-0 text-center" style="width: 100px; font-size: 0.75rem; outline: none;" readonly>
+                           <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm btn-success rounded-0 py-0 px-2 m-0 border-0" title="نسخ الكود">
+                               <i class="fa-regular fa-copy"></i>
+                           </button>
+                       </div>`
+                    : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
+
                 listContainer.innerHTML += `
-                    <div class="card bg-panel border-secondary mb-2 shadow-sm" style="cursor: pointer;" onclick="selectForControl('${u.username}', ${userRtp})">
-                        <div class="card-body p-2 d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="position-relative p-2 rounded-circle bg-dark border border-secondary">
-                                    <i class="fa-solid fa-user text-secondary"></i>
-                                    <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
-                                </div>
-                                <div>
-                                    <div class="text-white fw-bold mb-1 d-flex align-items-center" style="font-size: 0.9rem;">
-                                        ${u.username} ${secretBadge}
-                                    </div>
-                                    <div class="text-amber fw-bold" style="font-size: 0.65rem;">${userRole} | RTP: ${userRtp}%</div>
-                                </div>
+                    <div class="bg-input-custom p-2 rounded-2 d-flex justify-content-between align-items-center border border-custom shadow-sm" style="cursor: pointer;" onclick="selectForControl('${u.username}', ${userRtp})">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="position-relative bg-dark rounded-circle d-flex justify-content-center align-items-center border border-secondary" style="width: 32px; height: 32px;">
+                                <i class="fa-solid fa-user text-secondary" style="font-size: 12px;"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="text-white fw-bold font-monospace" style="font-size: 0.85rem;">${userBalance} TND</span>
+                            <div>
+                                <div class="text-white fw-bold mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
+                                    ${u.username} ${secretBadge}
+                                </div>
+                                <div class="text-emerald fw-bold" style="font-size: 0.65rem;">${userRole} | RTP: ${userRtp}%</div>
                             </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-white fw-bold font-monospace" style="font-size: 0.8rem;">${userBalance} TND</span>
+                            <button class="btn btn-emerald rounded-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; padding: 0; font-size: 10px;">
+                                ➜
+                            </button>
                         </div>
                     </div>`;
             });
@@ -625,7 +585,7 @@
             document.getElementById('ctrl-rtp-range').value = rtp;
             document.getElementById('rtp-val-label').innerText = rtp + '%';
 
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.getElementById('panel-admin-reseau').scrollIntoView({ behavior: 'smooth', block: 'start' });
             showNotification(`Le compte [${username}] est sélectionné.`);
         }
 
@@ -661,71 +621,61 @@
         }
 
         async function executeAction(action) {
-    const target_username = document.getElementById('target-action-user').value;
-    const amountInput = document.getElementById('target-action-amount').value;
-    if(!target_username) return showNotification('Sélectionnez un compte!', 'error');
-    const amount = amountInput ? parseFloat(amountInput) : 0;
-    if(amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
-    
-    // إذا كانت العملية سحب (withdraw)، يتم إرسالها للشوب للموافقة ولا تتم مباشراً
-    if (action === 'withdraw') {
-        try {
-            const res = await fetch(`${BACKEND_URL}/api/admin/request-shop-withdrawal`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    admin_username: user.username,
-                    amount: amount
-                })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                showNotification('تم إرسال طلب السحب إلى الشوب بنجاح، في انتظار الموافقة! ⏳');
-                document.getElementById('target-action-amount').value = '';
-            } else {
-                showNotification(data.detail || 'فشلت العملية', 'error');
+            const target_username = document.getElementById('target-action-user').value;
+            const amountInput = document.getElementById('target-action-amount').value;
+            if(!target_username) return showNotification('Sélectionnez un compte!', 'error');
+            const amount = amountInput ? parseFloat(amountInput) : 0;
+            if(amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
+            
+            if (action === 'withdraw') {
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/admin/request-shop-withdrawal`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ admin_username: user.username, amount: amount })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        showNotification('تم إرسال طلب السحب إلى الشوب بنجاح، في انتظار الموافقة! ⏳');
+                        document.getElementById('target-action-amount').value = '';
+                    } else { showNotification(data.detail || 'فشلت العملية', 'error'); }
+                } catch(e) { showNotification('Erreur de connexion', 'error'); }
+                return;
             }
-        } catch(e) {
-            showNotification('Erreur de connexion', 'error');
-        }
-        return;
-    }
 
-    // أما عملية الشحن (charge) فتبقى كما هي تعمل بشكل طبيعي
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, { 
-            method: 'POST', headers: getAuthHeaders(), 
-            body: JSON.stringify({ admin_username: user.username, target_username, action, amount }) 
-        });
-        if (res.ok) {
-            showNotification('Opération réussie!');
-            document.getElementById('target-action-amount').value = '';
-            await loadNetworkData();
-        } else {
-            const err = await res.json();
-            showNotification(err.detail || 'Erreur lors de l\'opération', 'error');
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, { 
+                    method: 'POST', headers: getAuthHeaders(), 
+                    body: JSON.stringify({ admin_username: user.username, target_username, action, amount }) 
+                });
+                if (res.ok) {
+                    showNotification('Opération réussie!');
+                    document.getElementById('target-action-amount').value = '';
+                    await loadNetworkData();
+                } else {
+                    const err = await res.json();
+                    showNotification(err.detail || 'Erreur lors de l\'opération', 'error');
+                }
+            } catch (e) { showNotification('Erreur de connexion', 'error'); }
         }
-    } catch (e) { showNotification('Erreur de connexion', 'error'); }
-}
 
-        async function createAdminUser() {
+        async function createNetworkUser() {
             const usernameInput = document.getElementById('new-user-name');
             const passwordInput = document.getElementById('new-user-pass');
             const roleSelect = document.getElementById('new-user-role');
-            const phoneInput = document.getElementById('new_phone'); // جلب الهاتف
+            const phoneInput = document.getElementById('new_phone');
 
             const username = usernameInput.value.trim().toLowerCase();
             const password = passwordInput.value;
-            const role = roleSelect ? roleSelect.value : 'shop';
-            const phone = phoneInput ? phoneInput.value.trim() : ''; // قيمة الهاتف
+            const role = roleSelect ? roleSelect.value : 'player';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
 
             if (!username || !password) return showNotification('Remplir tous les champs!', 'error');
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ username, password, role, created_by: user.username, phone }) // إرسال الهاتف
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ username, password, role, created_by: user.username, phone })
                 });
 
                 const data = await res.json();
@@ -739,153 +689,92 @@
                 } else {
                     showNotification(data.detail || 'Erreur lors de la création', 'error');
                 }
-            } catch (e) {
-                showNotification('Erreur de connexion avec le serveur', 'error');
-            }
-        }
-        function openPasswordModal() {
-            new bootstrap.Modal(document.getElementById('passwordModal')).show();
+            } catch (e) { showNotification('Erreur de connexion avec le serveur', 'error'); }
         }
 
-        async function submitNewPassword() {
-            showNotification('Veuillez connecter cette fonction à l\'API d\'abord.', 'error');
-        }
+        function openPasswordModal() { new bootstrap.Modal(document.getElementById('passwordModal')).show(); }
+        async function submitNewPassword() { showNotification('Veuillez connecter cette fonction à l\'API d\'abord.', 'error'); }
 
         async function loadTransactionsHistory() {
             try {
-                const res = await fetch(`${BACKEND_URL}/api/admin/transactions-history?username=${user.username}`, {
-                    headers: getAuthHeaders()
-                });
+                const res = await fetch(`${BACKEND_URL}/api/admin/transactions-history?username=${user.username}`, { headers: getAuthHeaders() });
                 if (res.ok) {
                     const data = await res.json();
                     const tbody = document.getElementById('transactions-tbody');
                     tbody.innerHTML = '';
 
                     if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" class="text-muted p-4">Aucune transaction trouvée.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-secondary p-4">Aucune transaction trouvée.</td></tr>';
                         return;
                     }
 
                     data.forEach(tx => {
                         const isCharge = tx.action === 'charge';
-                        const typeBadge = isCharge
-                            ? '<span class="badge bg-success">Crédit</span>'
-                            : '<span class="badge bg-danger">Retrait</span>';
-
+                        const typeBadge = isCharge ? '<span class="badge bg-success">Crédit</span>' : '<span class="badge bg-danger">Retrait</span>';
                         const amountColor = isCharge ? 'text-success' : 'text-danger';
                         const sign = isCharge ? '+' : '-';
-
-                        let otherParty = tx.target_username;
-                        if (tx.target_username === user.username) {
-                            otherParty = tx.admin_username;
-                        }
+                        let otherParty = tx.target_username === user.username ? tx.admin_username : tx.target_username;
 
                         tbody.innerHTML += `
-                            <tr>
-                                <td class="small text-muted" style="font-size: 0.7rem;">${tx.date}</td>
-                                <td class="fw-bold">${otherParty}</td>
+                            <tr class="border-custom">
+                                <td class="small text-secondary" style="font-size: 0.7rem;">${tx.date}</td>
+                                <td class="fw-bold text-light">${otherParty}</td>
                                 <td>${typeBadge}</td>
                                 <td class="fw-bold font-monospace ${amountColor}">${sign}${tx.amount.toFixed(2)}</td>
                             </tr>
                         `;
                     });
                 }
-            } catch (e) {
-                console.error("Erreur", e);
-            }
+            } catch (e) { console.error("Erreur", e); }
         }
+
         function copySecretCode(secret, event) {
             event.stopPropagation();
             navigator.clipboard.writeText(secret).then(() => {
                 showNotification(`تم نسخ الكود بنجاح: ${secret}`, 'success');
-            }).catch(err => {
-                showNotification('فشل في نسخ الكود!', 'error');
-            });
+            }).catch(err => { showNotification('فشل في نسخ الكود!', 'error'); });
         }
 
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/';
-        }
-async function createNetworkUser() {
-            const usernameInput = document.getElementById('new-user-name');
-            const passwordInput = document.getElementById('new-user-pass');
-            const roleSelect = document.getElementById('new-user-role');
-            const phoneInput = document.getElementById('new_phone');
-
-            const username = usernameInput.value.trim().toLowerCase();
-            const password = passwordInput.value;
-            const role = roleSelect ? roleSelect.value : 'player';
-            const phone = phoneInput ? phoneInput.value.trim() : '';
-
-            if(!username || !password) return showNotification('Remplir tous les champs!', 'error');
-
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ username, password, role, created_by: user.username, phone })
-                });
-                
-                const data = await res.json(); 
-
-                if(res.ok){
-                    showNotification('Compte créé avec succès!', 'success');
-                    usernameInput.value = '';
-                    passwordInput.value = '';
-                    if(phoneInput) phoneInput.value = '';
-                    loadNetworkData();
-                } else {
-                    showNotification(data.detail || 'Erreur lors de la création', 'error');
-                }
-            } catch(e) {
-                showNotification('Erreur de connexion avec le serveur', 'error');
-            }
-        }
+        function logout() { localStorage.clear(); window.location.href = '/'; }
 
         async function openAdminWithdrawRequests() {
-    const modalEl = document.getElementById('historyModal');
-    const myModal = new bootstrap.Modal(modalEl);
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-dynamic-content');
-    
-    title.innerText = "Mes Demandes de Retrait";
-    body.innerHTML = '<div class="text-center p-4 text-info fw-bold">Chargement en cours... ⏳</div>';
-    myModal.show();
+            const modalEl = document.getElementById('historyModal');
+            const myModal = new bootstrap.Modal(modalEl);
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-dynamic-content');
+            
+            title.innerText = "Mes Demandes de Retrait";
+            body.innerHTML = '<div class="text-center p-4 text-emerald fw-bold">Chargement en cours... ⏳</div>';
+            myModal.show();
 
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/my-withdrawal-requests?username=${user.username}`, { headers: getAuthHeaders() });
-        if (res.ok) {
-            const requests = await res.json();
-            if (requests && requests.length > 0) {
-                let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
-                requests.forEach(req => {
-                    let statusBadge = req.status === 'accepted' ? '<span class="badge bg-success">Accepté ✅</span>' :
-                    (req.status === 'rejected' ? '<span class="badge bg-danger">Refusé ❌</span>' : '<span class="badge bg-warning text-dark">En attente ⏳</span>');
-                    html += `
-                    <div class="card bg-transparent border-secondary shadow-sm" style="background-color: #040a18 !important;">
-                        <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="text-white fw-bold">المبلغ: <span class="text-danger font-monospace">${parseFloat(req.amount).toFixed(2)} TND</span></div>
-                                <div class="text-secondary small">🕒 ${req.date}</div>
-                            </div>
-                            <div>${statusBadge}</div>
-                        </div>
-                    </div>`;
-                });
-                html += `</div>`;
-                body.innerHTML = html;
-            } else {
-                body.innerHTML = '<div class="text-center p-4 text-white fw-bold">Aucune demande de retrait. (لا توجد طلبات)</div>';
-            }
-        } else {
-            body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur serveur.</div>';
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/my-withdrawal-requests?username=${user.username}`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const requests = await res.json();
+                    if (requests && requests.length > 0) {
+                        let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
+                        requests.forEach(req => {
+                            let statusBadge = req.status === 'accepted' ? '<span class="badge bg-success">Accepté ✅</span>' :
+                            (req.status === 'rejected' ? '<span class="badge bg-danger">Refusé ❌</span>' : '<span class="badge bg-warning text-dark">En attente ⏳</span>');
+                            html += `
+                            <div class="card bg-input-custom border-custom shadow-sm">
+                                <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="text-white fw-bold">المبلغ: <span class="text-danger font-monospace">${parseFloat(req.amount).toFixed(2)} TND</span></div>
+                                        <div class="text-secondary small">🕒 ${req.date}</div>
+                                    </div>
+                                    <div>${statusBadge}</div>
+                                </div>
+                            </div>`;
+                        });
+                        html += `</div>`;
+                        body.innerHTML = html;
+                    } else {
+                        body.innerHTML = '<div class="text-center p-4 text-white fw-bold">Aucune demande de retrait. (لا توجد طلبات)</div>';
+                    }
+                } else { body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur serveur.</div>'; }
+            } catch (e) { body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur de connexion.</div>'; }
         }
-    } catch (e) {
-        body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur de connexion.</div>';
-    }
-}
     </script>
 </body>
-
 </html>
