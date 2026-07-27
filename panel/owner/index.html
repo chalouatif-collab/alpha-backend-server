@@ -444,14 +444,18 @@
                    </div>`
                 : `<span class="badge bg-secondary text-white p-1 rounded ms-2" style="font-size: 0.6rem;"><i class="fa-solid fa-key"></i> Non activé</span>`;
                 
+                const phoneBadge = u.phone && u.phone !== "" 
+    ? `<span class="badge bg-dark text-info border border-secondary ms-1 px-2 py-1" style="font-size: 0.65rem;"><i class="fa-solid fa-phone"></i> ${u.phone}</span>`
+    : ``;
                 container.innerHTML += `
                 <div class="bg-input-custom border-custom rounded-2 shadow-sm cursor-pointer mb-1 p-2 d-flex justify-content-between align-items-center" onclick="selectForControl('${usernameClean}', ${userRtp})">
                     <div class="d-flex align-items-center gap-2">
                         <div class="position-relative bg-card-custom rounded-circle d-flex justify-content-center align-items-center border border-secondary" style="width: 28px; height: 28px;">
                             <i class="fa-solid fa-user text-secondary" style="font-size: 10px;"></i>
                             <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
+                    <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
+                            ${usernameClean} ${secretBadge} ${phoneBadge}
                         </div>
-                        <div>
                             <div class="text-white fw-bold mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
                                 ${usernameClean} ${secretBadge}
                             </div>
