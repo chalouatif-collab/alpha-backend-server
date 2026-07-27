@@ -34,7 +34,7 @@ if not firebase_admin._apps:
     cred = credentials.Certificate("firebase-key.json") 
     firebase_admin.initialize_app(cred, {
         # الصق رابط قاعدة البيانات الذي نسخته في الخطوة 1 هنا 👇
-        'databaseURL': 'https://alphabet-xxxxx-default-rtdb.firebaseio.com/' 
+    'databaseURL': 'https://alphabet-7d14c-default-rtdb.firebaseio.com/'
     })
 
 # 2. دالة جلب البيانات من السحابة
@@ -515,51 +515,44 @@ async def start_background_tasks():
     asyncio.create_task(auto_settle_tickets())
 
 def load_db():
-    db = SessionLocal()
-    users = db.query(User).all()
-    db.close()
-    result = []
-    for u in users:
-        result.append({
-            "id": u.id,
-            "username": u.username, "password": u.password, "role": u.role,
-            "balance": u.balance, "rtp": u.rtp, "is_blocked": u.is_blocked,
-            "created_by": u.created_by, "last_spin_date": u.last_spin_date, "daily_deposits": u.daily_deposits,
-            "two_factor_secret": getattr(u, 'two_factor_secret', None)
-        })
-    if not result:
-        default_users = [
-            {"username": "fethi", "password": hash_password("123456"), "role": "owner", "balance": 999999.00, "rtp": 50, "is_blocked": 0, "created_by": "System", "last_spin_date": "", "daily_deposits": 0.0},
-            {"username": "samir", "password": hash_password("123456"), "role": "super_admin", "balance": 5000.00, "rtp": 50, "is_blocked": 0, "created_by": "fethi", "last_spin_date": "", "daily_deposits": 0.0}
-        ]
-        save_db(default_users)
-        return default_users
-    return result
+    # 1. جلب البيانات من فايربيز مباشرة
+    ref = db.reference('/')
+    data = ref.get() or {}
+    
+    # 2. استخراج قائمة المستخدمين
+    users = data.get("users", [])
+    if isinstance(users, dict):
+        users = list(users.values())
+        
+    # 3. كائن سحري يجمع بين خصائص القائمة والقاموس لحماية الكود القديم من الانهيار
+    class MagicDB(list):
+        def __init__(self, users_list, full_data):
+            super().__init__(users_list)
+            self.full_data = full_data
+            if "shop_withdrawals" not in self.full_data:
+                self.full_data["shop_withdrawals"] = []
+                
+        def get(self, key, default=None):
+            return self.full_data.get(key, default)
+            
+        def __contains__(self, key):
+            return key in self.full_data
+            
+        def __setitem__(self, key, value):
+            self.full_data[key] = value
+
+    return MagicDB(users, data)
 
 def save_db(data):
-    db = SessionLocal()
-    for item in data:
-        user = db.query(User).filter(User.username == item["username"]).first()
-        if user:
-            user.password = item.get("password", user.password)
-            user.role = item.get("role", user.role)
-            user.balance = item.get("balance", user.balance)
-            user.rtp = item.get("rtp", user.rtp)
-            user.is_blocked = item.get("is_blocked", user.is_blocked)
-            user.created_by = item.get("created_by", user.created_by)
-            user.last_spin_date = item.get("last_spin_date", user.last_spin_date)
-            user.daily_deposits = item.get("daily_deposits", user.daily_deposits)
-            user.two_factor_secret = item.get("two_factor_secret", getattr(user, "two_factor_secret", None))
-        else:
-            new_user = User(
-                username=item["username"], password=item["password"], role=item.get("role", "player"),
-                balance=item.get("balance", 0.0), rtp=item.get("rtp", 50), is_blocked=item.get("is_blocked", 0),
-                created_by=item.get("created_by", "System"), last_spin_date=item.get("last_spin_date", ""), daily_deposits=item.get("daily_deposits", 0.0),
-                two_factor_secret=item.get("two_factor_secret")
-            )
-            db.add(new_user)
-    db.commit()
-    db.close()
+    ref = db.reference('/')
+    if hasattr(data, 'full_data'):
+        # تحديث قائمة المستخدمين داخل البيانات الشاملة قبل الرفع
+        data.full_data['users'] = list(data)
+        ref.set(data.full_data)
+    elif isinstance(data, list):
+        ref.child('users').set(list(data))
+    else:
+        ref.set(data)
 
 def load_tickets_db():
     if not os.path.exists(TICKETS_FILE):
