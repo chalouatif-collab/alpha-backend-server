@@ -7,7 +7,7 @@ def hash_password(password):
 
 # اسم حساب الأونر الخاص بك وكلمة السر الجديدة التي تريدها
 OWNER_USERNAME = "fethi"  # ضع اسم حساب الأونر هنا إن لم يكن fethi
-NEW_PASSWORD = "123"      # ضع كلمة السر الجديدة السهلة مؤقتاً
+NEW_PASSWORD = "Fethi1987123456"      # ضع كلمة السر الجديدة السهلة مؤقتاً
 
 try:
     # قراءة قاعدة البيانات الحالية (تأكد من اسم الملف لديك مثل tickets_database.json أو local_test.db)
