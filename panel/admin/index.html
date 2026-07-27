@@ -576,15 +576,15 @@
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
                 // --- الشارة السحرية مع زر النسخ ---
-                const secretBadge = u.two_factor_secret
-                    ? `<span class="badge bg-success text-white p-1 rounded small d-inline-flex align-items-center gap-1 ms-2">
-                         <i class="fa-solid fa-key"></i> <span id="code-${u.username}">${u.two_factor_secret}</span>
-                         <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm text-white p-0 ms-1 border-0" title="نسخ الكود">
-                             <i class="fa-regular fa-copy fs-6 cursor-pointer"></i>
-                         </button>
-                       </span>`
-                    : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
-
+               const secretBadge = u.two_factor_secret
+    ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 170px; overflow: hidden;" onclick="event.stopPropagation()">
+           <i class="fa-solid fa-key text-success px-2" style="font-size: 0.75rem;"></i>
+           <input type="text" value="${u.two_factor_secret}" class="bg-transparent border-0 text-warning p-0 m-0" style="width: 105px; font-size: 0.75rem; outline: none;" readonly>
+           <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm btn-success rounded-0 py-0 px-2 m-0 border-0" title="نسخ الكود">
+               <i class="fa-regular fa-copy"></i>
+           </button>
+       </div>`
+    : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
                 // --- رسم الكارت الخاص باللاعب ---
                 listContainer.innerHTML += `
                     <div class="card bg-panel border-secondary mb-2 shadow-sm" style="cursor: pointer;" onclick="selectForControl('${u.username}', ${userRtp})">
