@@ -548,16 +548,17 @@
                 const phoneBadge = u.phone && u.phone !== ""
                     ? `<span class="badge bg-dark text-info border border-secondary ms-1 px-2 py-1" style="font-size: 0.65rem;"><i class="fa-solid fa-phone"></i> ${u.phone}</span>`
                     : ``;
-               container.innerHTML += `
+                container.innerHTML += `
                 <div class="bg-input-custom border-custom rounded-2 shadow-sm cursor-pointer mb-1 p-2 d-flex justify-content-between align-items-center" onclick="selectForControl('${usernameClean}', ${userRtp})">
                     <div class="d-flex align-items-center gap-2">
                         <div class="position-relative bg-card-custom rounded-circle d-flex justify-content-center align-items-center border border-secondary" style="width: 28px; height: 28px;">
                             <i class="fa-solid fa-user text-secondary" style="font-size: 10px;"></i>
                             <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
+                    <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
+                            ${usernameClean} ${secretBadge} ${phoneBadge}
                         </div>
-                        <div>
-                            <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
-                                ${usernameClean} ${secretBadge} ${phoneBadge}
+                            <div class="text-white fw-bold mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
+                                ${usernameClean} ${secretBadge}
                             </div>
                             <div class="text-info fw-bold" style="font-size: 0.6rem;">${userRole} | By: ${createdByClean}</div>
                         </div>
@@ -567,11 +568,6 @@
                         <div class="badge bg-secondary bg-opacity-25 text-white border border-secondary px-1 py-1" style="font-size: 0.6rem;">🎯</div>
                     </div>
                 </div>`;
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-white fw-bold font-monospace" style="font-size: 0.75rem;">${balance.toFixed(2)} TND</span>
-                        <div class="badge bg-secondary bg-opacity-25 text-white border border-secondary px-1 py-1" style="font-size: 0.6rem;">🎯</div>
-                    </div>
-               
             });
         }
 
