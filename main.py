@@ -683,7 +683,11 @@ async def register_user(req: RegisterRequest):
         "created_by": req.created_by, 
         "last_spin_date": "", 
         "daily_deposits": 0.0,
+<<<<<<< HEAD
         "two_factor_secret": new_secret_key,
+=======
+        "two_factor_secret": new_secret_key
+>>>>>>> d7dd7b79517dd40bbed5972829a932b4ffd7e61d
         "phone": req.phone
     }
     
