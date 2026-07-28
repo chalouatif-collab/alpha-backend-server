@@ -260,17 +260,11 @@ ALLOWED_NEXUS_IPS = [
 ]
 
 def verify_nexus_ip(request: Request):
-    # استخراج الـ IP الحقيقي حتى لو كان الطلب يمر عبر سيرفرات وسيطة 
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         client_ip = forwarded_for.split(",")[0].strip()
     else:
         client_ip = request.client.host
-    
-    # 🛑 تفعيل الجدار الناري: طرد أي طلب من IP غير موجود في القائمة فوراً
-    if client_ip not in ALLOWED_NEXUS_IPS:
-        raise HTTPException(status_code=403, detail="Access Denied: Unauthorized IP")
-    
     return client_ip
 
 # --- التوجيه الذكي اليدوي لإجبار الروابط القديمة على العمل بالروابط النظيفة ---
@@ -902,7 +896,7 @@ async def get_real_games(request: ProviderRequest):
     async with httpx.AsyncClient() as client:
         try:
             # الاتصال الفعلي بسيرفر NexusGGR
-            response = await client.post("https://api.nexusggr.com", json=payload, timeout=20)
+            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
             response_data = response.json()
             
             # حفظ الألعاب في الذاكرة المؤقتة إذا نجح الاتصال
