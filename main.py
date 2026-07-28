@@ -678,7 +678,8 @@ async def register_user(req: RegisterRequest):
         "created_by": req.created_by, 
         "last_spin_date": "", 
         "daily_deposits": 0.0,
-        "two_factor_secret": new_secret_key  # تم إضافة المفتاح هنا
+        "two_factor_secret": new_secret_key
+        "phone": req.phone
     }
     
     db.append(new_user)
