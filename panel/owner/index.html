@@ -531,12 +531,16 @@
             }
           
             if (safeType === 'sport') {
-                if(!target_username || target_username === "sélectionnez...") {
-                    body.innerHTML = `<div class="text-center p-3 text-warning fw-bold" style="font-size: 0.75rem;">Sélectionnez un joueur d'abord !</div>`;
-                    return;
-                }
                 try {
-                    const res = await fetch(`${BACKEND_URL}/api/admin/get-player-tickets?username=${encodeURIComponent(target_username)}&t=${Date.now()}`, { headers: getAuthHeaders() });
+                    let url = '';
+                    // التعديل الذكي: إذا تم تحديد لاعب، نجلب تذاكره فقط. وإلا نجلب كل التذاكر في الموقع.
+                    if(target_username && target_username !== "sélectionnez...") {
+                        url = `${BACKEND_URL}/api/admin/get-player-tickets?username=${encodeURIComponent(target_username)}&t=${Date.now()}`;
+                    } else {
+                        url = `${BACKEND_URL}/api/admin/get-all-tickets?t=${Date.now()}`;
+                    }
+
+                    const res = await fetch(url, { headers: getAuthHeaders() });
                     if (res.ok) {
                         const tickets = await res.json();
                         if (tickets && tickets.length > 0) {
@@ -547,21 +551,21 @@
                                 html += `
                                 <div class="bg-input-custom border-custom rounded-2 shadow-sm p-2 d-flex flex-column flex-md-row justify-content-between gap-2">
                                     <div class="text-white" style="font-size: 0.7rem; line-height: 1.4;">
-                                        <span class="text-secondary">#${t.ticket_id} | ${t.date || ''}</span><br>${matchesHtml}
+                                        <span class="text-secondary">#${t.ticket_id || t.id || ''} | ${t.date || ''} | 👤 <span class="text-info">${t.username || ''}</span></span><br>${matchesHtml}
                                     </div>
                                     <div class="text-end font-monospace border-top border-md-0 border-custom pt-1 pt-md-0" style="font-size: 0.65rem;">
-                                        <div class="text-light mb-0">Cote: X${parseFloat(t.total_cote).toFixed(2)} | Mise: ${parseFloat(t.mise).toFixed(2)}</div>
-                                        <div class="fw-bold ${badgeColor}">Gain: +${parseFloat(t.gain).toFixed(2)} TND</div>
+                                        <div class="text-light mb-0">Cote: X${parseFloat(t.total_cote || 0).toFixed(2)} | Mise: ${parseFloat(t.mise || 0).toFixed(2)}</div>
+                                        <div class="fw-bold ${badgeColor}">Gain: +${parseFloat(t.gain || 0).toFixed(2)} TND</div>
                                         <span class="badge border border-secondary text-uppercase ${badgeColor} mt-1">${t.status}</span>
                                     </div>
                                 </div>`;
                             });
                             html += `</div>`;
                             body.innerHTML = html;
-                        } else { body.innerHTML = `<div class="text-center p-3 text-secondary fw-bold" style="font-size: 0.75rem;">Aucun pari.</div>`; }
+                        } else { body.innerHTML = `<div class="text-center p-3 text-secondary fw-bold" style="font-size: 0.75rem;">لا توجد أوراق رياضية حالياً.</div>`; }
                     }
                 } catch(e) { body.innerHTML = `<div class="text-center p-3 text-danger fw-bold">Erreur API</div>`; }
-            } 
+            }
             else if (safeType === 'transfert') {
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/admin/transactions-history?username=${user.username}`, { headers: getAuthHeaders() });
