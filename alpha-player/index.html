@@ -817,7 +817,7 @@
                             console.log("🚀 كبسولة الأشرطة الذكية بدأت العمل!");
 
                             (async function forceLoadSliders() {
-                                const API_URL = "";
+                                const API_URL = "https://alpha-backend-server.onrender.com";
 
                                 // السر هنا: وضعنا الأكواد بحروف كبيرة (Majuscule) تماماً كما يطلبها السيرفر!
                                 const providers = [
@@ -1018,7 +1018,7 @@
                 return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
             }
 
-            const BACKEND_URL = "";
+            const BACKEND_URL = "https://alpha-backend-server.onrender.com";
             let playerSession = null;
             let balanceInterval = null;
             let currentLangCode = "fr";
@@ -1901,7 +1901,7 @@
                 if (!bannerImg) return;
 
                 try {
-                    let response = await fetch('/api/get-providers', {
+                    let response = await fetch('https://alpha-backend-server.onrender.com/api/get-providers', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ provider_code: 'PRAGMATIC' }) // نبحث داخل براغماتيك
@@ -2084,7 +2084,7 @@
 
                 try {
                     // الرابط الصحيح للسيرفر المرفوع
-                    const API_URL = '/api/deposit';
+                    const API_URL = 'https://alpha-backend-server.onrender.com/api/deposit';
 
                     const response = await fetch(API_URL, {
                         method: 'POST',
