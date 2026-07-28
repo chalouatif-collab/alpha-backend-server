@@ -1376,13 +1376,22 @@
                     const rawText = await response.text();
                     if (rawText) {
                         const data = JSON.parse(rawText);
-                        if (data && data.games && data.games.length > 0) {
-                            localStorage.setItem(cacheKey, JSON.stringify(data.games));
-                            if (!cachedGames) renderGames(data.games);
+                        
+                        let gamesArray = data.games || data.data || (Array.isArray(data) ? data : []);
+                        
+                        if (gamesArray && gamesArray.length > 0) {
+                            localStorage.setItem(cacheKey, JSON.stringify(gamesArray));
+                            if (!cachedGames) renderGames(gamesArray);
                             renderTrendingGames();
+                        } else {
+                            if (!cachedGames) {
+                                document.getElementById('games-grid').innerHTML = '<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu trouvé pour ce fournisseur.</div>';
+                            }
                         }
                     }
-                } catch (error) { }
+                } catch (error) { 
+                    console.error("Erreur Fetch Games:", error);
+                }
             }
 
             function loadMoreGames() {
@@ -1838,9 +1847,10 @@
                         const rawText = await response.text();
                         if (rawText) {
                             const data = JSON.parse(rawText);
-                            if (data && data.games && data.games.length > 0) {
-                                localStorage.setItem(cacheKey, JSON.stringify(data.games));
-                                renderSlider(prov.code, prov.container, data.games);
+                            let gamesArray = data.games || data.data || (Array.isArray(data) ? data : []);
+                            if (gamesArray && gamesArray.length > 0) {
+                                localStorage.setItem(cacheKey, JSON.stringify(gamesArray));
+                                renderSlider(prov.code, prov.container, gamesArray);
                             }
                         }
                     } catch (error) {
