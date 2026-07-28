@@ -861,7 +861,7 @@ async def get_player_tickets(username: str, current_user: str = Depends(get_admi
 async def get_real_providers():
     payload = {
         "method": "provider_list",
-        "agent_code": AGENT_CODE,
+        "agent_code": Alphabet1,
         "agent_token": AGENT_TOKEN
     }
     async with httpx.AsyncClient() as client:
@@ -888,8 +888,8 @@ async def get_real_games(request: ProviderRequest):
     # 2. إذا لم تكن محفوظة، نطلب الألعاب الحقيقية من المزود
     payload = {
         "method": "game_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf",
+        "agent_code": "Alphabet1",
+        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
         "provider_code": provider_code
     }
     
@@ -921,8 +921,8 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
 
     payload = {
         "method": "game_list",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
+        "agent_code": "Alphabet1",
+        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
         "provider_code": provider
     }
     async with httpx.AsyncClient() as client:
@@ -940,8 +940,8 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
 def launch_sportsbook(data: dict):
     payload = {
         "method": "game_list", 
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
+        "agent_code": "Alphabet1",
+        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
         "provider_code": data.get("provider_code")
     }
     try:
@@ -959,8 +959,8 @@ async def launch_casino(request: Request):
         data = await request.json()
         payload = {
             "method": "game_launch",
-            "agent_code": AGENT_CODE,
-            "agent_token": AGENT_TOKEN,
+            "agent_code": "Alphabet1",
+            "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
             "provider_code": data.get("provider_code"),
             "game_code": data.get("game_code"),
             "user_code": data.get("user_code", "fethi2_test"),
