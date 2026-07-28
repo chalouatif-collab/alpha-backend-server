@@ -1257,15 +1257,63 @@
                 if (displayElement) displayElement.innerText = `${totalGain.toFixed(2)} TND`;
             }
 
-            // ================= الألعاب والكازينو =================
+           // ================= الألعاب والكازينو =================
             let casinoProviders = [];
             let currentProviderGames = [];
             let filteredProviderGames = [];
             let currentlyDisplayedCount = 0;
             let currentActiveProviderCode = '';
 
-            
-          async function loadProviderGames(providerCode) {
+            async function fetchAndRenderProviders() {
+                const bar = document.getElementById('providers-bar');
+                if (!bar) return;
+                bar.innerHTML = '<div class="text-teal-400 text-sm animate-pulse">Chargement... ⏳</div>';
+
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/get-providers`);
+                    const data = await response.json();
+
+                    if (data) {
+                        casinoProviders = data.providers || data.data || (Array.isArray(data) ? data : []);
+
+                        if (casinoProviders.length > 0) {
+                            bar.innerHTML = casinoProviders.map(p => `
+                    <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}" 
+                            class="prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md">
+                        <span>${p.name || p.code}</span>
+                    </button>
+                `).join('');
+
+                            loadProviderGames(casinoProviders[0].code);
+                        } else {
+                            bar.innerHTML = '<div class="text-rose-500 text-xs">Aucun jeu trouvé</div>';
+                        }
+                    }
+                } catch (error) {
+                    bar.innerHTML = '<div class="text-rose-500 text-xs">Erreur de connexion</div>';
+                }
+            }
+
+            function filterGames() {
+                const searchTerm = document.getElementById('game-search-input')?.value.toLowerCase() || "";
+                filteredProviderGames = currentProviderGames.filter(game => {
+                    const title = game.game_name || game.name || game.title || "";
+                    return title.toLowerCase().includes(searchTerm);
+                });
+
+                currentlyDisplayedCount = 0;
+                const container = document.getElementById('games-grid');
+                if (container) {
+                    container.innerHTML = '';
+                    if (filteredProviderGames.length === 0) {
+                        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé</div>`;
+                        return;
+                    }
+                    loadMoreGames();
+                }
+            }
+
+            async function loadProviderGames(providerCode) {
                 console.log("➡️ طلب ألعاب المزود:", providerCode);
                 
                 document.querySelectorAll('.prov-tab-btn').forEach(btn => {
@@ -1290,7 +1338,6 @@
                     });
                     
                     const rawText = await response.text();
-                    console.log("⬅️ الرد القادم من السيرفر:", rawText);
                     
                     if (rawText) {
                         const data = JSON.parse(rawText);
@@ -1312,6 +1359,39 @@
                 }
             }
 
+            function loadMoreGames() {
+                if (currentlyDisplayedCount >= filteredProviderGames.length) return;
+                const container = document.getElementById('games-grid');
+                if (!container) return;
+
+                const nextBatch = filteredProviderGames.slice(currentlyDisplayedCount, currentlyDisplayedCount + 100);
+                let htmlChunk = '';
+
+                nextBatch.forEach(game => {
+                    const title = game.game_name || game.name || game.title || "Game";
+                    const img = game.banner || game.image || game.thumb || "https://placehold.co/400x300/180A2B/FFF?text=Game";
+                    const code = game.game_code || game.id;
+
+                    htmlChunk += `
+                   <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
+                        <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
+                            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                            <div class="absolute top-0 right-0 bg-gradient-to-r from-orange-500 to-yellow-500 text-black text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-md z-10">HOT 🔥</div>
+                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-20">
+                                <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                            </div>
+                        </div>
+                        <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
+                            <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${title}</span>
+                            <span class="text-green-500 text-[11px]">⭐</span>
+                        </div>
+                    </div>
+                `;
+                });
+
+                container.insertAdjacentHTML('beforeend', htmlChunk);
+                currentlyDisplayedCount += nextBatch.length;
+            }
             function loadMoreGames() {
                 if (currentlyDisplayedCount >= filteredProviderGames.length) return;
                 const container = document.getElementById('games-grid');
