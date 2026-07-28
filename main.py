@@ -889,8 +889,8 @@ async def get_real_games(request: ProviderRequest):
     # 2. إذا لم تكن محفوظة، نطلب الألعاب الحقيقية من المزود
     payload = {
         "method": "game_list",
-        "agent_code": "Alphabet1",
-        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
         "provider_code": provider_code
     }
     
