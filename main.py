@@ -28,6 +28,11 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 
+# --- إعدادات مزود الألعاب (Nexus) ---
+AGENT_CODE = os.getenv("AGENT_CODE", "Alphabet1")
+AGENT_TOKEN = os.getenv("AGENT_TOKEN", "af467c522fe71dcabe10c1d08ed27b05")
+PROVIDER_ENDPOINT = "https://api.nexusggr.eu/v1/game"
+
 # 1. إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
     # اسم ملف المفتاح السري الذي قمنا بتحميله
