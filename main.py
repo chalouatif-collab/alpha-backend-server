@@ -861,8 +861,8 @@ async def get_player_tickets(username: str, current_user: str = Depends(get_admi
 async def get_real_providers():
     payload = {
         "method": "provider_list",
-        "agent_code": Alphabet1,
-        "agent_token": AGENT_TOKEN
+        "agent_code": "Alphabet1",
+        "agent_token": "af467c522fe71dcabe10c1d08ed27b05"
     }
     async with httpx.AsyncClient() as client:
         try:
