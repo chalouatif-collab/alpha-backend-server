@@ -308,11 +308,11 @@ async def get_admin_panel():
 async def get_shop_panel():
     with open("panel/shop/index.html", "r", encoding="utf-8") as f:
         return f.read()
-# إعدادات مزود الألعاب (NexusGGR)
+# إعدادات مزود الألعاب (Nexus)
+# إعدادات مزود الألعاب (Nexus)
 AGENT_CODE = "Alphabet1"
 AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
-PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
-
+PROVIDER_ENDPOINT = "https://api.nexusggr.com"
 class ResettleTicketRequest(BaseModel):
     ticket_id: str
     new_status: str  # 'won', 'lost', 'void'
@@ -861,8 +861,8 @@ async def get_player_tickets(username: str, current_user: str = Depends(get_admi
 async def get_real_providers():
     payload = {
         "method": "provider_list",
-        "agent_code": "Alphabet1",
-        "agent_token": "af467c522fe71dcabe10c1d08ed27b05"
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN
     }
     async with httpx.AsyncClient() as client:
         try:
@@ -888,8 +888,8 @@ async def get_real_games(request: ProviderRequest):
     # 2. إذا لم تكن محفوظة، نطلب الألعاب الحقيقية من المزود
     payload = {
         "method": "game_list",
-        "agent_code": "Alphabet1",
-        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
         "provider_code": provider_code
     }
     
@@ -920,11 +920,11 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
         return GAMES_CACHE[provider]['data']
 
     payload = {
-        "method": "game_list",
-        "agent_code": "Alphabet1",
-        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
-        "provider_code": provider
-    }
+    "method": "game_list",
+    "agent_code": "Alphabet1",          # 👈 اجعلها حروف صغيرة
+    "agent_token": "af467c522fe71dcabe10c1d08ed27b05",  # 👈 اجعلها حروف صغيرة
+    "provider_code": provider
+}
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
