@@ -1276,66 +1276,55 @@
             let currentlyDisplayedCount = 0;
             let currentActiveProviderCode = '';
 
-            async function fetchAndRenderProviders() {
-                const bar = document.getElementById('providers-bar');
-                if (!bar) return;
-                bar.innerHTML = '<div class="text-teal-400 text-sm animate-pulse">جاري التحميل...</div>';
+            async function loadProviderGames(providerCode) {
+                console.log("➡️ طلب ألعاب المزود:", providerCode);
+                
+                // تحديث شكل الأزرار العلوية
+                document.querySelectorAll('.prov-tab-btn').forEach(btn => {
+                    btn.className = "prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
+                });
+                const activeBtn = document.getElementById(`btn-prov-${providerCode}`);
+                if (activeBtn) {
+                    activeBtn.className = "prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 btn-gradient border-none text-white rounded-full text-xs font-black transition-all duration-300 cursor-pointer whitespace-nowrap shadow-lg transform scale-105";
+                }
+
+                const container = document.getElementById('games-grid');
+                if (!container) return;
+
+                currentActiveProviderCode = providerCode;
+                // إظهار شاشة التحميل بقوة
+                container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Chargement en cours... ⏳</div>';
 
                 try {
-                    const response = await fetch(`${BACKEND_URL}/api/get-providers`);
-                    const data = await response.json();
-                    console.log("البيانات القادمة من السيرفر:", data);
-
-                    // الكود الجديد الذي يحل المشكلة
-                    if (data) {
-                        // سحب البيانات سواء كانت في providers أو data أو مصفوفة مباشرة
-                        casinoProviders = data.providers || data.data || (Array.isArray(data) ? data : []);
-
-                        if (casinoProviders.length > 0) {
-                            bar.innerHTML = casinoProviders.map(p => `
-                    <button onclick="loadProviderGames('${p.code}')" id="btn-prov-${p.code}" 
-                            class="prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-1.5 mt-1 bg-[#090f24] border border-slate-800 hover:border-cyan-500/50 rounded-full text-xs font-bold text-white transition-all">
-                        <span>${p.name || p.code}</span>
-                    </button>
-                `).join('');
-
-                            // تشغيل أول مزود ألعاب تلقائياً
-                            loadProviderGames(casinoProviders[0].code);
+                    const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider_code: providerCode })
+                    });
+                    
+                    const rawText = await response.text();
+                    console.log("⬅️ الرد القادم من السيرفر:", rawText); // هذا السطر سيكشف لنا السر في الكونسول!
+                    
+                    if (rawText) {
+                        const data = JSON.parse(rawText);
+                        let gamesArray = data.games || data.data || (Array.isArray(data) ? data : []);
+                        
+                        if (gamesArray && gamesArray.length > 0) {
+                            currentProviderGames = gamesArray;
+                            filteredProviderGames = [...gamesArray];
+                            currentlyDisplayedCount = 0;
+                            container.innerHTML = ''; // إخفاء التحميل
+                            loadMoreGames(); // عرض الألعاب
                         } else {
-                            bar.innerHTML = '<div class="text-rose-500 text-xs">لا توجد ألعاب حالياً</div>';
+                            // إذا أرسل نكسيس قائمة فارغة أو خطأ
+                            container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu trouvé. (Status: ${data.status || 'Inconnu'})</div>`;
                         }
-                    } else {
-                        bar.innerHTML = '<div class="text-rose-500 text-xs">تنسيق البيانات غير متوافق!</div>';
                     }
-                } catch (error) {
-                    bar.innerHTML = '<div class="text-rose-500 text-xs">حدث خطأ في الاتصال</div>';
+                } catch (error) { 
+                    console.error("❌ خطأ برمجي:", error);
+                    container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion avec le serveur.</div>';
                 }
             }
-
-            function filterGames() {
-                const searchTerm = document.getElementById('game-search-input')?.value.toLowerCase() || "";
-                const sortType = document.getElementById('game-sort-select')?.value || "default";
-
-                filteredProviderGames = currentProviderGames.filter(game => {
-                    const title = game.game_name || game.name || game.title || "";
-                    return title.toLowerCase().includes(searchTerm);
-                });
-
-                if (sortType === 'az') filteredProviderGames.sort((a, b) => (a.game_name || "").localeCompare(b.game_name || ""));
-                else if (sortType === 'za') filteredProviderGames.sort((a, b) => (b.game_name || "").localeCompare(a.game_name || ""));
-
-                currentlyDisplayedCount = 0;
-                const container = document.getElementById('games-grid');
-                if (container) {
-                    container.innerHTML = '';
-                    if (filteredProviderGames.length === 0) {
-                        container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé</div>`;
-                        return;
-                    }
-                    loadMoreGames();
-                }
-            }
-
           async function loadProviderGames(providerCode) {
                 console.log("➡️ طلب ألعاب المزود:", providerCode);
                 
