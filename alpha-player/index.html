@@ -1336,11 +1336,13 @@
                 }
             }
 
-            async function loadProviderGames(providerCode) {
+           async function loadProviderGames(providerCode) {
+                console.log("➡️ طلب ألعاب المزود:", providerCode);
+                
+                // تحديث شكل الأزرار العلوية
                 document.querySelectorAll('.prov-tab-btn').forEach(btn => {
                     btn.className = "prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
                 });
-
                 const activeBtn = document.getElementById(`btn-prov-${providerCode}`);
                 if (activeBtn) {
                     activeBtn.className = "prov-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 btn-gradient border-none text-white rounded-full text-xs font-black transition-all duration-300 cursor-pointer whitespace-nowrap shadow-lg transform scale-105";
@@ -1349,25 +1351,40 @@
                 const container = document.getElementById('games-grid');
                 if (!container) return;
 
-                const cacheKey = 'alpha_games_' + providerCode;
-                const cachedGames = localStorage.getItem(cacheKey);
-
                 currentActiveProviderCode = providerCode;
+                // إظهار شاشة التحميل بقوة
+                container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Chargement en cours... ⏳</div>';
 
-                const renderGames = (gamesList) => {
-                    currentProviderGames = gamesList;
-                    filteredProviderGames = [...gamesList];
-                    currentlyDisplayedCount = 0;
-                    container.innerHTML = '';
-                    loadMoreGames();
-                };
-
-                if (cachedGames) {
-                    renderGames(JSON.parse(cachedGames));
-                } else {
-                    container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Chargement... ⏳</div>';
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider_code: providerCode })
+                    });
+                    
+                    const rawText = await response.text();
+                    console.log("⬅️ الرد القادم من السيرفر:", rawText); // هذا السطر سيكشف لنا السر في الكونسول!
+                    
+                    if (rawText) {
+                        const data = JSON.parse(rawText);
+                        let gamesArray = data.games || data.data || (Array.isArray(data) ? data : []);
+                        
+                        if (gamesArray && gamesArray.length > 0) {
+                            currentProviderGames = gamesArray;
+                            filteredProviderGames = [...gamesArray];
+                            currentlyDisplayedCount = 0;
+                            container.innerHTML = ''; // إخفاء التحميل
+                            loadMoreGames(); // عرض الألعاب
+                        } else {
+                            // إذا أرسل نكسيس قائمة فارغة أو خطأ
+                            container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu trouvé. (Status: ${data.status || 'Inconnu'})</div>`;
+                        }
+                    }
+                } catch (error) { 
+                    console.error("❌ خطأ برمجي:", error);
+                    container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion avec le serveur.</div>';
                 }
-
+            }
                 try {
                     const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1392,7 +1409,7 @@
                 } catch (error) { 
                     console.error("Erreur Fetch Games:", error);
                 }
-            }
+            
 
             function loadMoreGames() {
                 if (currentlyDisplayedCount >= filteredProviderGames.length) return;

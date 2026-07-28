@@ -882,11 +882,11 @@ async def get_real_games(request: ProviderRequest):
     provider_code = request.provider_code
     current_time = time.time()
     
-    # 1. التحقق مما إذا كانت الألعاب محفوظة في الذاكرة المؤقتة (لتسريع الموقع)
+    # 1. التحقق من الذاكرة المؤقتة
     if provider_code in GAMES_CACHE and (current_time - GAMES_CACHE[provider_code]['time']) < CACHE_TIME_LIMIT:
         return GAMES_CACHE[provider_code]['data']
 
-    # 2. إذا لم تكن محفوظة، نطلب الألعاب الحقيقية من المزود
+    # 2. الطلب الحقيقي من نكسيس (سيقرأ معلوماتك الجديدة من الأعلى تلقائياً)
     payload = {
         "method": "game_list",
         "agent_code": AGENT_CODE,
@@ -896,11 +896,10 @@ async def get_real_games(request: ProviderRequest):
     
     async with httpx.AsyncClient() as client:
         try:
-            # الاتصال الفعلي بسيرفر NexusGGR
             response = await client.post("https://api.nexusggr.com", json=payload, timeout=20)
             response_data = response.json()
             
-            # حفظ الألعاب في الذاكرة المؤقتة إذا نجح الاتصال
+            # حفظ في الذاكرة فقط إذا نجح الاتصال وكانت هناك ألعاب
             if response_data.get("status") == 1 or "games" in response_data:
                 GAMES_CACHE[provider_code] = {'time': current_time, 'data': response_data}
                 
@@ -908,11 +907,7 @@ async def get_real_games(request: ProviderRequest):
             
         except Exception as e:
             print(f"⚠️ خطأ في الاتصال بالمزود: {e}")
-            # في حالة انقطاع الاتصال، نحاول عرض الألعاب المحفوظة سابقاً
-            if provider_code in GAMES_CACHE: 
-                return GAMES_CACHE[provider_code]['data']
-            return {"status": 0, "msg": "Error connecting to games API"}
-
+            return {"status": 0, "msg": str(e)}
 # مسار إضافي لدعم الواجهة (إذا كانت تستخدم GET مع Parameters)
 @app.get("/api/provider/get-games-paged")
 async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int = 50):
