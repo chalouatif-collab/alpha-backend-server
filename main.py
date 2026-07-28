@@ -315,9 +315,9 @@ async def get_shop_panel():
     with open("panel/shop/index.html", "r", encoding="utf-8") as f:
         return f.read()
 # إعدادات مزود الألعاب (NexusGGR)
-AGENT_CODE = "TUNISS10"
-AGENT_TOKEN = "9a418a80d898dd95f120c321012a67cf"
-PROVIDER_ENDPOINT = "https://api.nexusggr.com"
+AGENT_CODE = "Alphabet1"
+AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
+PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
 
 class ResettleTicketRequest(BaseModel):
     ticket_id: str
@@ -889,8 +889,8 @@ async def get_real_games(request: ProviderRequest):
     # 2. إذا لم تكن محفوظة، نطلب الألعاب الحقيقية من المزود
     payload = {
         "method": "game_list",
-        "agent_code": "TUNISS10",
-        "agent_token": "9a418a80d898dd95f120c321012a67cf",
+        "agent_code": "Alphabet1",
+        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
         "provider_code": provider_code
     }
     
@@ -966,7 +966,7 @@ async def launch_casino(request: Request):
             "game_code": data.get("game_code"),
             "user_code": data.get("user_code", "fethi2_test"),
             "lang": "fr",
-            "currency": "USD",
+            "currency": "TND",
             "rtp": 92,
             "lobby_url": "https://alphabet216.com/"
         }
