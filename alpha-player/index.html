@@ -619,7 +619,7 @@
             </aside>
 
             <!-- ساحة المحتوى الرئيسية: إزالة القيود عن التمرير ليصبح مسؤولية الـ body -->
-            <main id="main-content-area" class="flex-1 w-full relative min-w-0">
+            <main id="main-content-area" class="flex-1 w-full relative min-w-0 overflow-hidden">
 
                 <div id="pane-accueil" class="player-view-section block w-full max-w-[1400px] mx-auto md:px-4">
                     <div
@@ -956,7 +956,7 @@
                 </div>
 
                 <!-- قسم الكازينو والألعاب -->
-                <div id="pane-casino" class="player-view-section hidden w-full px-2 mt-2">
+                <div id="pane-casino" class="player-view-section hidden w-full px-4 mt-2 block-container">
                     <div id="casino-controls"
                         class="flex flex-col md:flex-row gap-4 bg-asbet-card p-4 rounded-xl border border-white/5 mb-2">
                         <input type="text" id="game-search-input" onkeyup="filterGames()"
