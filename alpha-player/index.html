@@ -619,7 +619,7 @@
             </aside>
 
             <!-- ساحة المحتوى الرئيسية: إزالة القيود عن التمرير ليصبح مسؤولية الـ body -->
-            <main id="main-content-area" class="flex-1 w-full relative">
+            <main id="main-content-area" class="flex-1 w-full relative min-w-0">
 
                 <div id="pane-accueil" class="player-view-section block w-full max-w-[1400px] mx-auto md:px-4">
                     <div
@@ -1455,10 +1455,13 @@
                 currentlyDisplayedCount += nextBatch.length;
             }
 
-            // ================= الانفينت سكرول الحقيقي المربوط بالنافذة =================
+           // ================= المحرك الذكي للتمرير (متوافق مع الحاسوب والهاتف) =================
             window.addEventListener('scroll', () => {
-                // نتحقق مما إذا كان المستخدم قد وصل تقريباً لأسفل الصفحة (Window)
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 800) {
+                // حساب المسافة المتبقية للوصول لأسفل الصفحة بدقة لجميع الشاشات
+                const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+                const currentScroll = window.scrollY;
+
+                if ((currentScroll / scrollableHeight) >= 0.7 || (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 800) {
                     loadMoreGames();
                 }
             });
