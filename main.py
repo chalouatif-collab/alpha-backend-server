@@ -309,9 +309,9 @@ async def get_shop_panel():
     with open("panel/shop/index.html", "r", encoding="utf-8") as f:
         return f.read()
 # إعدادات مزود الألعاب (NexusGGR)
-AGENT_CODE = "TUNISS10"
-AGENT_TOKEN = "9a418a80d898dd95f120c321012a67cf"
-PROVIDER_ENDPOINT = "https://api.nexusggr.com"
+AGENT_CODE = "Alphabet1"
+AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
+PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
 
 class ResettleTicketRequest(BaseModel):
     ticket_id: str
@@ -1030,7 +1030,7 @@ async def get_sports():
         all_matches = []
         for league in leagues:
             try:
-                response = requests.get(f"https://api.the-odds-api.com/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h,spreads,totals&oddsFormat=decimal", timeout=5) 
+                response = requests.get(f"https://api.the-odds-api.eu/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h,spreads,totals&oddsFormat=decimal", timeout=5) 
                 if response.status_code == 200: all_matches.extend(response.json())
             except: pass
         cache["matches"], cache["last_update"] = all_matches, current_time
