@@ -1095,7 +1095,7 @@ async def admin_home(request: Request):
     elif role == "shop":
         return RedirectResponse(url="/panel/shop", status_code=303)
     # إذا لم يكن مسجلاً للدخول، اعرض له صفحة index.html
-    with open("index.html", "r", encoding="utf-8") as f:
+    with open("alpha-player/index.html", "r", encoding="utf-8") as f:
         return f.read()
 # 2. معالجة تسجيل الدخول والتوجيه حسب الرتبة
 @app.post("/login-router")
