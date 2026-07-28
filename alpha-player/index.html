@@ -1336,7 +1336,7 @@
                 }
             }
 
-           async function loadProviderGames(providerCode) {
+          async function loadProviderGames(providerCode) {
                 console.log("➡️ طلب ألعاب المزود:", providerCode);
                 
                 // تحديث شكل الأزرار العلوية
@@ -1363,7 +1363,7 @@
                     });
                     
                     const rawText = await response.text();
-                    console.log("⬅️ الرد القادم من السيرفر:", rawText); // هذا السطر سيكشف لنا السر في الكونسول!
+                    console.log("⬅️ الرد القادم من السيرفر:", rawText);
                     
                     if (rawText) {
                         const data = JSON.parse(rawText);
@@ -1376,7 +1376,6 @@
                             container.innerHTML = ''; // إخفاء التحميل
                             loadMoreGames(); // عرض الألعاب
                         } else {
-                            // إذا أرسل نكسيس قائمة فارغة أو خطأ
                             container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu trouvé. (Status: ${data.status || 'Inconnu'})</div>`;
                         }
                     }
@@ -1385,30 +1384,7 @@
                     container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion avec le serveur.</div>';
                 }
             }
-                try {
-                    const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ provider_code: providerCode })
-                    });
-                    const rawText = await response.text();
-                    if (rawText) {
-                        const data = JSON.parse(rawText);
-                        
-                        let gamesArray = data.games || data.data || (Array.isArray(data) ? data : []);
-                        
-                        if (gamesArray && gamesArray.length > 0) {
-                            localStorage.setItem(cacheKey, JSON.stringify(gamesArray));
-                            if (!cachedGames) renderGames(gamesArray);
-                            renderTrendingGames();
-                        } else {
-                            if (!cachedGames) {
-                                document.getElementById('games-grid').innerHTML = '<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu trouvé pour ce fournisseur.</div>';
-                            }
-                        }
-                    }
-                } catch (error) { 
-                    console.error("Erreur Fetch Games:", error);
-                }
+               
             
 
             function loadMoreGames() {
