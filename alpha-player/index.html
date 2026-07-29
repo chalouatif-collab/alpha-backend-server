@@ -1708,7 +1708,16 @@
                     if (data.launch_url) {
                         iframe.src = data.launch_url;
                         iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
-                    } else { showNotification("Jeu non disponible", "error"); closeCasinoGame(); }
+                    } else { 
+                // طباعة الخطأ الحقيقي في الكونسول لمعرفة سبب الرفض من الشركة
+                console.error("⚠️ خطأ من المزود:", data);
+                
+                // استخراج رسالة الخطأ الحقيقية وعرضها على الشاشة
+                const realError = (data.details && data.details.msg) ? data.details.msg : (data.error || "Jeu non disponible");
+                showNotification("سبب الرفض: " + realError, "error"); 
+                
+                closeCasinoGame(); 
+            }
                 } catch (error) { showNotification("Erreur de connexion", "error"); closeCasinoGame(); }
             }
 
