@@ -32,7 +32,7 @@ from firebase_admin import db
 AGENT_CODE = "Alphabet1"
 AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
 NEXUS_SECRET_KEY = "6cb0c1a5dc8a38b89258ad8417026bf9" # تمت إضافته من صورتك
-PROVIDER_ENDPOINT = "https://api.nexusggr.com"
+PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
 
 # 1. إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
@@ -1558,3 +1558,13 @@ async def get_my_withdrawal_requests(username: str):
     withdrawals = db.get("shop_withdrawals", [])
     my_reqs = [w for w in withdrawals if w.get("admin_username") == username.lower()]
     return my_reqs
+
+@app.get("/api/get-server-ip")
+async def get_server_ip():
+    try:
+        async with httpx.AsyncClient() as client:
+            # هذا الموقع يعيد الآيبي الحقيقي الذي يخرج منه السيرفر
+            response = await client.get("https://api.ipify.org")
+            return {"server_ip": response.text}
+    except Exception as e:
+        return {"error": str(e)}
