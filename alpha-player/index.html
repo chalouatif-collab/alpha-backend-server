@@ -1736,8 +1736,8 @@
             method: 'POST', 
             headers: getAuthHeaders(),
             body: JSON.stringify({
-                provider_code: 'NEXUSTRIKE', // 👈 كود مزود الرياضة
-                game_code: 'SPORTSBOOK',     // 👈 كود اللعبة (الرياضة)
+                provider_code: 'SPORTSBOOK', // 👈 التعديل هنا: هذا هو الكود الدقيق من قاعدتك
+                game_code: 'SPORTSBOOK',     
                 user_code: playerSession.username
             })
         });
