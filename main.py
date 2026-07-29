@@ -989,47 +989,6 @@ async def launch_casino(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# 4. محفظة اللاعب (Seamless Wallet - API)
-@app.post("/gold_api")
-async def seamless_wallet_handler(request: Request):
-    try:
-        data = await request.json()
-        method, user_code = data.get("method"), data.get("user_code")
-        
-        # --- جلب الرصيد الحقيقي من قاعدة البيانات ---
-        db = load_db()
-        target_user = next((u for u in db if u["username"] == user_code), None)
-        if not target_user:
-            return JSONResponse(content={"status": 0, "msg": "USER_NOT_FOUND"})
-        
-        player_balance = float(target_user.get("balance", 0))
-
-        if method == "user_balance":
-            return JSONResponse(content={"status": 1, "user_balance": player_balance})
-
-        elif method == "transaction":
-            game_type = data.get("game_type")
-            tx_data = data.get(game_type, {})
-            bet_money, win_money, txn_type = float(tx_data.get("bet_money", 0)), float(tx_data.get("win_money", 0)), tx_data.get("txn_type")
-
-            if txn_type in ["debit", "debit_credit"]:
-                if player_balance < bet_money:
-                    return JSONResponse(content={"status": 0, "msg": "INSUFFICIENT_USER_FUNDS"})
-                player_balance -= bet_money
-
-            if txn_type in ["credit", "debit_credit"]:
-                player_balance += win_money
-
-            # حفظ الرصيد الجديد في قاعدة البيانات
-            target_user["balance"] = player_balance
-            save_db(db)
-
-            return JSONResponse(content={"status": 1, "user_balance": round(player_balance, 2)})
-        else:
-            return JSONResponse(content={"status": 0, "msg": "UNKNOWN_METHOD"})
-    except Exception as e:
-        return JSONResponse(content={"status": 0, "msg": "INTERNAL_ERROR"})
-
 # ==========================================
 # تشغيل الروت الأساسي والرياضة الوهمية
 # ==========================================
@@ -1579,6 +1538,9 @@ async def get_server_ip():
     except Exception as e:
         return {"error": str(e)}
     
+# ==========================================
+# محفظة اللاعب (Seamless Wallet - API) الحقيقية
+# ==========================================
 @app.post("/gold_api")
 async def seamless_wallet(request: Request):
     try:
@@ -1586,22 +1548,24 @@ async def seamless_wallet(request: Request):
         method = data.get("method")
         user_code = data.get("user_code")
         
-        # 1. طبقة الحماية: التأكد من أن الطلب قادم من شركة Nexus فعلاً
-        # agent_secret = data.get("agent_secret")
-        # if agent_secret != AGENT_SECRET:
-        #     return {"status": 0, "user_balance": 0, "msg": "INVALID_SECRET"}
+        # 1. جلب قاعدة البيانات والبحث عن اللاعب
+        db = load_db()
+        target_user = next((u for u in db if u.get("username") == user_code), None)
+        
+        # إذا كان اللاعب غير موجود في قاعدة بياناتك
+        if not target_user:
+            return {"status": 0, "msg": "USER_NOT_FOUND"}
+            
+        # استخراج الرصيد الحالي للاعب
+        current_balance = float(target_user.get("balance", 0.0))
 
         # -----------------------------------------
         # 2. الاستعلام عن الرصيد (User Balance)
         # -----------------------------------------
         if method == "user_balance":
-            # 🛑 [هنا يجب أن تستخرج رصيد اللاعب الفعلي من قاعدة بياناتك]
-            # كمثال تجريبي، سنعطيه 5000:
-            current_balance = 5000.0 
-            
             return {
                 "status": 1,
-                "user_balance": current_balance
+                "user_balance": round(current_balance, 2)
             }
 
         # -----------------------------------------
@@ -1615,24 +1579,31 @@ async def seamless_wallet(request: Request):
             # استخراج قيمة الرهان وقيمة الربح
             bet_money = float(game_data.get("bet_money", 0.0))
             win_money = float(game_data.get("win_money", 0.0))
+            txn_id = game_data.get("txn_id")
             
-            # 🛑 [هنا يجب أن تقوم بتحديث الرصيد في قاعدة البيانات]
-            # المعادلة: الرصيد الجديد = الرصيد القديم - الرهان + الربح
-            # current_balance = get_balance_from_db(user_code)
-            # new_balance = current_balance - bet_money + win_money
-            # save_balance_to_db(user_code, new_balance)
+            # --- أ. حماية الرصيد ---
+            # منع اللاعب من المراهنة بمبلغ أكبر من رصيده
+            if bet_money > 0 and current_balance < bet_money:
+                return {
+                    "status": 0,
+                    "msg": "INSUFFICIENT_FUNDS"
+                }
             
-            # كمثال تجريبي للرد السليم:
-            simulated_new_balance = 5000.0 - bet_money + win_money
+            # --- ب. المعادلة الرياضية ---
+            new_balance = current_balance - bet_money + win_money
+            
+            # --- ج. الحفظ الفوري في قاعدة بيانات Firebase ---
+            target_user["balance"] = round(new_balance, 2)
+            save_db(db)
             
             return {
                 "status": 1,
-                "user_balance": simulated_new_balance
+                "user_balance": round(new_balance, 2)
             }
             
         else:
-            return {"status": 0, "user_balance": 0, "msg": "UNKNOWN_METHOD"}
+            return {"status": 0, "msg": "UNKNOWN_METHOD"}
 
     except Exception as e:
         print(f"Wallet Error: {e}")
-        return {"status": 0, "user_balance": 0, "msg": "INTERNAL_ERROR"}
+        return {"status": 0, "msg": "INTERNAL_ERROR"}
