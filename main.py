@@ -950,7 +950,7 @@ async def launch_sportsbook(request: Request):
             "game_code": str(data.get("game_code")),         # 👈 أضفنا str() هنا لحل المشكلة الجديدة
             "user_code": str(data.get("user_code")),         # 👈 هذه قمنا بحلها سابقاً
             "lang": "fr",
-            "currency": "TND", 
+            "currency": "USD", 
             "lobby_url": "https://alphabet216.com/"
         }
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
