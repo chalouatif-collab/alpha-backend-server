@@ -943,14 +943,14 @@ async def launch_sportsbook(request: Request):
     try:
         data = await request.json()
         payload = {
-            "method": "game_launch",  # 👈 التعديل الأهم لفتح اللعبة
+            "method": "game_launch", 
             "agent_code": AGENT_CODE,
             "agent_token": AGENT_TOKEN,
-            "provider_code": data.get("provider_code"), 
-            "game_code": data.get("game_code"), # كود لعبة الرياضة
-            "user_code": str(data.get("user_code")), # اسم اللاعب
+            "provider_code": str(data.get("provider_code")), # 👈 أضفنا str() هنا
+            "game_code": str(data.get("game_code")),         # 👈 أضفنا str() هنا لحل المشكلة الجديدة
+            "user_code": str(data.get("user_code")),         # 👈 هذه قمنا بحلها سابقاً
             "lang": "fr",
-            "currency": "TND", # تأكد أن العملة مطابقة
+            "currency": "TND", 
             "lobby_url": "https://alphabet216.com/"
         }
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
@@ -965,7 +965,6 @@ async def launch_sportsbook(request: Request):
             
     except Exception as e:
         return {"error": str(e)}
-
 @app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
