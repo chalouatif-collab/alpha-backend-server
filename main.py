@@ -1578,3 +1578,61 @@ async def get_server_ip():
             return {"server_ip": response.text}
     except Exception as e:
         return {"error": str(e)}
+    
+@app.post("/gold_api")
+async def seamless_wallet(request: Request):
+    try:
+        data = await request.json()
+        method = data.get("method")
+        user_code = data.get("user_code")
+        
+        # 1. طبقة الحماية: التأكد من أن الطلب قادم من شركة Nexus فعلاً
+        # agent_secret = data.get("agent_secret")
+        # if agent_secret != AGENT_SECRET:
+        #     return {"status": 0, "user_balance": 0, "msg": "INVALID_SECRET"}
+
+        # -----------------------------------------
+        # 2. الاستعلام عن الرصيد (User Balance)
+        # -----------------------------------------
+        if method == "user_balance":
+            # 🛑 [هنا يجب أن تستخرج رصيد اللاعب الفعلي من قاعدة بياناتك]
+            # كمثال تجريبي، سنعطيه 5000:
+            current_balance = 5000.0 
+            
+            return {
+                "status": 1,
+                "user_balance": current_balance
+            }
+
+        # -----------------------------------------
+        # 3. معالجة الرهانات والأرباح (Transaction)
+        # -----------------------------------------
+        elif method == "transaction":
+            # جلب نوع اللعبة (slot, live, SB, MN) لاستخراج البيانات الصحيحة
+            game_type = data.get("game_type")
+            game_data = data.get(game_type, {})
+            
+            # استخراج قيمة الرهان وقيمة الربح
+            bet_money = float(game_data.get("bet_money", 0.0))
+            win_money = float(game_data.get("win_money", 0.0))
+            
+            # 🛑 [هنا يجب أن تقوم بتحديث الرصيد في قاعدة البيانات]
+            # المعادلة: الرصيد الجديد = الرصيد القديم - الرهان + الربح
+            # current_balance = get_balance_from_db(user_code)
+            # new_balance = current_balance - bet_money + win_money
+            # save_balance_to_db(user_code, new_balance)
+            
+            # كمثال تجريبي للرد السليم:
+            simulated_new_balance = 5000.0 - bet_money + win_money
+            
+            return {
+                "status": 1,
+                "user_balance": simulated_new_balance
+            }
+            
+        else:
+            return {"status": 0, "user_balance": 0, "msg": "UNKNOWN_METHOD"}
+
+    except Exception as e:
+        print(f"Wallet Error: {e}")
+        return {"status": 0, "user_balance": 0, "msg": "INTERNAL_ERROR"}
