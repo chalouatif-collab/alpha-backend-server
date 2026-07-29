@@ -948,7 +948,7 @@ async def launch_sportsbook(request: Request):
             "agent_token": AGENT_TOKEN,
             "provider_code": data.get("provider_code"), 
             "game_code": data.get("game_code"), # كود لعبة الرياضة
-            "user_code": data.get("user_code"), # اسم اللاعب
+            "user_code": str(data.get("user_code")), # اسم اللاعب
             "lang": "fr",
             "currency": "TND", # تأكد أن العملة مطابقة
             "lobby_url": "https://alphabet216.com/"
