@@ -668,8 +668,13 @@ async def register_user(req: RegisterRequest):
     # --- 1. توليد المفتاح السري الخاص بـ Google Authenticator ---
     new_secret_key = pyotp.random_base32()
     
-    # --- 2. إضافة المفتاح إلى بيانات المستخدم الجديد ---
+    # --- 2. توليد ID فريد وتصاعدي للمستخدم الجديد ---
+    # نبحث عن أكبر ID موجود في القاعدة، ونضيف له 1. إذا كانت القاعدة فارغة، نبدأ بـ 1.
+    new_id = max([int(u.get("id", 0)) for u in db]) + 1 if db else 1
+    
+    # --- 3. إضافة المفتاح والـ ID إلى بيانات المستخدم الجديد ---
     new_user = {
+        "id": new_id,             # 👈 تم إضافة الـ ID هنا بنجاح!
         "username": uname, 
         "password": hashed_pwd, 
         "role": req.role, 
@@ -684,10 +689,41 @@ async def register_user(req: RegisterRequest):
     }
     
     db.append(new_user)
-    save_db(db) # استخدمنا دالة الحفظ الخاصة بك هنا
+    save_db(db)
     
-    
-    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key}
+    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id}
+
+@app.get("/api/admin/fix-user-ids")
+async def fix_missing_user_ids():
+    try:
+        db = load_db()
+        
+        # 1. البحث عن أعلى ID موجود حالياً لتجنب التكرار
+        current_max_id = 0
+        for u in db:
+            user_id = u.get("id")
+            if user_id is not None and str(user_id).isdigit():
+                current_max_id = max(current_max_id, int(user_id))
+                
+        # 2. المرور على الحسابات وإعطاء ID لمن لا يملكه
+        updated_count = 0
+        for u in db:
+            if "id" not in u or u.get("id") is None or u.get("id") == "":
+                current_max_id += 1
+                u["id"] = current_max_id
+                updated_count += 1
+                
+        # 3. حفظ قاعدة البيانات إذا تم إجراء تعديلات
+        if updated_count > 0:
+            save_db(db)
+            
+        return {
+            "status": "success", 
+            "message": f"عملية ناجحة! تم منح ID جديد لـ {updated_count} حساب/حسابات قديمة."
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": f"حدث خطأ: {str(e)}"}
 
 @app.get("/api/admin/users")
 async def get_all_network_users(admin_username: Optional[str] = None):
