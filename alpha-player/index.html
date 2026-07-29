@@ -1722,26 +1722,40 @@
             }
 
             async function openSportsbook(type = 'prematch') {
-                if (!playerSession) return openLoginModal();
-                try {
-                    document.getElementById('sportsbook-overlay').classList.remove('hidden');
-                    document.getElementById('sportsbook-overlay').classList.add('flex');
+    if (!playerSession) return openLoginModal();
+    
+    try {
+        // إظهار شاشة الرياضة
+        document.getElementById('sportsbook-overlay').classList.remove('hidden');
+        document.getElementById('sportsbook-overlay').classList.add('flex');
+        
+        // شاشة تحميل مؤقتة
+        document.getElementById('sportsbook-iframe').src = "about:blank";
 
-                    const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
-                        method: 'POST', headers: getAuthHeaders(),
-                        body: JSON.stringify({
-                            provider_code: 'BETBY', // تأكد من وضع كود مزود الرياضة الخاص بك هنا إذا كان مختلفاً
-                            player_id: playerSession.username
-                        })
-                    });
-                    const data = await response.json();
+        const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
+            method: 'POST', 
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                provider_code: 'NEXUSTRIKE', // 👈 كود مزود الرياضة
+                game_code: 'SPORTSBOOK',     // 👈 كود اللعبة (الرياضة)
+                user_code: playerSession.username
+            })
+        });
+        
+        const data = await response.json();
 
-                    if (data.launch_url) {
-                        document.getElementById('sportsbook-iframe').src = data.launch_url;
-                    }
-                } catch (error) { }
-            }
-
+        if (data.launch_url) {
+            document.getElementById('sportsbook-iframe').src = data.launch_url;
+        } else {
+            console.error("خطأ من المزود:", data.details);
+            alert("❌ لم يتمكن المزود من فتح الرياضة، راجع الـ Console لمعرفة السبب.");
+            closeSportsbook();
+        }
+    } catch (error) { 
+        console.error(error);
+        closeSportsbook();
+    }
+}
             function closeSportsbook() {
                 document.getElementById('sportsbook-overlay').classList.add('hidden');
                 document.getElementById('sportsbook-overlay').classList.remove('flex');

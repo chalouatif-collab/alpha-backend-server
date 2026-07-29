@@ -939,19 +939,30 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
 
 # 3. تشغيل الألعاب الرياضية والكازينو
 @app.post("/api/provider/launch-sportsbook")
-def launch_sportsbook(data: dict):
-    payload = {
-        "method": "game_list", 
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
-        "provider_code": data.get("provider_code")
-    }
+async def launch_sportsbook(request: Request):
     try:
+        data = await request.json()
+        payload = {
+            "method": "game_launch",  # 👈 التعديل الأهم لفتح اللعبة
+            "agent_code": AGENT_CODE,
+            "agent_token": AGENT_TOKEN,
+            "provider_code": data.get("provider_code"), 
+            "game_code": data.get("game_code"), # كود لعبة الرياضة
+            "user_code": data.get("user_code"), # اسم اللاعب
+            "lang": "fr",
+            "currency": "TND", # تأكد أن العملة مطابقة
+            "lobby_url": "https://alphabet216.com/"
+        }
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
         response_data = response.json()
+        
         game_url = response_data.get("url") or response_data.get("launch_url")
-        if game_url: return {"launch_url": game_url}
-        else: return {"error": "المزود رفض الطلب", "details": response_data}
+        
+        if game_url: 
+            return {"launch_url": game_url}
+        else: 
+            return {"error": "المزود رفض الطلب", "details": response_data}
+            
     except Exception as e:
         return {"error": str(e)}
 
