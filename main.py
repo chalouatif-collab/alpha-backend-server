@@ -28,10 +28,11 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 
-# --- إعدادات مزود الألعاب (Nexus) ---
-AGENT_CODE = os.getenv("AGENT_CODE", "Alphabet1")
-AGENT_TOKEN = os.getenv("AGENT_TOKEN", "af467c522fe71dcabe10c1d08ed27b05")
-PROVIDER_ENDPOINT = "https://api.nexusggr.eu/v1/game"
+# --- إعدادات مزود الألعاب (Nexus) الموحدة ---
+AGENT_CODE = "Alphabet1"
+AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
+NEXUS_SECRET_KEY = "6cb0c1a5dc8a38b89258ad8417026bf9" # تمت إضافته من صورتك
+PROVIDER_ENDPOINT = "https://api.nexusggr.com"
 
 # 1. إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
@@ -313,11 +314,7 @@ async def get_admin_panel():
 async def get_shop_panel():
     with open("panel/shop/index.html", "r", encoding="utf-8") as f:
         return f.read()
-# إعدادات مزود الألعاب (Nexus)
-# إعدادات مزود الألعاب (Nexus)
-AGENT_CODE = "Alphabet1"
-AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
-PROVIDER_ENDPOINT = "https://api.nexusggr.com"
+    
 class ResettleTicketRequest(BaseModel):
     ticket_id: str
     new_status: str  # 'won', 'lost', 'void'
@@ -925,11 +922,11 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
         return GAMES_CACHE[provider]['data']
 
     payload = {
-    "method": "game_list",
-    "agent_code": "Alphabet1",          # 👈 اجعلها حروف صغيرة
-    "agent_token": "af467c522fe71dcabe10c1d08ed27b05",  # 👈 اجعلها حروف صغيرة
-    "provider_code": provider
-}
+        "method": "game_list",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "provider_code": provider
+    }
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
@@ -945,8 +942,8 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
 def launch_sportsbook(data: dict):
     payload = {
         "method": "game_list", 
-        "agent_code": "Alphabet1",
-        "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
         "provider_code": data.get("provider_code")
     }
     try:
@@ -963,17 +960,17 @@ async def launch_casino(request: Request):
     try:
         data = await request.json()
         payload = {
-            "method": "game_launch",
-            "agent_code": "Alphabet1",
-            "agent_token": "af467c522fe71dcabe10c1d08ed27b05",
-            "provider_code": data.get("provider_code"),
-            "game_code": data.get("game_code"),
-            "user_code": data.get("user_code", "fethi2_test"),
-            "lang": "fr",
-            "currency": "USD",
-            "rtp": 92,
-            "lobby_url": "https://alphabet216.com/"
-        }
+        "method": "game_launch",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "provider_code": data.get("provider_code"),
+        "game_code": data.get("game_code"),
+        "user_code": data.get("user_code", "fethi2_test"),
+        "lang": "fr",
+        "currency": "USD",
+        "rtp": 92,
+        "lobby_url": "https://alphabet216.com/"
+    }
         response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
         response_data = response.json()
         game_url = response_data.get("url") or response_data.get("launch_url")
@@ -1239,7 +1236,7 @@ import urllib.parse
 from fastapi import Query
 
 # ضع هنا الـ salt_token الذي استلمته في وثائق التكامل الخاصة بك
-SALT_TOKEN = os.getenv("SALT_TOKEN", "YOUR_SALT_TOKEN_HERE")
+SALT_TOKEN = os.getenv("SALT_TOKEN", "NEXUS_SECRET_KEY")
 
 
 def verify_hash(data: dict, received_hash: str) -> bool:
