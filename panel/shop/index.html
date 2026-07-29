@@ -524,7 +524,10 @@
                             <span style="font-size: 10px;">👤</span>
                         </div>
                         <div>
-                            <p class="fw-bold text-white mb-0" style="font-size: 0.75rem;">${p.username}</p>
+                        <div class="d-flex align-items-center gap-1 mb-0">
+                        <p class="fw-bold text-white mb-0" style="font-size: 0.75rem;">${p.username}</p>
+                        <span class="badge bg-secondary border border-secondary text-white" style="font-size: 0.55rem; padding: 2px 4px;">ID: ${p.id || 'N/A'}</span>
+                    </div>
                             <span class="text-warning fw-bold" style="font-size: 0.55rem;">${(p.role || 'PLAYER').toUpperCase()}</span>
                         </div>
                     </div>

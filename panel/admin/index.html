@@ -553,9 +553,11 @@
                                 <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
                             </div>
                             <div>
-                                <div class="text-white fw-bold mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
-                                    ${u.username} ${secretBadge}
-                                </div>
+                                <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
+    ${usernameClean} 
+    <span class="badge bg-secondary border border-secondary text-white mx-1" style="font-size: 0.65rem; padding: 2px 5px;">ID: ${u.id || 'N/A'}</span>
+    ${secretBadge} ${phoneBadge}
+</div>>
                                 <div class="text-emerald fw-bold" style="font-size: 0.65rem;">${userRole} | RTP: ${userRtp}%</div>
                             </div>
                         </div>

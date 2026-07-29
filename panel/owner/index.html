@@ -456,8 +456,10 @@
                         </div>
                         <div>
                             <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
-                                ${usernameClean} ${secretBadge} ${phoneBadge}
-                            </div>
+                            ${usernameClean} 
+                            <span class="badge bg-secondary border border-secondary text-white mx-1" style="font-size: 0.65rem; padding: 2px 5px;">ID: ${u.id || 'N/A'}</span>
+                            ${secretBadge} ${phoneBadge}
+                        </div>
                             <div class="text-info fw-bold" style="font-size: 0.6rem;">${userRole} | By: ${createdByClean}</div>
                         </div>
                     </div>
