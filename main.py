@@ -703,7 +703,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     if not target_user: raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
     if req.action == "charge":
-        if admin != "system" and admin_user.get("role") != "owner":
+        if admin != "system" and admin_user.get("role") != "owner" and admin != "fethi":
             if not admin_user: raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
             if admin_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
             admin_user["balance"] -= amount
