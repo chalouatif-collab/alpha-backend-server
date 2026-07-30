@@ -205,6 +205,64 @@
         .profile-popup-menu .menu-item.highlight {
             background: linear-gradient(90deg, #E8006F 0%, #91167B 100%);
         }
+        /* تأثير الدوران للإطار المتوهج */
+        @keyframes border-glow-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* تأثير النبض والسطوع */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; filter: brightness(1); }
+            50% { opacity: 1; filter: brightness(1.4); }
+        }
+
+        .jackpot-card-wrapper {
+            position: relative;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #0f051d;
+            padding: 2px; /* مسافة للإطار المتوهج */
+            animation: pulse-glow 2.5s infinite ease-in-out;
+        }
+
+        /* الإطار المتحرك */
+        .jackpot-glow-border {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background-repeat: no-repeat;
+            background-position: 0 0;
+            animation: border-glow-spin 4s linear infinite;
+            pointer-events: none;
+        }
+
+        /* ألوان الإطارات لكل جائزة */
+        .mega-glow::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, #ffd700 360deg);
+            animation: border-glow-spin 3s linear infinite;
+        }
+
+        .major-glow::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, #e5e7eb 360deg);
+            animation: border-glow-spin 3s linear infinite;
+        }
+
+        .mini-glow::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, #ef4444 360deg);
+            animation: border-glow-spin 3s linear infinite;
+        }
     </style>
 </head>
 
@@ -660,25 +718,34 @@
                 </div>
                 <!-- ================================================================ -->
 
-                <!-- الجاكبوت (تم نقله هنا!) -->
+                <!-- الجاكبوت (مع أشرطة متوهجة تدور وتنبض) -->
                 <div class="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
-                    <!-- Mega -->
-                    <div class="bg-gradient-to-b from-[#2a1b3d] to-[#130822] border border-[#ffb800]/40 rounded-xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(255,184,0,0.15)] hover:shadow-[0_0_20px_rgba(255,184,0,0.3)] transition-shadow">
-                        <span class="text-[#ffb800] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-md">Mega 🥇</span>
-                        <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-mega">124,567.89</div>
+                    
+                    <!-- Mega (ذهبي) -->
+                    <div class="jackpot-card-wrapper mega-glow shadow-[0_0_20px_rgba(255,215,0,0.2)]">
+                        <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
+                            <span class="text-[#ffd700] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]">Mega 🥇</span>
+                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-mega">124,567.89</div>
+                        </div>
                     </div>
-                    <!-- Major -->
-                    <div class="bg-gradient-to-b from-[#2a1b3d] to-[#130822] border border-gray-300/40 rounded-xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(209,213,219,0.1)] hover:shadow-[0_0_20px_rgba(209,213,219,0.2)] transition-shadow">
-                        <span class="text-gray-300 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-md">Major 🥈</span>
-                        <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-major">14,230.50</div>
-                    </div>
-                    <!-- Mini -->
-                    <div class="bg-gradient-to-b from-[#2a1b3d] to-[#130822] border border-orange-500/40 rounded-xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.15)] hover:shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-shadow">
-                        <span class="text-orange-500 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-md">Mini 🥉</span>
-                        <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-mini">1,850.25</div>
-                    </div>
-                </div>
 
+                    <!-- Major (فضي) -->
+                    <div class="jackpot-card-wrapper major-glow shadow-[0_0_20px_rgba(229,231,235,0.15)]">
+                        <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
+                            <span class="text-gray-200 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">Major 🥈</span>
+                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-major">14,230.50</div>
+                        </div>
+                    </div>
+
+                    <!-- Mini (أحمر ساطع وغامق) -->
+                    <div class="jackpot-card-wrapper mini-glow shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                        <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
+                            <span class="text-red-500 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)]">Mini 🥉</span>
+                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-mini">1,850.25</div>
+                        </div>
+                    </div>
+
+                </div>
                 <!-- الأقسام السريعة -->
                 <div class="grid grid-cols-4 gap-2 md:gap-3 mb-6 w-full">
                     <!-- زر الكازينو -->
