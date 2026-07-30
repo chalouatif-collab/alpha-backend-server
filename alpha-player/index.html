@@ -645,6 +645,7 @@
                         <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-mini">1,850.25</div>
                     </div>
                 </div>
+
                 <!-- الأقسام السريعة -->
                 <div class="grid grid-cols-4 gap-2 md:gap-3 mb-6 w-full">
                     <!-- زر الكازينو -->
@@ -675,21 +676,7 @@
                         <span class="text-[9px] lg:text-xs font-bold text-gray-300 text-center leading-tight uppercase">Live Sport</span>
                     </div>
                 </div>
-                <!-- حاوية اللوحات الإعلانية الجديدة (عمودان في الحاسوب، عمود في الهاتف) -->
-                    <div onclick="openSportsbook('prematch')"
-                        class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
-                        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⚽</div>
-                        <span
-                            class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Sports</span>
-                    </div>
-                    <div onclick="openSportsbook('live')"
-                        class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
-                        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⏱️
-                        </div>
-                        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Live
-                            Sport</span>
-                    </div>
-                </div>
+
                 <!-- حاوية اللوحات الإعلانية الجديدة (عمودان في الحاسوب، عمود في الهاتف) -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
@@ -771,7 +758,8 @@
                     </div>
 
                 </div>
-                <!-- ================= قسم أشرطة الألعاب (تحت الألعاب الرائجة) ================= -->
+
+                <!-- ================= قسم أشرطة الألعاب ================= -->
 
                 <!-- 1. شريط Pragmatic Play -->
                 <div class="mt-6">
@@ -810,114 +798,18 @@
                     </div>
                     <div id="slider-playson" class="flex overflow-x-auto gap-3 px-4 pb-3 snap-x hide-scrollbar">
                     </div>
-                    <script>
-
-                        console.log("🚀 كبسولة الأشرطة الذكية بدأت العمل!");
-
-                        (async function forceLoadSliders() {
-                            const API_URL = "https://alpha-backend-server.onrender.com";
-
-                            // السر هنا: وضعنا الأكواد بحروف كبيرة (Majuscule) تماماً كما يطلبها السيرفر!
-                            const providers = [
-                                { code: 'PRAGMATIC', boxId: 'slider-pragmatic' },
-                                { code: 'HACKSAW', boxId: 'slider-hacksaw' },
-                                { code: 'PLAYSON', boxId: 'slider-playson' }
-                            ];
-
-                            for (let prov of providers) {
-                                let container = document.getElementById(prov.boxId);
-
-                                if (container) {
-                                    container.innerHTML = `<div class="text-[#E8006F] text-xs px-4 py-2 font-bold animate-pulse">⏳ Chargement
-                            des jeux...</div>`;
-
-                                    try {
-                                        let response = await fetch(`${API_URL}/api/get-providers`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ provider_code: prov.code })
-                                        });
-
-                                        let data = await response.json();
-
-                                        // استخراج الألعاب
-                                        let gamesArray = data.games || data.data || [];
-
-                                        if (gamesArray && gamesArray.length > 0) {
-                                            container.innerHTML = ''; // تنظيف الصندوق
-                                            let topGames = gamesArray.slice(0, 10); // أخذ 10 ألعاب
-
-                                            topGames.forEach(game => {
-                                                let img = game.banner || game.image || game.thumb ||
-                                                    "https://placehold.co/400x300/180A2B/FFF?text=Casino";
-                                                let code = game.game_code || game.id;
-
-                                                container.innerHTML += `
-                        <div onclick="playCasinoGame('${prov.code}', '${code}')"
-                            class="w-36 h-24 flex-none snap-center relative group rounded-xl overflow-hidden shadow-lg border border-white/5 cursor-pointer">
-                            <img src="${img}" class="w-full h-full object-cover">
-                            <div
-                                class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <button
-                                    class="bg-[#E8006F] text-white px-5 py-1.5 rounded-md font-bold text-sm shadow-md">Jouer</button>
-                            </div>
-                        </div>
-                        `;
-                                            });
-                                        } else {
-                                            container.innerHTML = `<div class="text-gray-500 text-xs px-4 py-2">⚠️ Aucun jeu trouvé</div>`;
-                                        }
-                                    } catch (error) {
-                                        console.error("خطأ في جلب", prov.code, error);
-                                        container.innerHTML = `<div class="text-red-500 text-xs px-4 py-2">❌ Erreur de connexion</div>`;
-                                    }
-                                }
-                            }
-                        })();
-                    </script>
-                    <!-- =================================================================================== -->
                 </div>
-
-                <!-- ================= المحرك الذكي لجلب الألعاب ================= -->
-                <script>
-                    function renderSlider(providerCode, containerId, gamesArray) {
-                        const container = document.getElementById(containerId);
-                        if (!container || !gamesArray || gamesArray.length === 0) return;
-
-                        container.innerHTML = ''; // تنظيف الصندوق قبل التعبئة
-
-                        // أخذ أول 10 ألعاب فقط لعدم إثقال الشريط
-                        const sliderGames = gamesArray.slice(0, 15);
-
-                        // رسم البطاقات بالبيانات الحقيقية (الصورة + كود التشغيل)
-                        sliderGames.forEach(game => {
-                            const gameCard = `
                 
-<div class="h-32 w-auto flex-none snap-center relative group rounded-xl overflow-hidden shadow-lg border border-white/5">   
-    <img src="${game.banner}" loading="lazy" alt="Game" class="h-full w-auto max-w-[220px] object-contain">  
-    <div class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <button onclick="playCasinoGame('${providerCode}', '${game.game_code}')" class="bg-asbet-primary text-white px-6 py-1.5 rounded-md font-bold text-sm shadow-md hover:opacity-90 transition-all">
-            Jouer
-        </button>
-    </div>
-</div>
-            `;
-                            container.innerHTML += gameCard;
-                        });
-                    }
-                </script>
-                <!-- ============================================================================== -->
-            </div>
+            </div> <!-- نهاية قسم الاستقبال -->
 
-            <!-- قسم الرياضة -->
             <!-- قسم الرياضة -->
             <div id="pane-sport" class="player-view-section space-y-4 hidden px-2 w-full min-h-[800px]">
                 <!-- حاوية الرياضة لأجهزة الكمبيوتر -->
                 <div id="sport_div_iframe" class="w-full h-full min-h-[800px]"></div>
-
                 <!-- حاوية الرياضة لأجهزة الهواتف المحمولة -->
                 <div id="application-container" class="w-full h-full min-h-[800px]"></div>
             </div>
+            
             <div id="pane-paris" class="player-view-section space-y-4 hidden px-2">
                 <div class="text-center text-gray-400 py-10 text-sm">Chargement de l'historique...</div>
             </div>
@@ -1381,82 +1273,6 @@
                             <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${title}</span>
                             <span class="text-green-500 text-[11px]">⭐</span>
                         </div>
-                    </div>
-                `;
-            });
-
-            container.insertAdjacentHTML('beforeend', htmlChunk);
-            currentlyDisplayedCount += nextBatch.length;
-        }
-        function loadMoreGames() {
-            if (currentlyDisplayedCount >= filteredProviderGames.length) return;
-            const container = document.getElementById('games-grid');
-            if (!container) return;
-
-            const nextBatch = filteredProviderGames.slice(currentlyDisplayedCount, currentlyDisplayedCount + 100);
-            let htmlChunk = '';
-
-            nextBatch.forEach(game => {
-                const title = game.game_name || game.name || game.title || "Game";
-                const img = game.banner || game.image || game.thumb || "https://placehold.co/400x300/180A2B/FFF?text=Game";
-                const code = game.game_code || game.id;
-
-                htmlChunk += `
-                   <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
-                        <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
-                            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                            <div class="absolute top-0 right-0 bg-gradient-to-r from-orange-500 to-yellow-500 text-black text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-md z-10">HOT 🔥</div>
-                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-20">
-                                <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
-                            </div>
-                        </div>
-                        <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
-                            <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${title}</span>
-                            <span class="text-green-500 text-[11px]">⭐</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            container.insertAdjacentHTML('beforeend', htmlChunk);
-            currentlyDisplayedCount += nextBatch.length;
-        }
-        function loadMoreGames() {
-            if (currentlyDisplayedCount >= filteredProviderGames.length) return;
-            const container = document.getElementById('games-grid');
-            if (!container) return;
-
-            // زيادة العدد إلى 100 لتفادي مشكلة المساحة الفارغة
-            const nextBatch = filteredProviderGames.slice(currentlyDisplayedCount, currentlyDisplayedCount + 100);
-            let htmlChunk = '';
-
-            nextBatch.forEach(game => {
-                const title = game.game_name || game.name || game.title || "Game";
-                const img = game.banner || game.image || game.thumb || "https://placehold.co/400x300/180A2B/FFF?text=Game";
-                const code = game.game_code || game.id;
-
-                htmlChunk += `
-                   <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
-                        
-                        <!-- 1. الجزء العلوي: حاوية الصورة (مربعة تماماً aspect-square) -->
-                        <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
-                            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                            
-                            <!-- شارة جذابة (مثل شارة NOUVEAU في صورتك) -->
-                            <div class="absolute top-0 right-0 bg-gradient-to-r from-orange-500 to-yellow-500 text-black text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-md z-10">HOT 🔥</div>
-
-                            <!-- زر اللعب عند التمرير -->
-                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-20">
-                                <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
-                            </div>
-                        </div>
-
-                        <!-- 2. الجزء السفلي: شريط الاسم (مستقل تماماً لكي لا يغطي الصورة) -->
-                        <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
-                            <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${title}</span>
-                            <span class="text-green-500 text-[11px]">⭐</span>
-                        </div>
-                        
                     </div>
                 `;
             });
@@ -1998,10 +1814,11 @@
             });
         }
 
-        // تشغيل ميزة السحب على الأشرطة الثلاثة بعد تحميل الصفحة
+        // تشغيل ميزة السحب على الأشرطة بعد تحميل الصفحة
         document.addEventListener('DOMContentLoaded', () => {
             // نعطي المتصفح وقتاً صغيراً جداً ليرسم الأشرطة ثم نطبق عليها السحب
             setTimeout(() => {
+                enableMouseDragScroll('providers-bar'); // 👈 أضفنا شريط المزودين هنا
                 enableMouseDragScroll('slider-pragmatic');
                 enableMouseDragScroll('slider-hacksaw');
                 enableMouseDragScroll('slider-playson');
