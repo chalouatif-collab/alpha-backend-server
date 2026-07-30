@@ -27,6 +27,7 @@ import html
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+import uuid
 
 # --- إعدادات مزود الألعاب (Nexus) الموحدة ---
 AGENT_CODE = "Alphabet1"
@@ -1677,3 +1678,226 @@ async def seamless_wallet(request: Request):
     except Exception as e:
         print(f"Wallet Error: {e}")
         return {"status": 0, "msg": "INTERNAL_ERROR"}
+    
+    import hashlib
+import time
+import httpx
+from fastapi import Request
+
+# ==========================================
+# دمج ألعاب EuroVirtuals الرياضية الافتراضية
+# ==========================================
+# سنقوم بتعبئة هذه المتغيرات بمجرد أن يرسلها لنا Kelvin
+EURO_APP_KEY = "في_انتظار_المفتاح"
+EURO_API_KEY = "في_انتظار_المفتاح"
+EURO_BASE_URL = "https://api.eurovirtuals.com" # سيتم تأكيد الرابط الأساسي منهم
+
+# دالة توليد التشفير (Signature) المعتمدة من EuroVirtuals
+def generate_euro_token(app_key, timestamp):
+    concatenated = app_key + timestamp
+    
+    # 1. التشفير الأول بـ SHA1
+    sha1_hex = hashlib.sha1(concatenated.encode('utf-8')).hexdigest()
+    
+    # 2. التشفير الثاني بـ MD5
+    token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
+    return token
+
+# مسار فتح اللعبة للاعب
+@app.post("/api/provider/launch-eurovirtuals")
+async def launch_eurovirtuals(request: Request):
+    try:
+        data = await request.json()
+        game_uuid = data.get("game_uuid")
+        user_code = str(data.get("user_code", "test_user"))
+
+        # توليد الوقت والتشفير
+        timestamp = str(int(time.time()))
+        signature = generate_euro_token(EURO_APP_KEY, timestamp)
+
+        # تجهيز الهيدر (Headers) حسب طلبهم
+        headers = {
+            "x-api-key": EURO_API_KEY,
+            "x-signature-key": signature,
+            "x-timestamp": timestamp,
+            "Content-Type": "application/json"
+        }
+
+        # تجهيز بيانات اللاعب حسب صورة Capture.PNG
+        payload = {
+            "player_id": user_code,
+            "player_name": user_code,
+            "player_token": "tok_" + user_code, # توكن وهمي للمصادقة السريعة
+            "game_uuid": str(game_uuid),
+            "currency": "TND",
+            "demo": 0 # 0 تعني لعب حقيقي بمال حقيقي
+        }
+
+        launch_endpoint = f"{EURO_BASE_URL}/v1/launch" # مسار الفتح الافتراضي لديهم
+        
+        # الاتصال بسيرفر EuroVirtuals
+        async with httpx.AsyncClient() as client:
+            response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
+            response_data = response.json()
+
+            # التحقق من نجاح الرد حسب Capture.PNG
+            if response_data.get("status_code") == 200:
+                game_url = response_data.get("data", {}).get("url")
+                return {"launch_url": game_url}
+            else:
+                return {
+                    "error": response_data.get("status_description", "المزود رفض الطلب"), 
+                    "details": response_data
+                }
+
+    except Exception as e:
+        return {"error": str(e)}
+    
+    import uuid
+from datetime import datetime
+
+# 3. مسار استعلام الرصيد (Player Info Callback)
+@app.post("/api/eurovirtuals/callback/player_info")
+async def eurovirtuals_player_info(request: Request):
+    try:
+        # 1. قراءة البيانات القادمة من EuroVirtuals
+        payload = await request.json()
+        player_id = payload.get("player_id")
+        
+        # 2. البحث عن اللاعب في قاعدة بيانات Alpha Core
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+        
+        # 3. إذا كان اللاعب غير موجود أو محظور
+        if not target_user or target_user.get("is_blocked") == 1:
+            return {
+                "status_code": 500,
+                "status_description": "Player not found or blocked"
+            }
+            
+        # 4. استخراج الرصيد الحالي
+        current_balance = float(target_user.get("balance", 0.0))
+        
+        # 5. الرد بالصيغة المطلوبة لفتح اللعبة بنجاح
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": round(current_balance, 2),
+                "currency": "TND",
+                "reference_id": str(uuid.uuid4()), # توليد رقم مرجعي فريد
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+        
+    except Exception as e:
+        print(f"EuroVirtuals Player Info Error: {e}")
+        return {
+            "status_code": 500,
+            "status_description": "Internal Server Error"
+        }
+        
+        # 4. مسار الرهان (Bet Callback - خصم الرصيد)
+@app.post("/api/eurovirtuals/callback/bet")
+async def eurovirtuals_bet(request: Request):
+    try:
+        # 1. قراءة البيانات المرسلة من المزود
+        payload = await request.json()
+        player_id = payload.get("player_id")
+        amount = float(payload.get("amount", 0.0))
+        transaction_id = payload.get("transaction_id")
+        
+        # 2. البحث عن اللاعب في قاعدة البيانات
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+        
+        # 3. التأكد من وجود اللاعب وعدم حظره
+        if not target_user or target_user.get("is_blocked") == 1:
+            return {
+                "status_code": 500,
+                "status_description": "Player not found or blocked"
+            }
+            
+        current_balance = float(target_user.get("balance", 0.0))
+        
+        # 4. حماية الرصيد: التأكد من أن اللاعب يمتلك رصيداً كافياً للرهان
+        if current_balance < amount:
+            return {
+                "status_code": 500,
+                "status_description": "Insufficient Balance"
+            }
+            
+        # 5. المعادلة الرياضية: خصم مبلغ الرهان من الرصيد
+        new_balance = current_balance - amount
+        
+        # 6. الحفظ الفوري في قاعدة البيانات
+        target_user["balance"] = round(new_balance, 2)
+        save_db(db)
+        
+        # 7. الرد بالصيغة الناجحة المطلوبة
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": round(new_balance, 2),
+                "currency": "TND",
+                "reference_id": transaction_id, # نرسل لهم نفس رقم المعاملة للتأكيد
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+        
+    except Exception as e:
+        print(f"EuroVirtuals Bet Error: {e}")
+        return {
+            "status_code": 500,
+            "status_description": "Internal Server Error"
+        }
+        
+        # 5. مسار الربح (Win Callback - إضافة الأرباح)
+@app.post("/api/eurovirtuals/callback/win")
+async def eurovirtuals_win(request: Request):
+    try:
+        # 1. قراءة البيانات المرسلة من المزود
+        payload = await request.json()
+        player_id = payload.get("player_id")
+        payout_amount = float(payload.get("payout_amount", 0.0))
+        transaction_id = payload.get("transaction_id")
+        
+        # 2. البحث عن اللاعب في قاعدة البيانات
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+        
+        # 3. التأكد من وجود اللاعب وعدم حظره
+        if not target_user or target_user.get("is_blocked") == 1:
+            return {
+                "status_code": 500,
+                "status_description": "Player not found or blocked"
+            }
+            
+        current_balance = float(target_user.get("balance", 0.0))
+        
+        # 4. المعادلة الرياضية: إضافة الأرباح إلى الرصيد الحالي
+        new_balance = current_balance + payout_amount
+        
+        # 5. الحفظ الفوري في قاعدة البيانات
+        target_user["balance"] = round(new_balance, 2)
+        save_db(db)
+        
+        # 6. الرد بالصيغة الناجحة المطلوبة
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": round(new_balance, 2),
+                "currency": "TND",
+                "reference_id": transaction_id, # نرسل لهم رقم المعاملة
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+        
+    except Exception as e:
+        print(f"EuroVirtuals Win Error: {e}")
+        return {
+            "status_code": 500,
+            "status_description": "Internal Server Error"
+        }
