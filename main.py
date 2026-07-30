@@ -1013,7 +1013,7 @@ async def launch_casino(request: Request):
         "game_code": data.get("game_code"),
         "user_code": data.get("user_code", "fethi2_test"),
         "lang": "fr",
-        "currency": "TND",
+        "currency": "EUR",
         "rtp": 92,
         "lobby_url": "https://alphabet216.com/"
     }
