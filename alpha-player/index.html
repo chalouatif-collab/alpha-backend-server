@@ -974,76 +974,45 @@
                 </div>
             </div>
 
-            <!-- قسم الكازينو والألعاب -->
-            <div id="pane-casino" class="player-view-section hidden w-full px-4 mt-2 block-container">
-                <div id="casino-controls"
-                    class="flex flex-col md:flex-row gap-4 bg-asbet-card p-4 rounded-xl border border-white/5 mb-2">
-                    <input type="text" id="game-search-input" onkeyup="filterGames()" placeholder="Chercher un jeu..."
-                        class="w-full bg-asbet-dark text-white border border-white/10 rounded-lg px-4 py-2 outline-none">
-                </div>
-                <div id="providers-bar" class="flex overflow-x-auto gap-2 no-scrollbar py-2 mb-2"></div>
-                <div id="games-grid"
-                    class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
-                </div>
-            </div>
-<!-- ================= قسم اللايف كازينو المستقل ================= -->
-            <div id="pane-live-casino" class="player-view-section hidden w-full px-4 mt-2">
-                <div class="flex items-center justify-between bg-asbet-card p-4 rounded-xl border border-white/5 mb-4">
-                    <h2 class="text-white font-black text-base flex items-center gap-2">
-                        <span class="animate-pulse text-red-500">🔴</span> Pragmatic Live Casino - Tables en Direct
-                    </h2>
-                </div>
-                <!-- شبكة عرض ألعاب اللايف وحدها -->
-                <div id="live-games-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
-                </div>
-            </div>
-            <!-- الفوتر (يظهر في أسفل الصفحة) -->
-            <div
-                class="w-full mt-8 p-5 bg-[#130822] rounded-t-3xl border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-                <div class="mb-4">
-                    <h4 class="text-gray-400 text-[10px] font-bold uppercase mb-3 text-center tracking-widest">
-                        Méthodes de Paiement</h4>
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <div
-                            class="w-14 h-8 bg-[#000000] border border-white/20 rounded-md flex items-center justify-center text-[10px] font-bold text-white">
-                            D17</div>
-                        <div
-                            class="w-14 h-8 bg-[#E3000F] rounded-md flex items-center justify-center text-[10px] font-bold text-white">
-                            Ooredoo</div>
-                        <div
-                            class="w-14 h-8 bg-[#FF6600] rounded-md flex items-center justify-center text-[10px] font-bold text-white">
-                            Orange</div>
+            <!-- الأقسام السريعة (في نفس السطر، تدعم إضافة أزرار أخرى، مع خط أبيض داخلي وتوهج وردي) -->
+                <div class="flex overflow-x-auto gap-2 hide-scrollbar mb-6 w-full py-1">
+                    
+                    <!-- زر الكازينو -->
+                    <div onclick="switchSection('casino'); initCasinoLobby();"
+                        class="flex flex-col items-center justify-center bg-[#130822] min-w-[78px] h-[65px] rounded-xl border border-white/30 btn-pink-glow transition-all cursor-pointer group p-1 shrink-0">
+                        <div class="text-[#E8006F] text-xl group-hover:scale-110 transition-transform">🎰</div>
+                        <span class="text-[8px] font-bold text-white text-center leading-tight uppercase mt-0.5">Casino</span>
                     </div>
+
+                    <!-- زر اللايف كازينو -->
+                    <div onclick="openLiveCasino()"
+                        class="flex flex-col items-center justify-center bg-[#130822] min-w-[78px] h-[65px] rounded-xl border border-white/30 btn-pink-glow transition-all cursor-pointer group p-1 shrink-0">
+                        <div class="text-asbet-primary text-xl group-hover:scale-110 transition-transform animate-pulse">🔴</div>
+                        <span class="text-[8px] font-bold text-white text-center leading-tight uppercase mt-0.5">Live Casino</span>
+                    </div>
+                    
+                    <!-- زر الألعاب الافتراضية -->
+                    <div onclick="launchVirtualGames()"
+                        class="flex flex-col items-center justify-center bg-[#130822] min-w-[78px] h-[65px] rounded-xl border border-white/30 btn-pink-glow transition-all cursor-pointer group p-1 shrink-0">
+                        <div class="text-[#E8006F] text-xl group-hover:scale-110 transition-transform">🎮</div>
+                        <span class="text-[8px] font-bold text-white text-center leading-tight uppercase mt-0.5">Virtuels</span>
+                    </div>
+                    
+                    <!-- زر الرياضة -->
+                    <div onclick="openSportsbook('prematch')"
+                        class="flex flex-col items-center justify-center bg-[#130822] min-w-[78px] h-[65px] rounded-xl border border-white/30 btn-pink-glow transition-all cursor-pointer group p-1 shrink-0">
+                        <div class="text-[#E8006F] text-xl group-hover:scale-110 transition-transform">⚽</div>
+                        <span class="text-[8px] font-bold text-white text-center leading-tight uppercase mt-0.5">Sports</span>
+                    </div>
+                    
+                    <!-- زر اللايف -->
+                    <div onclick="openSportsbook('live')"
+                        class="flex flex-col items-center justify-center bg-[#130822] min-w-[78px] h-[65px] rounded-xl border border-white/30 btn-pink-glow transition-all cursor-pointer group p-1 shrink-0">
+                        <div class="text-[#E8006F] text-xl group-hover:scale-110 transition-transform">⏱️</div>
+                        <span class="text-[8px] font-bold text-white text-center leading-tight uppercase mt-0.5">Live Sport</span>
+                    </div>
+
                 </div>
-                <div class="grid grid-cols-2 gap-4 mb-4 text-center border-t border-b border-white/5 py-4">
-                    <a href="javascript:void(0)" onclick="openTermsModal()" class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Termes et Conditions</a>
-                    <a href="javascript:void(0)" onclick="openResponsibleModal()" class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Jeu Responsable</a>
-                </div>
-                <div class="text-center text-gray-500 text-[9px] opacity-60">
-                    <p>© 2026 Alphabet216. Tous droits réservés.</p>
-                    <p class="mt-1 font-light tracking-wide">Gain mensuel maximum : 30 000 TND</p>
-                </div>
-            </div>
-
-            <!-- المساحة الآمنة السفلية (تمنع اختفاء المحتوى خلف أزرار الهاتف) -->
-            <div style="height: 100px; width: 100%; display: block; clear: both;"></div>
-
-        </main>
-    </div>
-
-    <!-- شاشات عرض الألعاب -->
-    <div id="casino-iframe-container" class="fixed inset-0 z-[120] bg-black hidden flex-col">
-        <button onclick="closeCasinoGame()"
-            class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">✖</button>
-        <iframe id="casino-iframe" class="w-full h-full border-0"></iframe>
-    </div>
-
-    <div id="sportsbook-overlay" class="fixed inset-0 z-[120] bg-asbet-dark flex flex-col hidden">
-        <div class="h-14 w-full bg-asbet-card border-b border-white/10 flex items-center justify-between px-4">
-            <button onclick="closeSportsbook()" class="text-gray-400 hover:text-asbet-primary text-3xl">&times;</button>
-        </div>
-        <iframe id="sportsbook-iframe" src="" frameborder="0" class="w-full h-full"></iframe>
-    </div>
 
     <!-- ==================== السكريبتات الحقيقية والكاملة ==================== -->
     <script>
