@@ -509,7 +509,7 @@ async def auto_settle_tickets():
 @app.on_event("startup")
 async def start_background_tasks():
     asyncio.create_task(auto_settle_tickets())
-
+    asyncio.create_task(daily_cashback_system()) # 👈 السطر الجديد الذي أضفناه
 def load_db():
     # 1. جلب البيانات من فايربيز مباشرة
     ref = db.reference('/')
@@ -564,6 +564,45 @@ def load_tickets_db():
 def save_tickets_db(data):
     with open(TICKETS_FILE, "w") as f:
         json.dump(data, f, indent=4)
+async def daily_cashback_system():
+    # ننتظر قليلاً عند تشغيل السيرفر قبل بدء الفحص
+    await asyncio.sleep(15)
+    while True:
+        try:
+            now = datetime.now()
+            # فحص إذا كانت الساعة 12:00 منتصف الليل
+            if now.hour == 0 and now.minute < 10:
+                print("⏳ [Cashback] جاري فحص وتوزيع الكاش باك اليومي...")
+                db = load_db()
+                changes_made = False
+                
+                for u in db:
+                    current_balance = float(u.get("balance", 0.0))
+                    daily_deps = float(u.get("daily_deposits", 0.0))
+                    
+                    # إذا كان اللاعب قد أودع أموالاً اليوم
+                    if daily_deps > 0:
+                        # إذا خسر أمواله (رصيده أقل من 1)
+                        if current_balance < 1.0:
+                            cashback_amount = daily_deps * 0.10
+                            u["balance"] = round(current_balance + cashback_amount, 2)
+                        
+                        # تصفير العدادات للجميع لبدء يوم جديد
+                        u["daily_deposits"] = 0
+                        changes_made = True
+                        
+                if changes_made:
+                    save_db(db)
+                    print("✅ [Cashback] تم الانتهاء من التوزيع وتصفير العدادات بنجاح!")
+                
+                # النوم لمدة ساعة لضمان عدم تكرار العملية في نفس الليلة
+                await asyncio.sleep(3600)
+            else:
+                # الفحص كل 5 دقائق لانتظار حلول منتصف الليل
+                await asyncio.sleep(300)
+        except Exception as e:
+            print(f"❌ [Cashback] حدث خطأ: {e}")
+            await asyncio.sleep(300)        
 
 # ==========================================
 # النماذج (Models)
@@ -743,11 +782,6 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             if not admin_user: raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
             if admin_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
             admin_user["balance"] -= amount
-        
-        current_balance, daily_deps = target_user.get("balance", 0), target_user.get("daily_deposits", 0)
-        if current_balance < 1.0 and daily_deps > 0:
-            target_user["balance"] = current_balance + (daily_deps * 0.10)
-            target_user["daily_deposits"] = 0
         
         target_user["balance"] = target_user.get("balance", 0) + amount
         if admin != "system": target_user["daily_deposits"] = target_user.get("daily_deposits", 0) + amount
