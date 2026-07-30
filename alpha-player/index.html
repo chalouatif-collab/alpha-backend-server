@@ -608,7 +608,7 @@
         </aside>
 
         <!-- ساحة المحتوى الرئيسية: إزالة القيود عن التمرير ليصبح مسؤولية الـ body -->
-        <main id="main-content-area" class="flex-1 w-full relative min-w-0 overflow-hidden">
+        <main id="main-content-area" class="flex-1 max-w-7xl mx-auto w-full relative min-w-0 overflow-hidden">
 
             <div id="pane-accueil" class="player-view-section block w-full max-w-[1400px] mx-auto md:px-4">
                 <div
@@ -616,8 +616,7 @@
                 </div>
 
                 <!-- ================= شريط الفائزين المضيء (الجديد) ================= -->
-                <div
-                    class="w-full bg-gradient-to-r from-[#180A2B] via-[#2A0845] to-[#180A2B] border border-asbet-accent/40 shadow-[0_0_20px_rgba(250,204,21,0.2)] py-2.5 mb-4 rounded-xl relative mt-2 overflow-hidden">
+                <div class="w-full bg-gradient-to-r from-[#180A2B] via-[#2A0845] to-[#180A2B] border border-asbet-accent/40 shadow-[0_0_20px_rgba(250,204,21,0.2)] py-2.5 mb-4 rounded-xl relative mt-2 overflow-hidden">
                     <!-- إضاءة خلفية متحركة -->
                     <div class="absolute inset-0 bg-asbet-accent/5 animate-pulse"></div>
 
@@ -628,21 +627,54 @@
                 </div>
                 <!-- ================================================================ -->
 
+                <!-- الجاكبوت (تم نقله هنا!) -->
+                <div class="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
+                    <!-- Mega -->
+                    <div class="bg-gradient-to-b from-[#2a1b3d] to-[#130822] border border-[#ffb800]/40 rounded-xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(255,184,0,0.15)] hover:shadow-[0_0_20px_rgba(255,184,0,0.3)] transition-shadow">
+                        <span class="text-[#ffb800] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-md">Mega 🥇</span>
+                        <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-mega">124,567.89</div>
+                    </div>
+                    <!-- Major -->
+                    <div class="bg-gradient-to-b from-[#2a1b3d] to-[#130822] border border-gray-300/40 rounded-xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(209,213,219,0.1)] hover:shadow-[0_0_20px_rgba(209,213,219,0.2)] transition-shadow">
+                        <span class="text-gray-300 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-md">Major 🥈</span>
+                        <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-major">14,230.50</div>
+                    </div>
+                    <!-- Mini -->
+                    <div class="bg-gradient-to-b from-[#2a1b3d] to-[#130822] border border-orange-500/40 rounded-xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.15)] hover:shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-shadow">
+                        <span class="text-orange-500 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-md">Mini 🥉</span>
+                        <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider" id="jackpot-mini">1,850.25</div>
+                    </div>
+                </div>
                 <!-- الأقسام السريعة -->
                 <div class="grid grid-cols-4 gap-2 md:gap-3 mb-6 w-full">
+                    <!-- زر الكازينو -->
                     <div onclick="switchSection('casino'); initCasinoLobby();"
-                        class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
-                        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🎰
-                        </div>
-                        <span
-                            class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Casino</span>
+                        class="flex flex-col lg:flex-row items-center justify-center bg-[#130822] h-[80px] lg:h-[60px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group gap-2">
+                        <div class="text-[#E8006F] text-2xl lg:text-xl group-hover:scale-110 transition-transform">🎰</div>
+                        <span class="text-[9px] lg:text-xs font-bold text-gray-300 text-center leading-tight uppercase">Casino</span>
                     </div>
+                    
+                    <!-- زر الألعاب الافتراضية -->
                     <div onclick="launchVirtualGames()"
-                        class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-asbet-primary/50 cursor-pointer group">
-                        <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">🎮</div>
-                        <span class="text-[9px] font-bold text-gray-300 text-center leading-tight uppercase">Jeux
-                            Virtuels</span>
+                        class="flex flex-col lg:flex-row items-center justify-center bg-[#130822] h-[80px] lg:h-[60px] rounded-xl border border-white/5 shadow-md hover:border-asbet-primary/50 cursor-pointer group gap-2">
+                        <div class="text-[#E8006F] text-2xl lg:text-xl group-hover:scale-110 transition-transform">🎮</div>
+                        <span class="text-[9px] lg:text-xs font-bold text-gray-300 text-center leading-tight uppercase">Jeux Virtuels</span>
                     </div>
+                    
+                    <!-- زر الرياضة -->
+                    <div onclick="openSportsbook('prematch')"
+                        class="flex flex-col lg:flex-row items-center justify-center bg-[#130822] h-[80px] lg:h-[60px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group gap-2">
+                        <div class="text-[#E8006F] text-2xl lg:text-xl group-hover:scale-110 transition-transform">⚽</div>
+                        <span class="text-[9px] lg:text-xs font-bold text-gray-300 text-center leading-tight uppercase">Sports</span>
+                    </div>
+                    
+                    <!-- زر اللايف -->
+                    <div onclick="openSportsbook('live')"
+                        class="flex flex-col lg:flex-row items-center justify-center bg-[#130822] h-[80px] lg:h-[60px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group gap-2">
+                        <div class="text-[#E8006F] text-2xl lg:text-xl group-hover:scale-110 transition-transform">⏱️</div>
+                        <span class="text-[9px] lg:text-xs font-bold text-gray-300 text-center leading-tight uppercase">Live Sport</span>
+                    </div>
+                </div>
                     <div onclick="openSportsbook('prematch')"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[80px] rounded-xl border border-white/5 shadow-md hover:border-[#E8006F] transition-all cursor-pointer group">
                         <div class="text-[#E8006F] text-2xl mb-1 group-hover:scale-110 transition-transform">⚽</div>
@@ -737,30 +769,6 @@
                         </div>
                     </div>
 
-                </div>
-
-                <!-- الجاكبوت -->
-                <div class="grid grid-cols-3 gap-2 md:gap-4 mb-2">
-                    <div
-                        class="bg-gradient-to-b from-asbet-accent/20 to-asbet-card border border-asbet-accent/40 rounded-2xl p-3 text-center">
-                        <div class="text-asbet-accent font-black text-[9px] uppercase mb-1">Mega 🥇</div>
-                        <div class="text-white font-mono font-black text-[11px]" id="jackpot-mega">124,567.89</div>
-                    </div>
-                    <div
-                        class="bg-gradient-to-b from-gray-300/20 to-asbet-card border border-gray-300/40 rounded-2xl p-3 text-center">
-                        <div class="text-gray-300 font-black text-[9px] uppercase mb-1">Major 🥈</div>
-                        <div class="text-white font-mono font-black text-[11px]" id="jackpot-major">14,230.50</div>
-                    </div>
-                    <div
-                        class="bg-gradient-to-b from-orange-600/20 to-asbet-card border border-orange-600/40 rounded-2xl p-3 text-center">
-                        <div class="text-orange-500 font-black text-[9px] uppercase mb-1">Mini 🥉</div>
-                        <div class="text-white font-mono font-black text-[11px]" id="jackpot-mini">1,850.25</div>
-                    </div>
-                </div>
-
-                <div class="col-span-full w-full bg-asbet-card p-4 rounded-3xl border border-white/5 mb-6 shadow-xl">
-                    <h3 class="text-white font-black text-xs uppercase tracking-wider mb-4">⭐ Trending Games</h3>
-                    <div id="trending-games-container" class="grid grid-cols-3 md:grid-cols-5 gap-2"></div>
                 </div>
                 <!-- ================= قسم أشرطة الألعاب (تحت الألعاب الرائجة) ================= -->
 
