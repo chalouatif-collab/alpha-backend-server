@@ -263,6 +263,22 @@
             background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, #ef4444 360deg);
             animation: border-glow-spin 3s linear infinite;
         }
+/* تأثير خاص عندما يقترب الجاكبوت من النزول (سرعة جنونية ونبض تحذيري) */
+        @keyframes urgent-flash {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8)); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1)); transform: scale(1.03); }
+        }
+
+        .about-to-drop {
+            animation: urgent-flash 0.4s infinite ease-in-out !important;
+        }
+
+        /* تحويل الإطار إلى ألوان ملتهبة عند قرب النزول */
+        .about-to-drop::before {
+            background: conic-gradient(from 0deg, transparent 0deg, #ff0000 180deg, #ffd700 360deg) !important;
+            animation: border-glow-spin 1s linear infinite !important; /* دوران أسرع بكثير للإيحاء بقرب الحدث */
+        }
+
     </style>
 </head>
 
@@ -718,33 +734,34 @@
                 </div>
                 <!-- ================================================================ -->
 
-                <!-- الجاكبوت (مع أشرطة متوهجة تدور وتنبض) -->
+                <!-- الجاكبوت مع معرفات الغلاف -->
                 <div class="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
                     
-                    <!-- Mega (ذهبي) -->
-                    <div class="jackpot-card-wrapper mega-glow shadow-[0_0_20px_rgba(255,215,0,0.2)]">
+                    <!-- Mega -->
+                    <div id="mega-wrapper" class="jackpot-card-wrapper mega-glow shadow-[0_0_20px_rgba(255,215,0,0.2)]">
                         <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
-                            <span class="text-[#ffd700] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]">Mega 🥇</span>
+                            <span class="text-[#ffd700] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]">Mega 🥇 <span id="mega-alert" class="text-xs hidden">🔥 HOT!</span></span>
                             <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-mega">124,567.89</div>
                         </div>
                     </div>
 
-                    <!-- Major (فضي) -->
-                    <div class="jackpot-card-wrapper major-glow shadow-[0_0_20px_rgba(229,231,235,0.15)]">
+                    <!-- Major -->
+                    <div id="major-wrapper" class="jackpot-card-wrapper major-glow shadow-[0_0_20px_rgba(229,231,235,0.15)]">
                         <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
                             <span class="text-gray-200 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">Major 🥈</span>
                             <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-major">14,230.50</div>
                         </div>
                     </div>
 
-                    <!-- Mini (أحمر ساطع وغامق) -->
-                    <div class="jackpot-card-wrapper mini-glow shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                    <!-- Mini -->
+                    <div id="mini-wrapper" class="jackpot-card-wrapper mini-glow shadow-[0_0_20px_rgba(239,68,68,0.3)]">
                         <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
                             <span class="text-red-500 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)]">Mini 🥉</span>
                             <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-mini">1,850.25</div>
                         </div>
                     </div>
 
+                </div>
                 </div>
                 <!-- الأقسام السريعة -->
                 <div class="grid grid-cols-4 gap-2 md:gap-3 mb-6 w-full">
@@ -1397,12 +1414,33 @@
             setInterval(() => {
                 const now = new Date();
                 let miniProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+                
+                // حساب القيم
+                let megaVal = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000);
+                let majorVal = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350);
+                let miniVal = (miniProgress * 120);
+
+                // تحديث النصوص في الشاشة
                 const m = document.getElementById('jackpot-mega');
-                if (m) m.innerText = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000).toFixed(2);
+                if (m) m.innerText = megaVal.toFixed(2);
+                
                 const maj = document.getElementById('jackpot-major');
-                if (maj) maj.innerText = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350).toFixed(2);
+                if (maj) maj.innerText = majorVal.toFixed(2);
+                
                 const min = document.getElementById('jackpot-mini');
-                if (min) min.innerText = (miniProgress * 120).toFixed(2);
+                if (min) min.innerText = miniVal.toFixed(2);
+
+                // ⚡ الذكاء الإصطناعي للتوهج: إذا اقترب الميغا مثلاً من رقم معين (أو بناءً على وقت محدد من اليوم)
+                // كمثال: إذا كانت القيمة تتجاوز 700، نفعل حالة التوهج الخطير (قريب من النزول!)
+                const megaWrapper = document.getElementById('mega-wrapper');
+                if (megaWrapper) {
+                    if (megaVal > 700) { // يمكنك تغيير هذا الشرط حسب رغبتك أو بناءً على القيمة القصوى
+                        megaWrapper.classList.add('about-to-drop');
+                    } else {
+                        megaWrapper.classList.remove('about-to-drop');
+                    }
+                }
+
             }, 1000);
         }
 
