@@ -1131,6 +1131,9 @@
             if (sectionId === 'paris') {
                 if (typeof renderMyBetsHistoryPane === 'function') renderMyBetsHistoryPane();
             }
+            if (sectionId === 'casino') {
+                initCasinoLobby();
+            }
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
             closeProfileMenu();
