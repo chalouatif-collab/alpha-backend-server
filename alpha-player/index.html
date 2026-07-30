@@ -240,6 +240,39 @@
     </header>
 
 
+    <!-- نافذة الشروط والأحكام (Termes et Conditions) -->
+    <div id="terms-modal" class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-2xl bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-6 md:p-8 shadow-2xl relative flex flex-col max-h-[80vh]">
+            <button onclick="closeTermsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+            <h2 class="text-white text-xl md:text-2xl font-black mb-4 flex items-center gap-2">📜 Termes et Conditions</h2>
+            <div class="overflow-y-auto pr-2 space-y-4 text-gray-300 text-xs md:text-sm leading-relaxed hide-scrollbar">
+                <p><strong>1. Acceptation des conditions :</strong> En utilisant Alphabet216, vous acceptez d'être lié par ces termes et conditions générales.</p>
+                <p><strong>2. Âge légal :</strong> Vous devez avoir au moins 18 ans pour ouvrir un compte et participer à nos jeux.</p>
+                <p><strong>3. Responsabilité du compte :</strong> Vous êtes seul responsable de la sécurité de vos identifiants de connexion. Toute activité sur votre compte est considérée comme la vôtre.</p>
+                <p><strong>4. Limites de gain :</strong> Le gain mensuel maximum autorisé sur la plateforme est fixé à 30 000 TND.</p>
+                <p><strong>5. Dépôts et Retraits :</strong> Les transactions doivent être effectuées via les méthodes approuvées (D17, USDT, Ooredoo, Orange). La direction se réserve le droit de vérifier l'identité avant de valider un retrait.</p>
+                <p><strong>6. Lutte contre la fraude :</strong> Alphabet216 se réserve le droit de suspendre ou de fermer définitivement tout compte suspecté de fraude, de tricherie, ou d'abus de bonus sans préavis.</p>
+            </div>
+            <button onclick="closeTermsModal()" class="w-full btn-gradient text-white font-black py-3 rounded-xl uppercase mt-6 shadow-lg cursor-pointer">J'ai compris</button>
+        </div>
+    </div>
+
+    <!-- نافذة اللعب المسؤول (Jeu Responsable) -->
+    <div id="responsible-modal" class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-2xl bg-asbet-dark border border-green-500/50 rounded-3xl p-6 md:p-8 shadow-2xl relative flex flex-col max-h-[80vh]">
+            <button onclick="closeResponsibleModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+            <h2 class="text-white text-xl md:text-2xl font-black mb-4 flex items-center gap-2 text-green-400">🛡️ Jeu Responsable</h2>
+            <div class="overflow-y-auto pr-2 space-y-4 text-gray-300 text-xs md:text-sm leading-relaxed hide-scrollbar">
+                <p>Chez Alphabet216, nous voulons que votre expérience de jeu reste un divertissement amusant, sûr et maîtrisé.</p>
+                <p><strong>1. Jouez pour le plaisir :</strong> Le jeu doit rester un loisir et non un moyen de gagner sa vie ou de rembourser des dettes.</p>
+                <p><strong>2. Fixez des limites :</strong> Ne jouez qu'avec l'argent que vous pouvez vous permettre de perdre. Fixez-vous des limites de temps et de budget avant de commencer.</p>
+                <p><strong>3. Ne poursuivez pas vos pertes :</strong> Si vous perdez, n'essayez pas de récupérer votre argent en jouant davantage de manière impulsive.</p>
+                <p><strong>4. Gardez le contrôle :</strong> Si vous sentez que vous perdez le contrôle de vos habitudes de jeu, prenez une pause immédiate.</p>
+                <p><strong>5. Auto-exclusion :</strong> Si vous souhaitez fermer votre compte temporairement ou définitivement pour des raisons d'addiction, veuillez contacter notre support pour bloquer votre accès.</p>
+            </div>
+            <button onclick="closeResponsibleModal()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl uppercase mt-6 shadow-lg cursor-pointer transition-colors">D'accord</button>
+        </div>
+    </div>
     <div id="player-login-modal"
         class="fixed inset-0 z-[110] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="w-full max-w-md bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-8 shadow-2xl relative">
@@ -865,8 +898,8 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-4 text-center border-t border-b border-white/5 py-4">
-                    <a href="#" class="text-gray-400 text-[11px] hover:text-[#E8006F]">Termes et Conditions</a>
-                    <a href="#" class="text-gray-400 text-[11px] hover:text-[#E8006F]">Jeu Responsable</a>
+                    <a href="javascript:void(0)" onclick="openTermsModal()" class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Termes et Conditions</a>
+                    <a href="javascript:void(0)" onclick="openResponsibleModal()" class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Jeu Responsable</a>
                 </div>
                 <div class="text-center text-gray-500 text-[9px] opacity-60">
                     <p>© 2026 Alphabet216. Tous droits réservés.</p>
@@ -1983,6 +2016,27 @@
         alert("خطأ في الاتصال بالخادم.");
     }
 }
+
+// ================= دوال الشروط واللعب المسؤول =================
+        function openTermsModal() {
+            const modal = document.getElementById('terms-modal');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+            closeProfileMenu();
+        }
+        function closeTermsModal() {
+            const modal = document.getElementById('terms-modal');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        }
+
+        function openResponsibleModal() {
+            const modal = document.getElementById('responsible-modal');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+            closeProfileMenu();
+        }
+        function closeResponsibleModal() {
+            const modal = document.getElementById('responsible-modal');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        }
     </script>
 </body>
 
