@@ -1952,3 +1952,76 @@ async def eurovirtuals_win(request: Request):
             "status_code": 500,
             "status_description": "Internal Server Error"
         }
+        
+        # دالة التحقق الخاصة بالـ Callbacks
+def verify_callback_token(app_key: str, timestamp: str, received_token: str) -> bool:
+    concatenated = str(app_key) + str(timestamp)
+    sha1_hex = hashlib.sha1(concatenated.encode('utf-8')).hexdigest()
+    expected_token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
+    return expected_token == received_token
+
+# مسار معلومات اللاعب
+@app.post("/api/provider/eurovirtuals/player_info")
+async def euro_player_info(request: Request, x_timestamp: str = Header(None), x_token: str = Header(None)):
+    try:
+        data = await request.json()
+        player_id = data.get("player_id")
+        
+        if not verify_callback_token(EURO_APP_KEY, x_timestamp, x_token):
+            return {"status_code": 401, "status_description": "Invalid token!"}
+
+        user_balance = 1000.00
+        
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "player_id": player_id,
+                "balance": user_balance,
+                "currency": "TND"
+            }
+        }
+    except Exception as e:
+        return {"status_code": 500, "status_description": str(e)}
+
+# مسار خصم الرهان (Bet)
+@app.post("/api/provider/eurovirtuals/bet")
+async def euro_bet(request: Request, x_timestamp: str = Header(None), x_token: str = Header(None)):
+    try:
+        data = await request.json()
+        player_id = data.get("player_id")
+        amount = data.get("amount", 0)
+        
+        if not verify_callback_token(EURO_APP_KEY, x_timestamp, x_token):
+            return {"status_code": 401, "status_description": "Invalid token!"}
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": 950.00
+            }
+        }
+    except Exception as e:
+        return {"status_code": 500, "status_description": str(e)}
+
+# مسار إضافة الأرباح (Win)
+@app.post("/api/provider/eurovirtuals/win")
+async def euro_win(request: Request, x_timestamp: str = Header(None), x_token: str = Header(None)):
+    try:
+        data = await request.json()
+        player_id = data.get("player_id")
+        amount = data.get("amount", 0)
+        
+        if not verify_callback_token(EURO_APP_KEY, x_timestamp, x_token):
+            return {"status_code": 401, "status_description": "Invalid token!"}
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": 1050.00
+            }
+        }
+    except Exception as e:
+        return {"status_code": 500, "status_description": str(e)}
