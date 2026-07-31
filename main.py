@@ -1763,7 +1763,13 @@ async def launch_eurovirtuals(request: Request):
         # الاتصال بسيرفر EuroVirtuals
         async with httpx.AsyncClient() as client:
             response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
-            response_data = response.json()
+            
+            # ⚡ الإصلاح هنا: التقاط الرد النصي بأمان وحماية السيرفر من الانهيار
+            try:
+                response_data = response.json()
+            except Exception:
+                # إذا لم يكن الرد JSON، نلتقط النص الحقيقي (سبب الرفض)
+                return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
 
             # التحقق من نجاح الرد حسب Capture.PNG
             if response_data.get("status_code") == 200:
