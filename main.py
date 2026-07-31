@@ -1728,62 +1728,47 @@ def generate_euro_token(app_key, timestamp):
     token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
     return token
 
-# مسار فتح اللعبة للاعب
+# مسار فتح الألعاب الافتراضية (باستخدام نظام Betkraft الموحد)
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        game_uuid = data.get("game_uuid")
-        user_code = str(data.get("user_code", "test_user"))
-
-        # توليد الوقت والتشفير
-        timestamp = str(int(time.time()))
-        signature = generate_euro_token(EURO_APP_KEY, timestamp)
-
-        # تجهيز الهيدر (Headers) حسب طلبهم
+        
+        # 1. تجهيز البيانات للإرسال لشركة Betkraft (بدلاً من نظام EuroVirtuals المعقد)
+        payload = {
+            "game_id": data.get("game_uuid", "default_virtual_game"), # سيتم تغييره لاحقاً للكود الدقيق للعبة
+            "provider": "EUROVIRTUALS", # نخمن أن اسم المزود لديهم هو هذا، وسنكتشف الحقيقة من الرد
+            "player_id": data.get("user_code", "test_user"),
+            "currency": "TND",
+            "language": "fr"
+        }
+        
+        # 2. وضع المفاتيح السرية الخاصة بـ Betkraft
         headers = {
-            "x-api-key": EURO_API_KEY,
-            "x-signature-key": signature,
-            "x-timestamp": timestamp,
+            "App-Key": str(BETKRAFT_APP_KEY),
+            "Api-Key": str(BETKRAFT_API_KEY),
             "Content-Type": "application/json"
         }
-
-        # تجهيز بيانات اللاعب حسب صورة Capture.PNG
-        payload = {
-            "player_id": user_code,
-            "player_name": user_code,
-            "player_token": "tok_" + user_code, # توكن وهمي للمصادقة السريعة
-            "game_uuid": str(game_uuid),
-            "currency": "TND",
-            "demo": 0 # 0 تعني لعب حقيقي بمال حقيقي
-        }
-
-        launch_endpoint = f"{EURO_BASE_URL}/v1/launch" # مسار الفتح الافتراضي لديهم
         
-        # الاتصال بسيرفر EuroVirtuals
-        async with httpx.AsyncClient() as client:
-            response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
+        # 3. الاتصال بسيرفر Betkraft
+        endpoint = f"{BETKRAFT_BASE_URL}api/game/launch"
+        response = requests.post(endpoint, json=payload, headers=headers)
+        
+        # 4. التقاط الرد بأمان
+        try:
+            response_data = response.json()
+        except Exception:
+            return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
             
-            # ⚡ الإصلاح هنا: التقاط الرد النصي بأمان وحماية السيرفر من الانهيار
-            try:
-                response_data = response.json()
-            except Exception:
-                # إذا لم يكن الرد JSON، نلتقط النص الحقيقي (سبب الرفض)
-                return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
-
-            # التحقق من نجاح الرد حسب Capture.PNG
-            if response_data.get("status_code") == 200:
-                game_url = response_data.get("data", {}).get("url")
-                return {"launch_url": game_url}
-            else:
-                return {
-                    "error": response_data.get("status_description", "المزود رفض الطلب"), 
-                    "details": response_data
-                }
-
+        # 5. استخراج رابط اللعبة
+        game_url = response_data.get("url") or response_data.get("launch_url")
+        if game_url: 
+            return {"launch_url": game_url}
+        else: 
+            return {"error": "المزود رفض الطلب", "details": response_data}
+            
     except Exception as e:
         return {"error": str(e)}
-    
     import uuid
 from datetime import datetime
 
