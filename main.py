@@ -1082,7 +1082,7 @@ async def launch_casino(request: Request):
         
         # الاتصال برابط NexusGGR الأساسي
         base_url_clean = "https://api.nexusggr.eu"
-        endpoint = f"{base_url_clean}/api/game/launch" # أو المسار المعتمد لديهم
+        endpoint = f"{base_url_clean}/launch"
         
         response = requests.post(endpoint, json=payload, headers=headers)
         
