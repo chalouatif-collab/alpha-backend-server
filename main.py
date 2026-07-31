@@ -45,9 +45,10 @@ import time
 
 # --- إعدادات مزود الألعاب (Nexus) الموحدة ---
 AGENT_CODE = "Alphabet1"
-AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
-NEXUS_SECRET_KEY = "6cb0c1a5dc8a38b89258ad8417026bf9" # تمت إضافته من صورتك
+AGENT_TOKEN = "60f44d247b838f1c7cb99655fc943292"
+NEXUS_SECRET_KEY = "6f1dbd5da827207a5302fd4b3fc4c151"
 PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
+
 # سحب الأسرار لحفظها في متغيرات داخل الكود
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
@@ -1056,12 +1057,14 @@ async def launch_sportsbook(request: Request):
             
     except Exception as e:
         return {"error": str(e)}
+    
+    
 @app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
         data = await request.json()
         
-        # 1. تجهيز البيانات للإرسال لشركة Betkraft
+        # تجهيز البيانات المرسلة لشركة NexusGGR
         payload = {
             "game_id": data.get("game_code"),
             "provider": data.get("provider_code"),
@@ -1070,32 +1073,28 @@ async def launch_casino(request: Request):
             "language": "fr"
         }
         
-        # 2. وضع المفاتيح السرية في الرأس (Headers)
+        # ضبط الهيدر (Headers) بالمعلومات والمفاتيح الخاصة بـ NexusGGR
         headers = {
-            "App-Key": str(BETKRAFT_APP_KEY),
-            "Api-Key": str(BETKRAFT_API_KEY),
+            "Token": "60f44d247b838f1c7cb99655fc943292",
+            "Secret-Key": "6f1dbd5da827207a5302fd4b3fc4c151",
             "Content-Type": "application/json"
         }
         
-        # 3. الاتصال بسيرفر الشركة لفتح اللعبة
-        # تنظيف الرابط الأساسي وإضافة المسار بشكل صحيح
-        base_url_clean = str(BETKRAFT_BASE_URL).rstrip('/')
-        endpoint = f"{base_url_clean}/api/game/launch"
+        # الاتصال برابط NexusGGR الأساسي
+        base_url_clean = "https://api.nexusggr.eu"
+        endpoint = f"{base_url_clean}/api/game/launch" # أو المسار المعتمد لديهم
+        
         response = requests.post(endpoint, json=payload, headers=headers)
         
-        # 4. محاولة قراءة الرد بأمان (هنا الإصلاح ⚡)
         try:
             response_data = response.json()
         except Exception:
-            # إذا لم يكن الرد بصيغة JSON، نلتقط النص الحقيقي الذي أرسلته الشركة
-            return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
-        
-        # 5. استخراج رابط اللعبة
-        game_url = response_data.get("url") or response_data.get("launch_url")
-        if game_url: 
-            return {"launch_url": game_url}
-        else: 
-            return {"error": "المزود رفض الطلب", "details": response_data}
+            return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
+            
+        if response.status_code == 200 and "url" in response_data:
+            return {"launch_url": response_data.get("url")}
+        else:
+            return {"error": response_data.get("message", "المزود رفض الطلب"), "details": response_data}
             
     except Exception as e:
         return {"error": str(e)}
