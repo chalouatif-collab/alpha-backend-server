@@ -1067,7 +1067,9 @@ async def launch_casino(request: Request):
         }
         
         # 3. الاتصال بسيرفر الشركة لفتح اللعبة
-        endpoint = f"{BETKRAFT_BASE_URL}api/game/launch"
+        # تنظيف الرابط الأساسي وإضافة المسار بشكل صحيح
+        base_url_clean = str(BETKRAFT_BASE_URL).rstrip('/')
+        endpoint = f"{base_url_clean}/api/game/launch"
         response = requests.post(endpoint, json=payload, headers=headers)
         
         # 4. محاولة قراءة الرد بأمان (هنا الإصلاح ⚡)
@@ -1751,7 +1753,9 @@ async def launch_eurovirtuals(request: Request):
         }
         
         # 3. الاتصال بسيرفر Betkraft
-        endpoint = f"{BETKRAFT_BASE_URL}api/game/launch"
+        # تنظيف الرابط الأساسي وإضافة المسار بشكل صحيح
+        base_url_clean = str(BETKRAFT_BASE_URL).rstrip('/')
+        endpoint = f"{base_url_clean}/api/game/launch"
         response = requests.post(endpoint, json=payload, headers=headers)
         
         # 4. التقاط الرد بأمان
