@@ -1735,7 +1735,7 @@ def generate_euro_token(app_key, timestamp):
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        game_uuid = data.get("game_uuid")
+        data["game_uuid"] = "lobby"
         user_code = str(data.get("user_code", "test_user"))
 
         # توليد الوقت والتشفير الخاص بـ EuroVirtuals
@@ -1753,7 +1753,7 @@ async def launch_eurovirtuals(request: Request):
             "player_id": user_code,
             "player_name": user_code,
             "player_token": "tok_" + user_code,
-            "game_uuid": str(game_uuid),
+            "game_uuid": "lobby",
             "currency": "TND",
             "demo": 0
         }
