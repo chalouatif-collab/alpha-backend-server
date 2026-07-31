@@ -1709,9 +1709,9 @@ from fastapi import Request
 # دمج ألعاب EuroVirtuals الرياضية الافتراضية
 # ==========================================
 # سنقوم بتعبئة هذه المتغيرات بمجرد أن يرسلها لنا Kelvin
-EURO_APP_KEY = "في_انتظار_المفتاح"
-EURO_API_KEY = "في_انتظار_المفتاح"
-EURO_BASE_URL = "https://api.eurovirtuals.com" # سيتم تأكيد الرابط الأساسي منهم
+EURO_APP_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
+EURO_API_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
+EURO_BASE_URL = "https://api.staging.betkraft.co.uk/" # سيتم تأكيد الرابط الأساسي منهم
 
 # دالة توليد التشفير (Signature) المعتمدة من EuroVirtuals
 def generate_euro_token(app_key, timestamp):
