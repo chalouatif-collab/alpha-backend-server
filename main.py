@@ -1719,28 +1719,54 @@ EURO_APP_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
 EURO_API_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
 EURO_BASE_URL = "https://api.staging.betkraft.co.uk/" # سيتم تأكيد الرابط الأساسي منهم
 
-# دالة توليد التشفير (Signature) المعتمدة من EuroVirtuals
-def generate_euro_token(app_key, timestamp):
-    concatenated = app_key + timestamp
-    
-    # 1. التشفير الأول بـ SHA1
-    sha1_hex = hashlib.sha1(concatenated.encode('utf-8')).hexdigest()
-    
-    # 2. التشفير الثاني بـ MD5
-    token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
-    return token
+import hashlib
+import time
 
-# مسار فتح الألعاب الافتراضية الخاص بشركة EuroVirtuals حصرياً
+# 1. دالة التشفير الجديدة والمطابقة لوثائق EuroVirtuals حرفياً
+def generate_euro_signature(payload, app_key):
+    # الخطوة 1: استخراج المفاتيح وترتيبها أبجدياً
+    sorted_keys = sorted(payload.keys())
+    
+    hashkey_parts = []
+    # الخطوة 2: المرور على المفاتيح وربطها بقيمها
+    for key in sorted_keys:
+        value = payload[key]
+        # دمج المفتاح مع قيمته
+        hashkey_parts.append(f"{key}={value}")
+        
+    # ربط جميع العناصر بعلامة & (هذا يزيل الـ & الزائدة في البداية تلقائياً كما طلبوا)
+    hashkey = "&".join(hashkey_parts)
+    
+    # الخطوة 3: إضافة الـ App Key في نهاية النص
+    final_string = hashkey + str(app_key)
+    
+    # الخطوة 4: التشفير النهائي بـ MD5
+    final_hash = hashlib.md5(final_string.encode('utf-8')).hexdigest()
+    
+    return final_hash
+
+# 2. دالة فتح الألعاب الافتراضية
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        data["game_uuid"] = "lobby"
+        game_uuid = data.get("game_uuid", "lobby")
         user_code = str(data.get("user_code", "test_user"))
 
-        # توليد الوقت والتشفير الخاص بـ EuroVirtuals
         timestamp = str(int(time.time()))
-        signature = generate_euro_token(EURO_APP_KEY, timestamp)
+
+        # ⚠️ الـ Payload يجب أن يُعرف أولاً قبل التشفير
+        payload = {
+            "player_id": user_code,
+            "player_name": user_code,
+            "player_token": "tok_" + user_code,
+            "game_uuid": str(game_uuid),
+            "currency": "TND",
+            "demo": 0
+        }
+
+        # الآن نرسل الـ Payload بالكامل لدالة التشفير الجديدة
+        signature = generate_euro_signature(payload, EURO_APP_KEY)
 
         headers = {
             "x-api-key": EURO_API_KEY,
@@ -1749,16 +1775,7 @@ async def launch_eurovirtuals(request: Request):
             "Content-Type": "application/json"
         }
 
-        payload = {
-            "player_id": user_code,
-            "player_name": user_code,
-            "player_token": "tok_" + user_code,
-            "game_uuid": "lobby",
-            "currency": "TND",
-            "demo": 0
-        }
-
-        # ⚠️ ضع هنا رابط Base URL الخاص بشركة EuroVirtuals حصرياً عندما يزودونك به
+        # الرابط كما أكده لك المزود
         EURO_BASE_URL = "https://api.staging.betkraft.co.uk/" 
         base_url_clean = str(EURO_BASE_URL).rstrip('/')
         launch_endpoint = f"{base_url_clean}/v1/launch"
