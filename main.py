@@ -1052,11 +1052,11 @@ async def launch_casino(request: Request):
         
         # 1. تجهيز البيانات للإرسال لشركة Betkraft
         payload = {
-            "player_id": user_code,
-            "player_name": user_code,
-            "player_token": "tok_" + user_code,
+            "game_id": data.get("game_code"),
+            "provider": data.get("provider_code"),
+            "player_id": data.get("user_code", "test_user"),
             "currency": "TND",
-            "demo": 0
+            "language": "fr"
         }
         
         # 2. وضع المفاتيح السرية في الرأس (Headers)
@@ -1760,7 +1760,6 @@ async def launch_eurovirtuals(request: Request):
             "player_id": user_code,
             "player_name": user_code,
             "player_token": "tok_" + user_code,
-            "game_uuid": str(game_uuid),
             "currency": "TND",
             "demo": 0
         }
