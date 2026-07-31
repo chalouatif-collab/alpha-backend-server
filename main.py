@@ -1730,47 +1730,56 @@ def generate_euro_token(app_key, timestamp):
     token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
     return token
 
-# مسار فتح الألعاب الافتراضية (باستخدام نظام Betkraft الموحد)
+# مسار فتح الألعاب الافتراضية الخاص بشركة EuroVirtuals حصرياً
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        
-        # 1. تجهيز البيانات للإرسال لشركة Betkraft (بدلاً من نظام EuroVirtuals المعقد)
-        payload = {
-            "game_id": data.get("game_uuid", "default_virtual_game"), # سيتم تغييره لاحقاً للكود الدقيق للعبة
-            "provider": "EUROVIRTUALS", # نخمن أن اسم المزود لديهم هو هذا، وسنكتشف الحقيقة من الرد
-            "player_id": data.get("user_code", "test_user"),
-            "currency": "TND",
-            "language": "fr"
-        }
-        
-        # 2. وضع المفاتيح السرية الخاصة بـ Betkraft
+        game_uuid = data.get("game_uuid")
+        user_code = str(data.get("user_code", "test_user"))
+
+        # توليد الوقت والتشفير الخاص بـ EuroVirtuals
+        timestamp = str(int(time.time()))
+        signature = generate_euro_token(EURO_APP_KEY, timestamp)
+
         headers = {
-            "App-Key": str(BETKRAFT_APP_KEY),
-            "Api-Key": str(BETKRAFT_API_KEY),
+            "x-api-key": EURO_API_KEY,
+            "x-signature-key": signature,
+            "x-timestamp": timestamp,
             "Content-Type": "application/json"
         }
+
+        payload = {
+            "player_id": user_code,
+            "player_name": user_code,
+            "player_token": "tok_" + user_code,
+            "game_uuid": str(game_uuid),
+            "currency": "TND",
+            "demo": 0
+        }
+
+        # ⚠️ ضع هنا رابط Base URL الخاص بشركة EuroVirtuals حصرياً عندما يزودونك به
+        EURO_BASE_URL = "https://api.staging.betkraft.co.uk/" 
+        base_url_clean = str(EURO_BASE_URL).rstrip('/')
+        launch_endpoint = f"{base_url_clean}/v1/launch"
         
-        # 3. الاتصال بسيرفر Betkraft
-        # تنظيف الرابط الأساسي وإضافة المسار بشكل صحيح
-        base_url_clean = str(BETKRAFT_BASE_URL).rstrip('/')
-        endpoint = f"{base_url_clean}/api/game/launch"
-        response = requests.post(endpoint, json=payload, headers=headers)
-        
-        # 4. التقاط الرد بأمان
-        try:
-            response_data = response.json()
-        except Exception:
-            return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
             
-        # 5. استخراج رابط اللعبة
-        game_url = response_data.get("url") or response_data.get("launch_url")
-        if game_url: 
-            return {"launch_url": game_url}
-        else: 
-            return {"error": "المزود رفض الطلب", "details": response_data}
-            
+            try:
+                response_data = response.json()
+            except Exception:
+                return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
+
+            if response_data.get("status_code") == 200:
+                game_url = response_data.get("data", {}).get("url")
+                return {"launch_url": game_url}
+            else:
+                return {
+                    "error": response_data.get("status_description", "المزود رفض الطلب"), 
+                    "details": response_data
+                }
+
     except Exception as e:
         return {"error": str(e)}
     import uuid
