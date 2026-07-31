@@ -28,6 +28,20 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 import uuid
+import hashlib
+import urllib.parse
+from fastapi import Query
+from fastapi import Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+import io
+from fastapi.responses import StreamingResponse
+import qrcode
+from datetime import datetime
+from pydantic import BaseModel
+import time
+
+
+
 
 # --- إعدادات مزود الألعاب (Nexus) الموحدة ---
 AGENT_CODE = "Alphabet1"
@@ -72,7 +86,6 @@ DB_FILE = "tickets_database.json"
 
 # تحميل الأسرار من ملف .env
 load_dotenv()
-from fastapi import HTTPException
 # سحب الأسرار لحفظها في متغيرات داخل الكود
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
@@ -249,8 +262,6 @@ API_KEY = os.environ.get("API_KEY")
 if not API_KEY:
     raise ValueError("⚠️ تنبيه أمني: مفتاح API_KEY مفقود من إعدادات الخادم (Environment Variables)!")
 TICKETS_FILE = "tickets_database.json" 
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi import Request, HTTPException
 # 🚨 إعدادات الإنذار المبكر (Telegram)
 TELEGRAM_TOKEN = "8879806026:AAEB64RCPW4KzsUXUlDeztP_PzjtxkJv_4g"
 TELEGRAM_CHAT_ID = "7700782611"
@@ -397,7 +408,7 @@ async def create_deposit(req: DepositRequest):
         asyncio.create_task(send_telegram_alert(alert_msg))
  
         # كتابة البيانات الجديدة في الملف (تأكد من وجود دالة الحفظ لديك، أو استخدم هذه الطريقة)
-        import json
+        
         with open(TICKETS_FILE, "w", encoding="utf-8") as f:
             json.dump(db, f, indent=4, ensure_ascii=False)
             
@@ -458,7 +469,7 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
         ticket["amount"] = real_amount
         
         # حفظ التعديل في ملف التذاكر
-        import json
+      
         with open(TICKETS_FILE, "w", encoding="utf-8") as f:
             json.dump(db, f, indent=4, ensure_ascii=False)
             
@@ -1261,9 +1272,6 @@ async def verify_2fa(request: Request, totp_code: str = Form(...)):
     else:
         return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>الكود السداسي غير صحيح! <a href='/'>حاول مرة أخرى</a></h3>")
 
-    import io
-from fastapi.responses import StreamingResponse
-import qrcode
 
 @app.get("/setup-2fa/{username}")
 async def setup_2fa(username: str):
@@ -1295,14 +1303,10 @@ async def setup_2fa(username: str):
     
     return StreamingResponse(buf, media_type="image/png")
 
-import httpx
-
 # ==========================================
 # دمج نظام BSW Aggregator Callbacks
 # ==========================================
-import hashlib
-import urllib.parse
-from fastapi import Query
+
 
 # ضع هنا الـ salt_token الذي استلمته في وثائق التكامل الخاصة بك
 SALT_TOKEN = os.getenv("SALT_TOKEN", "NEXUS_SECRET_KEY")
@@ -1505,8 +1509,6 @@ async def change_balance_batch(
       "error_message": "OK",
   } 
 
-from datetime import datetime
-from pydantic import BaseModel
 
 class ShopWithdrawRequest(BaseModel):
     admin_username: str
@@ -1518,7 +1520,6 @@ class HandleShopWithdrawModel(BaseModel):
     decision: str  # "accept" or "reject"
     shop_username: str
 
-from pydantic import BaseModel
 
 # تعريف هيكل البيانات المطلوب
 class AdminWithdrawRequest(BaseModel):
@@ -1707,20 +1708,12 @@ async def seamless_wallet(request: Request):
     except Exception as e:
         print(f"Wallet Error: {e}")
         return {"status": 0, "msg": "INTERNAL_ERROR"}
-    
-    import hashlib
-import time
-import httpx
-from fastapi import Request
 
 # ==========================================
 # دمج ألعاب EuroVirtuals الرياضية الافتراضية
 EURO_APP_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
 EURO_API_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
 EURO_BASE_URL = "https://api.staging.betkraft.co.uk/" # سيتم تأكيد الرابط الأساسي منهم
-
-import hashlib
-import time
 
 # 1. دالة التشفير الجديدة والمطابقة لوثائق EuroVirtuals حرفياً
 def generate_euro_signature(payload, app_key):
@@ -1804,8 +1797,6 @@ async def launch_eurovirtuals(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-    import uuid
-from datetime import datetime
 
 # 3. مسار استعلام الرصيد (Player Info Callback)
 @app.post("/api/eurovirtuals/callback/player_info")
