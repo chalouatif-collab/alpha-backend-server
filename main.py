@@ -1789,6 +1789,12 @@ async def launch_eurovirtuals(request: Request):
 
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
+                
+                # إصلاح الرابط: إذا كان يبدأ بـ / نقوم بإضافة الرابط الأساسي قبله
+                if game_url and game_url.startswith("/"):
+                    # نستخدم نفس رابط السيرفر الأساسي الذي استخدمناه للاتصال
+                    game_url = f"https://api.staging.betkraft.co.uk{game_url}"
+                    
                 return {"launch_url": game_url}
             else:
                 return {
