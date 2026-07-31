@@ -1060,29 +1060,31 @@ async def launch_sportsbook(request: Request):
     
     
 @app.post("/api/provider/launch-casino")
+@app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
         data = await request.json()
         
-        # تجهيز البيانات المرسلة لشركة NexusGGR
+        # التجهيز التطابق 100% مع وثائق NexusGGR
         payload = {
-            "game_id": data.get("game_code"),
-            "provider": data.get("provider_code"),
-            "player_id": data.get("user_code", "test_user"),
-            "currency": "TND",
-            "language": "fr"
+            "method": "game_launch",
+            "agent_code": AGENT_CODE,      # المتغير الذي عرفناه في أعلى الملف
+            "agent_token": AGENT_TOKEN,    # المتغير الذي عرفناه في أعلى الملف
+            "user_code": data.get("user_code", "test_user"),
+            "provider_code": data.get("provider_code"),
+            "game_code": data.get("game_code"),
+            "lang": "fr",
+            "lobby_url": "https://alphabet216.com/#casino" # رابط العودة لموقعك
         }
         
-        # ضبط الهيدر (Headers) بالمعلومات والمفاتيح الخاصة بـ NexusGGR
+        # يمكنك إبقاء الهيدرز البسيطة للاتصال
         headers = {
-            "Token": "60f44d247b838f1c7cb99655fc943292",
-            "Secret-Key": "6f1dbd5da827207a5302fd4b3fc4c151",
             "Content-Type": "application/json"
         }
         
         # الاتصال برابط NexusGGR الأساسي
-        base_url_clean = "https://api.nexusggr.eu"
-        endpoint = f"{base_url_clean}/launch"
+        base_url_clean = PROVIDER_ENDPOINT.rstrip('/') # استخدمنا المتغير الصحيح
+        endpoint = f"{base_url_clean}/api/game/launch" # جرب هذا المسار، أو إذا فشل جرب /launch فقط
         
         response = requests.post(endpoint, json=payload, headers=headers)
         
@@ -1091,14 +1093,19 @@ async def launch_casino(request: Request):
         except Exception:
             return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
             
-        if response.status_code == 200 and "url" in response_data:
-            return {"launch_url": response_data.get("url")}
+        # استخراج رابط اللعبة
+        if response.status_code == 200:
+            # شكل الرد قد يختلف، نبحث عن الرابط
+            game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
+            if game_url:
+                return {"launch_url": game_url}
+            else:
+                return {"error": "لم يتم العثور على رابط اللعبة", "details": response_data}
         else:
-            return {"error": response_data.get("message", "المزود رفض الطلب"), "details": response_data}
+            return {"error": "المزود رفض الطلب", "details": response_data}
             
     except Exception as e:
         return {"error": str(e)}
-
 # ==========================================
 # تشغيل الروت الأساسي والرياضة الوهمية
 # ==========================================
