@@ -1069,9 +1069,15 @@ async def launch_casino(request: Request):
         # 3. الاتصال بسيرفر الشركة لفتح اللعبة
         endpoint = f"{BETKRAFT_BASE_URL}api/game/launch"
         response = requests.post(endpoint, json=payload, headers=headers)
-        response_data = response.json()
         
-        # 4. استخراج رابط اللعبة
+        # 4. محاولة قراءة الرد بأمان (هنا الإصلاح ⚡)
+        try:
+            response_data = response.json()
+        except Exception:
+            # إذا لم يكن الرد بصيغة JSON، نلتقط النص الحقيقي الذي أرسلته الشركة
+            return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
+        
+        # 5. استخراج رابط اللعبة
         game_url = response_data.get("url") or response_data.get("launch_url")
         if game_url: 
             return {"launch_url": game_url}
@@ -1707,8 +1713,6 @@ from fastapi import Request
 
 # ==========================================
 # دمج ألعاب EuroVirtuals الرياضية الافتراضية
-# ==========================================
-# سنقوم بتعبئة هذه المتغيرات بمجرد أن يرسلها لنا Kelvin
 EURO_APP_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
 EURO_API_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
 EURO_BASE_URL = "https://api.staging.betkraft.co.uk/" # سيتم تأكيد الرابط الأساسي منهم
