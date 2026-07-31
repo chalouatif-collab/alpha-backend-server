@@ -1052,11 +1052,11 @@ async def launch_casino(request: Request):
         
         # 1. تجهيز البيانات للإرسال لشركة Betkraft
         payload = {
-            "game_id": data.get("game_code"),
-            "provider": data.get("provider_code"),
-            "player_id": data.get("user_code", "test_user"),
+            "player_id": user_code,
+            "player_name": user_code,
+            "player_token": "tok_" + user_code,
             "currency": "TND",
-            "language": "fr"
+            "demo": 0
         }
         
         # 2. وضع المفاتيح السرية في الرأس (Headers)
