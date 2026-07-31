@@ -1009,8 +1009,7 @@
 
     <!-- ================= شاشات عرض الألعاب (Iframes المفقودة) ================= -->
     <div id="casino-iframe-container" class="fixed inset-0 z-[120] bg-black hidden flex-col">
-        <button onclick="closeCasinoGame()"
-            class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">✖</button>
+        <button onclick="closeCasinoGame()" class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">✖</button>
         <iframe id="casino-iframe" class="w-full h-full border-0"></iframe>
     </div>
 
@@ -1019,6 +1018,15 @@
             <button onclick="closeSportsbook()" class="text-gray-400 hover:text-asbet-primary text-3xl">&times;</button>
         </div>
         <iframe id="sportsbook-iframe" src="" frameborder="0" class="w-full h-full"></iframe>
+    </div>
+
+    <!-- 🌟 كود الألعاب الافتراضية الجديد (أضفه هنا) 🌟 -->
+    <div id="virtual-games-overlay" class="fixed inset-0 z-[120] bg-black hidden flex-col">
+        <button onclick="closeVirtualGames()" class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shadow-lg cursor-pointer hover:scale-110 transition-transform">✖</button>
+        <div id="virtual-loader" class="absolute inset-0 flex items-center justify-center bg-black z-[-1]">
+            <span class="text-asbet-primary font-bold animate-pulse text-xl">Chargement des jeux virtuels... ⏳</span>
+        </div>
+        <iframe id="virtual-games-iframe" class="w-full h-full border-0 relative z-10" allowfullscreen></iframe>
     </div>
 
     <!-- ==================== السكريبتات الحقيقية والكاملة ==================== -->
@@ -2119,38 +2127,58 @@
         }
 
         async function launchVirtualGames() {
-    try {
-        // 1. جلب بيانات اللاعب المسجل حالياً في الموقع
-        const userCode = localStorage.getItem("username") || "demo_user"; 
-        
-        // إظهار رسالة تحميل للاعب
-        console.log("جاري فتح الألعاب الافتراضية...");
+            if (!playerSession) return openLoginModal(); // حماية الزر لكي لا يعمل إلا للمسجلين
 
-        // 2. الاتصال بسيرفر Alpha الخاص بك
-        const response = await fetch("https://alpha-backend-server.onrender.com/api/provider/launch-eurovirtuals", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                user_code: userCode,
-                game_uuid: "الرقم_التعريفي_للعبة_الرئيسية" // سنضعه لاحقاً عندما نجلبه من المزود
-            })
-        });
+            const container = document.getElementById('virtual-games-overlay');
+            const iframe = document.getElementById('virtual-games-iframe');
+            
+            if (!container || !iframe) return;
 
-        const data = await response.json();
+            // إظهار الشاشة السوداء والإطار
+            container.classList.remove('hidden'); 
+            container.classList.add('flex');
+            iframe.style.opacity = '0'; // إخفاء الإطار مؤقتاً حتى يتم التحميل
 
-        // 3. توجيه اللاعب إلى رابط اللعبة إذا نجح الاتصال
-        if (data.launch_url) {
-            window.location.href = data.launch_url;
-        } else {
-            alert("عذراً، حدث خطأ أثناء فتح اللعبة: " + (data.error || "حاول مرة أخرى"));
+            try {
+                // الاتصال بسيرفر Alpha الخاص بك
+                const response = await fetch(`${BACKEND_URL}/api/provider/launch-eurovirtuals`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        user_code: playerSession.username,
+                        game_uuid: "lobby" // تخمين كود الردهة الذي اتفقنا عليه
+                    })
+                });
+
+                const data = await response.json();
+
+                // توجيه اللاعب إلى رابط اللعبة داخل الـ Iframe
+                if (data.launch_url) {
+                    iframe.src = data.launch_url;
+                    iframe.onload = () => { iframe.style.opacity = '1'; }; // إظهار اللعبة بعد اكتمال تحميلها
+                } else {
+                    console.error("Error from provider:", data);
+                    alert("عذراً، حدث خطأ أثناء فتح اللعبة: " + (data.error || "المزود لم يرد"));
+                    closeVirtualGames();
+                }
+            } catch (error) {
+                console.error("Error launching virtual games:", error);
+                alert("خطأ في الاتصال بالخادم.");
+                closeVirtualGames();
+            }
         }
-    } catch (error) {
-        console.error("Error launching virtual games:", error);
-        alert("خطأ في الاتصال بالخادم.");
-    }
-}
+
+        // دالة إغلاق الألعاب الافتراضية
+        function closeVirtualGames() {
+            const container = document.getElementById('virtual-games-overlay');
+            const iframe = document.getElementById('virtual-games-iframe');
+            if (!container || !iframe) return;
+            
+            container.classList.add('hidden'); 
+            container.classList.remove('flex');
+            iframe.src = ""; // تفريغ الرابط لإيقاف اللعبة بالخلفية
+            refreshPlayerBalance(); // تحديث رصيد اللاعب بعد خروجه
+        }
 
 // ================= دوال الشروط واللعب المسؤول =================
         function openTermsModal() {
