@@ -34,6 +34,15 @@ AGENT_CODE = "Alphabet1"
 AGENT_TOKEN = "af467c522fe71dcabe10c1d08ed27b05"
 NEXUS_SECRET_KEY = "6cb0c1a5dc8a38b89258ad8417026bf9" # تمت إضافته من صورتك
 PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
+# سحب الأسرار لحفظها في متغيرات داخل الكود
+ADMIN_USER = os.getenv("ADMIN_USERNAME")
+ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# 👇 أضف هذه الأسطر الثلاثة هنا 👇
+BETKRAFT_APP_KEY = os.getenv("BETKRAFT_APP_KEY")
+BETKRAFT_API_KEY = os.getenv("BETKRAFT_API_KEY")
+BETKRAFT_BASE_URL = os.getenv("BETKRAFT_BASE_URL")
 
 # 1. إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
@@ -1040,23 +1049,35 @@ async def launch_sportsbook(request: Request):
 async def launch_casino(request: Request):
     try:
         data = await request.json()
+        
+        # 1. تجهيز البيانات للإرسال لشركة Betkraft
         payload = {
-        "method": "game_launch",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
-        "provider_code": data.get("provider_code"),
-        "game_code": data.get("game_code"),
-        "user_code": data.get("user_code", "fethi2_test"),
-        "lang": "fr",
-        "currency": "EUR",
-        "rtp": 92,
-        "lobby_url": "https://alphabet216.com/"
-    }
-        response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
+            "game_id": data.get("game_code"),
+            "provider": data.get("provider_code"),
+            "player_id": data.get("user_code", "test_user"),
+            "currency": "TND",
+            "language": "fr"
+        }
+        
+        # 2. وضع المفاتيح السرية في الرأس (Headers)
+        headers = {
+            "App-Key": str(BETKRAFT_APP_KEY),
+            "Api-Key": str(BETKRAFT_API_KEY),
+            "Content-Type": "application/json"
+        }
+        
+        # 3. الاتصال بسيرفر الشركة لفتح اللعبة
+        endpoint = f"{BETKRAFT_BASE_URL}api/game/launch"
+        response = requests.post(endpoint, json=payload, headers=headers)
         response_data = response.json()
+        
+        # 4. استخراج رابط اللعبة
         game_url = response_data.get("url") or response_data.get("launch_url")
-        if game_url: return {"launch_url": game_url}
-        else: return {"error": "المزود رفض الطلب", "details": response_data}
+        if game_url: 
+            return {"launch_url": game_url}
+        else: 
+            return {"error": "المزود رفض الطلب", "details": response_data}
+            
     except Exception as e:
         return {"error": str(e)}
 
