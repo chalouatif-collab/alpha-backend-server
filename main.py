@@ -1084,8 +1084,7 @@ async def launch_casino(request: Request):
         
         # الاتصال برابط NexusGGR الأساسي
         base_url_clean = PROVIDER_ENDPOINT.rstrip('/') # استخدمنا المتغير الصحيح
-        endpoint = f"{base_url_clean}/api" # جرب هذا المسار، أو إذا فشل جرب /launch فقط
-        
+        endpoint = base_url_clean
         response = requests.post(endpoint, json=payload, headers=headers)
         
         try:
