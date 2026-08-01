@@ -2316,34 +2316,32 @@
             `).join('');
         }
 
-        // 4. الدالة السحرية للاتصال بالسيرفر الجديد
         async function fetchEuroVirtualsGames(categoryId) {
-            const container = document.getElementById('virtuals-games-grid');
-            if (!container) return;
+    const container = document.getElementById('virtuals-games-grid');
+    if (!container) return;
 
-            updateActiveCategoryButton(categoryId);
-            container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Connexion au serveur EuroVirtuals... ⏳</div>';
+    updateActiveCategoryButton(categoryId);
+    container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Connexion au serveur EuroVirtuals... ⏳</div>';
 
-            try {
-                // الاتصال بالدالة الجديدة التي وضعتها في الـ Python
-                const response = await fetch(`${BACKEND_URL}/api/provider/get-eurovirtuals-games`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
 
-                const data = await response.json();
-                
-                if (data.status === "success" && data.games) {
-                    currentVirtuals = data.games; // حفظ الألعاب القادمة من المزود
-                    filterVirtualsByCategory(categoryId);
-                } else {
-                    container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Erreur: ${data.error || "Aucun jeu trouvé"}</div>`;
-                }
-            } catch (error) {
-                console.error("❌ Erreur API EuroVirtuals:", error);
-                container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion au serveur.</div>';
-            }
+        const data = await response.json();
+        
+        if (data.status === "success" && data.games) {
+            currentVirtuals = data.games;
+            filterVirtualsByCategory(categoryId);
+        } else {
+            container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Erreur: ${data.error || "Aucun jeu trouvé"}</div>`;
         }
+    } catch (error) {
+        console.error("❌ Erreur API:", error);
+        container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion au serveur.</div>';
+    }
+}
 
         // 5. الفلتر الذكي لتوزيع الألعاب على الأقسام
         function filterVirtualsByCategory(categoryId) {
