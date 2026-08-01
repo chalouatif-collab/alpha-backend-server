@@ -873,15 +873,14 @@
                             class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Live</span>
                     </div>
 
-                    <!-- زر الألعاب الافتراضية -->
-                    <div onclick="launchVirtualGames()"
+                    <!-- زر الألعاب الافتراضية (المعدل) -->
+                    <div onclick="switchSection('virtuals'); initVirtualsLobby();"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
                         <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">🎮
                         </div>
                         <span
                             class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Virtuels</span>
                     </div>
-
                     <!-- زر الرياضة -->
                     <div onclick="openSportsbook('prematch')"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
@@ -1065,7 +1064,19 @@
                     class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
                 </div>
             </div>
-
+<!-- ================= قسم الألعاب الافتراضية (الجديد) ================= -->
+            <div id="pane-virtuals" class="player-view-section hidden w-full px-4 mt-2">
+                <div class="flex items-center justify-between bg-asbet-card p-4 rounded-xl border border-white/5 mb-4">
+                    <h2 class="text-white font-black text-base flex items-center gap-2">
+                        <span class="text-asbet-primary">🎮</span> EuroVirtuals
+                    </h2>
+                    <input type="text" id="virtual-search-input" placeholder="Chercher..." class="bg-asbet-dark text-white border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none w-32 md:w-auto">
+                </div>
+                <!-- شبكة عرض الألعاب الافتراضية -->
+                <div id="virtuals-games-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
+                    <!-- سيتم تعبئة الألعاب هنا برمجياً -->
+                </div>
+            </div>
             <!-- ================= الفوتر (يظهر في أسفل الصفحة) ================= -->
             <div
                 class="w-full mt-8 p-5 bg-[#130822] rounded-t-3xl border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
@@ -2265,37 +2276,68 @@
             }
         }
 
-        async function launchVirtualGames() {
-            if (!playerSession) return openLoginModal(); // حماية الزر لكي لا يعمل إلا للمسجلين
+       // 1. قائمة الألعاب الافتراضية (يمكنك تعديل الصور والأسماء لاحقاً)
+        const virtualGamesList = [
+            { code: "football", name: "Football Virtuel", img: "https://placehold.co/400x300/180A2B/FFF?text=Football+Pro" },
+            { code: "horses", name: "Courses de Chevaux", img: "https://placehold.co/400x300/180A2B/FFF?text=Chevaux" },
+            { code: "greyhounds", name: "Courses de Lévriers", img: "https://placehold.co/400x300/180A2B/FFF?text=Lévriers" },
+            { code: "motor", name: "Sport Motorisé", img: "https://placehold.co/400x300/180A2B/FFF?text=Motos" },
+            { code: "penalty", name: "Tirs au But", img: "https://placehold.co/400x300/180A2B/FFF?text=Penalty" }
+        ];
+
+        // 2. دالة عرض الألعاب في القسم الجديد
+        function initVirtualsLobby() {
+            const container = document.getElementById('virtuals-games-grid');
+            if (!container) return;
+
+            container.innerHTML = virtualGamesList.map(g => `
+                <div onclick="launchSpecificVirtualGame('${g.code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
+                    <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
+                        <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
+                            <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                        </div>
+                    </div>
+                    <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
+                        <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${g.name}</span>
+                        <span class="text-asbet-primary text-[11px]">▶</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 3. الدالة الجديدة لفتح اللعبة المحددة
+        async function launchSpecificVirtualGame(gameUuid) {
+            if (!playerSession) return openLoginModal(); 
 
             const container = document.getElementById('virtual-games-overlay');
             const iframe = document.getElementById('virtual-games-iframe');
 
             if (!container || !iframe) return;
 
-            // إظهار الشاشة السوداء والإطار
             container.classList.remove('hidden');
             container.classList.add('flex');
-            iframe.style.opacity = '0'; // إخفاء الإطار مؤقتاً حتى يتم التحميل
+            iframe.style.opacity = '0'; 
+            
+            const loader = document.getElementById('virtual-loader');
+            if (loader) loader.style.display = 'flex';
 
             try {
-                // الاتصال بسيرفر Alpha الخاص بك
                 const response = await fetch(`${BACKEND_URL}/api/provider/launch-eurovirtuals`, {
                     method: "POST",
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
                         user_code: playerSession.username,
-                        game_uuid: "lobby" // تخمين كود الردهة الذي اتفقنا عليه
+                        game_uuid: gameUuid
                     })
                 });
 
                 const data = await response.json();
 
-                // توجيه اللاعب إلى رابط اللعبة داخل الـ Iframe
                 if (data.launch_url) {
                     iframe.src = data.launch_url;
                     iframe.onload = () => {
-                        document.getElementById('virtual-loader').style.display = 'none';
+                        if (loader) loader.style.display = 'none';
                         iframe.style.opacity = '1';
                     };
                 } else {
