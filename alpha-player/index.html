@@ -205,16 +205,31 @@
         .profile-popup-menu .menu-item.highlight {
             background: linear-gradient(90deg, #E8006F 0%, #91167B 100%);
         }
+
         /* تأثير الدوران للإطار المتوهج */
         @keyframes border-glow-spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* تأثير النبض والسطوع */
         @keyframes pulse-glow {
-            0%, 100% { opacity: 0.6; filter: brightness(1); }
-            50% { opacity: 1; filter: brightness(1.4); }
+
+            0%,
+            100% {
+                opacity: 0.6;
+                filter: brightness(1);
+            }
+
+            50% {
+                opacity: 1;
+                filter: brightness(1.4);
+            }
         }
 
         .jackpot-card-wrapper {
@@ -222,7 +237,8 @@
             border-radius: 1rem;
             overflow: hidden;
             background: #0f051d;
-            padding: 2px; /* مسافة للإطار المتوهج */
+            padding: 2px;
+            /* مسافة للإطار المتوهج */
             animation: pulse-glow 2.5s infinite ease-in-out;
         }
 
@@ -263,10 +279,20 @@
             background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, #ef4444 360deg);
             animation: border-glow-spin 3s linear infinite;
         }
-/* تأثير خاص عندما يقترب الجاكبوت من النزول (سرعة جنونية ونبض تحذيري) */
+
+        /* تأثير خاص عندما يقترب الجاكبوت من النزول (سرعة جنونية ونبض تحذيري) */
         @keyframes urgent-flash {
-            0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8)); transform: scale(1); }
-            50% { filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1)); transform: scale(1.03); }
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
+                transform: scale(1);
+            }
+
+            50% {
+                filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1));
+                transform: scale(1.03);
+            }
         }
 
         .about-to-drop {
@@ -276,14 +302,19 @@
         /* تحويل الإطار إلى ألوان ملتهبة عند قرب النزول */
         .about-to-drop::before {
             background: conic-gradient(from 0deg, transparent 0deg, #ff0000 180deg, #ffd700 360deg) !important;
-            animation: border-glow-spin 1s linear infinite !important; /* دوران أسرع بكثير للإيحاء بقرب الحدث */
+            animation: border-glow-spin 1s linear infinite !important;
+            /* دوران أسرع بكثير للإيحاء بقرب الحدث */
         }
+
         /* تأثير التوهج والنبض الوردي الساطع (Neon Pink Pulse) */
         @keyframes pinkNeonPulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 box-shadow: 0 0 15px rgba(232, 0, 111, 0.5), inset 0 0 5px rgba(232, 0, 111, 0.3);
                 filter: brightness(1);
             }
+
             50% {
                 box-shadow: 0 0 30px rgba(232, 0, 111, 0.9), inset 0 0 12px rgba(232, 0, 111, 0.6);
                 filter: brightness(1.25);
@@ -293,7 +324,6 @@
         .btn-pink-glow {
             animation: pinkNeonPulse 2s infinite ease-in-out;
         }
-
     </style>
 </head>
 
@@ -330,36 +360,62 @@
 
 
     <!-- نافذة الشروط والأحكام (Termes et Conditions) -->
-    <div id="terms-modal" class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="w-full max-w-2xl bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-6 md:p-8 shadow-2xl relative flex flex-col max-h-[80vh]">
-            <button onclick="closeTermsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
-            <h2 class="text-white text-xl md:text-2xl font-black mb-4 flex items-center gap-2">📜 Termes et Conditions</h2>
+    <div id="terms-modal"
+        class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="w-full max-w-2xl bg-asbet-dark border border-asbet-secondary/50 rounded-3xl p-6 md:p-8 shadow-2xl relative flex flex-col max-h-[80vh]">
+            <button onclick="closeTermsModal()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+            <h2 class="text-white text-xl md:text-2xl font-black mb-4 flex items-center gap-2">📜 Termes et Conditions
+            </h2>
             <div class="overflow-y-auto pr-2 space-y-4 text-gray-300 text-xs md:text-sm leading-relaxed hide-scrollbar">
-                <p><strong>1. Acceptation des conditions :</strong> En utilisant Alphabet216, vous acceptez d'être lié par ces termes et conditions générales.</p>
-                <p><strong>2. Âge légal :</strong> Vous devez avoir au moins 18 ans pour ouvrir un compte et participer à nos jeux.</p>
-                <p><strong>3. Responsabilité du compte :</strong> Vous êtes seul responsable de la sécurité de vos identifiants de connexion. Toute activité sur votre compte est considérée comme la vôtre.</p>
-                <p><strong>4. Limites de gain :</strong> Le gain mensuel maximum autorisé sur la plateforme est fixé à 30 000 TND.</p>
-                <p><strong>5. Dépôts et Retraits :</strong> Les transactions doivent être effectuées via les méthodes approuvées (D17, USDT, Ooredoo, Orange). La direction se réserve le droit de vérifier l'identité avant de valider un retrait.</p>
-                <p><strong>6. Lutte contre la fraude :</strong> Alphabet216 se réserve le droit de suspendre ou de fermer définitivement tout compte suspecté de fraude, de tricherie, ou d'abus de bonus sans préavis.</p>
+                <p><strong>1. Acceptation des conditions :</strong> En utilisant Alphabet216, vous acceptez d'être lié
+                    par ces termes et conditions générales.</p>
+                <p><strong>2. Âge légal :</strong> Vous devez avoir au moins 18 ans pour ouvrir un compte et participer
+                    à nos jeux.</p>
+                <p><strong>3. Responsabilité du compte :</strong> Vous êtes seul responsable de la sécurité de vos
+                    identifiants de connexion. Toute activité sur votre compte est considérée comme la vôtre.</p>
+                <p><strong>4. Limites de gain :</strong> Le gain mensuel maximum autorisé sur la plateforme est fixé à
+                    30 000 TND.</p>
+                <p><strong>5. Dépôts et Retraits :</strong> Les transactions doivent être effectuées via les méthodes
+                    approuvées (D17, USDT, Ooredoo, Orange). La direction se réserve le droit de vérifier l'identité
+                    avant de valider un retrait.</p>
+                <p><strong>6. Lutte contre la fraude :</strong> Alphabet216 se réserve le droit de suspendre ou de
+                    fermer définitivement tout compte suspecté de fraude, de tricherie, ou d'abus de bonus sans préavis.
+                </p>
             </div>
-            <button onclick="closeTermsModal()" class="w-full btn-gradient text-white font-black py-3 rounded-xl uppercase mt-6 shadow-lg cursor-pointer">J'ai compris</button>
+            <button onclick="closeTermsModal()"
+                class="w-full btn-gradient text-white font-black py-3 rounded-xl uppercase mt-6 shadow-lg cursor-pointer">J'ai
+                compris</button>
         </div>
     </div>
 
     <!-- نافذة اللعب المسؤول (Jeu Responsable) -->
-    <div id="responsible-modal" class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
-        <div class="w-full max-w-2xl bg-asbet-dark border border-green-500/50 rounded-3xl p-6 md:p-8 shadow-2xl relative flex flex-col max-h-[80vh]">
-            <button onclick="closeResponsibleModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
-            <h2 class="text-white text-xl md:text-2xl font-black mb-4 flex items-center gap-2 text-green-400">🛡️ Jeu Responsable</h2>
+    <div id="responsible-modal"
+        class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div
+            class="w-full max-w-2xl bg-asbet-dark border border-green-500/50 rounded-3xl p-6 md:p-8 shadow-2xl relative flex flex-col max-h-[80vh]">
+            <button onclick="closeResponsibleModal()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+            <h2 class="text-white text-xl md:text-2xl font-black mb-4 flex items-center gap-2 text-green-400">🛡️ Jeu
+                Responsable</h2>
             <div class="overflow-y-auto pr-2 space-y-4 text-gray-300 text-xs md:text-sm leading-relaxed hide-scrollbar">
-                <p>Chez Alphabet216, nous voulons que votre expérience de jeu reste un divertissement amusant, sûr et maîtrisé.</p>
-                <p><strong>1. Jouez pour le plaisir :</strong> Le jeu doit rester un loisir et non un moyen de gagner sa vie ou de rembourser des dettes.</p>
-                <p><strong>2. Fixez des limites :</strong> Ne jouez qu'avec l'argent que vous pouvez vous permettre de perdre. Fixez-vous des limites de temps et de budget avant de commencer.</p>
-                <p><strong>3. Ne poursuivez pas vos pertes :</strong> Si vous perdez, n'essayez pas de récupérer votre argent en jouant davantage de manière impulsive.</p>
-                <p><strong>4. Gardez le contrôle :</strong> Si vous sentez que vous perdez le contrôle de vos habitudes de jeu, prenez une pause immédiate.</p>
-                <p><strong>5. Auto-exclusion :</strong> Si vous souhaitez fermer votre compte temporairement ou définitivement pour des raisons d'addiction, veuillez contacter notre support pour bloquer votre accès.</p>
+                <p>Chez Alphabet216, nous voulons que votre expérience de jeu reste un divertissement amusant, sûr et
+                    maîtrisé.</p>
+                <p><strong>1. Jouez pour le plaisir :</strong> Le jeu doit rester un loisir et non un moyen de gagner sa
+                    vie ou de rembourser des dettes.</p>
+                <p><strong>2. Fixez des limites :</strong> Ne jouez qu'avec l'argent que vous pouvez vous permettre de
+                    perdre. Fixez-vous des limites de temps et de budget avant de commencer.</p>
+                <p><strong>3. Ne poursuivez pas vos pertes :</strong> Si vous perdez, n'essayez pas de récupérer votre
+                    argent en jouant davantage de manière impulsive.</p>
+                <p><strong>4. Gardez le contrôle :</strong> Si vous sentez que vous perdez le contrôle de vos habitudes
+                    de jeu, prenez une pause immédiate.</p>
+                <p><strong>5. Auto-exclusion :</strong> Si vous souhaitez fermer votre compte temporairement ou
+                    définitivement pour des raisons d'addiction, veuillez contacter notre support pour bloquer votre
+                    accès.</p>
             </div>
-            <button onclick="closeResponsibleModal()" class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl uppercase mt-6 shadow-lg cursor-pointer transition-colors">D'accord</button>
+            <button onclick="closeResponsibleModal()"
+                class="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 rounded-xl uppercase mt-6 shadow-lg cursor-pointer transition-colors">D'accord</button>
         </div>
     </div>
     <div id="player-login-modal"
@@ -462,8 +518,8 @@
                     <label
                         class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-asbet-primary transition-all">
                         <span class="text-sm text-gray-300">📸 Importer le reçu (Capture d'écran)</span>
-                        <input type="file" accept="image/*" class="hidden">
-                        <!-- هذا الكود يفتح معرض الصور في هاتف اللاعب -->
+                        <input type="file" id="d17-file" accept="image/*" class="hidden"
+                            onchange="updateFileName('d17')">
                     </label>
 
                     <!-- أزرار التأكيد والرجوع -->
@@ -493,7 +549,8 @@
                     <label
                         class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-asbet-primary transition-all">
                         <span class="text-sm text-gray-300">📸 Importer le reçu (Capture d'écran)</span>
-                        <input type="file" accept="image/*" class="hidden">
+                        <input type="file" id="usdt-file" accept="image/*" class="hidden"
+                            onchange="updateFileName('usdt')">
                     </label>
 
                     <!-- أزرار التأكيد والرجوع -->
@@ -514,7 +571,8 @@
                     <label
                         class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#ED0000] transition-all">
                         <span class="text-sm text-gray-300">📸 Importer la capture d'écran</span>
-                        <input type="file" id="ooredoo-file" accept="image/*" class="hidden">
+                        <input type="file" id="ooredoo-file" accept="image/*" class="hidden"
+                            onchange="updateFileName('ooredoo')">
                     </label>
 
                     <!-- أزرار التأكيد والرجوع -->
@@ -536,7 +594,8 @@
                     <label
                         class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#FF7900] transition-all">
                         <span class="text-sm text-gray-300">📸 Importer la capture d'écran</span>
-                        <input type="file" id="orange-file" accept="image/*" class="hidden">
+                        <input type="file" id="orange-file" accept="image/*" class="hidden"
+                            onchange="updateFileName('orange')">
                     </label>
 
                     <!-- أزرار التأكيد والرجوع -->
@@ -738,7 +797,8 @@
                 </div>
 
                 <!-- ================= شريط الفائزين المضيء (الجديد) ================= -->
-                <div class="w-full bg-gradient-to-r from-[#180A2B] via-[#2A0845] to-[#180A2B] border border-asbet-accent/40 shadow-[0_0_20px_rgba(250,204,21,0.2)] py-2.5 mb-4 rounded-xl relative mt-2 overflow-hidden">
+                <div
+                    class="w-full bg-gradient-to-r from-[#180A2B] via-[#2A0845] to-[#180A2B] border border-asbet-accent/40 shadow-[0_0_20px_rgba(250,204,21,0.2)] py-2.5 mb-4 rounded-xl relative mt-2 overflow-hidden">
                     <!-- إضاءة خلفية متحركة -->
                     <div class="absolute inset-0 bg-asbet-accent/5 animate-pulse"></div>
 
@@ -751,28 +811,41 @@
 
                 <!-- الجاكبوت مع معرفات الغلاف -->
                 <div class="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
-                    
+
                     <!-- Mega -->
                     <div id="mega-wrapper" class="jackpot-card-wrapper mega-glow shadow-[0_0_20px_rgba(255,215,0,0.2)]">
-                        <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
-                            <span class="text-[#ffd700] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]">Mega 🥇 <span id="mega-alert" class="text-xs hidden">🔥 HOT!</span></span>
-                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-mega">124,567.89</div>
+                        <div
+                            class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
+                            <span
+                                class="text-[#ffd700] text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]">Mega
+                                🥇 <span id="mega-alert" class="text-xs hidden">🔥 HOT!</span></span>
+                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md"
+                                id="jackpot-mega">124,567.89</div>
                         </div>
                     </div>
 
                     <!-- Major -->
-                    <div id="major-wrapper" class="jackpot-card-wrapper major-glow shadow-[0_0_20px_rgba(229,231,235,0.15)]">
-                        <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
-                            <span class="text-gray-200 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">Major 🥈</span>
-                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-major">14,230.50</div>
+                    <div id="major-wrapper"
+                        class="jackpot-card-wrapper major-glow shadow-[0_0_20px_rgba(229,231,235,0.15)]">
+                        <div
+                            class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
+                            <span
+                                class="text-gray-200 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">Major
+                                🥈</span>
+                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md"
+                                id="jackpot-major">14,230.50</div>
                         </div>
                     </div>
 
                     <!-- Mini -->
                     <div id="mini-wrapper" class="jackpot-card-wrapper mini-glow shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-                        <div class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
-                            <span class="text-red-500 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)]">Mini 🥉</span>
-                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md" id="jackpot-mini">1,850.25</div>
+                        <div
+                            class="relative bg-gradient-to-b from-[#1a0f2b] to-[#0b001a] rounded-[calc(1rem-2px)] p-3 flex flex-col items-center justify-center z-10 h-full">
+                            <span
+                                class="text-red-500 text-[9px] lg:text-xs font-black uppercase mb-1 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)]">Mini
+                                🥉</span>
+                            <div class="text-white font-mono font-black text-xs lg:text-sm tracking-wider drop-shadow-md"
+                                id="jackpot-mini">1,850.25</div>
                         </div>
                     </div>
 
@@ -780,40 +853,52 @@
 
                 <!-- الأقسام السريعة (5 أزرار صغيرة في سطر واحد ثابت بدون تمرير) -->
                 <div class="grid grid-cols-5 gap-1.5 md:gap-3 mb-6 w-full">
-                    
+
                     <!-- زر الكازينو -->
                     <div onclick="switchSection('casino'); initCasinoLobby();"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
-                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">🎰</div>
-                        <span class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Casino</span>
+                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">🎰
+                        </div>
+                        <span
+                            class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Casino</span>
                     </div>
 
                     <!-- زر اللايف كازينو -->
                     <div onclick="openLiveCasino()"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
-                        <div class="text-asbet-primary text-lg md:text-xl group-hover:scale-110 transition-transform animate-pulse">🔴</div>
-                        <span class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Live</span>
+                        <div
+                            class="text-asbet-primary text-lg md:text-xl group-hover:scale-110 transition-transform animate-pulse">
+                            🔴</div>
+                        <span
+                            class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Live</span>
                     </div>
-                    
+
                     <!-- زر الألعاب الافتراضية -->
                     <div onclick="launchVirtualGames()"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
-                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">🎮</div>
-                        <span class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Virtuels</span>
+                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">🎮
+                        </div>
+                        <span
+                            class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Virtuels</span>
                     </div>
-                    
+
                     <!-- زر الرياضة -->
                     <div onclick="openSportsbook('prematch')"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
-                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">⚽</div>
-                        <span class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Sports</span>
+                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">⚽
+                        </div>
+                        <span
+                            class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1">Sports</span>
                     </div>
-                    
+
                     <!-- زر اللايف سبورت -->
                     <div onclick="openSportsbook('live')"
                         class="flex flex-col items-center justify-center bg-[#130822] h-[55px] rounded-xl border border-white/20 btn-pink-glow transition-all cursor-pointer group p-1">
-                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">⏱️</div>
-                        <span class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1 leading-none">Live Sp.</span>
+                        <div class="text-[#E8006F] text-lg md:text-xl group-hover:scale-110 transition-transform">⏱️
+                        </div>
+                        <span
+                            class="text-[7px] md:text-[9px] font-bold text-white text-center leading-tight uppercase mt-1 leading-none">Live
+                            Sp.</span>
                     </div>
 
                 </div>
@@ -940,7 +1025,7 @@
                     <div id="slider-playson" class="flex overflow-x-auto gap-3 px-4 pb-3 snap-x hide-scrollbar">
                     </div>
                 </div>
-                
+
             </div> <!-- نهاية قسم الاستقبال -->
 
             <!-- قسم الرياضة -->
@@ -950,7 +1035,7 @@
                 <!-- حاوية الرياضة لأجهزة الهواتف المحمولة -->
                 <div id="application-container" class="w-full h-full min-h-[800px]"></div>
             </div>
-            
+
             <div id="pane-paris" class="player-view-section space-y-4 hidden px-2">
                 <div class="text-center text-gray-400 py-10 text-sm">Chargement de l'historique...</div>
             </div>
@@ -976,24 +1061,35 @@
                     </h2>
                 </div>
                 <!-- شبكة عرض ألعاب اللايف وحدها -->
-                <div id="live-games-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
+                <div id="live-games-grid"
+                    class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
                 </div>
             </div>
 
             <!-- ================= الفوتر (يظهر في أسفل الصفحة) ================= -->
-            <div class="w-full mt-8 p-5 bg-[#130822] rounded-t-3xl border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+            <div
+                class="w-full mt-8 p-5 bg-[#130822] rounded-t-3xl border-t border-white/5 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
                 <div class="mb-4">
                     <h4 class="text-gray-400 text-[10px] font-bold uppercase mb-3 text-center tracking-widest">
                         Méthodes de Paiement</h4>
                     <div class="flex flex-wrap justify-center gap-2">
-                        <div class="w-14 h-8 bg-[#000000] border border-white/20 rounded-md flex items-center justify-center text-[10px] font-bold text-white">D17</div>
-                        <div class="w-14 h-8 bg-[#E3000F] rounded-md flex items-center justify-center text-[10px] font-bold text-white">Ooredoo</div>
-                        <div class="w-14 h-8 bg-[#FF6600] rounded-md flex items-center justify-center text-[10px] font-bold text-white">Orange</div>
+                        <div
+                            class="w-14 h-8 bg-[#000000] border border-white/20 rounded-md flex items-center justify-center text-[10px] font-bold text-white">
+                            D17</div>
+                        <div
+                            class="w-14 h-8 bg-[#E3000F] rounded-md flex items-center justify-center text-[10px] font-bold text-white">
+                            Ooredoo</div>
+                        <div
+                            class="w-14 h-8 bg-[#FF6600] rounded-md flex items-center justify-center text-[10px] font-bold text-white">
+                            Orange</div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-4 text-center border-t border-b border-white/5 py-4">
-                    <a href="javascript:void(0)" onclick="openTermsModal()" class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Termes et Conditions</a>
-                    <a href="javascript:void(0)" onclick="openResponsibleModal()" class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Jeu Responsable</a>
+                    <a href="javascript:void(0)" onclick="openTermsModal()"
+                        class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Termes et
+                        Conditions</a>
+                    <a href="javascript:void(0)" onclick="openResponsibleModal()"
+                        class="text-gray-400 text-[11px] hover:text-[#E8006F] transition-colors">Jeu Responsable</a>
                 </div>
                 <div class="text-center text-gray-500 text-[9px] opacity-60">
                     <p>© 2026 Alphabet216. Tous droits réservés.</p>
@@ -1009,7 +1105,8 @@
 
     <!-- ================= شاشات عرض الألعاب (Iframes المفقودة) ================= -->
     <div id="casino-iframe-container" class="fixed inset-0 z-[120] bg-black hidden flex-col">
-        <button onclick="closeCasinoGame()" class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">✖</button>
+        <button onclick="closeCasinoGame()"
+            class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold">✖</button>
         <iframe id="casino-iframe" class="w-full h-full border-0"></iframe>
     </div>
 
@@ -1022,11 +1119,13 @@
 
     <!-- 🌟 كود الألعاب الافتراضية الجديد (أضفه هنا) 🌟 -->
     <div id="virtual-games-overlay" class="fixed inset-0 z-[120] bg-black hidden flex-col">
-        <button onclick="closeVirtualGames()" class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shadow-lg cursor-pointer hover:scale-110 transition-transform">✖</button>
+        <button onclick="closeVirtualGames()"
+            class="absolute top-4 right-4 z-[130] bg-asbet-primary text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shadow-lg cursor-pointer hover:scale-110 transition-transform">✖</button>
         <div id="virtual-loader" class="absolute inset-0 flex items-center justify-center bg-black z-[-1]">
             <span class="text-asbet-primary font-bold animate-pulse text-xl">Chargement des jeux virtuels... ⏳</span>
         </div>
-        <iframe id="virtual-games-iframe" class="w-full h-full border-0 relative z-10" allow="autoplay; fullscreen; encrypted-media; geolocation" allowfullscreen></iframe>
+        <iframe id="virtual-games-iframe" class="w-full h-full border-0 relative z-10"
+            allow="autoplay; fullscreen; encrypted-media; geolocation" allowfullscreen></iframe>
     </div>
 
     <!-- ==================== السكريبتات الحقيقية والكاملة ==================== -->
@@ -1121,13 +1220,13 @@
 
         function switchSection(sectionId, isHistoryUpdate = false) {
             localStorage.setItem('active_section', sectionId);
-            
+
             // إخفاء جميع الأقسام
             document.querySelectorAll('.player-view-section').forEach(el => {
                 el.classList.add('hidden');
                 el.classList.remove('block');
             });
-            
+
             // إظهار القسم المطلوبة
             const panelElement = document.getElementById(`pane-${sectionId}`);
             if (panelElement) {
@@ -1166,7 +1265,7 @@
             window.scrollTo(0, 0);
             document.body.scrollTop = 0; // لمتصفحات الجوال المختلفة
             document.documentElement.scrollTop = 0; // لمتصفحات المتصفح الحديثة
-            
+
             // محاولة إضافية لأجل الهواتف الضعيفة أو المتصفحات المعقدة
             setTimeout(() => {
                 window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -1452,7 +1551,7 @@
             setInterval(() => {
                 const now = new Date();
                 let miniProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
-                
+
                 // حساب القيم
                 let megaVal = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000);
                 let majorVal = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350);
@@ -1461,10 +1560,10 @@
                 // تحديث النصوص في الشاشة
                 const m = document.getElementById('jackpot-mega');
                 if (m) m.innerText = megaVal.toFixed(2);
-                
+
                 const maj = document.getElementById('jackpot-major');
                 if (maj) maj.innerText = majorVal.toFixed(2);
-                
+
                 const min = document.getElementById('jackpot-mini');
                 if (min) min.innerText = miniVal.toFixed(2);
 
@@ -2078,24 +2177,57 @@
             }
         }
 
-        // ================= دالة إرسال طلب الإيداع الحقيقي للسيرفر =================
+       // دالة لتغيير نص الزر عندما يختار اللاعب صورة ليطمئن قلبه
+        function updateFileName(method) {
+            const fileInput = document.getElementById(method + '-file');
+            const labelSpan = fileInput.previousElementSibling; // اختيار النص الذي فوق الـ input
+            
+            if (fileInput.files && fileInput.files.length > 0) {
+                // إذا تم اختيار صورة، نظهر علامة صح خضراء واسم الصورة
+                labelSpan.innerHTML = "✅ " + fileInput.files[0].name;
+                labelSpan.classList.add("text-green-400", "font-bold");
+                labelSpan.classList.remove("text-gray-300");
+            } else {
+                labelSpan.innerHTML = "📸 Importer le reçu (Capture d'écran)";
+                labelSpan.classList.add("text-gray-300");
+                labelSpan.classList.remove("text-green-400", "font-bold");
+            }
+        }
+
+        // دالة سحرية صغيرة لتحويل الصورة إلى نص (Base64) لسهولة إرسالها للسيرفر
+        function getBase64(file) {
+           return new Promise((resolve, reject) => {
+             const reader = new FileReader();
+             reader.readAsDataURL(file);
+             reader.onload = () => resolve(reader.result);
+             reader.onerror = error => reject(error);
+           });
+        }
+
+        // دالة الإرسال المُحدثة لتشمل الصور
         async function submitDeposit(method) {
             const codeInputId = method + "-code";
             const codeInput = document.getElementById(codeInputId);
+            const fileInput = document.getElementById(method + "-file"); // جلب الصورة
 
-            if (!codeInput) return;
-            const pinCode = codeInput.value;
-
+            let pinCode = codeInput ? codeInput.value : "";
             const playerNameElement = document.getElementById('player-name-display');
             const playerName = playerNameElement ? playerNameElement.innerText : "Joueur Inconnu";
 
-            if (!pinCode) {
-                alert("⚠️ Veuillez entrer le code de recharge !");
+            // التحقق من أن اللاعب أدخل الكود أو الصورة (حسب الطريقة)
+            if (!pinCode && (!fileInput || fileInput.files.length === 0)) {
+                alert("⚠️ Veuillez entrer le code ou importer une capture d'écran !");
                 return;
             }
 
             try {
-                // الرابط الصحيح للسيرفر المرفوع
+                let receiptImageBase64 = null;
+                
+                // إذا قام اللاعب برفع صورة، نقوم بتحويلها
+                if (fileInput && fileInput.files.length > 0) {
+                    receiptImageBase64 = await getBase64(fileInput.files[0]);
+                }
+
                 const API_URL = 'https://alpha-backend-server.onrender.com/api/deposit';
 
                 const response = await fetch(API_URL, {
@@ -2107,7 +2239,8 @@
                         player: playerName,
                         method: method.toUpperCase(),
                         amount: 0,
-                        code: pinCode
+                        code: pinCode,
+                        receipt_image: receiptImageBase64 // 👈 أرسلنا الصورة هنا بنجاح!
                     })
                 });
 
@@ -2115,7 +2248,13 @@
                     alert("✅ Votre demande a été envoyée au gérant avec succès !");
                     const modal = document.getElementById('cashier-modal');
                     if (modal) modal.classList.add('hidden');
-                    codeInput.value = "";
+                    
+                    // تنظيف الحقول بعد النجاح
+                    if (codeInput) codeInput.value = "";
+                    if (fileInput) {
+                        fileInput.value = "";
+                        updateFileName(method); // إعادة الزر لشكله الطبيعي
+                    }
                 } else {
                     alert("❌ Une erreur s'est produite côté serveur.");
                 }
@@ -2131,11 +2270,11 @@
 
             const container = document.getElementById('virtual-games-overlay');
             const iframe = document.getElementById('virtual-games-iframe');
-            
+
             if (!container || !iframe) return;
 
             // إظهار الشاشة السوداء والإطار
-            container.classList.remove('hidden'); 
+            container.classList.remove('hidden');
             container.classList.add('flex');
             iframe.style.opacity = '0'; // إخفاء الإطار مؤقتاً حتى يتم التحميل
 
@@ -2155,10 +2294,10 @@
                 // توجيه اللاعب إلى رابط اللعبة داخل الـ Iframe
                 if (data.launch_url) {
                     iframe.src = data.launch_url;
-                    iframe.onload = () => { 
-    document.getElementById('virtual-loader').style.display = 'none';
-    iframe.style.opacity = '1'; 
-};
+                    iframe.onload = () => {
+                        document.getElementById('virtual-loader').style.display = 'none';
+                        iframe.style.opacity = '1';
+                    };
                 } else {
                     console.error("Error from provider:", data);
                     alert("عذراً، حدث خطأ أثناء فتح اللعبة: " + (data.error || "المزود لم يرد"));
@@ -2176,14 +2315,14 @@
             const container = document.getElementById('virtual-games-overlay');
             const iframe = document.getElementById('virtual-games-iframe');
             if (!container || !iframe) return;
-            
-            container.classList.add('hidden'); 
+
+            container.classList.add('hidden');
             container.classList.remove('flex');
             iframe.src = ""; // تفريغ الرابط لإيقاف اللعبة بالخلفية
             refreshPlayerBalance(); // تحديث رصيد اللاعب بعد خروجه
         }
 
-// ================= دوال الشروط واللعب المسؤول =================
+        // ================= دوال الشروط واللعب المسؤول =================
         function openTermsModal() {
             const modal = document.getElementById('terms-modal');
             if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
@@ -2258,7 +2397,7 @@
                 container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion avec le serveur live.</div>';
             }
         }
-        
+
     </script>
 </body>
 
