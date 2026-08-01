@@ -1029,30 +1029,42 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
         except Exception as e:
             return {"status": 0, "msg": "Error"}
 
-# 3. تشغيل الألعاب الرياضية والكازينو
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook(request: Request):
     try:
         data = await request.json()
+        
+        # نفس الـ Payload الناجح الذي استخدمناه للكازينو بدون حقل العملة
         payload = {
-            "method": "game_launch", 
+            "method": "game_launch",
             "agent_code": AGENT_CODE,
             "agent_token": AGENT_TOKEN,
-            "provider_code": str(data.get("provider_code")), # 👈 أضفنا str() هنا
-            "game_code": str(data.get("game_code")),         # 👈 أضفنا str() هنا لحل المشكلة الجديدة
-            "user_code": str(data.get("user_code")),         # 👈 هذه قمنا بحلها سابقاً
+            "provider_code": str(data.get("provider_code")), 
+            "game_code": str(data.get("game_code")),
+            "user_code": str(data.get("user_code", "test_user")),
             "lang": "fr",
-            "currency": "TND", 
             "lobby_url": "https://alphabet216.com/"
         }
-        response = requests.post(PROVIDER_ENDPOINT, json=payload, headers={"Content-Type": "application/json"})
-        response_data = response.json()
         
-        game_url = response_data.get("url") or response_data.get("launch_url")
+        headers = {
+            "Content-Type": "application/json"
+        }
         
-        if game_url: 
+        # استخدام الرابط الأساسي فقط كما فعلنا في الكازينو
+        endpoint = PROVIDER_ENDPOINT.rstrip('/')
+        
+        response = requests.post(endpoint, json=payload, headers=headers)
+        
+        try:
+            response_data = response.json()
+        except Exception:
+            return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
+            
+        game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
+        
+        if game_url:
             return {"launch_url": game_url}
-        else: 
+        else:
             return {"error": "المزود رفض الطلب", "details": response_data}
             
     except Exception as e:
