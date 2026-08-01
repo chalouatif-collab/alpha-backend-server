@@ -351,6 +351,7 @@
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+
     <script>
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         let allUsers = []; 
@@ -499,17 +500,19 @@
             body.innerHTML = '<div class="text-center p-3 text-info fw-bold" style="font-size: 0.75rem;">Chargement en cours... ⏳</div>';
             myModal.show();
             
-            if (safeType === 'pending') {
+           if (safeType === 'pending') {
                 title.innerText = "Demandes en Attente";
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-deposits`, { headers: getAuthHeaders() });
                     if (res.ok) {
                         const tickets = await res.json();
+                        window._currentPendingDeposits = tickets; // حفظ الطلبات في متغير آمن
+                        
                         if (tickets && tickets.length > 0) {
                             let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
-                            tickets.forEach(t => {
+                            tickets.forEach((t, index) => {
                                 const imageBtn = t.receipt_image 
-                                    ? `<button onclick="window.open('${t.receipt_image}', '_blank')" class="btn btn-sm btn-info text-dark fw-bold px-2 py-0 mt-1" style="font-size: 0.65rem;">📸 عرض الإيصال</button>`
+                                    ? `<button onclick="viewReceiptImage(${index})" class="btn btn-sm btn-info text-dark fw-bold px-2 py-0 mt-1" style="font-size: 0.65rem;">📸 عرض الإيصال</button>`
                                     : `<span class="text-secondary" style="font-size: 0.65rem;">(لا توجد صورة)</span>`;
 
                                 html += `
@@ -981,6 +984,24 @@
             navigator.clipboard.writeText(secret).then(() => {
                 showNotification(`تم نسخ الكود بنجاح: ${secret}`, 'success');
             }).catch(err => { showNotification('فشل في نسخ الكود!', 'error'); });
+        }
+
+        function viewReceiptImage(index) {
+            const t = window._currentPendingDeposits ? window._currentPendingDeposits[index] : null;
+            if (t && t.receipt_image) {
+                const win = window.open();
+                win.document.write(`
+                    <html>
+                        <head><title>إيصال الدفع - ${t.username}</title></head>
+                        <body style="background:#040a18; color:white; text-align:center; padding:20px; font-family:sans-serif;">
+                            <h3>إيصال اللاعب: ${t.username} (الطريقة: ${t.method})</h3>
+                            <img src="${t.receipt_image}" style="max-width:90%; border-radius:10px; box-shadow:0 0 15px rgba(255,255,255,0.2); margin-top:15px;" />
+                        </body>
+                    </html>
+                `);
+            } else {
+                alert("❌ الصورة غير موجودة أو تالفة");
+            }
         }
     </script>
 </body>
