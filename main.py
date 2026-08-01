@@ -1381,26 +1381,20 @@ def get_eurovirtuals_headers():
     }
 
 # 3. دالة جلب قائمة الألعاب وعرضها في المنصة
-@app.post("/api/get-eurovirtuals-games")
+@app.get("/api/get-eurovirtuals-games")
 async def get_virtual_games():
     try:
         headers = get_eurovirtuals_headers()
-        # تصليح الرابط واستخدام الرابط الأساسي مباشرة 
         response = requests.get(f"{EURO_BASE_URL}/v1/games", headers=headers, timeout=20)
+        data = response.json()
         
-        try:
-            data = response.json()
-        except Exception:
-            return {"status": "error", "error": "المزود لم يرد بملف JSON صالح"}
-            
         if response.status_code == 200 and data.get("status_code") == 200:
             games_list = data.get("data", {}).get("data", [])
             return {"status": "success", "games": games_list}
         else:
             return {"status": "error", "error": data.get("status_description", "Unknown Error")}
-            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "error", "error": str(e)}
 
 # 4. دالة تشغيل الألعاب
 @app.post("/api/provider/launch-eurovirtuals")
