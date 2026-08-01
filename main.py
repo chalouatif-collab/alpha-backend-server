@@ -2034,3 +2034,116 @@ async def euro_win(request: Request, x_timestamp: str = Header(None), x_token: s
         }
     except Exception as e:
         return {"status_code": 500, "status_description": str(e)}
+    
+    import time
+import hmac
+import hashlib
+import requests
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+# ==========================================
+# ⚙️ إعدادات مزود EuroVirtuals 
+# (يجب الحصول على هذه القيم من الدعم الفني)
+# ==========================================
+EUROVIRTUALS_BASE_URL = "https://api.staging.betkraft.co.uk/"  # رابط الـ API الأساسي
+EUROVIRTUALS_API_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6" # الـ API KEY
+EUROVIRTUALS_SECRET_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOq" # المفتاح السري لتوليد التوقيع
+
+router = APIRouter()
+
+# 🔐 دالة توليد التوقيع الأمني (Signature)
+def generate_eurovirtuals_signature(timestamp: str) -> str:
+    """
+    تقوم هذه الدالة بإنشاء مفتاح التشفير x-signature-key.
+    ملاحظة هامة: يجب أن تسأل الدعم الفني عن "المعادلة" الدقيقة للتشفير 
+    (مثلاً: هل هو تشفير لـ timestamp فقط؟ أم timestamp + api_key؟).
+    هنا افترضنا استخدام التشفير القياسي HMAC SHA256.
+    """
+    message = timestamp
+    signature = hmac.new(
+        EUROVIRTUALS_SECRET_KEY.encode('utf-8'),
+        message.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    return signature
+
+# 🛠️ الهيدر الثابت المطلوب في كل الطلبات
+def get_eurovirtuals_headers():
+    timestamp = str(int(time.time()))
+    signature = generate_eurovirtuals_signature(timestamp)
+    
+    return {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EUROVIRTUALS_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp
+    }
+
+
+# ==========================================
+# 🎮 1. جلب قائمة الألعاب الافتراضية
+# ==========================================
+@router.post("/api/provider/get-eurovirtuals-games")
+async def get_virtual_games():
+    try:
+        headers = get_eurovirtuals_headers()
+        response = requests.get(f"{EUROVIRTUALS_BASE_URL}/v1/games", headers=headers)
+        data = response.json()
+        
+        if response.status_code == 200 and data.get("status_code") == 200:
+            # المزود يضع مصفوفة الألعاب داخل data -> data
+            games_list = data.get("data", {}).get("data", [])
+            return {"status": "success", "games": games_list}
+        else:
+            return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# 🚀 2. تشغيل اللعبة الافتراضية المحددة
+# ==========================================
+class LaunchVirtualRequest(BaseModel):
+    user_code: str
+    game_uuid: str
+
+@router.post("/api/provider/launch-eurovirtuals")
+async def launch_virtual_game(request: LaunchVirtualRequest):
+    try:
+        # هنا يجب أن تجلب بيانات اللاعب الحقيقية من قاعدة بياناتك
+        # هذا مجرد مثال على البيانات المطلوبة:
+        player_id = request.user_code
+        player_name = request.user_code
+        player_token = "GENERATED_SESSION_TOKEN" # توكن الجلسة الخاص باللاعب
+        player_balance = 400.90 # جلب رصيد اللاعب من الداتا بيز
+        
+        headers = get_eurovirtuals_headers()
+        payload = {
+            "player_id": str(player_id),
+            "player_name": player_name,
+            "player_token": player_token,
+            "game_uuid": request.game_uuid,
+            "currency": "TND", # أو العملة المعتمدة في موقعك
+            "balance": player_balance,
+            "demo": 0 # 0 تعني لعب حقيقي بمال حقيقي
+        }
+
+        response = requests.post(
+            f"{EUROVIRTUALS_BASE_URL}/v1/launch",
+            headers=headers,
+            json=payload
+        )
+        data = response.json()
+
+        # التحقق من نجاح العملية واستخراج الرابط
+        if response.status_code == 200 and data.get("status_code") == 200:
+            launch_url = data.get("data", {}).get("url")
+            return {"launch_url": launch_url}
+        else:
+            return {"error": data.get("status_description", "Invalid Launch Request")}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
