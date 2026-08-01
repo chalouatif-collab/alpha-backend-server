@@ -1064,7 +1064,7 @@
                     class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
                 </div>
             </div>
-<!-- ================= قسم الألعاب الافتراضية (الجديد كلياً) ================= -->
+<!-- ================= قسم الألعاب الافتراضية (تصميم احترافي مثل الكازينو) ================= -->
             <div id="pane-virtuals" class="player-view-section hidden w-full px-4 mt-2">
                 <div class="flex flex-col md:flex-row gap-4 bg-asbet-card p-4 rounded-xl border border-white/5 mb-2">
                     <h2 class="text-white font-black text-base flex items-center gap-2 whitespace-nowrap">
@@ -1074,11 +1074,11 @@
                         class="w-full bg-asbet-dark text-white border border-white/10 rounded-lg px-4 py-2 outline-none text-sm">
                 </div>
                 
-                <!-- شريط الأقسام (قابل للسحب تماماً مثل الكازينو) -->
+                <!-- شريط الأقسام العلوي (قابل للسحب) -->
                 <div id="virtual-categories-bar" class="flex overflow-x-auto gap-2 no-scrollbar py-2 mb-2 hide-scrollbar"></div>
                 
-                <!-- شبكة عرض الألعاب الافتراضية -->
-                <div id="virtuals-games-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3 w-full p-2 pb-10">
+                <!-- شبكة عرض الألعاب الفرعية -->
+                <div id="virtuals-games-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 md:gap-4 w-full p-2 pb-10">
                     <!-- سيتم تعبئة الألعاب هنا برمجياً -->
                 </div>
             </div>
@@ -2281,36 +2281,46 @@
             }
         }
 
-       // 1. تصنيفات الألعاب الافتراضية (الأزرار العلوية)
+      // 1. الشريط العلوي (التصنيفات الرئيسية التي طلبتها)
         const virtualCategories = [
-            { id: "all", name: "Tous les jeux" },
-            { id: "football", name: "⚽ Football" },
-            { id: "racing", name: "🏇 Courses" },
-            { id: "sports", name: "🎯 Sports Divers" }
+            { id: "football", name: "⚽ Football Pro" },
+            { id: "horses", name: "🏇 Chevaux" },
+            { id: "greyhounds", name: "🐕 Lévriers" },
+            { id: "motor", name: "🏍️ Motos" },
+            { id: "penalty", name: "🥅 Penalty" }
         ];
 
-        // 2. قائمة الألعاب مع ربط كل لعبة بتصنيفها (category)
+        // 2. الألعاب الفرعية التي ستظهر في الشبكة تحت كل تصنيف
         const virtualGamesList = [
-            { code: "football", name: "Football Virtuel", category: "football", icon: "⚽", bg: "from-emerald-600 to-green-900" },
-            { code: "league", name: "Ligue Pro", category: "football", icon: "🏆", bg: "from-blue-600 to-blue-900" },
-            { code: "penalty", name: "Tirs au But", category: "football", icon: "🥅", bg: "from-rose-600 to-red-900" },
-            { code: "horses", name: "Courses Chevaux", category: "racing", icon: "🏇", bg: "from-amber-600 to-amber-900" },
-            { code: "greyhounds", name: "Lévriers", category: "racing", icon: "🐕", bg: "from-gray-500 to-gray-800" },
-            { code: "speedway", name: "Speedway", category: "racing", icon: "🏎️", bg: "from-red-700 to-black" },
-            { code: "cycling", name: "Cyclisme", category: "racing", icon: "🚴", bg: "from-teal-500 to-teal-800" },
-            { code: "tennis", name: "Tennis", category: "sports", icon: "🎾", bg: "from-lime-600 to-green-900" },
-            { code: "basketball", name: "Basketball", category: "sports", icon: "🏀", bg: "from-orange-500 to-orange-800" },
-            { code: "motor", name: "Motos", category: "sports", icon: "🏍️", bg: "from-slate-600 to-slate-900" },
-            { code: "table_tennis", name: "Ping Pong", category: "sports", icon: "🏓", bg: "from-indigo-500 to-indigo-900" },
-            { code: "darts", name: "Fléchettes", category: "sports", icon: "🎯", bg: "from-purple-600 to-purple-900" }
+            // ألعاب كرة القدم
+            { code: "football", name: "Ligue Anglaise", category: "football", img: "https://placehold.co/400x400/1a0b2e/FFFFFF?text=Ligue+Anglaise" },
+            { code: "football", name: "Ligue Espagnole", category: "football", img: "https://placehold.co/400x400/180A2B/E8006F?text=Ligue+Espagnole" },
+            { code: "football", name: "Ligue Italienne", category: "football", img: "https://placehold.co/400x400/0B001A/FACC15?text=Ligue+Italienne" },
+            { code: "football", name: "Coupe du Monde", category: "football", img: "https://placehold.co/400x400/2A0845/FFFFFF?text=Coupe+du+Monde" },
+            
+            // ألعاب الخيول
+            { code: "horses", name: "Course Classique", category: "horses", img: "https://placehold.co/400x400/1a0b2e/FACC15?text=Course+Classique" },
+            { code: "horses", name: "Royal Derby", category: "horses", img: "https://placehold.co/400x400/180A2B/FFFFFF?text=Royal+Derby" },
+            
+            // ألعاب الكلاب
+            { code: "greyhounds", name: "Platinum Hounds", category: "greyhounds", img: "https://placehold.co/400x400/0B001A/E8006F?text=Platinum+Hounds" },
+            { code: "greyhounds", name: "Course Rapide", category: "greyhounds", img: "https://placehold.co/400x400/2A0845/FFFFFF?text=Course+Rapide" },
+            
+            // ألعاب الموتور
+            { code: "motor", name: "Speedway 500", category: "motor", img: "https://placehold.co/400x400/1a0b2e/FFFFFF?text=Speedway+500" },
+            { code: "motor", name: "Moto Grand Prix", category: "motor", img: "https://placehold.co/400x400/180A2B/FACC15?text=Moto+GP" },
+            
+            // ألعاب البينالتي
+            { code: "penalty", name: "Tirs au But Pro", category: "penalty", img: "https://placehold.co/400x400/0B001A/FFFFFF?text=Penalty+Pro" },
+            { code: "penalty", name: "Coupe Penalty", category: "penalty", img: "https://placehold.co/400x400/2A0845/E8006F?text=Coupe+Penalty" }
         ];
 
         let currentVirtuals = [];
 
-        // 3. دالة التهيئة الرئيسية (تُستدعى عند فتح القسم)
+        // دالة التهيئة (تُشغل عند الدخول للقسم)
         function initVirtualsLobby() {
             renderVirtualCategories();
-            loadVirtualGames('all');
+            loadVirtualGames('football'); // نعرض كرة القدم كافتراضي
             
             // تفعيل السحب بالماوس للشريط الجديد مثل الكازينو
             setTimeout(() => {
@@ -2320,46 +2330,42 @@
             }, 300);
         }
 
-        // 4. رسم شريط التصنيفات (الأزرار العلوية)
+        // رسم شريط التصنيفات (الأزرار العلوية)
         function renderVirtualCategories() {
             const bar = document.getElementById('virtual-categories-bar');
             if (!bar) return;
             
             bar.innerHTML = virtualCategories.map(cat => `
                 <button onclick="loadVirtualGames('${cat.id}')" id="btn-vcat-${cat.id}" 
-                        class="vcat-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md">
+                        class="vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md">
                     <span>${cat.name}</span>
                 </button>
             `).join('');
         }
 
-        // 5. رسم الألعاب بناءً على التصنيف الذي ضغط عليه اللاعب
+        // فلترة الألعاب عند الضغط على تصنيف
         function loadVirtualGames(categoryId) {
-            // تلوين الزر النشط باللون الزهري (مثل الكازينو)
+            // تلوين الزر النشط بالوردي (مثل الكازينو)
             document.querySelectorAll('.vcat-tab-btn').forEach(btn => {
-                btn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-xs font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
+                btn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
             });
             const activeBtn = document.getElementById(`btn-vcat-${categoryId}`);
             if (activeBtn) {
-                activeBtn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-4 py-2 mt-1 btn-gradient border-none text-white rounded-full text-xs font-black transition-all duration-300 cursor-pointer whitespace-nowrap shadow-lg transform scale-105";
+                activeBtn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 btn-gradient border-none text-white rounded-full text-sm font-black transition-all duration-300 cursor-pointer whitespace-nowrap shadow-lg transform scale-105";
             }
 
-            // فلترة الألعاب
-            currentVirtuals = categoryId === 'all' 
-                ? virtualGamesList 
-                : virtualGamesList.filter(g => g.category === categoryId);
-            
+            currentVirtuals = virtualGamesList.filter(g => g.category === categoryId);
             renderVirtualGamesGrid(currentVirtuals);
         }
 
-        // 6. دالة البحث السريع
+        // محرك البحث
         function filterVirtualGames() {
             const searchTerm = document.getElementById('virtual-search-input').value.toLowerCase();
             const filtered = currentVirtuals.filter(g => g.name.toLowerCase().includes(searchTerm));
             renderVirtualGamesGrid(filtered);
         }
 
-        // 7. دالة الطباعة في الشبكة (الخاصة بالبطاقات المصغرة الجميلة)
+        // رسم الألعاب في الشبكة السفلية
         function renderVirtualGamesGrid(gamesArray) {
             const container = document.getElementById('virtuals-games-grid');
             if (!container) return;
@@ -2371,21 +2377,19 @@
 
             container.innerHTML = gamesArray.map(g => `
                 <div onclick="launchSpecificVirtualGame('${g.code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/10 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col h-full">
-                    <div class="relative w-full aspect-square overflow-hidden bg-gradient-to-br ${g.bg} flex items-center justify-center">
-                        <span class="text-4xl md:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg">${g.icon}</span>
+                    <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
+                        <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[2px]">
-                            <span class="bg-asbet-primary text-white text-[9px] md:text-[10px] font-bold px-3 py-1.5 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                            <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
                         </div>
                     </div>
                     <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5 flex-grow">
-                        <span class="text-white text-[9px] md:text-[10px] font-bold truncate pr-1 group-hover:text-asbet-primary transition-colors">${g.name}</span>
-                        <span class="text-asbet-primary text-[10px]">▶</span>
+                        <span class="text-white text-[10px] md:text-[11px] font-bold truncate pr-1 group-hover:text-asbet-primary transition-colors">${g.name}</span>
+                        <span class="text-asbet-primary text-xs">▶</span>
                     </div>
                 </div>
             `).join('');
-        }
-
-        // (الدالة launchSpecificVirtualGame تبقى كما هي أسفل هذا الكود)
+   }
         // 3. الدالة الجديدة لفتح اللعبة المحددة
         async function launchSpecificVirtualGame(gameUuid) {
             if (!playerSession) return openLoginModal(); 
