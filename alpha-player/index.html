@@ -2279,24 +2279,24 @@
                 console.error("Erreur de connexion:", error);
                 alert("❌ Impossible de contacter le serveur. تأكد أن سيرفر Render يعمل.");
             }
-        }
-// 1. الشريط العلوي (التصنيفات التي ستظهر للاعب)
+            }
+// 1. الشريط العلوي (التصنيفات الرئيسية)
         const virtualCategories = [
             { id: "all", name: "🎰 Tous" },
             { id: "football", name: "⚽ Football" },
             { id: "horses", name: "🏇 Chevaux" },
             { id: "greyhounds", name: "🐕 Lévriers" },
-            { id: "motor", name: "🏍️ Motos" }
+            { id: "motor", name: "🏍️ Motos" },
+            { id: "penalty", name: "🥅 Penalty" }
         ];
 
-        let currentVirtuals = []; // قائمة الألعاب التي ستأتي من السيرفر
+        let currentVirtuals = []; // القائمة التي ستستقبل الألعاب من السيرفر
 
         // 2. دالة التهيئة (تُشغل عند الدخول للقسم)
         function initVirtualsLobby() {
             renderVirtualCategories();
-            fetchVirtualGamesFromProvider('all'); // جلب الألعاب فوراً من السيرفر
+            fetchEuroVirtualsGames('all'); // نطلب الألعاب الحقيقية فوراً
             
-            // تفعيل السحب بالماوس للشريط الجديد مثل الكازينو
             setTimeout(() => {
                 if(typeof enableMouseDragScroll === 'function') {
                     enableMouseDragScroll('virtual-categories-bar');
@@ -2304,65 +2304,58 @@
             }, 300);
         }
 
-        // 3. رسم شريط التصنيفات (الأزرار العلوية)
+        // 3. رسم شريط التصنيفات
         function renderVirtualCategories() {
             const bar = document.getElementById('virtual-categories-bar');
             if (!bar) return;
-            
             bar.innerHTML = virtualCategories.map(cat => `
-                <button onclick="filterFetchedVirtualGames('${cat.id}')" id="btn-vcat-${cat.id}" 
+                <button onclick="filterVirtualsByCategory('${cat.id}')" id="btn-vcat-${cat.id}" 
                         class="vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md">
                     <span>${cat.name}</span>
                 </button>
             `).join('');
         }
 
-        // 4. دالة جلب الألعاب من السيرفر (ديناميكياً)
-        async function fetchVirtualGamesFromProvider(categoryId = 'all') {
+        // 4. الدالة السحرية للاتصال بالسيرفر الجديد
+        async function fetchEuroVirtualsGames(categoryId) {
             const container = document.getElementById('virtuals-games-grid');
             if (!container) return;
 
             updateActiveCategoryButton(categoryId);
-            
-            container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Chargement des jeux virtuels... ⏳</div>';
+            container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Connexion au serveur EuroVirtuals... ⏳</div>';
 
             try {
-                // نطلب الألعاب الافتراضية من السيرفر 
-                // (غيّر 'EUROVIRTUALS' إذا كان كود المزود مختلفاً في قاعدتك)
-                const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                // الاتصال بالدالة الجديدة التي وضعتها في الـ Python
+                const response = await fetch(`${BACKEND_URL}/api/provider/get-eurovirtuals-games`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ provider_code: 'EUROVIRTUALS' }) 
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
-                const rawText = await response.text();
-                if (rawText) {
-                    const data = JSON.parse(rawText);
-                    currentVirtuals = data.games || data.data || (Array.isArray(data) ? data : []);
-
-                    if (currentVirtuals && currentVirtuals.length > 0) {
-                        filterFetchedVirtualGames(categoryId); // عرض الألعاب بعد جلبها
-                    } else {
-                        container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu virtuel trouvé.</div>`;
-                    }
+                const data = await response.json();
+                
+                if (data.status === "success" && data.games) {
+                    currentVirtuals = data.games; // حفظ الألعاب القادمة من المزود
+                    filterVirtualsByCategory(categoryId);
+                } else {
+                    container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Erreur: ${data.error || "Aucun jeu trouvé"}</div>`;
                 }
             } catch (error) {
-                console.error("❌ خطأ:", error);
-                container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion.</div>';
+                console.error("❌ Erreur API EuroVirtuals:", error);
+                container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion au serveur.</div>';
             }
         }
 
-        // 5. الفلتر الذكي: ترتيب الألعاب تحت الأزرار
-        function filterFetchedVirtualGames(categoryId) {
+        // 5. الفلتر الذكي لتوزيع الألعاب على الأقسام
+        function filterVirtualsByCategory(categoryId) {
             updateActiveCategoryButton(categoryId);
             
             let filtered = currentVirtuals;
             if (categoryId !== 'all') {
-                // فلترة ذكية بناءً على الكلمات المفتاحية في اسم اللعبة
                 const keyword = categoryId === 'football' ? 'foot' :
                                 categoryId === 'horses' ? 'horse' :
                                 categoryId === 'greyhounds' ? 'hound' :
-                                categoryId === 'motor' ? 'motor' : categoryId;
+                                categoryId === 'motor' ? 'motor' :
+                                categoryId === 'penalty' ? 'penalty' : categoryId;
                 
                 filtered = currentVirtuals.filter(g => {
                     const name = (g.game_name || g.name || "").toLowerCase();
@@ -2373,7 +2366,7 @@
             renderVirtualGamesGrid(filtered);
         }
 
-        // تحديث لون الزر النشط في الشريط
+        // تحديث لون الزر
         function updateActiveCategoryButton(categoryId) {
             document.querySelectorAll('.vcat-tab-btn').forEach(btn => {
                 btn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
@@ -2384,30 +2377,20 @@
             }
         }
 
-        // 6. محرك البحث الخاص بالافتراضيات
-        function filterVirtualGames() {
-            const searchTerm = document.getElementById('virtual-search-input').value.toLowerCase();
-            const filtered = currentVirtuals.filter(g => {
-                const name = (g.game_name || g.name || "").toLowerCase();
-                return name.includes(searchTerm);
-            });
-            renderVirtualGamesGrid(filtered);
-        }
-
-        // 7. رسم الألعاب القادمة من السيرفر في الشبكة
+        // 6. رسم الألعاب الحقيقية في الشبكة
         function renderVirtualGamesGrid(gamesArray) {
             const container = document.getElementById('virtuals-games-grid');
             if (!container) return;
 
             if (gamesArray.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé pour cette catégorie</div>';
+                container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé pour cette catégorie.</div>';
                 return;
             }
 
             container.innerHTML = gamesArray.map(g => {
-                const title = g.game_name || g.name || g.title || "Virtual Game";
-                const img = g.banner || g.image || g.thumb || "https://placehold.co/400x400/1a0b2e/FFFFFF?text=Virtual+Game";
-                const code = g.game_code || g.id;
+                const title = g.game_name || g.name || "Virtual Game";
+                const img = g.logo || g.banner || g.image || "https://placehold.co/400x400/1a0b2e/FACC15?text=Euro+Virtuals";
+                const code = g.game_uuid || g.game_code || g.id;
 
                 return `
                 <div onclick="launchSpecificVirtualGame('${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/10 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col h-full">
@@ -2425,6 +2408,8 @@
                 </div>
             `}).join('');
         }
+        
+        // (الدالة launchSpecificVirtualGame تبقى كما هي أسفل هذا الكود)
         // 3. الدالة الجديدة لفتح اللعبة المحددة
         async function launchSpecificVirtualGame(gameUuid) {
             if (!playerSession) return openLoginModal(); 
