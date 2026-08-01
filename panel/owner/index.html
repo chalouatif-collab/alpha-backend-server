@@ -506,11 +506,16 @@
                     const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-deposits`, { headers: getAuthHeaders() });
                     if (res.ok) {
                         const tickets = await res.json();
-                        window._currentPendingDeposits = tickets; // حفظ الطلبات في متغير آمن
+                        window._currentPendingDeposits = tickets; 
                         
                         if (tickets && tickets.length > 0) {
                             let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
                             tickets.forEach((t, index) => {
+                                const ticketId = t.ticket_id || t.id || index;
+                                const username = t.username || t.player || "Inconnu";
+                                const method = t.method || "N/A";
+                                const codeVal = t.code || t.pin_code || t.reference || "N/A";
+
                                 const imageBtn = t.receipt_image 
                                     ? `<button onclick="viewReceiptImage(${index})" class="btn btn-sm btn-info text-dark fw-bold px-2 py-0 mt-1" style="font-size: 0.65rem;">📸 عرض الإيصال</button>`
                                     : `<span class="text-secondary" style="font-size: 0.65rem;">(لا توجد صورة)</span>`;
@@ -518,19 +523,19 @@
                                 html += `
                                 <div class="bg-input-custom border border-warning rounded-2 shadow-sm p-2">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <strong class="text-white" style="font-size: 0.8rem;">👤 ${t.username}</strong>
+                                        <strong class="text-white" style="font-size: 0.8rem;">👤 ${username}</strong>
                                         <span class="badge bg-warning text-dark" style="font-size: 0.6rem;">En attente</span>
                                     </div>
                                     <div class="text-info mb-1 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
-                                        <span>Méthode: <strong class="text-white">${t.method}</strong></span>
+                                        <span>Méthode: <strong class="text-white">${method}</strong></span>
                                         ${imageBtn}
                                     </div>
                                     <div class="bg-dark p-1 rounded text-center border-custom mb-2 font-monospace" style="letter-spacing: 1px; font-size: 0.8rem;">
-                                        💳 <span class="text-success fw-bold">${t.code || "بدون كود"}</span>
+                                        💳 <span class="text-success fw-bold">${codeVal}</span>
                                     </div>
                                     <div class="d-flex gap-1">
-                                        <input type="number" id="amt-${t.ticket_id}" class="form-control form-control-sm text-center font-monospace" placeholder="Montant TND">
-                                        <button class="btn btn-sm btn-success fw-bold px-3 py-1" onclick="approveDeposit('${t.ticket_id}', '${t.username}')" style="font-size: 0.75rem;">✅</button>
+                                        <input type="number" id="amt-${ticketId}" class="form-control form-control-sm text-center font-monospace" placeholder="Montant TND">
+                                        <button class="btn btn-sm btn-success fw-bold px-3 py-1" onclick="approveDeposit('${ticketId}', '${username}')" style="font-size: 0.75rem;">✅</button>
                                     </div>
                                 </div>`;
                             });
@@ -541,7 +546,6 @@
                 } catch (error) { body.innerHTML = '<div class="text-center p-3 text-danger fw-bold">Erreur de connexion.</div>'; }
                 return; 
             }
-          
             if (safeType === 'sport') {
                 try {
                     let url = '';
