@@ -1026,7 +1026,7 @@
         <div id="virtual-loader" class="absolute inset-0 flex items-center justify-center bg-black z-[-1]">
             <span class="text-asbet-primary font-bold animate-pulse text-xl">Chargement des jeux virtuels... ⏳</span>
         </div>
-        <iframe id="virtual-games-iframe" class="w-full h-full border-0 relative z-10" allow="autoplay; fullscreen; encrypted-media; geolocation" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allowfullscreen></iframe>
+        <iframe id="virtual-games-iframe" class="w-full h-full border-0 relative z-10" allow="autoplay; fullscreen; encrypted-media; geolocation" allowfullscreen></iframe>
     </div>
 
     <!-- ==================== السكريبتات الحقيقية والكاملة ==================== -->
@@ -2155,7 +2155,10 @@
                 // توجيه اللاعب إلى رابط اللعبة داخل الـ Iframe
                 if (data.launch_url) {
                     iframe.src = data.launch_url;
-                    iframe.onload = () => { iframe.style.opacity = '1'; }; // إظهار اللعبة بعد اكتمال تحميلها
+                    iframe.onload = () => { 
+    document.getElementById('virtual-loader').style.display = 'none';
+    iframe.style.opacity = '1'; 
+};
                 } else {
                     console.error("Error from provider:", data);
                     alert("عذراً، حدث خطأ أثناء فتح اللعبة: " + (data.error || "المزود لم يرد"));
