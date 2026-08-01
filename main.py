@@ -1343,8 +1343,8 @@ async def seamless_wallet(request: Request):
 # ==========================================
 # دمج ألعاب EuroVirtuals الرياضية الافتراضية
 # ==========================================
-EURO_APP_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
-EURO_API_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
+EURO_APP_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
+EURO_API_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
 EURO_BASE_URL = "https://api.staging.betkraft.co.uk"
 
 # 1. دالة التشفير الأساسية للتشغيل (MD5) حسب وثائقهم
@@ -1375,26 +1375,32 @@ def get_eurovirtuals_headers():
     return {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "x-api-key": EURO_APP_KEY,
+        "x-api-key": EURO_API_KEY,
         "x-signature-key": signature,
         "x-timestamp": timestamp
     }
 
 # 3. دالة جلب قائمة الألعاب وعرضها في المنصة
-@app.get("/api/get-eurovirtuals-games")
+@app.post("/api/get-eurovirtuals-games")
 async def get_virtual_games():
     try:
         headers = get_eurovirtuals_headers()
+        # تصليح الرابط واستخدام الرابط الأساسي مباشرة 
         response = requests.get(f"{EURO_BASE_URL}/v1/games", headers=headers, timeout=20)
-        data = response.json()
         
+        try:
+            data = response.json()
+        except Exception:
+            return {"status": "error", "error": "المزود لم يرد بملف JSON صالح"}
+            
         if response.status_code == 200 and data.get("status_code") == 200:
             games_list = data.get("data", {}).get("data", [])
             return {"status": "success", "games": games_list}
         else:
             return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+            
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 4. دالة تشغيل الألعاب
 @app.post("/api/provider/launch-eurovirtuals")
