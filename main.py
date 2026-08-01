@@ -1060,6 +1060,7 @@ async def launch_sportsbook(request: Request):
     
     
 @app.post("/api/provider/launch-casino")
+@app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
         data = await request.json()
@@ -1105,7 +1106,6 @@ async def launch_casino(request: Request):
             
     except Exception as e:
         return {"error": str(e)}
-
 # ==========================================
 # تشغيل الروت الأساسي والرياضة الوهمية
 # ==========================================
