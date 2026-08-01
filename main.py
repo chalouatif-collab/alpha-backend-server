@@ -2085,11 +2085,11 @@ def get_eurovirtuals_headers():
 # ==========================================
 # 🎮 1. جلب قائمة الألعاب الافتراضية
 # ==========================================
-@router.post("/api/provider/get-eurovirtuals-games")
+@router.post("/api/get-eurovirtuals-games")
 async def get_virtual_games():
     try:
         headers = get_eurovirtuals_headers()
-        response = requests.get(f"{EUROVIRTUALS_BASE_URL}/v1/games", headers=headers)
+        response = requests.get(f"{"https://api.staging.betkraft.co.uk"}/v1/games", headers=headers)
         data = response.json()
         
         if response.status_code == 200 and data.get("status_code") == 200:
@@ -2111,7 +2111,7 @@ class LaunchVirtualRequest(BaseModel):
     game_uuid: str
 
 @router.post("/api/provider/launch-eurovirtuals")
-async def launch_virtual_game(request: LaunchVirtualRequest):
+async def launch_virtual_game(request: LaunchVirtualRequest)
     try:
         # هنا يجب أن تجلب بيانات اللاعب الحقيقية من قاعدة بياناتك
         # هذا مجرد مثال على البيانات المطلوبة:
@@ -2132,7 +2132,7 @@ async def launch_virtual_game(request: LaunchVirtualRequest):
         }
 
         response = requests.post(
-            f"{EUROVIRTUALS_BASE_URL}/v1/launch",
+            f"{"https://api.staging.betkraft.co.uk"}/v1/launch",
             headers=headers,
             json=payload
         )
