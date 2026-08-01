@@ -2111,7 +2111,7 @@ class LaunchVirtualRequest(BaseModel):
     game_uuid: str
 
 @router.post("/api/provider/launch-eurovirtuals")
-async def launch_virtual_game(request: LaunchVirtualRequest)
+async def launch_virtual_game(request: LaunchVirtualRequest):
     try:
         # هنا يجب أن تجلب بيانات اللاعب الحقيقية من قاعدة بياناتك
         # هذا مجرد مثال على البيانات المطلوبة:
