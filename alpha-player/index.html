@@ -2276,31 +2276,47 @@
             }
         }
 
-       // 1. قائمة الألعاب الافتراضية (يمكنك تعديل الصور والأسماء لاحقاً)
+       // 1. قائمة الألعاب الافتراضية الشاملة (تصميم متدرج الألوان وأيقونات)
         const virtualGamesList = [
-            { code: "football", name: "Football Virtuel", img: "https://placehold.co/400x300/180A2B/FFF?text=Football+Pro" },
-            { code: "horses", name: "Courses de Chevaux", img: "https://placehold.co/400x300/180A2B/FFF?text=Chevaux" },
-            { code: "greyhounds", name: "Courses de Lévriers", img: "https://placehold.co/400x300/180A2B/FFF?text=Lévriers" },
-            { code: "motor", name: "Sport Motorisé", img: "https://placehold.co/400x300/180A2B/FFF?text=Motos" },
-            { code: "penalty", name: "Tirs au But", img: "https://placehold.co/400x300/180A2B/FFF?text=Penalty" }
+            { code: "football", name: "Football Virtuel", icon: "⚽", bg: "from-emerald-600 to-green-900" },
+            { code: "league", name: "Ligue Pro", icon: "🏆", bg: "from-blue-600 to-blue-900" },
+            { code: "penalty", name: "Tirs au But", icon: "🥅", bg: "from-rose-600 to-red-900" },
+            { code: "horses", name: "Courses Chevaux", icon: "🏇", bg: "from-amber-600 to-amber-900" },
+            { code: "greyhounds", name: "Lévriers", icon: "🐕", bg: "from-gray-500 to-gray-800" },
+            { code: "tennis", name: "Tennis", icon: "🎾", bg: "from-lime-600 to-green-900" },
+            { code: "basketball", name: "Basketball", icon: "🏀", bg: "from-orange-500 to-orange-800" },
+            { code: "motor", name: "Motos", icon: "🏍️", bg: "from-slate-600 to-slate-900" },
+            { code: "speedway", name: "Speedway", icon: "🏎️", bg: "from-red-700 to-black" },
+            { code: "cycling", name: "Cyclisme", icon: "🚴", bg: "from-teal-500 to-teal-800" },
+            { code: "table_tennis", name: "Ping Pong", icon: "🏓", bg: "from-indigo-500 to-indigo-900" },
+            { code: "darts", name: "Fléchettes", icon: "🎯", bg: "from-purple-600 to-purple-900" }
         ];
 
-        // 2. دالة عرض الألعاب في القسم الجديد
+        // 2. دالة عرض الألعاب بتصميم مصغر واحترافي
         function initVirtualsLobby() {
             const container = document.getElementById('virtuals-games-grid');
             if (!container) return;
 
+            // تغيير كلاسات الشبكة لتصبح الأزرار أصغر وتتسع لعدد أكبر في السطر الواحد
+            container.className = "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3 w-full p-2 pb-10";
+
             container.innerHTML = virtualGamesList.map(g => `
-                <div onclick="launchSpecificVirtualGame('${g.code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col">
-                    <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
-                        <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
-                            <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
+                <div onclick="launchSpecificVirtualGame('${g.code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/10 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col h-full">
+                    
+                    <!-- المربع الملون مع الأيقونة -->
+                    <div class="relative w-full aspect-square overflow-hidden bg-gradient-to-br ${g.bg} flex items-center justify-center">
+                        <span class="text-4xl md:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-lg">${g.icon}</span>
+                        
+                        <!-- زر اللعب عند مرور الفأرة -->
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[2px]">
+                            <span class="bg-asbet-primary text-white text-[9px] md:text-[10px] font-bold px-3 py-1.5 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
                         </div>
                     </div>
-                    <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5">
-                        <span class="text-white text-[10px] font-bold truncate pr-2 group-hover:text-asbet-primary transition-colors">${g.name}</span>
-                        <span class="text-asbet-primary text-[11px]">▶</span>
+                    
+                    <!-- شريط العنوان السفلي -->
+                    <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5 flex-grow">
+                        <span class="text-white text-[9px] md:text-[10px] font-bold truncate pr-1 group-hover:text-asbet-primary transition-colors">${g.name}</span>
+                        <span class="text-asbet-primary text-[10px]">▶</span>
                     </div>
                 </div>
             `).join('');
