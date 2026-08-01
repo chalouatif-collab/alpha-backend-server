@@ -398,6 +398,7 @@ async def create_deposit(req: DepositRequest):
             "method": html.escape(req.method.strip()),
             "amount": req.amount,
             "code": html.escape(req.code.strip()) if hasattr(req, 'code') and req.code else "",
+            "receipt_image": req.receipt_image,
             "status": "pending",
             "date": datetime.now().isoformat()
         }
