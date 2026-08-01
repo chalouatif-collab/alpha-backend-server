@@ -2280,47 +2280,21 @@
                 alert("❌ Impossible de contacter le serveur. تأكد أن سيرفر Render يعمل.");
             }
         }
-
-      // 1. الشريط العلوي (التصنيفات الرئيسية التي طلبتها)
+// 1. الشريط العلوي (التصنيفات التي ستظهر للاعب)
         const virtualCategories = [
-            { id: "football", name: "⚽ Football Pro" },
+            { id: "all", name: "🎰 Tous" },
+            { id: "football", name: "⚽ Football" },
             { id: "horses", name: "🏇 Chevaux" },
             { id: "greyhounds", name: "🐕 Lévriers" },
-            { id: "motor", name: "🏍️ Motos" },
-            { id: "penalty", name: "🥅 Penalty" }
+            { id: "motor", name: "🏍️ Motos" }
         ];
 
-        // 2. الألعاب الفرعية التي ستظهر في الشبكة تحت كل تصنيف
-        const virtualGamesList = [
-            // ألعاب كرة القدم
-            { code: "football", name: "Ligue Anglaise", category: "football", img: "https://placehold.co/400x400/1a0b2e/FFFFFF?text=Ligue+Anglaise" },
-            { code: "football", name: "Ligue Espagnole", category: "football", img: "https://placehold.co/400x400/180A2B/E8006F?text=Ligue+Espagnole" },
-            { code: "football", name: "Ligue Italienne", category: "football", img: "https://placehold.co/400x400/0B001A/FACC15?text=Ligue+Italienne" },
-            { code: "football", name: "Coupe du Monde", category: "football", img: "https://placehold.co/400x400/2A0845/FFFFFF?text=Coupe+du+Monde" },
-            
-            // ألعاب الخيول
-            { code: "horses", name: "Course Classique", category: "horses", img: "https://placehold.co/400x400/1a0b2e/FACC15?text=Course+Classique" },
-            { code: "horses", name: "Royal Derby", category: "horses", img: "https://placehold.co/400x400/180A2B/FFFFFF?text=Royal+Derby" },
-            
-            // ألعاب الكلاب
-            { code: "greyhounds", name: "Platinum Hounds", category: "greyhounds", img: "https://placehold.co/400x400/0B001A/E8006F?text=Platinum+Hounds" },
-            { code: "greyhounds", name: "Course Rapide", category: "greyhounds", img: "https://placehold.co/400x400/2A0845/FFFFFF?text=Course+Rapide" },
-            
-            // ألعاب الموتور
-            { code: "motor", name: "Speedway 500", category: "motor", img: "https://placehold.co/400x400/1a0b2e/FFFFFF?text=Speedway+500" },
-            { code: "motor", name: "Moto Grand Prix", category: "motor", img: "https://placehold.co/400x400/180A2B/FACC15?text=Moto+GP" },
-            
-            // ألعاب البينالتي
-            { code: "penalty", name: "Tirs au But Pro", category: "penalty", img: "https://placehold.co/400x400/0B001A/FFFFFF?text=Penalty+Pro" },
-            { code: "penalty", name: "Coupe Penalty", category: "penalty", img: "https://placehold.co/400x400/2A0845/E8006F?text=Coupe+Penalty" }
-        ];
+        let currentVirtuals = []; // قائمة الألعاب التي ستأتي من السيرفر
 
-        let currentVirtuals = [];
-
-        // دالة التهيئة (تُشغل عند الدخول للقسم)
+        // 2. دالة التهيئة (تُشغل عند الدخول للقسم)
         function initVirtualsLobby() {
             renderVirtualCategories();
-            loadVirtualGames('football'); // نعرض كرة القدم كافتراضي
+            fetchVirtualGamesFromProvider('all'); // جلب الألعاب فوراً من السيرفر
             
             // تفعيل السحب بالماوس للشريط الجديد مثل الكازينو
             setTimeout(() => {
@@ -2330,22 +2304,77 @@
             }, 300);
         }
 
-        // رسم شريط التصنيفات (الأزرار العلوية)
+        // 3. رسم شريط التصنيفات (الأزرار العلوية)
         function renderVirtualCategories() {
             const bar = document.getElementById('virtual-categories-bar');
             if (!bar) return;
             
             bar.innerHTML = virtualCategories.map(cat => `
-                <button onclick="loadVirtualGames('${cat.id}')" id="btn-vcat-${cat.id}" 
+                <button onclick="filterFetchedVirtualGames('${cat.id}')" id="btn-vcat-${cat.id}" 
                         class="vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md">
                     <span>${cat.name}</span>
                 </button>
             `).join('');
         }
 
-        // فلترة الألعاب عند الضغط على تصنيف
-        function loadVirtualGames(categoryId) {
-            // تلوين الزر النشط بالوردي (مثل الكازينو)
+        // 4. دالة جلب الألعاب من السيرفر (ديناميكياً)
+        async function fetchVirtualGamesFromProvider(categoryId = 'all') {
+            const container = document.getElementById('virtuals-games-grid');
+            if (!container) return;
+
+            updateActiveCategoryButton(categoryId);
+            
+            container.innerHTML = '<div class="col-span-full text-center text-asbet-primary py-10 font-bold animate-pulse">Chargement des jeux virtuels... ⏳</div>';
+
+            try {
+                // نطلب الألعاب الافتراضية من السيرفر 
+                // (غيّر 'EUROVIRTUALS' إذا كان كود المزود مختلفاً في قاعدتك)
+                const response = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: 'EUROVIRTUALS' }) 
+                });
+
+                const rawText = await response.text();
+                if (rawText) {
+                    const data = JSON.parse(rawText);
+                    currentVirtuals = data.games || data.data || (Array.isArray(data) ? data : []);
+
+                    if (currentVirtuals && currentVirtuals.length > 0) {
+                        filterFetchedVirtualGames(categoryId); // عرض الألعاب بعد جلبها
+                    } else {
+                        container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Aucun jeu virtuel trouvé.</div>`;
+                    }
+                }
+            } catch (error) {
+                console.error("❌ خطأ:", error);
+                container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10 font-bold">Erreur de connexion.</div>';
+            }
+        }
+
+        // 5. الفلتر الذكي: ترتيب الألعاب تحت الأزرار
+        function filterFetchedVirtualGames(categoryId) {
+            updateActiveCategoryButton(categoryId);
+            
+            let filtered = currentVirtuals;
+            if (categoryId !== 'all') {
+                // فلترة ذكية بناءً على الكلمات المفتاحية في اسم اللعبة
+                const keyword = categoryId === 'football' ? 'foot' :
+                                categoryId === 'horses' ? 'horse' :
+                                categoryId === 'greyhounds' ? 'hound' :
+                                categoryId === 'motor' ? 'motor' : categoryId;
+                
+                filtered = currentVirtuals.filter(g => {
+                    const name = (g.game_name || g.name || "").toLowerCase();
+                    return name.includes(keyword);
+                });
+            }
+            
+            renderVirtualGamesGrid(filtered);
+        }
+
+        // تحديث لون الزر النشط في الشريط
+        function updateActiveCategoryButton(categoryId) {
             document.querySelectorAll('.vcat-tab-btn').forEach(btn => {
                 btn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 bg-asbet-card border border-white/5 hover:border-asbet-primary rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-md";
             });
@@ -2353,43 +2382,49 @@
             if (activeBtn) {
                 activeBtn.className = "vcat-tab-btn flex items-center shrink-0 gap-2 px-6 py-2.5 mt-1 btn-gradient border-none text-white rounded-full text-sm font-black transition-all duration-300 cursor-pointer whitespace-nowrap shadow-lg transform scale-105";
             }
-
-            currentVirtuals = virtualGamesList.filter(g => g.category === categoryId);
-            renderVirtualGamesGrid(currentVirtuals);
         }
 
-        // محرك البحث
+        // 6. محرك البحث الخاص بالافتراضيات
         function filterVirtualGames() {
             const searchTerm = document.getElementById('virtual-search-input').value.toLowerCase();
-            const filtered = currentVirtuals.filter(g => g.name.toLowerCase().includes(searchTerm));
+            const filtered = currentVirtuals.filter(g => {
+                const name = (g.game_name || g.name || "").toLowerCase();
+                return name.includes(searchTerm);
+            });
             renderVirtualGamesGrid(filtered);
         }
 
-        // رسم الألعاب في الشبكة السفلية
+        // 7. رسم الألعاب القادمة من السيرفر في الشبكة
         function renderVirtualGamesGrid(gamesArray) {
             const container = document.getElementById('virtuals-games-grid');
             if (!container) return;
 
             if (gamesArray.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé</div>';
+                container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10 font-bold">Aucun jeu trouvé pour cette catégorie</div>';
                 return;
             }
 
-            container.innerHTML = gamesArray.map(g => `
-                <div onclick="launchSpecificVirtualGame('${g.code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/10 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col h-full">
+            container.innerHTML = gamesArray.map(g => {
+                const title = g.game_name || g.name || g.title || "Virtual Game";
+                const img = g.banner || g.image || g.thumb || "https://placehold.co/400x400/1a0b2e/FFFFFF?text=Virtual+Game";
+                const code = g.game_code || g.id;
+
+                return `
+                <div onclick="launchSpecificVirtualGame('${code}')" class="bg-asbet-card rounded-xl overflow-hidden border border-white/10 group cursor-pointer shadow-lg hover:border-asbet-primary transition-all flex flex-col h-full">
                     <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
-                        <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <img src="${img}" alt="${title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute top-0 right-0 bg-asbet-primary text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg shadow-md z-10">VIRTUAL</div>
                         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[2px]">
                             <span class="btn-gradient text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(232,0,111,0.5)]">JOUER</span>
                         </div>
                     </div>
                     <div class="p-2 flex justify-between items-center bg-[#130822] border-t border-white/5 flex-grow">
-                        <span class="text-white text-[10px] md:text-[11px] font-bold truncate pr-1 group-hover:text-asbet-primary transition-colors">${g.name}</span>
+                        <span class="text-white text-[10px] md:text-[11px] font-bold truncate pr-1 group-hover:text-asbet-primary transition-colors">${title}</span>
                         <span class="text-asbet-primary text-xs">▶</span>
                     </div>
                 </div>
-            `).join('');
-   }
+            `}).join('');
+        }
         // 3. الدالة الجديدة لفتح اللعبة المحددة
         async function launchSpecificVirtualGame(gameUuid) {
             if (!playerSession) return openLoginModal(); 
