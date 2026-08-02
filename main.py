@@ -1408,10 +1408,11 @@ def hash_create(request_data, token_key):
 # ==========================================
 def get_eurovirtuals_headers(payload=None):
     if payload is None:
-        payload = {}
-        
+        payload = {
+            "currency": "TND",
+            
+        }
     timestamp = str(int(time.time()))
-    
     # 👈 استخدام دالة كلفن (hash_create) مع الـ App Key السري
     signature = hash_create(payload, EURO_APP_KEY)
     
