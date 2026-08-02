@@ -33,9 +33,9 @@ import uuid
 
 # --- إعدادات مزود الألعاب (Nexus) الموحدة ---
 AGENT_CODE = "Alphabet1"
-EURO_APP_KEY = "ca9000f2-5538-4c17-81cb-72d560435a7f"
-EURO_API_KEY = "njdQA6/yk1b33PRork0wLdcwqQ==.5sjiw2wckNM0J1cchlHZtofdUTkMQQdwqikdjZ5lfMxXWPHyW6"
-EURO_BASE_URL = "https://api.staging.betkraft.co.uk"
+AGENT_TOKEN = "60f44d247b838f1c7cb99655fc943292"
+NEXUS_SECRET_KEY = "6f1dbd5da827207a5302fd4b3fc4c151"
+PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
 
 # تحميل الأسرار من ملف .env
 load_dotenv()
