@@ -1445,7 +1445,7 @@ async def get_virtual_games():
         }
         
         # 3. إرسال الطلب مع إرفاق الباراميترات عبر (params)
-        response = requests.get(f"{EURO_BASE_URL}/v1/games", params=payload, headers=headers, timeout=20)
+        response = requests.post(f"{EURO_BASE_URL}/v1/games", json=payload, headers=headers, timeout=20)
         
         try:
             data = response.json()
