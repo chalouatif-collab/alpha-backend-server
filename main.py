@@ -1429,19 +1429,35 @@ def get_eurovirtuals_headers(payload=None):
 @app.api_route("/api/get-eurovirtuals-games", methods=["GET", "POST"])
 async def get_virtual_games():
     try:
-        headers = get_eurovirtuals_headers()
-        response = requests.get(f"{EURO_BASE_URL}/v1/games", headers=headers, timeout=20)
+        # 1. إضافة الباراميترات الإجبارية (العملة)
+        payload = {"currency": "TND"}
+        
+        # 2. توليد التوقيع والهيدر يدوياً لضمان تمرير البايلاود
+        timestamp = str(int(time.time()))
+        signature = hash_create(payload, EURO_APP_KEY) # استخدام دالة كلفن
+        
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "x-api-key": EURO_API_KEY,
+            "x-signature": signature,
+            "x-timestamp": timestamp
+        }
+        
+        # 3. إرسال الطلب مع إرفاق الباراميترات عبر (params)
+        response = requests.get(f"{EURO_BASE_URL}/v1/games", params=payload, headers=headers, timeout=20)
         
         try:
             data = response.json()
         except Exception:
             return {"status": "error", "error": "Invalid JSON response from provider"}
-        
+            
         if response.status_code == 200 and data.get("status_code") == 200:
             games_list = data.get("data", {}).get("data", [])
             return {"status": "success", "games": games_list}
         else:
             return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+            
     except Exception as e:
         return {"status": "error", "error": str(e)}
 # 4. دالة تشغيل الألعاب
