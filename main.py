@@ -1383,7 +1383,7 @@ def get_eurovirtuals_headers():
     return {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "x-api-key": EURO_API_KEY,
+        "x-api-key": EURO_APP_KEY,
         "x-signature-key": signature,
         "x-timestamp": timestamp
     }
