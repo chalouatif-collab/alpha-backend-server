@@ -31,23 +31,31 @@ from firebase_admin import credentials
 from firebase_admin import db
 import uuid
 
-# --- إعدادات مزود الألعاب (Nexus) الموحدة ---
+# ==========================================
+# 🎰 إعدادات الكازينو (NexusGGR)
+# ==========================================
 AGENT_CODE = "Alphabet1"
 AGENT_TOKEN = "60f44d247b838f1c7cb99655fc943292"
 NEXUS_SECRET_KEY = "6f1dbd5da827207a5302fd4b3fc4c151"
 PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
 
-# تحميل الأسرار من ملف .env
-load_dotenv()
+# ==========================================
+# ⚽ إعدادات الألعاب الافتراضية (EuroVirtuals) الجديدة
+# ==========================================
+EURO_APP_KEY = "ca9000f2-5538-4c17-81cb-72d560435a7f"
+EURO_API_KEY = "njdQA6/yk1b33PRork0wLdcwqQ==.5sjiw2wckNM0J1cchlHZtofdUTkMQQdwqikdjZ5lfMxXWPHyW6"
+EURO_BASE_URL = "https://api.staging.betkraft.co.uk"
 
+# ==========================================
 # سحب الأسرار لحفظها في متغيرات داخل الكود
+# ==========================================
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
 SECRET_KEY = os.getenv("SECRET_KEY")
-
-BETKRAFT_APP_KEY = os.getenv("BETKRAFT_APP_KEY")
-BETKRAFT_API_KEY = os.getenv("BETKRAFT_API_KEY")
-BETKRAFT_BASE_URL = os.getenv("BETKRAFT_BASE_URL")
 
 # 1. إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
