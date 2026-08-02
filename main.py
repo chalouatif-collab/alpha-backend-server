@@ -1367,28 +1367,62 @@ def generate_euro_signature(payload, app_key):
     final_hash = hashlib.md5(final_string.encode('utf-8')).hexdigest()
     return final_hash
 
-def generate_eurovirtuals_signature(timestamp):
-    message = timestamp
-    # 👈 هنا نستخدم EURO_APP_KEY لتشفير التوقيع كما طلب كلفن
-    signature = hmac.new(
-        EURO_APP_KEY.encode('utf-8'), 
-        message.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-    return signature
+import json
+import hashlib
+import time
 
-def get_eurovirtuals_headers():
+# ==========================================
+# 🔐 خوارزمية التشفير الرسمية من EuroVirtuals (Kelvin)
+# ==========================================
+def sort_nested_array(array):
+    if isinstance(array, dict):
+        sorted_array = {}
+        for key in sorted(array.keys()):
+            value = array[key]
+            if isinstance(value, (dict, list)):
+                sorted_array[key] = sort_nested_array(value)
+            else:
+                sorted_array[key] = value
+        return sorted_array
+    elif isinstance(array, list):
+        return [sort_nested_array(item) if isinstance(item, (dict, list)) else item for item in array]
+    else:
+        return array
+
+def hash_create(request_data, token_key):
+    hashkey = ''
+    if isinstance(request_data, dict):
+        request_data = sort_nested_array(request_data)
+        for key, value in sorted(request_data.items()):
+            if isinstance(value, dict):
+                for key_val, val in value.items():
+                    hashkey += f"&{key_val}={hashlib.md5(json.dumps(val, sort_keys=True).encode('utf-8')).hexdigest()}"
+                continue
+            hashkey += f"&{key}={value}"
+
+    hashkey = hashkey.lstrip('&')
+    return hashlib.md5((hashkey + token_key).encode('utf-8')).hexdigest()
+
+# ==========================================
+# 📡 دالة الهيدر المحدثة
+# ==========================================
+def get_eurovirtuals_headers(payload=None):
+    if payload is None:
+        payload = {}
+        
     timestamp = str(int(time.time()))
-    signature = generate_eurovirtuals_signature(timestamp)
+    
+    # 👈 استخدام دالة كلفن (hash_create) مع الـ App Key السري
+    signature = hash_create(payload, EURO_APP_KEY)
     
     return {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        # 👈 وهنا نستخدم EURO_API_KEY الصارم في الهيدر كما طلب كلفن
-        "x-api-key": EURO_API_KEY,  
+        "x-api-key": EURO_API_KEY,  # 👈 المفتاح الطويل كما طلب
         "x-signature-key": signature,
         "x-timestamp": timestamp
     }
+   
 
 # 3. دالة جلب قائمة الألعاب وعرضها في المنصة
 @app.api_route("/api/get-eurovirtuals-games", methods=["GET", "POST"])
