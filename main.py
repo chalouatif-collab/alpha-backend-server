@@ -1426,37 +1426,43 @@ def get_eurovirtuals_headers(payload=None):
    
 
 # 3. دالة جلب قائمة الألعاب وعرضها في المنصة
-@app.api_route("/api/get-eurovirtuals-games", methods=["GET", "POST"])
+@app.api_route("/api/get-eurovirtuals-games", methods=["GET"])
 async def get_virtual_games():
     try:
-        # 1. إضافة الباراميترات الإجبارية (العملة)
-        payload = {"currency": "TND"}
+        # 1. البايلود فارغ تماماً كما في الدليل الرسمي
+        payload = {}
         
-        # 2. توليد التوقيع والهيدر يدوياً لضمان تمرير البايلاود
         timestamp = str(int(time.time()))
-        signature = hash_create(payload, EURO_APP_KEY) # استخدام دالة كلفن
         
+        # 2. توليد التوقيع باستخدام دالة كلفن
+        signature = hash_create(payload, EURO_APP_KEY)
+        
+        # 3. الهيدرات مطابقة حرفياً لما في التوثيق
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
             "x-api-key": EURO_API_KEY,
-            "x-signature": signature,
+            "x-signature-key": signature, # 👈 أعدناها كما كانت في الدليل
             "x-timestamp": timestamp
         }
         
-        # 3. إرسال الطلب مع إرفاق الباراميترات عبر (params)
-        response = requests.post(f"{EURO_BASE_URL}/v1/games", json=payload, headers=headers, timeout=20)
+        base_url_clean = str(EURO_BASE_URL).rstrip('/')
+        games_endpoint = f"{base_url_clean}/v1/games"
+        
+        # 4. إرسال طلب GET نقي بدون params وبدون json
+        response = requests.get(games_endpoint, headers=headers, timeout=20)
         
         try:
             data = response.json()
         except Exception:
-            return {"status": "error", "error": "Invalid JSON response from provider"}
+            return {"status": "error", "error": "Invalid JSON response", "details": response.text}
             
         if response.status_code == 200 and data.get("status_code") == 200:
             games_list = data.get("data", {}).get("data", [])
             return {"status": "success", "games": games_list}
         else:
-            return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+            # سنقوم بطباعة الرد بالكامل لنعرف المشكلة إن وجدت
+            return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
             
     except Exception as e:
         return {"status": "error", "error": str(e)}
