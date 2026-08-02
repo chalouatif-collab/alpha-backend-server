@@ -1412,13 +1412,21 @@ def get_eurovirtuals_headers(payload=None):
         
     timestamp = str(int(time.time()))
     
-    # 👈 استخدام دالة كلفن (hash_create) مع الـ App Key السري
+    # توليد التوقيع باستخدام دالة كلفن
     signature = hash_create(payload, EURO_APP_KEY)
+    
+    # 🔍 طباعة القيم في السجلات لنراها بوضوح
+    print("--- EUROVIRTUALS DEBUG ---")
+    print("Timestamp:", timestamp)
+    print("Payload:", payload)
+    print("Generated Signature:", signature)
+    print("API Key used:", EURO_API_KEY[:10] + "...") # طباعة أول حروف للاطمئنان
+    print("--------------------------")
     
     return {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "x-api-key": EURO_API_KEY,  # 👈 المفتاح الطويل كما طلب
+        "x-api-key": EURO_API_KEY,
         "x-signature-key": signature,
         "x-timestamp": timestamp
     }

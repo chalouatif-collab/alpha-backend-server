@@ -1,3 +1,5 @@
 ADMIN_USERNAME=fethi
 ADMIN_PASSWORD=F90260887305fethi1225
 SECRET_KEY=@flymhkdrsifv;268ree6yeee@-hrrtglplrepoltgzssùeùêrmùtmtfdlmemlsz^lertgtytypêd^tf^dde^mb^ùfmù
+EURO_APP_KEY=ca9000f2-5538-4c17-81cb-72d560435a7f
+EURO_API_KEY=njdQA6/yk1b33PRork0wLdcwqQ==.5sjiw2wckNM0J1cchLHZtofdUTKMQQdwqikdJZ5lFMxXWPHyW6
