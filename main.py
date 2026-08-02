@@ -1419,7 +1419,7 @@ def get_eurovirtuals_headers(payload=None):
         "Accept": "application/json",
         "Content-Type": "application/json",
         "x-api-key": EURO_API_KEY,  # 👈 المفتاح الطويل كما طلب
-        "x-signature-key": signature,
+        "x-signature": signature,
         "x-timestamp": timestamp
     }
    
