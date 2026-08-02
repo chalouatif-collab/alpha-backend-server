@@ -1367,11 +1367,11 @@ def generate_euro_signature(payload, app_key):
     final_hash = hashlib.md5(final_string.encode('utf-8')).hexdigest()
     return final_hash
 
-# 2. دالة التشفير الخاصة بالهيدر (HMAC SHA256) لاستعلام الألعاب
-def generate_eurovirtuals_signature(timestamp: str) -> str:
+def generate_eurovirtuals_signature(timestamp):
     message = timestamp
+    # 👈 هنا نستخدم EURO_APP_KEY لتشفير التوقيع كما طلب كلفن
     signature = hmac.new(
-        EURO_API_KEY.encode('utf-8'),
+        EURO_APP_KEY.encode('utf-8'), 
         message.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
@@ -1380,10 +1380,12 @@ def generate_eurovirtuals_signature(timestamp: str) -> str:
 def get_eurovirtuals_headers():
     timestamp = str(int(time.time()))
     signature = generate_eurovirtuals_signature(timestamp)
+    
     return {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "x-api-key": EURO_APP_KEY,
+        # 👈 وهنا نستخدم EURO_API_KEY الصارم في الهيدر كما طلب كلفن
+        "x-api-key": EURO_API_KEY,  
         "x-signature-key": signature,
         "x-timestamp": timestamp
     }
