@@ -42,8 +42,8 @@ PROVIDER_ENDPOINT = "https://api.nexusggr.eu"
 # ==========================================
 # ⚽ إعدادات الألعاب الافتراضية (EuroVirtuals) الجديدة
 # ==========================================
-EURO_APP_KEY = "njdQA6/yk1b33PRork0wLdcwqQ==.5sjiw2wckNM0J1cchlHZtofdUTkMQQdwqikdjZ5lfMxXWPHyW6"
-EURO_API_KEY = "ca9000f2-5538-4c17-81cb-72d560435a7f"
+EURO_APP_KEY = "c5868dec-99e5-42cd-af4b-a1b6e8a3f4e6"
+EURO_API_KEY = "g30STgsrspwEieqthZfbfCKhxw==.WWzm63ep2yijXEw1rj2QCt3mOmfZDISUleUifQT9Fd5CQVCOqO"
 EURO_BASE_URL = "https://api.staging.betkraft.co.uk"
 
 # ==========================================
