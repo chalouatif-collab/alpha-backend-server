@@ -505,132 +505,102 @@
         </div>
     </div>
 
-    <div id="cashier-modal"
-        class="fixed inset-0 z-[200] hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-        <div
-            class="bg-q-panel border border-q-gold/50 rounded-3xl w-full max-w-md p-6 relative shadow-[0_0_30px_rgba(249,212,35,0.2)]">
-            <button onclick="toggleCashier()"
-                class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-3xl cursor-pointer">&times;</button>
+    <!-- ================= CAISSE (DÉPÔT & RETRAIT) MODAL ================= -->
+    <div id="cashier-modal" class="fixed inset-0 z-[200] hidden bg-black/80 backdrop-blur-md items-center justify-center p-4">
+        <!-- الصندوق الداخلي (النافذة الأنيقة) -->
+        <div class="bg-q-panel border border-q-gold/50 rounded-3xl w-full max-w-md p-6 relative shadow-[0_0_30px_rgba(249,212,35,0.2)] max-h-[90vh] overflow-y-auto hide-scroll">
+            <button onclick="toggleCashier()" class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-3xl cursor-pointer">&times;</button>
             <h2 class="text-xl font-display font-black text-white mb-6 flex items-center gap-2">💳 Caisse</h2>
+            
             <div class="flex gap-2 mb-6 bg-black/50 p-1 rounded-xl border border-white/5">
-                <button onclick="switchCashierTab('deposit')" id="tab-deposit"
-                    class="flex-1 bg-q-cyan text-black font-bold py-2 rounded-lg text-xs transition-all shadow-md cursor-pointer">Dépôt</button>
-                <button onclick="switchCashierTab('withdraw'); syncBalance();" id="tab-withdraw"
-                    class="flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer">Retrait</button>
+                <button onclick="switchCashierTab('deposit')" id="tab-deposit" class="flex-1 bg-q-cyan text-black font-bold py-2 rounded-lg text-xs transition-all shadow-md cursor-pointer">Dépôt</button>
+                <button onclick="switchCashierTab('withdraw')" id="tab-withdraw" class="flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer">Retrait</button>
             </div>
 
+            <!-- ================= 1. SECTION DÉPÔT ================= -->
             <div id="deposit-section" class="space-y-4">
                 <label class="text-xs text-gray-400 font-bold">Choisissez la méthode:</label>
-
-                <!-- شبكة الأزرار -->
                 <div id="payment-methods-grid" class="grid grid-cols-2 gap-3">
-                    <!-- 1. Voucher Agent -->
-                    <button onclick="showForm('form-voucher')"
-                        class="bg-black/50 border border-white/10 hover:border-q-gold p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer">
-                        <span class="text-2xl text-q-gold">🎟️</span>
-                        <span class="text-[10px] font-bold text-white">Code Voucher</span>
-                    </button>
-
-                    <!-- 2. USDT Crypto -->
-                    <button onclick="showForm('form-usdt')"
-                        class="bg-black/50 border border-white/10 hover:border-q-cyan p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer">
-                        <span class="text-2xl text-q-cyan">💎</span>
-                        <span class="text-[10px] font-bold text-white">USDT (Crypto)</span>
-                    </button>
-
-                    <!-- 3. Ooredoo -->
-                    <button onclick="showForm('form-ooredoo')"
-                        class="bg-black/50 border border-white/10 hover:border-[#ED0000] p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer">
-                        <span class="text-2xl text-[#ED0000] font-black">Ooredoo</span>
-                        <span class="text-[10px] font-bold text-white">Recharge</span>
-                    </button>
-
-                    <!-- 4. Orange -->
-                    <button onclick="showForm('form-orange')"
-                        class="bg-black/50 border border-white/10 hover:border-[#FF7900] p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer">
-                        <span class="text-2xl text-[#FF7900] font-black">Orange</span>
-                        <span class="text-[10px] font-bold text-white">Recharge</span>
-                    </button>
+                    <button onclick="showForm('form-voucher')" class="bg-black/50 border border-white/10 hover:border-q-gold p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer"><span class="text-2xl text-q-gold">🎟️</span><span class="text-[10px] font-bold text-white">Code Voucher</span></button>
+                    <button onclick="showForm('form-usdt')" class="bg-black/50 border border-white/10 hover:border-q-cyan p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer"><span class="text-2xl text-q-cyan">💎</span><span class="text-[10px] font-bold text-white">USDT (Crypto)</span></button>
+                    <button onclick="showForm('form-ooredoo')" class="bg-black/50 border border-white/10 hover:border-[#ED0000] p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer"><span class="text-2xl text-[#ED0000] font-black">Ooredoo</span><span class="text-[10px] font-bold text-white">Recharge</span></button>
+                    <button onclick="showForm('form-orange')" class="bg-black/50 border border-white/10 hover:border-[#FF7900] p-3 rounded-xl flex flex-col items-center gap-2 transition-all cursor-pointer"><span class="text-2xl text-[#FF7900] font-black">Orange</span><span class="text-[10px] font-bold text-white">Recharge</span></button>
                 </div>
 
-                <!-- نموذج Voucher -->
                 <div id="form-voucher" class="hidden space-y-3 mt-4">
-                    <input type="text" id="voucher-code" placeholder="Entrez le code Voucher"
-                        class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-q-gold font-mono text-center tracking-widest">
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="backToMethods()"
-                            class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
-                        <button onclick="submitDeposit('voucher')"
-                            class="flex-1 bg-q-gold text-black font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Valider</button>
-                    </div>
+                    <input type="text" id="voucher-code" placeholder="Entrez le code Voucher" class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-q-gold font-mono text-center tracking-widest">
+                    <div class="flex gap-2 mt-2"><button onclick="backToMethods()" class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button><button onclick="submitDeposit('voucher')" class="flex-1 bg-q-gold text-black font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Valider</button></div>
                 </div>
-
-                <!-- نموذج USDT -->
                 <div id="form-usdt" class="hidden space-y-3 mt-4">
-                    <div class="bg-black/50 p-3 rounded-lg border border-q-cyan/30 text-center">
-                        <p class="text-xs text-gray-400 mb-1">Adresse USDT (TRC20) :</p>
-                        <p class="text-xs font-bold text-q-cyan break-all font-mono">TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-                        </p>
-                    </div>
-                    <input type="number" id="usdt-code" placeholder="Montant (USDT)"
-                        class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-q-cyan">
-                    <label
-                        class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-q-cyan transition-all">
-                        <span class="text-sm text-gray-300">📸 Importer le reçu</span>
-                        <input type="file" id="usdt-file" accept="image/*" class="hidden"
-                            onchange="updateFileName('usdt')">
-                    </label>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="backToMethods()"
-                            class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
-                        <button onclick="submitDeposit('usdt')"
-                            class="flex-1 bg-q-cyan text-black font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
-                    </div>
+                    <div class="bg-black/50 p-3 rounded-lg border border-q-cyan/30 text-center"><p class="text-xs text-gray-400 mb-1">Adresse USDT (TRC20) :</p><p class="text-xs font-bold text-q-cyan break-all font-mono">TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</p></div>
+                    <input type="number" id="usdt-code" placeholder="Montant (USDT)" class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-q-cyan">
+                    <label class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-q-cyan transition-all"><span class="text-sm text-gray-300">📸 Importer le reçu</span><input type="file" id="usdt-file" accept="image/*" class="hidden" onchange="updateFileName('usdt')"></label>
+                    <div class="flex gap-2 mt-2"><button onclick="backToMethods()" class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button><button onclick="submitDeposit('usdt')" class="flex-1 bg-q-cyan text-black font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button></div>
                 </div>
-
-                <!-- نموذج أوريدو (تمت إضافة خانة المبلغ) -->
                 <div id="form-ooredoo" class="hidden space-y-3 mt-4">
-                    <input type="number" id="ooredoo-amount" placeholder="Montant à recharger (TND)"
-                        class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#ED0000]">
-                    <input type="number" id="ooredoo-code" placeholder="Code de recharge Ooredoo"
-                        class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#ED0000]">
-                    <label
-                        class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#ED0000] transition-all">
-                        <span class="text-sm text-gray-300">📸 Capture d'écran</span>
-                        <input type="file" id="ooredoo-file" accept="image/*" class="hidden"
-                            onchange="updateFileName('ooredoo')">
-                    </label>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="backToMethods()"
-                            class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
-                        <button onclick="submitDeposit('ooredoo')"
-                            class="flex-1 bg-[#ED0000] text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
-                    </div>
+                    <input type="number" id="ooredoo-amount" placeholder="Montant (TND)" class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#ED0000]">
+                    <input type="number" id="ooredoo-code" placeholder="Code Ooredoo" class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#ED0000]">
+                    <label class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#ED0000] transition-all"><span class="text-sm text-gray-300">📸 Capture</span><input type="file" id="ooredoo-file" accept="image/*" class="hidden" onchange="updateFileName('ooredoo')"></label>
+                    <div class="flex gap-2 mt-2"><button onclick="backToMethods()" class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button><button onclick="submitDeposit('ooredoo')" class="flex-1 bg-[#ED0000] text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button></div>
+                </div>
+                <div id="form-orange" class="hidden space-y-3 mt-4">
+                    <input type="number" id="orange-amount" placeholder="Montant (TND)" class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF7900]">
+                    <input type="number" id="orange-code" placeholder="Code Orange" class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF7900]">
+                    <label class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#FF7900] transition-all"><span class="text-sm text-gray-300">📸 Capture</span><input type="file" id="orange-file" accept="image/*" class="hidden" onchange="updateFileName('orange')"></label>
+                    <div class="flex gap-2 mt-2"><button onclick="backToMethods()" class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button><button onclick="submitDeposit('orange')" class="flex-1 bg-[#FF7900] text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button></div>
+                </div>
+            </div>
+
+            <!-- ================= 2. SECTION RETRAIT ================= -->
+            <div id="withdraw-section" class="hidden space-y-4">
+                <div class="bg-black/40 border border-white/10 p-3 rounded-xl flex justify-between items-center mb-2">
+                    <span class="text-xs text-gray-400">Solde Retirable:</span>
+                    <span class="text-sm font-black text-q-gold"><span id="modal-balance">0.00</span> TND</span>
                 </div>
 
-                <!-- نموذج أورانج (تمت إضافة خانة المبلغ) -->
-                <div id="form-orange" class="hidden space-y-3 mt-4">
-                    <input type="number" id="orange-amount" placeholder="Montant à recharger (TND)"
-                        class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF7900]">
-                    <input type="number" id="orange-code" placeholder="Code de recharge Orange"
-                        class="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF7900]">
-                    <label
-                        class="block w-full bg-black/30 border border-white/20 border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-[#FF7900] transition-all">
-                        <span class="text-sm text-gray-300">📸 Capture d'écran</span>
-                        <input type="file" id="orange-file" accept="image/*" class="hidden"
-                            onchange="updateFileName('orange')">
-                    </label>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="backToMethods()"
-                            class="flex-1 bg-transparent border border-white/20 text-white font-bold rounded-lg py-2 hover:bg-white/5 transition-all">Retour</button>
-                        <button onclick="submitDeposit('orange')"
-                            class="flex-1 bg-[#FF7900] text-white font-bold rounded-lg py-2 hover:opacity-90 transition-all shadow-md">Confirmer</button>
-                    </div>
+                <label class="text-xs text-gray-400 font-bold block">Méthode de retrait:</label>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button onclick="showWithdrawForm('form-w-mandat')" class="bg-black/50 border border-white/10 hover:border-q-cyan p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"><span class="text-xl">💸</span><span class="text-[10px] font-bold text-white">Mandat Minute</span></button>
+                    <button onclick="showWithdrawForm('form-w-wafacash')" class="bg-black/50 border border-white/10 hover:border-q-gold p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"><span class="text-xl">🏦</span><span class="text-[10px] font-bold text-white">Wafacash</span></button>
+                    <button onclick="showWithdrawForm('form-w-d17')" class="bg-black/50 border border-white/10 hover:border-q-magenta p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"><span class="text-xl">📱</span><span class="text-[10px] font-bold text-white">D17</span></button>
+                    <button onclick="showWithdrawForm('form-w-usdt')" class="bg-black/50 border border-white/10 hover:border-green-400 p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"><span class="text-xl text-green-400">💎</span><span class="text-[10px] font-bold text-white">USDT (Crypto)</span></button>
+                </div>
+
+                <div id="form-w-mandat" class="withdraw-form space-y-3">
+                    <p class="text-xs font-bold text-q-cyan border-b border-white/10 pb-1">Mandat Minute :</p>
+                    <input type="text" id="mandat-nom" placeholder="Nom" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-cyan">
+                    <input type="text" id="mandat-prenom" placeholder="Prénom" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-cyan">
+                    <input type="tel" id="mandat-phone" placeholder="Numéro de Téléphone" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-cyan">
+                    <input type="number" id="mandat-amount" placeholder="Montant à retirer (TND)" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-cyan font-bold">
+                    <button onclick="submitWithdraw('mandat')" class="w-full py-3 bg-q-cyan text-black font-bold rounded-xl hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                </div>
+
+                <div id="form-w-wafacash" class="withdraw-form hidden space-y-3">
+                    <p class="text-xs font-bold text-q-gold border-b border-white/10 pb-1">Wafacash :</p>
+                    <input type="text" id="wafacash-nom" placeholder="Nom" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-gold">
+                    <input type="text" id="wafacash-prenom" placeholder="Prénom" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-gold">
+                    <input type="tel" id="wafacash-phone" placeholder="Numéro de Téléphone" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-gold">
+                    <input type="number" id="wafacash-amount" placeholder="Montant à retirer (TND)" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-gold font-bold">
+                    <button onclick="submitWithdraw('wafacash')" class="w-full py-3 bg-q-gold text-black font-bold rounded-xl hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                </div>
+
+                <div id="form-w-d17" class="withdraw-form hidden space-y-3">
+                    <p class="text-xs font-bold text-q-magenta border-b border-white/10 pb-1">D17 :</p>
+                    <input type="text" id="d17-nom" placeholder="Nom" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-magenta">
+                    <input type="tel" id="d17-phone" placeholder="Numéro Téléphone D17" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-magenta">
+                    <input type="number" id="d17-amount" placeholder="Montant à retirer (TND)" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-q-magenta font-bold">
+                    <button onclick="submitWithdraw('d17')" class="w-full py-3 bg-q-magenta text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-md">Confirmer</button>
+                </div>
+
+                <div id="form-w-usdt" class="withdraw-form hidden space-y-3">
+                    <p class="text-xs font-bold text-green-400 border-b border-white/10 pb-1">USDT (TRC20) :</p>
+                    <input type="text" id="usdt-wallet" placeholder="Adresse du Portefeuille (TRC20)" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-green-400 font-mono">
+                    <input type="number" id="usdt-amount-tnd" placeholder="Montant à retirer (en TND)" class="w-full bg-black/50 border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-green-400 font-bold">
+                    <button onclick="submitWithdraw('usdt')" class="w-full py-3 bg-green-500 text-black font-bold rounded-xl hover:opacity-90 transition-all shadow-md">Confirmer</button>
                 </div>
             </div>
         </div>
     </div>
-
     <!-- ================= SECTION RETRAIT (قسم السحب المعدل) ================= -->
     <div id="withdraw-section" class="hidden space-y-4">
         <!-- عرض رصيد اللاعب الحالي -->
@@ -1417,10 +1387,10 @@
             </button>
         </div>
 
-        <button onclick="toggleCashier()"
+        <button onclick="switchSection('virtuals'); initVirtualsLobby();"
             class="flex flex-col items-center gap-1 w-[20%] text-gray-500 hover:text-q-gold hover:-translate-y-1 transition-transform cursor-pointer">
-            <i class="fas fa-wallet text-lg md:text-xl"></i>
-            <span class="text-[8px] md:text-[9px] font-bold tracking-widest uppercase mt-0.5">Dépôt</span>
+            <i class="fas fa-gamepad text-lg md:text-xl"></i>
+            <span class="text-[8px] md:text-[9px] font-bold tracking-widest uppercase mt-0.5">Virtuels</span>
         </button>
 
         <button onclick="openProfile()"
@@ -1850,14 +1820,59 @@
             const balanceDisplay = document.getElementById('player-balance-val');
             if (balanceDisplay) balanceDisplay.innerText = `${parseFloat(playerSession.balance || 0).toFixed(2)}`;
 
-            if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 4000);
-
             const profilePageName = document.getElementById('profile-page-username');
             if (profilePageName) profilePageName.innerText = playerSession.username;
             const profilePageBalance = document.getElementById('profile-page-balance');
             if (profilePageBalance) profilePageBalance.innerText = parseFloat(playerSession.balance || 0).toFixed(2);
+
+            // تشغيل فحص الرصيد والبيانات فوراً عند الدخول
+            refreshPlayerBalance();
+
+            if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 4000);
         }
 
+        async function refreshPlayerBalance() {
+            if (!playerSession || !playerSession.username) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/users?timestamp=${new Date().getTime()}`, { method: 'GET', headers: getAuthHeaders() });
+                if (res.ok) {
+                    const users = await res.json();
+                    const currentMe = users.find(u => u.username === playerSession.username);
+                    if (currentMe) {
+                        playerSession.balance = currentMe.balance;
+                        // السحر هنا: نحفظ نوع الحساب الحقيقي من قاعدة البيانات
+                        playerSession.created_by = currentMe.created_by; 
+                        localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+
+                        const balVal = document.getElementById('player-balance-val');
+                        if (balVal) balVal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+
+                        const profBal = document.getElementById('profile-page-balance');
+                        if (profBal) profBal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+
+                        // =========================================================================
+                        // 🛡️ إخفاء أو إظهار الأزرار بناءً على البيانات الحقيقية من السيرفر
+                        // =========================================================================
+                        if (currentMe.created_by !== 'Self-Register') {
+                            document.querySelectorAll('button[onclick*="toggleCashier"], button[onclick*="openDirectRetrait"]').forEach(btn => {
+                                btn.style.display = 'none';
+                            });
+                            document.querySelectorAll('span[onclick*="toggleCashier"]').forEach(span => {
+                                span.removeAttribute('onclick');
+                                span.classList.remove('cursor-pointer');
+                                span.classList.add('cursor-default');
+                            });
+                        } else {
+                            // إذا كان الحساب مسجلاً أونلاين، نعيد إظهار الأزرار
+                            document.querySelectorAll('button[onclick*="toggleCashier"], button[onclick*="openDirectRetrait"]').forEach(btn => {
+                                btn.style.display = ''; 
+                            });
+                        }
+                        // =========================================================================
+                    }
+                }
+            } catch (e) { }
+        }
         function logoutPlayer() {
             if (balanceInterval) clearInterval(balanceInterval);
             localStorage.removeItem('token');
@@ -1871,42 +1886,13 @@
             showNotification('Déconnexion réussie', 'success');
         }
 
-        async function refreshPlayerBalance() {
-            if (!playerSession || !playerSession.username) return;
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/admin/users?timestamp=${new Date().getTime()}`, { method: 'GET', headers: getAuthHeaders() });
-                if (res.ok) {
-                    const users = await res.json();
-                    const currentMe = users.find(u => u.username === playerSession.username);
-                    if (currentMe) {
-                        playerSession.balance = currentMe.balance;
-                        localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
-
-                        const balVal = document.getElementById('player-balance-val');
-                        if (balVal) balVal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
-
-                        const profBal = document.getElementById('profile-page-balance');
-                        if (profBal) profBal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
-                    }
-                }
-            } catch (e) { }
-        }
-
         // --- 6. Cashier Logic ---
         function toggleCashier() {
             const modal = document.getElementById('cashier-modal');
             if (modal.classList.contains('hidden')) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
             else { modal.classList.add('hidden'); modal.classList.remove('flex'); }
         }
-        function switchCashierTab(tabName) {
-            document.getElementById('deposit-section').classList.add('hidden');
-            document.getElementById('withdraw-section').classList.add('hidden');
-            document.getElementById(`${tabName}-section`).classList.remove('hidden');
 
-            document.getElementById('tab-deposit').className = "flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer";
-            document.getElementById('tab-withdraw').className = "flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer";
-            document.getElementById(`tab-${tabName}`).className = `flex-1 ${tabName === 'deposit' ? 'bg-q-cyan text-black' : 'bg-q-magenta text-white'} font-bold py-2 rounded-lg text-xs transition-all shadow-md cursor-pointer`;
-        }
         function showForm(formId) {
             document.getElementById('payment-methods-grid').classList.add('hidden');
             document.getElementById(formId).classList.remove('hidden');
@@ -1962,16 +1948,31 @@
                 } else showNotification("Erreur serveur", "error");
             } catch (error) { showNotification("Erreur de connexion", "error"); }
         }
-        async function submitWithdraw() {
+       async function submitWithdraw(method) {
             if (!playerSession) return showNotification("Veuillez vous connecter d'abord", "error");
 
-            const amountInput = document.getElementById('withdraw-amount');
-            const accountInput = document.getElementById('withdraw-account');
-            const amount = parseFloat(amountInput.value);
-            const accountInfo = accountInput.value.strip();
+            let amountInput, accountInfo;
+            
+            // استخراج البيانات بذكاء حسب طريقة السحب التي اختارها اللاعب
+            if (method === 'mandat') {
+                amountInput = document.getElementById('mandat-amount');
+                accountInfo = `Mandat: ${document.getElementById('mandat-nom').value} ${document.getElementById('mandat-prenom').value}, Tel: ${document.getElementById('mandat-phone').value}`;
+            } else if (method === 'wafacash') {
+                amountInput = document.getElementById('wafacash-amount');
+                accountInfo = `Wafacash: ${document.getElementById('wafacash-nom').value} ${document.getElementById('wafacash-prenom').value}, Tel: ${document.getElementById('wafacash-phone').value}`;
+            } else if (method === 'd17') {
+                amountInput = document.getElementById('d17-amount');
+                accountInfo = `D17: ${document.getElementById('d17-nom').value}, Tel: ${document.getElementById('d17-phone').value}`;
+            } else if (method === 'usdt') {
+                amountInput = document.getElementById('usdt-amount-tnd');
+                accountInfo = `USDT: ${document.getElementById('usdt-wallet').value}`;
+            }
 
+            const amount = parseFloat(amountInput.value);
+
+            // التحقق من الأخطاء قبل الإرسال
             if (isNaN(amount) || amount <= 0) return showNotification("Montant invalide", "error");
-            if (!accountInfo) return showNotification("Entrez votre numéro D17 ou adresse USDT", "error");
+            if (!accountInfo || accountInfo.includes("undefined") || accountInfo.trim() === "") return showNotification("Veuillez remplir tous les champs obligatoires", "error");
 
             if (amount > parseFloat(playerSession.balance || 0)) {
                 return showNotification("Solde insuffisant!", "error");
@@ -1985,15 +1986,27 @@
                         target_username: playerSession.username,
                         action: 'withdraw_request',
                         amount: amount,
-                        tx_id: `WITHDRAW-${Date.now()}-${accountInfo}`
+                        tx_id: `WITHDRAW-${Date.now()}-${accountInfo.replace(/[^a-zA-Z0-9:, ]/g, "").substring(0, 50)}` 
                     })
                 });
 
                 if (response.ok) {
                     showNotification("Demande de retrait envoyée!", "success");
-                    toggleCashier();
-                    amountInput.value = "";
-                    accountInput.value = "";
+                    
+                    // ==========================================
+                    // السحر هنا: إغلاق النافذة فوراً بعد النجاح!
+                    // ==========================================
+                    const modal = document.getElementById('cashier-modal');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                    
+                    // تنظيف الحقول لكي لا تبقى محتفظة بالبيانات للمرة القادمة
+                    document.querySelectorAll('.withdraw-form input').forEach(input => input.value = '');
+                    
+                    // تحديث رصيد اللاعب
+                    refreshPlayerBalance();
                 } else {
                     showNotification("Erreur lors de la demande", "error");
                 }
@@ -2056,9 +2069,12 @@
             document.getElementById('sportsbook-iframe').src = "about:blank";
         }
 
-        // Casino Grid & Providers
-        let casinoProviders = [];
+       let casinoProviders = [];
         let currentProviderGames = [];
+        let currentDisplayLimit = 40;
+        let currentActiveProviderCode = "PRAGMATIC";
+        let gamesObserver = null;
+
         async function initCasinoLobby() {
             if (casinoProviders.length === 0) {
                 const bar = document.getElementById('providers-bar');
@@ -2070,34 +2086,38 @@
                     if (casinoProviders.length > 0) {
                         bar.innerHTML = casinoProviders.map(p => `<button onclick="loadProviderGames('${p.code}')" class="btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-300 hover:text-white shrink-0">${p.name || p.code}</button>`).join('');
                         loadProviderGames(casinoProviders[0].code);
-
-                        // 👈 تفعيل السحب بالفأرة هنا فوراً بعد رسم الأزرار
                         setTimeout(() => enableMouseDragScroll('providers-bar'), 200);
                     }
                 } catch (e) { bar.innerHTML = '<span class="text-q-magenta text-xs">Erreur</span>'; }
             }
         }
+
         async function loadProviderGames(providerCode) {
+            currentActiveProviderCode = providerCode;
+            currentDisplayLimit = 40;
             const container = document.getElementById('games-grid');
             container.innerHTML = '<div class="col-span-full text-center text-q-cyan py-10 animate-pulse">Chargement... ⏳</div>';
+            
             try {
                 const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider_code: providerCode })
                 });
                 const data = await res.json();
-                let gamesArray = data.games || data.data || [];
-                currentProviderGames = gamesArray;
-                renderCasinoGrid(gamesArray, providerCode);
+                currentProviderGames = data.games || data.data || [];
+                renderCasinoGrid();
             } catch (e) { container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erreur</div>'; }
         }
-        function renderCasinoGrid(games, providerCode) {
+
+        function renderCasinoGrid() {
             const container = document.getElementById('games-grid');
-            container.innerHTML = games.slice(0, 50).map(g => {
+            const gamesToDisplay = currentProviderGames.slice(0, currentDisplayLimit);
+            
+            container.innerHTML = gamesToDisplay.map(g => {
                 const title = g.game_name || g.name || "Game";
                 const img = g.banner || g.image || g.thumb || "https://placehold.co/400x400/180A2B/FFF";
                 const code = g.game_code || g.id;
                 return `
-                <div onclick="playCasinoGame('${providerCode}', '${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-q-cyan transition-all flex flex-col h-full">
+                <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-q-cyan transition-all flex flex-col h-full">
                     <div class="relative w-full aspect-square overflow-hidden">
                         <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
@@ -2109,11 +2129,58 @@
                     </div>
                 </div>`;
             }).join('');
+
+            let sentinel = document.getElementById('games-scroll-sentinel');
+            if (currentDisplayLimit < currentProviderGames.length) {
+                if (!sentinel) {
+                    sentinel = document.createElement('div');
+                    sentinel.id = 'games-scroll-sentinel';
+                    sentinel.className = 'col-span-full text-center py-6 text-q-cyan font-display animate-pulse text-xs';
+                    sentinel.innerHTML = 'Chargement de plus de jeux... 🔄';
+                    container.parentNode.appendChild(sentinel);
+                }
+                
+                if (!gamesObserver) {
+                    gamesObserver = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting && currentDisplayLimit < currentProviderGames.length) {
+                                currentDisplayLimit += 40;
+                                renderCasinoGrid();
+                            }
+                        });
+                    }, { rootMargin: '300px' });
+                }
+                gamesObserver.observe(sentinel);
+            } else if (sentinel) {
+                sentinel.remove();
+            }
         }
+
         function filterGames() {
             const term = document.getElementById('game-search-input').value.toLowerCase();
             const filtered = currentProviderGames.filter(g => (g.game_name || g.name || "").toLowerCase().includes(term));
-            renderCasinoGrid(filtered, "PRAGMATIC");
+            
+            const container = document.getElementById('games-grid');
+            container.innerHTML = filtered.map(g => {
+                const title = g.game_name || g.name || "Game";
+                const img = g.banner || g.image || g.thumb || "https://placehold.co/400x400/180A2B/FFF";
+                const code = g.game_code || g.id;
+                return `
+                <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-q-cyan transition-all flex flex-col h-full">
+                    <div class="relative w-full aspect-square overflow-hidden">
+                        <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
+                            <span class="btn-liquid text-white text-[10px] font-bold px-4 py-2 rounded-full">JOUER</span>
+                        </div>
+                    </div>
+                    <div class="p-2 flex justify-between items-center bg-q-panel border-t border-white/5 flex-grow">
+                        <span class="text-white text-[10px] font-bold truncate pr-1 group-hover:text-q-cyan">${title}</span>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            const sentinel = document.getElementById('games-scroll-sentinel');
+            if (sentinel) sentinel.remove();
         }
 
         // Live Casino
@@ -2669,29 +2736,51 @@
             const target = document.getElementById(formId);
             if (target) target.classList.remove('hidden');
         }
+        function switchCashierTab(tabName) {
+            // --- حماية تبويب السحب (للمسجلين أونلاين فقط) ---
+            if (tabName === 'withdraw') {
+                if (playerSession.created_by !== 'Self-Register') {
+                    showNotification("Le retrait direct est réservé aux comptes créés en ligne.", "error");
+                    return; // نوقف العملية ولا نفتح قسم السحب
+                }
+                syncBalance();
+            }
+            // ------------------------------------------------
+
+            document.getElementById('deposit-section').classList.add('hidden');
+            document.getElementById('withdraw-section').classList.add('hidden');
+            document.getElementById(`${tabName}-section`).classList.remove('hidden');
+
+            document.getElementById('tab-deposit').className = "flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer";
+            document.getElementById('tab-withdraw').className = "flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all cursor-pointer";
+            document.getElementById(`tab-${tabName}`).className = `flex-1 ${tabName === 'deposit' ? 'bg-q-cyan text-black' : 'bg-q-magenta text-white'} font-bold py-2 rounded-lg text-xs transition-all shadow-md cursor-pointer`;
+        }
+
         // ================= دالة فتح السحب المباشر وإغلاق البروفايل =================
         function openDirectRetrait() {
-            // 1. إغلاق نافذة البروفايل أولاً لكي لا تغطي على الشاشة
+            // --- حماية زر السحب في البروفايل (للمسجلين أونلاين فقط) ---
+            if (playerSession.created_by !== 'Self-Register') {
+                showNotification("Le retrait direct est réservé aux comptes créés en ligne.", "error");
+                return;
+            }
+            // ---------------------------------------------------------
+
+            // 1. إغلاق نافذة البروفايل أولاً 
             const profileModal = document.getElementById('player-profile-modal') || document.getElementById('profile-modal');
             if (profileModal) {
                 profileModal.classList.add('hidden');
             }
 
-            // 2. التوجيه المباشر إلى قسم/تبويب السحب الشامل
-            if (typeof switchTab === 'function') {
-                switchTab('retrait'); // تفعيل تبويب السحب
-            }
+            // 2. التوجيه المباشر إلى تبويب السحب
+            switchCashierTab('withdraw'); 
 
             // 3. إظهار نافذة السحب/الكاشير
-            const caisseModal = document.getElementById('caisse-modal') || document.getElementById('cashier-modal');
+            const caisseModal = document.getElementById('cashier-modal');
             if (caisseModal) {
                 caisseModal.classList.remove('hidden');
-                setTimeout(() => {
-                    caisseModal.classList.remove('opacity-0');
-                }, 10);
+                caisseModal.classList.add('flex');
             }
         }
-
     </script>
     <!-- ================= SCROLL TO TOP BUTTON  ================= -->
     <button id="scrollToTopBtn" onclick="scrollToTop()"

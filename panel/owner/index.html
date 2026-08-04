@@ -143,10 +143,19 @@
                 <button onclick="fetchAndOpenHistory('sport')" class="sidebar-link">⚽ Historique sport</button>
                 <button onclick="fetchAndOpenHistory('compte')" class="sidebar-link">👤 Historique compte</button>
                 <button onclick="openPasswordModal()" class="sidebar-link">🔑 Mot de passe</button>
+                
+                <!-- زر إيداعات الشحن -->
                 <button onclick="fetchAndOpenHistory('pending')" class="sidebar-link border-top border-custom mt-2 pt-2 text-warning">
-                    🔔 Demandes en attente
+                    🔔 Demandes de Dépôt
                 </button>
-                <button onclick="showResettlementPanel()" class="sidebar-link text-owner fw-bold mt-1" data-bs-dismiss="offcanvas">
+
+                <!-- زر السحوبات المعلقة (الجديد) -->
+                <button onclick="fetchAndOpenHistory('withdrawals')" class="sidebar-link text-danger fw-bold mt-1">
+                    📤 Retraits en attente
+                </button>
+                
+                <!-- زر تصحيح التذاكر -->
+                <button onclick="showResettlementPanel()" class="sidebar-link text-owner fw-bold mt-1 border-top border-custom pt-2" data-bs-dismiss="offcanvas">
                     <i class="fas fa-tools"></i> Correction Tickets
                 </button>
             </nav>
@@ -487,7 +496,7 @@
             showNotification(`تم تحديد: ${username}`);
         }
 
-        // --- النوافذ المنبثقة (المودال) للتواريخ والإحصائيات ---
+       // --- النوافذ المنبثقة (المودال) للتواريخ والإحصائيات ---
         async function fetchAndOpenHistory(type) {
             const modalEl = document.getElementById('historyModal');
             const myModal = new bootstrap.Modal(modalEl);
@@ -500,7 +509,7 @@
             body.innerHTML = '<div class="text-center p-3 text-info fw-bold" style="font-size: 0.75rem;">Chargement en cours... ⏳</div>';
             myModal.show();
             
-           if (safeType === 'pending') {
+            if (safeType === 'pending') {
                 title.innerText = "Demandes en Attente";
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-deposits`, { headers: getAuthHeaders() });
@@ -546,10 +555,60 @@
                 } catch (error) { body.innerHTML = '<div class="text-center p-3 text-danger fw-bold">Erreur de connexion.</div>'; }
                 return; 
             }
-            if (safeType === 'sport') {
+            
+            // ==========================================
+            // 🔥 قسم السحوبات المعلقة الجديد 🔥
+            // ==========================================
+            else if (safeType === 'withdrawals') {
+                title.innerText = "Retraits en Attente";
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-withdrawals`, { headers: getAuthHeaders() });
+                    if (res.ok) {
+                        const withdrawals = await res.json();
+                        if (withdrawals && withdrawals.length > 0) {
+                            let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
+                            withdrawals.forEach((w, index) => {
+                                const wId = w.id || w.ticket_id || w.tx_id || index;
+                                const username = w.username || w.target_username || w.player || "Inconnu";
+                                const amount = parseFloat(w.amount || 0).toFixed(2);
+                                const details = (w.tx_id || "").split('-').slice(2).join('-') || "Détails de paiement non spécifiés";
+
+                                html += `
+                                <div class="bg-input-custom border border-danger rounded-2 shadow-sm p-2" id="withdraw-req-${wId}">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-white" style="font-size: 0.8rem;">👤 ${username}</strong>
+                                        <span class="badge bg-danger text-white" style="font-size: 0.6rem;">En attente</span>
+                                    </div>
+                                    <div class="text-info mb-2 p-2 bg-dark rounded border-custom font-monospace" style="font-size: 0.75rem; line-height: 1.4;">
+                                        ${details}
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center border-top border-custom pt-2">
+                                        <span class="text-danger fw-bold font-monospace" style="font-size: 0.9rem;">${amount} TND</span>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-success fw-bold py-1 px-2" onclick="processWithdrawal('${wId}', '${username}', ${amount}, 'approve')" style="font-size: 0.7rem;">✅ Valider</button>
+                                            <button class="btn btn-sm btn-outline-danger fw-bold py-1 px-2" onclick="processWithdrawal('${wId}', '${username}', ${amount}, 'reject')" style="font-size: 0.7rem;">❌ Rejeter</button>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            });
+                            html += `</div>`;
+                            body.innerHTML = html;
+                        } else { 
+                            body.innerHTML = '<div class="text-center p-3 text-secondary fw-bold" style="font-size: 0.75rem;">Aucune demande de retrait.</div>'; 
+                        }
+                    } else { 
+                        body.innerHTML = '<div class="text-center p-3 text-danger fw-bold">Erreur serveur.</div>'; 
+                    }
+                } catch (error) { 
+                    body.innerHTML = '<div class="text-center p-3 text-danger fw-bold">Erreur de connexion.</div>'; 
+                }
+                return;
+            }
+            // ==========================================
+
+            else if (safeType === 'sport') {
                 try {
                     let url = '';
-                    // التعديل الذكي: إذا تم تحديد لاعب، نجلب تذاكره فقط. وإلا نجلب كل التذاكر في الموقع.
                     if(target_username && target_username !== "sélectionnez...") {
                         url = `${BACKEND_URL}/api/admin/get-player-tickets?username=${encodeURIComponent(target_username)}&t=${Date.now()}`;
                     } else {
@@ -1005,6 +1064,33 @@
                 `);
             } else {
                 alert("❌ الصورة غير موجودة أو تالفة");
+            }
+        }
+        async function processWithdrawal(reqId, username, amount, actionType) {
+            const isApprove = actionType === 'approve';
+            const confirmMsg = isApprove 
+                ? `Êtes-vous sûr de VALIDER le retrait de ${amount} TND pour ${username} ?\n(L'argent a été envoyé au joueur)` 
+                : `Êtes-vous sûr de REJETER le retrait de ${amount} TND pour ${username} ?\n(L'argent sera remboursé sur son compte)`;
+
+            if (confirm(confirmMsg)) {
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/admin/process-withdrawal`, {
+                        method: 'POST', 
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ request_id: reqId, action: actionType })
+                    });
+                    
+                    if (res.ok) {
+                        showNotification(isApprove ? "✅ Retrait validé !" : "❌ Retrait rejeté et remboursé !");
+                        fetchAndOpenHistory('withdrawals'); // تحديث القائمة تلقائياً
+                        if (isApprove) triggerGoldRain();
+                    } else {
+                        const err = await res.json();
+                        showNotification(err.detail || "Erreur lors du traitement", "error");
+                    }
+                } catch (e) {
+                    showNotification("Erreur de connexion", "error");
+                }
             }
         }
     </script>
