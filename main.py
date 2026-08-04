@@ -787,23 +787,47 @@ async def get_transactions_history(username: str):
     return result
 
 @app.post("/api/admin/request-transaction")
-async def request_transaction(target_username: str = Form(...), action: str = Form(...), amount: float = Form(...), tx_id: str = Form(...), file: UploadFile = File(None), current_user: str = Depends(get_admin_user)):
+async def request_transaction(
+    target_username: str = Form(...), 
+    action: str = Form(...), 
+    amount: float = Form(...),
+    tx_id: str = Form(None), # السحر هنا: أضفنا هذا الحقل لاستقبال تفاصيل (D17, Wafacash..)
+    file: UploadFile = File(None)
+):
     db_session = SessionLocal()
     try:
+        import uuid
+        import os
+        import shutil
+        
+        # استخدام التفاصيل القادمة من الواجهة، وإذا كانت فارغة نولد كوداً عشوائياً
+        final_tx_id = tx_id if tx_id else str(uuid.uuid4())
+        
         file_path = ""
         if file and file.filename:
             os.makedirs("uploads", exist_ok=True)
-            file_name = f"{tx_id}{os.path.splitext(file.filename)[1]}"
+            file_name = f"{final_tx_id}{os.path.splitext(file.filename)[1]}"
             file_path = os.path.join("uploads", file_name)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-        new_tx = Transaction(admin_username="PENDING", target_username=target_username, action=action, amount=amount, date=datetime.now().strftime("%Y-%m-%d %H:%M"), image_path=file_path)
+                
+        # حفظ التفاصيل في قاعدة البيانات ليراها الأونر
+        new_tx = Transaction(
+            admin_username="PENDING", 
+            target_username=target_username, 
+            action=action, 
+            amount=amount,
+            tx_id=final_tx_id
+        )
         db_session.add(new_tx)
         db_session.commit()
+        
         return {"status": "success", "message": "طلبك قيد المراجعة"}
+        
     except Exception as e:
         db_session.rollback()
-        return {"status": "error", "message": str(e)}
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"detail": str(e)})
     finally:
         db_session.close()
 
