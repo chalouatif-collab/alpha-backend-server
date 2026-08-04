@@ -407,6 +407,80 @@ async def create_deposit(req: DepositRequest):
         print(f"Error in create_deposit: {e}")
         return {"status": "error", "message": "حدث خطأ أثناء معالجة الطلب"}
 
+@app.get("/api/admin/get-pending-withdrawals")
+async def get_pending_withdrawals(current_user: dict = Depends(get_current_user)):
+    """جلب جميع طلبات السحب المعلقة لعرضها في لوحة الأونر"""
+    if current_user.get("role") not in ["owner", "super_admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    
+    db_session = SessionLocal()
+    try:
+        # جلب الطلبات المعلقة للسحب من قاعدة البيانات
+        txs = db_session.query(Transaction).filter(
+            Transaction.admin_username == "PENDING",
+            Transaction.action == "withdraw_request"
+        ).order_by(Transaction.id.desc()).all()
+        
+        # تحويل النتيجة إلى قاموس (Dict) ليفهمها المتصفح
+        result = []
+        for t in txs:
+            result.append({
+                "id": getattr(t, "id", ""),
+                "tx_id": getattr(t, "tx_id", getattr(t, "id", "")),
+                "target_username": getattr(t, "target_username", ""),
+                "amount": float(getattr(t, "amount", 0)),
+                "action": getattr(t, "action", ""),
+                "date": str(getattr(t, "date", ""))
+            })
+        return result
+    finally:
+        db_session.close()
+
+@app.post("/api/admin/process-withdrawal")
+async def process_withdrawal(request: Request, current_user: dict = Depends(get_current_user)):
+    """معالجة طلب السحب (موافقة أو رفض) من قبل الأونر"""
+    if current_user.get("role") not in ["owner", "super_admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    
+    data = await request.json()
+    request_id = data.get("request_id")
+    action_type = data.get("action") # 'approve' أو 'reject'
+    
+    db_session = SessionLocal()
+    try:
+        # البحث عن الطلب في قاعدة البيانات باستخدام رقم الـ ID أو TX_ID
+        tx = db_session.query(Transaction).filter(
+            (Transaction.id == request_id) | (Transaction.tx_id == str(request_id))
+        ).first()
+        
+        if not tx:
+            raise HTTPException(status_code=404, detail="Demande introuvable")
+            
+        if tx.admin_username != "PENDING":
+            raise HTTPException(status_code=400, detail="Cette demande a déjà été traitée")
+            
+        if action_type == "approve":
+            # في حالة الموافقة، نضع اسم الأونر ليختفي الطلب من قائمة "المعلق"
+            tx.admin_username = current_user.get("username")
+            
+        elif action_type == "reject":
+            # في حالة الرفض، نعلم الطلب كمرفوض ونعيد الرصيد للاعب
+            tx.admin_username = f"REJECTED_{current_user.get('username')}"
+            
+            # استرجاع الرصيد للاعب عبر جدول Users
+            user = db_session.query(User).filter(User.username == tx.target_username).first()
+            if user:
+                user.balance = float(user.balance or 0) + float(tx.amount or 0)
+                
+        # حفظ التغييرات في قاعدة البيانات
+        db_session.commit()
+        return {"status": "success", "message": "Traitement réussi"}
+        
+    except Exception as e:
+        db_session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
 @app.get("/api/admin/get-pending-deposits")
 async def get_pending_deposits(current_user: str = Depends(get_admin_user)):
     try:
