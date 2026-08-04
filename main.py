@@ -1425,41 +1425,41 @@ def get_eurovirtuals_headers(payload=None):
 @app.api_route("/api/get-eurovirtuals-games", methods=["GET"])
 async def get_virtual_games():
     try:
-        # 1. البايلود فارغ تماماً كما في الدليل الرسمي
         payload = {}
-        
         timestamp = str(int(time.time()))
-        
-        # 2. توليد التوقيع باستخدام دالة كلفن
         signature = hash_create(payload, EURO_APP_KEY)
         
-        # 3. الهيدرات مطابقة حرفياً لما في التوثيق
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
             "x-api-key": EURO_API_KEY,
-            "x-signature-key": signature, # 👈 أعدناها كما كانت في الدليل
+            "x-signature-key": signature,
             "x-timestamp": timestamp
         }
         
         base_url_clean = str(EURO_BASE_URL).rstrip('/')
         games_endpoint = f"{base_url_clean}/v1/games"
         
-        # 4. إرسال طلب GET نقي بدون params وبدون json
-        response = requests.get(games_endpoint, headers=headers, timeout=20)
-        
         try:
+            response = requests.get(games_endpoint, headers=headers, timeout=20)
             data = response.json()
         except Exception:
             return {"status": "error", "error": "Invalid JSON response", "details": response.text}
-            
+        
         if response.status_code == 200 and data.get("status_code") == 200:
             games_list = data.get("data", {}).get("data", [])
+            
+            # === التعديل السحري لربط الصور بالواجهة ===
+            for game in games_list:
+                if "thumbnail" in game:
+                    game["image"] = game["thumbnail"]
+                    game["img"] = game["thumbnail"]
+            # ==========================================
+            
             return {"status": "success", "games": games_list}
         else:
-            # سنقوم بطباعة الرد بالكامل لنعرف المشكلة إن وجدت
             return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
-            
+
     except Exception as e:
         return {"status": "error", "error": str(e)}
 # 4. دالة تشغيل الألعاب
