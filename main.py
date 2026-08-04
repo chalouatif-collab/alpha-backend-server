@@ -787,57 +787,67 @@ async def get_transactions_history(username: str):
     return result
 
 @app.post("/api/admin/request-transaction")
-async def request_transaction(
-    target_username: str = Form(...), 
-    action: str = Form(...), 
-    amount: float = Form(...),
-    tx_id: str = Form(None), # السحر هنا: أضفنا هذا الحقل لاستقبال تفاصيل (D17, Wafacash..)
-    file: UploadFile = File(None)
-):
+async def request_transaction(request: Request):
     db_session = SessionLocal()
     try:
         import uuid
         import os
         import shutil
-        
-        # استخدام التفاصيل القادمة من الواجهة، وإذا كانت فارغة نولد كوداً عشوائياً
-        final_tx_id = tx_id if tx_id else str(uuid.uuid4())
-        
+        from starlette.datastructures import UploadFile
+
+        # 1. استخراج البيانات بذكاء من المتصفح
+        form = await request.form()
+        target_username = form.get("target_username")
+        action = form.get("action")
+        amount = float(form.get("amount", 0))
+        tx_id = form.get("tx_id", str(uuid.uuid4()))
+
+        # 2. معالجة الصورة (إن وجدت، مثل حالات الإيداع)
         file_path = ""
-        if file and file.filename:
+        file = form.get("file")
+        if file and isinstance(file, UploadFile) and file.filename:
             os.makedirs("uploads", exist_ok=True)
-            file_name = f"{final_tx_id}{os.path.splitext(file.filename)[1]}"
+            file_name = f"{tx_id}_{os.path.splitext(file.filename)[1]}"
             file_path = os.path.join("uploads", file_name)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-                
-        # حفظ التفاصيل في قاعدة البيانات ليراها الأونر
-        new_tx = Transaction(
-            admin_username="PENDING", 
-            target_username=target_username, 
-            action=action, 
-            amount=amount,
-            tx_id=final_tx_id
-        )
+
+        # 3. تجهيز بيانات المعاملة
+        new_tx_args = {
+            "admin_username": "PENDING",
+            "target_username": target_username,
+            "action": action,
+            "amount": amount
+        }
+
+        # 🛡️ حماية ذكية: إذا لم تكن خانة tx_id موجودة في قاعدة بياناتك، سنقوم بدمج تفاصيل الدفع مع خانة action كي لا تضيع!
+        if hasattr(Transaction, "tx_id"):
+            new_tx_args["tx_id"] = tx_id
+        else:
+            new_tx_args["action"] = f"{action} | Details: {tx_id}"
+
+        # 🛡️ حماية ذكية للصورة
+        if file_path:
+            if hasattr(Transaction, "image_path"):
+                new_tx_args["image_path"] = file_path
+            elif hasattr(Transaction, "receipt_image"):
+                new_tx_args["receipt_image"] = file_path
+
+        # 4. الحفظ النهائي في قاعدة البيانات
+        new_tx = Transaction(**new_tx_args)
         db_session.add(new_tx)
         db_session.commit()
-        
+
         return {"status": "success", "message": "طلبك قيد المراجعة"}
-        
+
     except Exception as e:
         db_session.rollback()
         from fastapi.responses import JSONResponse
+        # طباعة الخطأ لمعرفته إذا تكرر، وإرجاعه بشكل آمن
+        print(f"Transaction Error: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": str(e)})
     finally:
         db_session.close()
-
-@app.get("/api/admin/pending-requests")
-async def get_pending_requests():
-    db_session = SessionLocal()
-    txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING").order_by(Transaction.id.desc()).all()
-    result = [{"id": t.id, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date, "image_path": t.image_path} for t in txs]
-    db_session.close()
-    return result
 
 @app.post("/api/admin/handle-request")
 async def handle_pending_request(req: HandleRequestModel):
