@@ -1314,6 +1314,7 @@ async def get_server_ip():
 # محفظة اللاعب (Seamless Wallet - API) الحقيقية
 # ==========================================
 @app.post("/gold_api")
+@app.post("/gold_api/gold_api")
 async def seamless_wallet(request: Request):
     try:
         data = await request.json()
