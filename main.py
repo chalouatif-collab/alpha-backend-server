@@ -1317,6 +1317,7 @@ async def get_server_ip():
 async def seamless_wallet(request: Request):
     try:
         data = await request.json()
+        print(f"🚀 [GOLD API REQUEST]: {data}")
         method = data.get("method")
         user_code = data.get("user_code")
         
