@@ -1347,23 +1347,27 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
     admin_username = req.admin_username.lower()
     amount = float(req.amount)
 
-    # 🛠️ السر هنا: استخراج قائمة المستخدمين الصحيحة للبحث داخلها
+    # 1. تحديد قائمة المستخدمين الصحيحة للبحث بداخلها
     users_list = db.get("users", []) if isinstance(db, dict) else db
 
+    # 2. البحث عن الأدمين
     admin = next((u for u in users_list if u.get("username") == admin_username), None)
-    if not admin: raise HTTPException(status_code=404, detail="Admin non trouvé")
+    if not admin: 
+        raise HTTPException(status_code=404, detail="Admin non trouvé")
 
+    # 3. البحث عن الشوب المسؤول عن هذا الأدمين
     shop_username = admin.get("created_by")
     shop = next((u for u in users_list if u.get("username") == shop_username and u.get("role") == "shop"), None)
     if not shop:
         shop = next((u for u in users_list if u.get("role") == "shop"), None)
+    if not shop: 
+        raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
 
-    if not shop: raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
-
-    # 🛡️ التأكد من وجود قسم السحوبات في قاعدة البيانات
+    # 4. التأكد من وجود قسم السحوبات
     if isinstance(db, dict) and "shop_withdrawals" not in db: 
         db["shop_withdrawals"] = []
     
+    # 5. تسجيل الطلب وحالته "قيد الانتظار" (لن يتم خصم الرصيد هنا)
     new_req = {
         "id": int(datetime.now().timestamp()),
         "admin_username": admin_username,
@@ -1376,6 +1380,7 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
     db["shop_withdrawals"].append(new_req)
     save_db(db)
     
+    return {"status": "success", "message": "Demande envoyée avec succès"}
     return {"status": "success", "message": "Demande envoyée avec succès"}
 @app.get("/api/shop/pending-withdrawals")
 async def get_pending_withdrawals(username: str):
