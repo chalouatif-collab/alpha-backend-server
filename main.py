@@ -1585,7 +1585,9 @@ async def launch_eurovirtuals(request: Request):
             "player_token": "tok_" + user_code,
             "currency": "TND",
             "demo": 0,
-            "game_uuid": game_uuid # إضافة معرف اللعبة لكي لا يفتح الـ Lobby دائماً
+            "game_uuid": game_uuid, # إضافة معرف اللعبة لكي لا يفتح الـ Lobby دائماً
+            "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals/callback" 
+        
         }
 
         signature = generate_euro_signature(payload, EURO_APP_KEY)
