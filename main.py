@@ -1343,45 +1343,54 @@ class AdminWithdrawRequest(BaseModel): admin_username: str; amount: float
 
 @app.post("/api/admin/request-shop-withdrawal")
 async def request_shop_withdrawal(req: AdminWithdrawRequest):
-    db = load_db()
-    admin_username = req.admin_username.lower()
-    amount = float(req.amount)
+    try:
+        db = load_db()
+        admin_username = req.admin_username.lower()
+        amount = float(req.amount)
 
-    # 1. تحديد قائمة المستخدمين الصحيحة للبحث بداخلها
-    users_list = db.get("users", []) if isinstance(db, dict) else db
+        # 🛠️ السر هنا: تحويل قاعدة البيانات القديمة (List) إلى هيكل جديد (Dictionary)
+        if isinstance(db, list):
+            db = {"users": db, "shop_withdrawals": []}
+            
+        users_list = db.get("users", [])
 
-    # 2. البحث عن الأدمين
-    admin = next((u for u in users_list if u.get("username") == admin_username), None)
-    if not admin: 
-        raise HTTPException(status_code=404, detail="Admin non trouvé")
+        # البحث عن الأدمين
+        admin = next((u for u in users_list if u.get("username") == admin_username), None)
+        if not admin: 
+            raise HTTPException(status_code=404, detail="Admin non trouvé")
 
-    # 3. البحث عن الشوب المسؤول عن هذا الأدمين
-    shop_username = admin.get("created_by")
-    shop = next((u for u in users_list if u.get("username") == shop_username and u.get("role") == "shop"), None)
-    if not shop:
-        shop = next((u for u in users_list if u.get("role") == "shop"), None)
-    if not shop: 
-        raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
+        # البحث عن الشوب
+        shop_username = admin.get("created_by")
+        shop = next((u for u in users_list if u.get("username") == shop_username and u.get("role") == "shop"), None)
+        if not shop:
+            shop = next((u for u in users_list if u.get("role") == "shop"), None)
+        if not shop: 
+            raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
 
-    # 4. التأكد من وجود قسم السحوبات
-    if isinstance(db, dict) and "shop_withdrawals" not in db: 
-        db["shop_withdrawals"] = []
+        # التأكد من وجود قسم السحوبات
+        if "shop_withdrawals" not in db: 
+            db["shop_withdrawals"] = []
+        
+        from datetime import datetime
+        new_req = {
+            "id": int(datetime.now().timestamp()),
+            "admin_username": admin_username,
+            "shop_username": shop.get("username"),
+            "amount": amount,
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "pending"
+        }
+        
+        db["shop_withdrawals"].append(new_req)
+        save_db(db)
+        
+        return {"status": "success", "message": "Demande envoyée avec succès"}
+        
+    except Exception as e:
+        # 🛡️ في حالة وجود أي خطأ برمجي آخر، سيتم إرساله ليظهر أمامك في الواجهة
+        raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
     
-    # 5. تسجيل الطلب وحالته "قيد الانتظار" (لن يتم خصم الرصيد هنا)
-    new_req = {
-        "id": int(datetime.now().timestamp()),
-        "admin_username": admin_username,
-        "shop_username": shop.get("username"),
-        "amount": amount,
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "status": "pending"
-    }
     
-    db["shop_withdrawals"].append(new_req)
-    save_db(db)
-    
-    return {"status": "success", "message": "Demande envoyée avec succès"}
-    return {"status": "success", "message": "Demande envoyée avec succès"}
 @app.get("/api/shop/pending-withdrawals")
 async def get_pending_withdrawals(username: str):
     db = load_db()
