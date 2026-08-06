@@ -1583,7 +1583,7 @@ async def launch_eurovirtuals(request: Request):
             "player_id": user_code,
             "player_name": user_code,
             "player_token": "tok_" + user_code,
-            "currency": "EUR",
+            "currency": "TND",
             "demo": 0,
             "game_uuid": game_uuid, # إضافة معرف اللعبة لكي لا يفتح الـ Lobby دائماً
             "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals/callback" 
@@ -1625,20 +1625,31 @@ async def launch_eurovirtuals(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# 5. Callbacks الخاصة بـ EuroVirtuals
-@app.post("/api/eurovirtuals/callback/player_info")
+@app.api_route("/api/eurovirtuals/callback/player_info", methods=["GET", "POST"])
 async def eurovirtuals_player_info(request: Request):
+    print("🚨🚨🚨 [EUROVIRTUALS] CALLBACK HIT: player_info 🚨🚨🚨")
     try:
-        payload = await request.json()
-        player_id = payload.get("player_id")
+        # فخ لالتقاط البيانات سواء أرسلوها كـ POST أو GET
+        if request.method == "POST":
+            payload = await request.json()
+        else:
+            payload = dict(request.query_params)
+            
+        print(f"📦 [PAYLOAD RECEIVED]: {payload}")
+        
+        # التقاط اسم اللاعب بأي صيغة يرسلونها
+        player_id = payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
+        print(f"👤 [PLAYER DETECTED]: {player_id}")
         
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
         
         if not target_user or target_user.get("is_blocked") == 1:
+            print("❌ [ERROR]: Player not found or blocked!")
             return {"status_code": 500, "status_description": "Player not found or blocked"}
             
         current_balance = float(target_user.get("balance", 0.0))
+        print(f"💰 [BALANCE SENT]: {current_balance} TND")
         
         return {
             "status_code": 200,
@@ -1651,9 +1662,9 @@ async def eurovirtuals_player_info(request: Request):
             }
         }
     except Exception as e:
-        print(f"EuroVirtuals Player Info Error: {e}")
+        print(f"❌ [CRITICAL ERROR in Player Info]: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
-        
+    
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_bet(request: Request):
     try:
