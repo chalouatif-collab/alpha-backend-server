@@ -1583,7 +1583,7 @@ async def launch_eurovirtuals(request: Request):
             "player_id": user_code,
             "player_name": user_code,
             "player_token": "tok_" + user_code,
-            "currency": "TND",
+            "currency": "EUR",
             "demo": 0,
             "game_uuid": game_uuid, # إضافة معرف اللعبة لكي لا يفتح الـ Lobby دائماً
             "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals/callback" 
