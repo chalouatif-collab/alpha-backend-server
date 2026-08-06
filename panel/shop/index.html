@@ -307,6 +307,7 @@
        
         function getAuthHeaders() {
             const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('alpha_user') || '{}');
             return {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
