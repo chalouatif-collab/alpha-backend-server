@@ -1346,28 +1346,19 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
     try:
         db = load_db()
         admin_username = req.admin_username.lower()
+        shop_username = req.shop_username.lower() # 👈 نستقبل اسم الشوب مباشرة من الواجهة
         amount = float(req.amount)
 
-        # 🛠️ السر هنا: تحويل قاعدة البيانات القديمة (List) إلى هيكل جديد (Dictionary)
         if isinstance(db, list):
             db = {"users": db, "shop_withdrawals": []}
             
         users_list = db.get("users", [])
 
-        # البحث عن الأدمين
-        admin = next((u for u in users_list if u.get("username") == admin_username), None)
-        if not admin: 
-            raise HTTPException(status_code=404, detail="Admin non trouvé")
-
-        # البحث عن الشوب
-        shop_username = admin.get("created_by")
+        # التأكد من أن الشوب موجود فعلاً
         shop = next((u for u in users_list if u.get("username") == shop_username and u.get("role") == "shop"), None)
-        if not shop:
-            shop = next((u for u in users_list if u.get("role") == "shop"), None)
         if not shop: 
-            raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
+            raise HTTPException(status_code=404, detail="Shop non trouvé")
 
-        # التأكد من وجود قسم السحوبات
         if "shop_withdrawals" not in db: 
             db["shop_withdrawals"] = []
         
@@ -1375,7 +1366,7 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
         new_req = {
             "id": int(datetime.now().timestamp()),
             "admin_username": admin_username,
-            "shop_username": shop.get("username"),
+            "shop_username": shop_username, # 👈 نحفظ الطلب في حساب هذا الشوب بالذات
             "amount": amount,
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "status": "pending"
@@ -1387,7 +1378,6 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
         return {"status": "success", "message": "Demande envoyée avec succès"}
         
     except Exception as e:
-        # 🛡️ في حالة وجود أي خطأ برمجي آخر، سيتم إرساله ليظهر أمامك في الواجهة
         raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
     
     

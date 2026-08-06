@@ -639,17 +639,17 @@
                     const res = await fetch(`${BACKEND_URL}/api/admin/request-shop-withdrawal`, {
                         method: 'POST',
                         headers: getAuthHeaders(),
-                        body: JSON.stringify({ admin_username: user.username, amount: amount })
+                        // 👈 هنا السحر: أضفنا shop_username: target_username
+                        body: JSON.stringify({ admin_username: user.username, shop_username: target_username, amount: amount })
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        showNotification('تم إرسال طلب السحب إلى الشوب بنجاح، في انتظار الموافقة! ⏳');
+                        showNotification('تم إرسال طلب السحب بنجاح! ⏳', 'success');
                         document.getElementById('target-action-amount').value = '';
                     } else { showNotification(data.detail || 'فشلت العملية', 'error'); }
                 } catch(e) { showNotification('Erreur de connexion', 'error'); }
                 return;
             }
-
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, { 
                     method: 'POST', headers: getAuthHeaders(), 
