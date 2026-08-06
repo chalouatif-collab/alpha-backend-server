@@ -966,7 +966,7 @@
                 const res = await fetch(`${BACKEND_URL}/api/admin/get-all-tickets`, { headers: getAuthHeaders() });
                 const tickets = await res.json();
                 if (tickets.length === 0) {
-                    listContainer.innerHTML = '<div class="text-secondary text-center p-2" style="font-size: 0.75rem;">لا توجد أوراق حالياً.</div>';
+                    listContainer.innerHTML = '<div class="text-secondary text-center p-2" style="font-size: 0.75rem;">Il n'y a pas de cartes pour le moment..</div>';
                     return;
                 }
                 listContainer.innerHTML = tickets.map(t => {
