@@ -1342,7 +1342,7 @@ class HandleShopWithdrawModel(BaseModel): request_id: int; decision: str; shop_u
 class AdminWithdrawRequest(BaseModel): admin_username: str; amount: float
 
 @app.post("/api/admin/request-shop-withdrawal")
-async def request_shop_withdrawal(req: AdminWithdrawRequest):
+async def request_shop_withdrawal(req: ShopWithdrawRequest):
     try:
         db = load_db()
         admin_username = req.admin_username.lower()
