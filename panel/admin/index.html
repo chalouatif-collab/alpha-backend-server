@@ -662,37 +662,39 @@
         }
 
         async function createNetworkUser() {
-            const usernameInput = document.getElementById('new-user-name');
-            const passwordInput = document.getElementById('new-user-pass');
-            const roleSelect = document.getElementById('new-user-role');
-            const phoneInput = document.getElementById('new_phone');
+    const usernameInput = document.getElementById('new-user-name');
+    const passwordInput = document.getElementById('new-user-pass');
+    const roleSelect = document.getElementById('new-user-role');
+    const phoneInput = document.getElementById('new_phone');
 
-            const username = usernameInput.value.trim().toLowerCase();
-            const password = passwordInput.value;
-            const role = roleSelect ? roleSelect.value : 'player';
-            const phone = phoneInput ? phoneInput.value.trim() : '';
+    const username = usernameInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+    const role = roleSelect ? roleSelect.value : 'player';
+    const phone = phoneInput ? phoneInput.value.trim() : '';
 
-            if (!username || !password) return showNotification('Remplir tous les champs!', 'error');
+    if (!username || !password) return showNotification('Remplir tous les champs!', 'error');
 
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST', headers: getAuthHeaders(),
-                    body: JSON.stringify({ username, password, role, created_by: user.username, phone })
-                });
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/register`, {
+            method: 'POST', headers: getAuthHeaders(),
+            body: JSON.stringify({ username, password, role, created_by: user.username, phone })
+        });
 
-                const data = await res.json();
+        const data = await res.json();
 
-                if (res.ok) {
-                    showNotification('Compte créé avec succès!', 'success');
-                    usernameInput.value = '';
-                    passwordInput.value = '';
-                    if (phoneInput) phoneInput.value = '';
-                    loadNetworkData();
-                } else {
-                    showNotification(data.detail || 'Erreur lors de la création', 'error');
-                }
-            } catch (e) { showNotification('Erreur de connexion avec le serveur', 'error'); }
+        if (res.ok) {
+            showNotification('Compte créé avec succès!', 'success');
+            usernameInput.value = '';
+            passwordInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+            loadNetworkData(); // تحديث الجدول فوراً
+        } else {
+            showNotification(data.detail || 'Erreur lors de la création', 'error');
         }
+    } catch (e) { 
+        showNotification('Erreur de connexion avec le serveur', 'error'); 
+    }
+}
 
         function openPasswordModal() { new bootstrap.Modal(document.getElementById('passwordModal')).show(); }
         async function submitNewPassword() { showNotification('Veuillez connecter cette fonction à l\'API d\'abord.', 'error'); }
