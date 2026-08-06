@@ -529,11 +529,15 @@
                 return;
             }
 
-            usersArray.forEach(u => {
+           usersArray.forEach(u => {
                 const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
                 const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
                 const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
+
+                // 👉 الأسطر السحرية التي كانت مفقودة وتسببت في انهيار القائمة:
+                const usernameClean = u.username || 'Inconnu';
+                const phoneBadge = u.phone ? `<span class="badge bg-dark text-secondary border border-secondary ms-1"><i class="fa-solid fa-phone"></i> ${u.phone}</span>` : '';
 
                 const secretBadge = u.two_factor_secret
                     ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 170px; overflow: hidden;" onclick="event.stopPropagation()">
@@ -544,7 +548,8 @@
                            </button>
                        </div>`
                     : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
-
+                
+                // ... (باقي الكود كما هو بدون تغيير)
                 listContainer.innerHTML += `
                     <div class="bg-input-custom p-2 rounded-2 d-flex justify-content-between align-items-center border border-custom shadow-sm" style="cursor: pointer;" onclick="selectForControl('${u.username}', ${userRtp})">
                         <div class="d-flex align-items-center gap-2">
