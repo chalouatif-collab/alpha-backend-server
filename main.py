@@ -381,6 +381,7 @@ class DepositRequest(BaseModel):
     method: str
     amount: float
     code: str
+    receipt_image: Optional[str] = None # 👈 السطر السحري لاستقبال لقطة الشاشة
 
 @app.post("/api/deposit")
 async def create_deposit(req: DepositRequest):
