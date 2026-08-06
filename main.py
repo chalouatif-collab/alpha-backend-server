@@ -1346,7 +1346,7 @@ async def request_shop_withdrawal(req: ShopWithdrawRequest):
     try:
         db = load_db()
         admin_username = req.admin_username.lower()
-        shop_username = req.shop_username.lower() # 👈 نستقبل اسم الشوب مباشرة من الواجهة
+        shop_username = req.shop_username.strip().lower() # 👈 تحويل لحروف صغيرة وإزالة الفراغات
         amount = float(req.amount)
 
         if isinstance(db, list):
@@ -1354,8 +1354,7 @@ async def request_shop_withdrawal(req: ShopWithdrawRequest):
             
         users_list = db.get("users", [])
 
-        # التأكد من أن الشوب موجود فعلاً
-        shop = next((u for u in users_list if u.get("username") == shop_username and u.get("role") == "shop"), None)
+        shop = next((u for u in users_list if str(u.get("username")).strip().lower() == shop_username and u.get("role") == "shop"), None)
         if not shop: 
             raise HTTPException(status_code=404, detail="Shop non trouvé")
 
@@ -1366,7 +1365,7 @@ async def request_shop_withdrawal(req: ShopWithdrawRequest):
         new_req = {
             "id": int(datetime.now().timestamp()),
             "admin_username": admin_username,
-            "shop_username": shop_username, # 👈 نحفظ الطلب في حساب هذا الشوب بالذات
+            "shop_username": shop_username, # 👈 يحفظ دائماً بحروف صغيرة مطابقة
             "amount": amount,
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "status": "pending"
@@ -1405,11 +1404,11 @@ async def get_shop_withdraw_requests(username: str):
         return []
         
     withdrawals = db.get("shop_withdrawals", [])
+    target_shop = username.strip().lower() # 👈 توحيد الصيغة
     
-    # جلب كل الطلبات (المعلقة، المقبولة، والمرفوضة) الخاصة بهذا الشوب
     all_my_reqs = [
         w for w in withdrawals 
-        if str(w.get("shop_username")).lower() == username.lower()
+        if str(w.get("shop_username")).strip().lower() == target_shop
     ]
     all_my_reqs.reverse()
     return all_my_reqs
