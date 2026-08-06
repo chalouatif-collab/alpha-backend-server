@@ -144,15 +144,18 @@ class Transaction(Base):
     amount = Column(Float)
     date = Column(String)  
     image_path = Column(String, nullable=True)
+    tx_id = Column(String, nullable=True) # 👈 السطر السحري الذي سيحفظ بيانات D17 و Wafacash
 
 try:
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE transactions ADD COLUMN image_path VARCHAR"))
 except Exception:
     pass
+
+# 👈 أمر إجباري لتحديث الجداول القديمة
 try:
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE alpha_users ADD COLUMN two_factor_secret VARCHAR"))
+        conn.execute(text("ALTER TABLE transactions ADD COLUMN tx_id VARCHAR"))
 except Exception:
     pass
 Base.metadata.create_all(bind=engine)
@@ -409,23 +412,30 @@ async def create_deposit(req: DepositRequest):
 
 @app.get("/api/admin/get-pending-withdrawals")
 async def get_pending_withdrawals():
-    """جلب جميع طلبات السحب المعلقة"""
+    """جلب جميع طلبات السحب المعلقة (القديمة والجديدة)"""
     db_session = SessionLocal()
     try:
+        # استخدمنا like لكي نصطاد الطلبات حتى لو كان معها تفاصيل مدمجة
         txs = db_session.query(Transaction).filter(
             Transaction.admin_username == "PENDING",
-            Transaction.action == "withdraw_request"
+            Transaction.action.like("withdraw_request%")
         ).order_by(Transaction.id.desc()).all()
         
         result = []
         for t in txs:
+            # استخراج التفاصيل بأمان تام لعرضها للأونر
+            tx_id_val = getattr(t, "tx_id", None)
+            if not tx_id_val and t.action and "Details:" in t.action:
+                tx_id_val = t.action.split("Details: ")[-1]
+            elif not tx_id_val:
+                tx_id_val = str(t.id)
+
             result.append({
                 "id": t.id,
-                # جلب الـ tx_id إن وجد، وإلا نستخدم الـ id العادي
-                "tx_id": getattr(t, "tx_id", str(t.id)),
+                "tx_id": tx_id_val,
                 "target_username": t.target_username,
                 "amount": float(t.amount or 0),
-                "action": t.action,
+                "action": "withdraw_request", # إرجاع الاسم النظيف للوحة
                 "date": str(t.date)
             })
         return result
@@ -434,7 +444,6 @@ async def get_pending_withdrawals():
         return []
     finally:
         db_session.close()
-
 
 @app.post("/api/admin/process-withdrawal")
 async def process_withdrawal(request: Request):
