@@ -513,7 +513,7 @@
                         localStorage.setItem('alpha_user', JSON.stringify(user));
                     }
 
-                    allUsers = users.filter(u => u.created_by === user.username);
+                    allUsers = users.filter(u => u.created_by && String(u.created_by).toLowerCase() === String(user.username).toLowerCase());
                     renderFilteredUsers();
                 }
             } catch (e) { console.error(e); }
