@@ -1346,18 +1346,24 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
     db = load_db()
     admin_username = req.admin_username.lower()
     amount = float(req.amount)
-    
-    admin = next((u for u in db if u.get("username") == admin_username), None)
+
+    # 🛠️ السر هنا: استخراج قائمة المستخدمين الصحيحة للبحث داخلها
+    users_list = db.get("users", []) if isinstance(db, dict) else db
+
+    admin = next((u for u in users_list if u.get("username") == admin_username), None)
     if not admin: raise HTTPException(status_code=404, detail="Admin non trouvé")
-    
+
     shop_username = admin.get("created_by")
-    shop = next((u for u in db if u.get("username") == shop_username and u.get("role") == "shop"), None)
+    shop = next((u for u in users_list if u.get("username") == shop_username and u.get("role") == "shop"), None)
     if not shop:
-        shop = next((u for u in db if u.get("role") == "shop"), None)
-        
+        shop = next((u for u in users_list if u.get("role") == "shop"), None)
+
     if not shop: raise HTTPException(status_code=404, detail="Aucun Shop trouvé")
-    if "shop_withdrawals" not in db: db["shop_withdrawals"] = []
-        
+
+    # 🛡️ التأكد من وجود قسم السحوبات في قاعدة البيانات
+    if isinstance(db, dict) and "shop_withdrawals" not in db: 
+        db["shop_withdrawals"] = []
+    
     new_req = {
         "id": int(datetime.now().timestamp()),
         "admin_username": admin_username,
@@ -1366,10 +1372,11 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
         "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "status": "pending"
     }
+    
     db["shop_withdrawals"].append(new_req)
     save_db(db)
+    
     return {"status": "success", "message": "Demande envoyée avec succès"}
-
 @app.get("/api/shop/pending-withdrawals")
 async def get_pending_withdrawals(username: str):
     db = load_db()
