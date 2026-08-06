@@ -1600,7 +1600,7 @@ async def launch_eurovirtuals(request: Request):
         
         }
 
-        signature = generate_euro_signature(payload, EURO_APP_KEY)
+        signature = hash_create(payload, EURO_APP_KEY)
 
         headers = {
             "x-api-key": EURO_API_KEY,
