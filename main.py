@@ -1394,22 +1394,35 @@ async def request_shop_withdrawal(req: AdminWithdrawRequest):
 @app.get("/api/shop/pending-withdrawals")
 async def get_pending_withdrawals(username: str):
     db = load_db()
+    if isinstance(db, list):
+        return [] # إذا كانت القاعدة قديمة، لا يوجد طلبات
+        
     withdrawals = db.get("shop_withdrawals", [])
-    return [w for w in withdrawals if w.get("shop_username") == username.lower() and w.get("status") == "pending"]
+    
+    # جلب الطلبات المعلقة فقط وتجاهل حالة الأحرف
+    pending_reqs = [
+        w for w in withdrawals 
+        if str(w.get("shop_username")).lower() == username.lower() and w.get("status") == "pending"
+    ]
+    pending_reqs.reverse() # الأحدث في الأعلى
+    return pending_reqs
+
 
 @app.get("/api/shop/withdraw-requests")
-async def get_shop_withdraw_requests(current_user: str = Depends(get_current_user)):
+async def get_shop_withdraw_requests(username: str):
     db = load_db()
-    if not isinstance(db, dict): db = {}
-    all_requests = db.get("shop_withdrawals")
-    if not all_requests: all_requests = []
-    elif isinstance(all_requests, dict): all_requests = list(all_requests.values())
+    if isinstance(db, list):
+        return []
+        
+    withdrawals = db.get("shop_withdrawals", [])
     
-    shop_username = current_user.lower()
-    my_requests = [req for req in all_requests if isinstance(req, dict) and str(req.get("shop_username", "")).lower() == shop_username]
-    my_requests.reverse()
-    return my_requests
-
+    # جلب كل الطلبات (المعلقة، المقبولة، والمرفوضة) الخاصة بهذا الشوب
+    all_my_reqs = [
+        w for w in withdrawals 
+        if str(w.get("shop_username")).lower() == username.lower()
+    ]
+    all_my_reqs.reverse()
+    return all_my_reqs
 @app.post("/api/shop/handle-withdrawal")
 async def handle_shop_withdrawal(req: HandleShopWithdrawModel):
     db = load_db()
