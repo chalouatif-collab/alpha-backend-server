@@ -630,40 +630,40 @@
         async function executeAction(action) {
             const target_username = document.getElementById('target-action-user').value;
             const amountInput = document.getElementById('target-action-amount').value;
+            
             if(!target_username) return showNotification('Sélectionnez un compte!', 'error');
+            
             const amount = amountInput ? parseFloat(amountInput) : 0;
             if(amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
             
-            if (action === 'withdraw') {
-                try {
-                    const res = await fetch(`${BACKEND_URL}/api/admin/request-shop-withdrawal`, {
-                        method: 'POST',
-                        headers: getAuthHeaders(),
-                        // 👈 هنا السحر: أضفنا shop_username: target_username
-                        body: JSON.stringify({ admin_username: user.username, shop_username: target_username, amount: amount })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        showNotification('تم إرسال طلب السحب بنجاح! ⏳', 'success');
-                        document.getElementById('target-action-amount').value = '';
-                    } else { showNotification(data.detail || 'فشلت العملية', 'error'); }
-                } catch(e) { showNotification('Erreur de connexion', 'error'); }
-                return;
-            }
+            // توجيه العملية (شحن أو سحب) مباشرة إلى مسار تحديث الرصيد العادي
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, { 
-                    method: 'POST', headers: getAuthHeaders(), 
-                    body: JSON.stringify({ admin_username: user.username, target_username, action, amount }) 
+                    method: 'POST', 
+                    headers: getAuthHeaders(), 
+                    body: JSON.stringify({ 
+                        admin_username: user.username, 
+                        target_username: target_username, 
+                        action: action, // ستأخذ 'charge' للشحن و 'withdraw' للسحب
+                        amount: amount 
+                    }) 
                 });
+                
+                const data = await res.json();
+                
                 if (res.ok) {
-                    showNotification('Opération réussie!');
+                    showNotification(action === 'charge' ? 'تم شحن الرصيد بنجاح! ✅' : 'تم خصم الرصيد بنجاح! ✅', 'success');
                     document.getElementById('target-action-amount').value = '';
-                    await loadNetworkData();
+                    // تحديث الجدول فوراً لإظهار الرصيد الجديد
+                    if (typeof loadNetworkData === 'function') {
+                        await loadNetworkData();
+                    }
                 } else {
-                    const err = await res.json();
-                    showNotification(err.detail || 'Erreur lors de l\'opération', 'error');
+                    showNotification(data.detail || 'Erreur lors de l\'opération', 'error');
                 }
-            } catch (e) { showNotification('Erreur de connexion', 'error'); }
+            } catch (e) { 
+                showNotification('Erreur de connexion', 'error'); 
+            }
         }
 
         async function createNetworkUser() {
