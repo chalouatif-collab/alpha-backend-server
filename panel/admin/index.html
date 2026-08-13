@@ -151,9 +151,6 @@
                     <button onclick="switchAdminPanelSection('sport')" id="btn-admin-sport" class="sidebar-link">
                         ⚽ Tickets en cours
                     </button>
-                    <button onclick="openAdminWithdrawRequests()" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-1" style="color: #ffc107;">
-                        <i class="fas fa-hand-holding-usd me-2"></i> Demandes retrait
-                    </button>
                     <button onclick="openPasswordModal()" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-3 text-secondary small">
                         🔑 Modifier mon mot de passe
                     </button>
@@ -182,9 +179,6 @@
                     <button onclick="switchAdminPanelSection('transfert'); closeSidebarManually();" class="sidebar-link">💸 Historique de transfére</button>
                     <button onclick="switchAdminPanelSection('transaction'); closeSidebarManually();" class="sidebar-link">📊 Historique transaction</button>
                     <button onclick="switchAdminPanelSection('sport'); closeSidebarManually();" class="sidebar-link">⚽ Tickets en cours</button>
-                    <button onclick="openAdminWithdrawRequests(); closeSidebarManually();" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-1" style="color: #ffc107;">
-                        <i class="fas fa-hand-holding-usd me-2"></i> Demandes retrait
-                    </button>
                 </nav>
             </div>
             <div class="pt-3 border-top border-custom mt-auto">
@@ -368,21 +362,6 @@
                 <div class="modal-body p-3">
                     <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe" class="form-control form-control-sm mb-3">
                     <button onclick="submitNewPassword()" class="btn btn-emerald btn-sm w-100 fw-bold">Mettre à jour</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- نافذة السجلات وطلبات السحب (Modal) -->
-    <div class="modal fade" id="historyModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content bg-card-custom border-custom shadow">
-                <div class="modal-header border-bottom border-custom">
-                    <h6 class="modal-title fw-bold text-warning" id="modal-title">Demandes</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-3" id="modal-dynamic-content">
-                    <!-- سيتم حقن الطلبات هنا برمجياً -->
                 </div>
             </div>
         </div>
@@ -746,44 +725,7 @@
 
         function logout() { localStorage.clear(); window.location.href = '/'; }
 
-        async function openAdminWithdrawRequests() {
-            const modalEl = document.getElementById('historyModal');
-            const myModal = new bootstrap.Modal(modalEl);
-            const title = document.getElementById('modal-title');
-            const body = document.getElementById('modal-dynamic-content');
-            
-            title.innerText = "Mes Demandes de Retrait";
-            body.innerHTML = '<div class="text-center p-4 text-emerald fw-bold">Chargement en cours... ⏳</div>';
-            myModal.show();
-
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/admin/my-withdrawal-requests?username=${user.username}`, { headers: getAuthHeaders() });
-                if (res.ok) {
-                    const requests = await res.json();
-                    if (requests && requests.length > 0) {
-                        let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
-                        requests.forEach(req => {
-                            let statusBadge = req.status === 'accepted' ? '<span class="badge bg-success">Accepté ✅</span>' :
-                            (req.status === 'rejected' ? '<span class="badge bg-danger">Refusé ❌</span>' : '<span class="badge bg-warning text-dark">En attente ⏳</span>');
-                            html += `
-                            <div class="card bg-input-custom border-custom shadow-sm">
-                                <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-white fw-bold">المبلغ: <span class="text-danger font-monospace">${parseFloat(req.amount).toFixed(2)} TND</span></div>
-                                        <div class="text-secondary small">🕒 ${req.date}</div>
-                                    </div>
-                                    <div>${statusBadge}</div>
-                                </div>
-                            </div>`;
-                        });
-                        html += `</div>`;
-                        body.innerHTML = html;
-                    } else {
-                        body.innerHTML = '<div class="text-center p-4 text-white fw-bold">Aucune demande de retrait. (لا توجد طلبات)</div>';
-                    }
-                } else { body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur serveur.</div>'; }
-            } catch (e) { body.innerHTML = '<div class="text-center p-4 text-danger fw-bold">Erreur de connexion.</div>'; }
-        }
+        
     </script>
 </body>
 </html>
