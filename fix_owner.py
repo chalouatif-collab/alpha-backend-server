@@ -1,32 +1,22 @@
-import json
-import hashlib
+import sqlite3
 
-# دالة تشفير كلمة السر الخاصة بنظامك
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+HASHED_PASSWORD = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjIQqiRQYq"
 
-# اسم حساب الأونر الخاص بك وكلمة السر الجديدة التي تريدها
-OWNER_USERNAME = "fethi"  # ضع اسم حساب الأونر هنا إن لم يكن fethi
-NEW_PASSWORD = "Fethi1987123456"      # ضع كلمة السر الجديدة السهلة مؤقتاً
-
+print("جاري الاتصال بقاعدة البيانات...")
 try:
-    # قراءة قاعدة البيانات الحالية (تأكد من اسم الملف لديك مثل tickets_database.json أو local_test.db)
-    with open("tickets_database.json", "r", encoding="utf-8") as f:
-        db = json.load(f)
-    
-    found = False
-    for user in db:
-        if user.get("username") == OWNER_USERNAME:
-            user["password"] = hash_password(NEW_PASSWORD)
-            found = True
-            break
-            
-    if found:
-        with open("tickets_database.json", "w", encoding="utf-8") as f:
-            json.dump(db, f, indent=4, ensure_ascii=False)
-        print(f"✅ تم تحديث كلمة سر الأونر [{OWNER_USERNAME}] بنجاح إلى: {NEW_PASSWORD}")
+    conn = sqlite3.connect('local_test.db')
+    cursor = conn.cursor()
+
+    # تحديث كلمة السر في جدول alpha_users للحساب fethi
+    cursor.execute("UPDATE alpha_users SET password = ? WHERE username = 'fethi'", (HASHED_PASSWORD,))
+    conn.commit()
+
+    if cursor.rowcount > 0:
+        print("✅ تم بنجاح! كلمة السر الجديدة لحساب fethi هي: 123456")
     else:
-        print(f"❌ لم يتم العثور على المستخدم {OWNER_USERNAME} في قاعدة البيانات.")
+        print("❌ خطأ: لم يتم العثور على الحساب fethi في جدول alpha_users.")
 
 except Exception as e:
-    print(f"❌ حدث خطأ: {e}")
+    print(f"حدث خطأ أثناء الاتصال: {e}")
+finally:
+    conn.close()
