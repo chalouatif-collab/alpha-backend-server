@@ -1,7 +1,7 @@
 import sqlite3
 import bcrypt  # مكتبة التشفير التي يستخدمها نظامك
 # اطلب كلمة السر الجديدة مباشرة في واجهة الأوامر
-new_password = input("ZPFWxnr2613MLO@3.12FRSKL15")
+new_password = input("alpha2026")
 
 # تشفير الكلمة بطريقة مطابقة لقاعدة بياناتك
 hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
