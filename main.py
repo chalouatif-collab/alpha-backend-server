@@ -1727,10 +1727,13 @@ async def eurovirtuals_bet(request: Request):
         payload = await request.json()
         print(f"📦 [BET PAYLOAD RECEIVED]: {payload}")
         
-        # اصطياد اسم اللاعب بأي صيغة ممكنة
-        player_id = payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
-        # اصطياد المبلغ 
-        amount = float(payload.get("amount", payload.get("bet_amount", payload.get("bet", 0.0))))
+        # اصطياد اسم اللاعب بجميع الصيغ الممكنة (بما فيها userId الجديد)
+        player_id = payload.get("userId") or payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
+        
+        # اصطياد المبلغ بجميع الصيغ الممكنة (بما فيها betAmount الجديد)
+        amount_raw = payload.get("betAmount") or payload.get("amount") or payload.get("bet_amount") or payload.get("bet") or 0.0
+        amount = float(amount_raw)
+        
         transaction_id = payload.get("transaction_id") or payload.get("reference") or str(uuid.uuid4())
         
         db = load_db()
@@ -1772,8 +1775,10 @@ async def eurovirtuals_win(request: Request):
         payload = await request.json()
         print(f"📦 [WIN PAYLOAD RECEIVED]: {payload}")
         
-        player_id = payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
-        payout_amount = float(payload.get("payout_amount", payload.get("amount", payload.get("win_amount", 0.0))))
+        player_id = payload.get("userId") or payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
+        payout_raw = payload.get("winAmount") or payload.get("payout_amount") or payload.get("amount") or payload.get("win_amount") or 0.0
+        payout_amount = float(payout_raw)
+        
         transaction_id = payload.get("transaction_id") or payload.get("reference") or str(uuid.uuid4())
         
         db = load_db()
