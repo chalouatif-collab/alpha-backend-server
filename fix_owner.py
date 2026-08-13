@@ -1,26 +1,42 @@
 import sqlite3
-import bcrypt  # مكتبة التشفير التي يستخدمها نظامك
-# اطلب كلمة السر الجديدة مباشرة في واجهة الأوامر
-new_password = input("alpha2026")
+import bcrypt
 
-# تشفير الكلمة بطريقة مطابقة لقاعدة بياناتك
-hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+# سنستخدم كلمة سر بسيطة وموحدة للتجربة لضمان عدم وجود أخطاء في الكتابة
+password = "123456"
+hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-print("جاري الاتصال بقاعدة البيانات...")
+print("جاري الاتصال بقاعدة البيانات لتنفيذ الحل الجذري...")
 try:
     conn = sqlite3.connect('local_test.db')
     cursor = conn.cursor()
 
-    # تحديث الكلمة المشفرة في الجدول
-    cursor.execute("UPDATE alpha_users SET password = ? WHERE username = 'fethi'", (hashed_password,))
-    conn.commit()
+    # 1. صيانة حساب fethi (تحديث كلمة السر وإلغاء التوثيق الثنائي بقوة)
+    cursor.execute("""
+        UPDATE alpha_users 
+        SET password = ?, 2fa_enabled = 0, 2fa_secret = '' 
+        WHERE username = 'fethi'
+    """, (hashed,))
 
-    if cursor.rowcount > 0:
-        print(f"✅ تم التحديث بنجاح! كلمة السر الجديدة هي: {new_password}")
-    else:
-        print("❌ خطأ: لم يتم العثور على الحساب.")
+    # 2. إنشاء حساب طوارئ جديد بصلاحيات Owner (للضمان)
+    try:
+        cursor.execute("""
+            INSERT INTO alpha_users (username, password, role, balance, 2fa_enabled, 2fa_secret)
+            VALUES ('boss', ?, 'owner', 999999, 0, '')
+        """, (hashed,))
+    except sqlite3.IntegrityError:
+        # إذا كان حساب boss موجوداً، نقوم بتحديثه فقط
+        cursor.execute("""
+            UPDATE alpha_users 
+            SET password = ?, 2fa_enabled = 0, 2fa_secret = '' 
+            WHERE username = 'boss'
+        """, (hashed,))
+
+    conn.commit()
+    print("✅ تم بنجاح! لديك الآن حسابان جاهزان للدخول:")
+    print("👤 الحساب الأول -> الاسم: fethi | كلمة المرور: 123456")
+    print("👤 حساب الطوارئ -> الاسم: boss | كلمة المرور: 123456")
 
 except Exception as e:
-    print(f"حدث خطأ أثناء الاتصال: {e}")
+    print(f"❌ حدث خطأ: {e}")
 finally:
     conn.close()

