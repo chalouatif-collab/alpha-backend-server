@@ -1722,46 +1722,38 @@ async def eurovirtuals_player_info(request: Request):
     
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_bet(request: Request):
-    print("🚨🚨🚨 [EUROVIRTUALS] CALLBACK HIT: BET 🚨🚨🚨")
     try:
         payload = await request.json()
-        print(f"📦 [BET PAYLOAD RECEIVED]: {payload}")
+        print(f"📦 [EUROVIRTUALS BET PAYLOAD]: {payload}")
         
-        # اصطياد اسم اللاعب بجميع الصيغ الممكنة (بما فيها userId الجديد)
-        player_id = payload.get("userId") or payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
-        
-        # اصطياد المبلغ بجميع الصيغ الممكنة (بما فيها betAmount الجديد)
-        amount_raw = payload.get("betAmount") or payload.get("amount") or payload.get("bet_amount") or payload.get("bet") or 0.0
-        amount = float(amount_raw)
-        
-        transaction_id = payload.get("transaction_id") or payload.get("reference") or str(uuid.uuid4())
+        # استخراج البيانات بالضبط كما وردت في التوثيق الرسمي
+        player_id = payload.get("player_id")
+        amount = float(payload.get("amount", 0.0))
+        transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
+        currency = payload.get("currency", "TND")
         
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
         
         if not target_user or target_user.get("is_blocked") == 1:
-            print(f"❌ [ERROR]: Player '{player_id}' not found or blocked!")
             return {"status_code": 500, "status_description": "Player not found or blocked"}
             
         current_balance = float(target_user.get("balance", 0.0))
         
         if current_balance < amount:
-            print(f"❌ [ERROR]: Insufficient balance! Has: {current_balance}, Needs: {amount}")
             return {"status_code": 500, "status_description": "Insufficient Balance"}
             
         new_balance = current_balance - amount
         target_user["balance"] = round(new_balance, 2)
         save_db(db)
         
-        print(f"✅ [SUCCESS]: Bet placed. New Balance: {new_balance}")
         return {
             "status_code": 200,
             "status_description": "Success",
             "data": {
                 "balance": round(new_balance, 2),
-                "currency": "TND",
-                "reference_id": transaction_id, 
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "currency": currency,
+                "reference_id": transaction_id
             }
         }
     except Exception as e:
@@ -1770,16 +1762,15 @@ async def eurovirtuals_bet(request: Request):
         
 @app.post("/api/eurovirtuals/callback/win")
 async def eurovirtuals_win(request: Request):
-    print("🚨🚨🚨 [EUROVIRTUALS] CALLBACK HIT: WIN 🚨🚨🚨")
     try:
         payload = await request.json()
-        print(f"📦 [WIN PAYLOAD RECEIVED]: {payload}")
+        print(f"📦 [EUROVIRTUALS WIN PAYLOAD]: {payload}")
         
-        player_id = payload.get("userId") or payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
-        payout_raw = payload.get("winAmount") or payload.get("payout_amount") or payload.get("amount") or payload.get("win_amount") or 0.0
-        payout_amount = float(payout_raw)
-        
-        transaction_id = payload.get("transaction_id") or payload.get("reference") or str(uuid.uuid4())
+        # استخراج البيانات بالضبط كما وردت في التوثيق الرسمي
+        player_id = payload.get("player_id")
+        payout_amount = float(payload.get("payout_amount", 0.0))
+        transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
+        currency = payload.get("currency", "TND")
         
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
@@ -1792,15 +1783,13 @@ async def eurovirtuals_win(request: Request):
         target_user["balance"] = round(new_balance, 2)
         save_db(db)
         
-        print(f"✅ [SUCCESS]: Win paid. New Balance: {new_balance}")
         return {
             "status_code": 200,
             "status_description": "Success",
             "data": {
                 "balance": round(new_balance, 2),
-                "currency": "TND",
-                "reference_id": transaction_id, 
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "currency": currency,
+                "reference_id": transaction_id
             }
         }
     except Exception as e:
