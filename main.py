@@ -1625,7 +1625,6 @@ async def get_virtual_games():
 
     except Exception as e:
         return {"status": "error", "error": str(e)}
-# 4. دالة تشغيل الألعاب
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
@@ -1634,15 +1633,21 @@ async def launch_eurovirtuals(request: Request):
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
+        # ====== 🚀 السطر السحري الجديد: جلب رصيد اللاعب من قاعدة البيانات ======
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username")) == user_code), None)
+        current_balance = float(target_user.get("balance", 0.0)) if target_user else 0.0
+        # ======================================================================
+
         payload = {
             "player_id": user_code,
             "player_name": user_code,
             "player_token": "tok_" + user_code,
             "currency": "TND",
+            "balance": current_balance,  # 👈 تمت إضافة الرصيد هنا كما طلب المزود
             "demo": 0,
             "game_uuid": game_uuid, # إضافة معرف اللعبة لكي لا يفتح الـ Lobby دائماً
             "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals/callback" 
-        
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
@@ -1679,47 +1684,6 @@ async def launch_eurovirtuals(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-
-@app.api_route("/api/eurovirtuals/callback/player_info", methods=["GET", "POST"])
-async def eurovirtuals_player_info(request: Request):
-    print("🚨🚨🚨 [EUROVIRTUALS] CALLBACK HIT: player_info 🚨🚨🚨")
-    try:
-        # فخ لالتقاط البيانات سواء أرسلوها كـ POST أو GET
-        if request.method == "POST":
-            payload = await request.json()
-        else:
-            payload = dict(request.query_params)
-            
-        print(f"📦 [PAYLOAD RECEIVED]: {payload}")
-        
-        # التقاط اسم اللاعب بأي صيغة يرسلونها
-        player_id = payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
-        print(f"👤 [PLAYER DETECTED]: {player_id}")
-        
-        db = load_db()
-        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
-        
-        if not target_user or target_user.get("is_blocked") == 1:
-            print("❌ [ERROR]: Player not found or blocked!")
-            return {"status_code": 500, "status_description": "Player not found or blocked"}
-            
-        current_balance = float(target_user.get("balance", 0.0))
-        print(f"💰 [BALANCE SENT]: {current_balance} TND")
-        
-        return {
-            "status_code": 200,
-            "status_description": "Success",
-            "data": {
-                "balance": round(current_balance, 2),
-                "currency": "TND",
-                "reference_id": str(uuid.uuid4()), 
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        }
-    except Exception as e:
-        print(f"❌ [CRITICAL ERROR in Player Info]: {e}")
-        return {"status_code": 500, "status_description": "Internal Server Error"}
-    
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_bet(request: Request):
     try:
