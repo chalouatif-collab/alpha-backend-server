@@ -1726,12 +1726,15 @@ async def eurovirtuals_bet(request: Request):
         payload = await request.json()
         print(f"📦 [EUROVIRTUALS BET PAYLOAD]: {payload}")
         
-        # استخراج البيانات بالضبط كما وردت في التوثيق الرسمي
         player_id = payload.get("player_id")
         amount = float(payload.get("amount", 0.0))
         transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
         currency = payload.get("currency", "TND")
         
+        # 🛡️ الحارس الأمني: رفض المبالغ السالبة
+        if amount < 0:
+            return {"status_code": 400, "status_description": "Invalid amount: cannot be negative"}
+            
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
         
@@ -1759,19 +1762,22 @@ async def eurovirtuals_bet(request: Request):
     except Exception as e:
         print(f"❌ [CRITICAL ERROR in Bet]: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
-        
+    
 @app.post("/api/eurovirtuals/callback/win")
 async def eurovirtuals_win(request: Request):
     try:
         payload = await request.json()
         print(f"📦 [EUROVIRTUALS WIN PAYLOAD]: {payload}")
         
-        # استخراج البيانات بالضبط كما وردت في التوثيق الرسمي
         player_id = payload.get("player_id")
         payout_amount = float(payload.get("payout_amount", 0.0))
         transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
         currency = payload.get("currency", "TND")
         
+        # 🛡️ الحارس الأمني: رفض المبالغ السالبة
+        if payout_amount < 0:
+            return {"status_code": 400, "status_description": "Invalid amount: cannot be negative"}
+            
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
         
@@ -1795,6 +1801,9 @@ async def eurovirtuals_win(request: Request):
     except Exception as e:
         print(f"❌ [CRITICAL ERROR in Win]: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
+    
+    
+    
 def verify_callback_token(app_key: str, timestamp: str, received_token: str) -> bool:
     concatenated = str(app_key) + str(timestamp)
     sha1_hex = hashlib.sha1(concatenated.encode('utf-8')).hexdigest()
