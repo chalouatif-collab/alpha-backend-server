@@ -742,8 +742,11 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
 
     if not target_user: raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
+    # ====== 🚀 حماية إضافية للزعيم: التعرف عليه كمدير مطلق حتى لو لم يكن في القاعدة ======
+    is_master = (admin == "system" or admin == "fethi" or (admin_user and admin_user.get("role") == "owner"))
+    
     if req.action == "charge":
-        if admin != "system" and admin_user.get("role") != "owner" and admin != "fethi":
+        if not is_master:
             if not admin_user: raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
             if admin_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
             admin_user["balance"] -= amount
@@ -754,7 +757,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     elif req.action == "withdraw":
         if target_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant")
         target_user["balance"] -= amount
-        if admin != "system" and admin_user.get("role") != "owner":
+        if not is_master and admin_user:
             admin_user["balance"] = admin_user.get("balance", 0) + amount
 
     db_session = SessionLocal()
@@ -764,7 +767,6 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     db_session.close()
     save_db(db)
     return {"status": "success", "balance": target_user["balance"]}
-
 @app.get("/api/admin/transactions-history")
 async def get_transactions_history(username: str):
     db_session = SessionLocal()
