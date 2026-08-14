@@ -17,6 +17,7 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Float, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 import asyncio
+db_lock = asyncio.Lock()
 import shutil
 from fastapi.staticfiles import StaticFiles
 import httpx
@@ -395,7 +396,8 @@ class DepositRequest(BaseModel):
     receipt_image: Optional[str] = None # 👈 السطر السحري لاستقبال لقطة الشاشة
 
 @app.post("/api/deposit")
-async def create_deposit(req: DepositRequest):
+@limiter.limit("3/minute")
+async def create_deposit(request: Request, req: DepositRequest):
     try:
         db = load_tickets_db()
         new_ticket = {
@@ -423,7 +425,7 @@ async def create_deposit(req: DepositRequest):
         return {"status": "error", "message": "حدث خطأ أثناء معالجة الطلب"}
 
 @app.get("/api/admin/get-pending-withdrawals")
-async def get_pending_withdrawals():
+async def get_pending_withdrawals(current_user: str = Depends(get_admin_user)):
     """جلب جميع طلبات السحب المعلقة (القديمة والجديدة)"""
     db_session = SessionLocal()
     try:
@@ -584,7 +586,7 @@ async def auto_settle_tickets():
 
 @app.on_event("startup")
 async def start_background_tasks():
-    asyncio.create_task(auto_settle_tickets())
+    # asyncio.create_task(auto_settle_tickets()) 
     asyncio.create_task(daily_cashback_system()) 
 
 def load_tickets_db():
@@ -758,7 +760,7 @@ async def register_user(req: RegisterRequest):
     return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id}
     
 @app.get("/api/admin/fix-user-ids")
-async def fix_missing_user_ids():
+async def fix_missing_user_ids(current_user: str = Depends(get_admin_user)):
     try:
         db = load_db()
         current_max_id = 0
@@ -782,8 +784,18 @@ async def fix_missing_user_ids():
         return {"status": "error", "message": f"حدث خطأ: {str(e)}"}
 
 @app.get("/api/admin/users")
-async def get_all_network_users(admin_username: Optional[str] = None):
-    return load_db()
+async def get_all_network_users(current_user: str = Depends(get_admin_user)): # 👈 1. أضفنا قفل الأدمن
+    db = load_db()
+    safe_users = []
+    
+    # 🛡️ 2. تنظيف البيانات: نزع كلمات المرور وأسرار 2FA قبل إرسالها للواجهة
+    for u in db:
+        safe_user = dict(u)
+        safe_user.pop("password", None)
+        safe_user.pop("two_factor_secret", None)
+        safe_users.append(safe_user)
+        
+    return safe_users
 
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
@@ -821,7 +833,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     save_db(db)
     return {"status": "success", "balance": target_user["balance"]}
 @app.get("/api/admin/transactions-history")
-async def get_transactions_history(username: str):
+async def get_transactions_history(username: str, current_user: str = Depends(get_admin_user)):
     db_session = SessionLocal()
     uname = username.lower().strip()
     txs = db_session.query(Transaction).filter((Transaction.admin_username == uname) | (Transaction.target_username == uname)).order_by(Transaction.id.desc()).all()
@@ -860,11 +872,10 @@ async def request_transaction(request: Request):
                 return JSONResponse(status_code=400, content={"detail": "Format non autorisé. Seules les images sont acceptées."})
             
             os.makedirs("uploads", exist_ok=True)
-            file_name = f"{tx_id}{file_ext}"
-            file_path = os.path.join("uploads", file_name)
+            safe_filename = f"{uuid.uuid4().hex}{file_ext}"
+            file_path = os.path.join("uploads", safe_filename)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-
         new_tx_args = {
             "admin_username": "PENDING",
             "target_username": target_username,
@@ -898,7 +909,7 @@ async def request_transaction(request: Request):
         db_session.close()
 
 @app.post("/api/admin/handle-request")
-async def handle_pending_request(req: HandleRequestModel):
+async def handle_pending_request(req: HandleRequestModel, current_user: str = Depends(get_admin_user)):
     db_session = SessionLocal()
     tx = db_session.query(Transaction).filter(Transaction.id == req.transaction_id).first()
     if not tx or tx.admin_username != "PENDING":
@@ -963,20 +974,21 @@ async def delete_account(req: DeleteAccountRequest):
     return {"status": "success", "message": "Supprimé"}
 
 @app.post("/api/user/change-password")
-async def change_my_password(req: ChangeMyPasswordRequest):
+async def change_my_password(req: ChangeMyPasswordRequest, current_user: str = Depends(get_current_user)):
+    target_username = req.username.lower().strip()
+    
+    # 🛡️ الحارس الأمني: يمنع أي مستخدم من تغيير كلمة مرور حساب آخر
+    if current_user != target_username and current_user not in ["fethi", "admin", "owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Non autorisé: Vous ne pouvez pas modifier le mot de passe d'un autre utilisateur")
+        
     db = load_db()
     for u in db:
-        if u["username"] == req.username.lower().strip():
+        if u["username"] == target_username:
             u["password"] = hash_password(req.new_password)
             save_db(db)
             return {"status": "success", "message": "Mot de passe modifié avec succès"}
+            
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-@app.get("/api/admin/get-player-tickets")
-async def get_player_tickets(username: str, current_user: str = Depends(get_admin_user)):
-    tickets_db = load_tickets_db()
-    player_tickets = [t for t in tickets_db if t.get("username") == username.lower().strip()]
-    return player_tickets
 
 # ==========================================
 # دمج مزود الألعاب الحقيقي (NexusGGR API)
@@ -1313,70 +1325,81 @@ async def player_balance(
 
 @app.post("/change_balance")
 async def change_balance(payload: dict = Body(...), request: Request = Depends(verify_nexus_ip)):
-  received_hash = payload.get("hash", "")
-  if not verify_hash(payload, received_hash): return {"result": {}, "status": 18, "error_message": "Hash does not match"}
+    received_hash = payload.get("hash", "")
+    if not verify_hash(payload, received_hash): return {"result": {}, "status": 18, "error_message": "Hash does not match"}
 
-  user_id = payload.get("user_id")
-  transaction_type = payload.get("transaction_type")
-  amount = float(payload.get("amount", 0.0))
-  if amount < 0: return {"result": {}, "status": 1, "error_message": "Invalid amount"}
-  
-  db = load_db()
-  target_user = next((u for u in db if str(u.get("id")) == str(user_id) or u.get("username") == str(user_id)), None)
-  
-  if not target_user: return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
-  if target_user.get("is_blocked", 0) == 1: return {"result": {}, "status": 15, "error_message": "User is banned"}
+    user_id = payload.get("user_id")
+    transaction_type = payload.get("transaction_type")
+    amount = float(payload.get("amount", 0.0))
+    
+    # 🛡️ الحارس الأمني: رفض المبالغ السالبة قبل فتح القفل لتسريع السيرفر
+    if amount < 0: return {"result": {}, "status": 1, "error_message": "Invalid amount"}
 
-  current_balance = float(target_user.get("balance", 0.0))
+    # 🛡️ القفل الذكي يبدأ هنا
+    async with db_lock:
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("id")) == str(user_id) or u.get("username") == str(user_id)), None)
+        
+        if not target_user: return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
+        if target_user.get("is_blocked", 0) == 1: return {"result": {}, "status": 15, "error_message": "User is banned"}
 
-  if transaction_type == "debit":
-    if current_balance < amount: return {"result": {}, "status": 13, "error_message": "Insufficient Balance"}
-    new_balance = current_balance - amount
-  elif transaction_type in ["credit", "cancel_debit"]:
-    new_balance = current_balance + amount
-  elif transaction_type in ["cancel_credit"]:
-    new_balance = current_balance - amount
-  else:
-    new_balance = current_balance
+        current_balance = float(target_user.get("balance", 0.0))
 
-  target_user["balance"] = round(new_balance, 2)
-  save_db(db)
+        if transaction_type == "debit":
+            if current_balance < amount: return {"result": {}, "status": 13, "error_message": "Insufficient Balance"}
+            new_balance = current_balance - amount
+        elif transaction_type in ["credit", "cancel_debit"]:
+            new_balance = current_balance + amount
+        elif transaction_type in ["cancel_credit"]:
+            new_balance = current_balance - amount
+        else:
+            new_balance = current_balance
 
-  return {"result": {"balance": round(new_balance, 2), "txn_id": random.randint(1, 1000000)}, "status": 0, "error_message": "OK"}
+        target_user["balance"] = round(new_balance, 2)
+        save_db(db)
+
+    return {"result": {"balance": round(new_balance, 2), "txn_id": random.randint(1, 1000000)}, "status": 0, "error_message": "OK"}
 
 @app.post("/change_balance/batch")
 async def change_balance_batch(payload: dict = Body(...), request: Request = Depends(verify_nexus_ip)):
-  received_hash = payload.get("hash", "")
-  if not verify_hash(payload, received_hash): return {"result": {}, "status": 18, "error_message": "Hash does not match"}
+    received_hash = payload.get("hash", "")
+    if not verify_hash(payload, received_hash): return {"result": {}, "status": 18, "error_message": "Hash does not match"}
 
-  user_id = payload.get("user_id")
-  transactions = payload.get("transactions", [])
-  db = load_db()
-  target_user = next((u for u in db if str(u.get("id")) == str(user_id) or u.get("username") == str(user_id)), None)
+    user_id = payload.get("user_id")
+    transactions = payload.get("transactions", [])
+    
+    # 🛡️ فحص المبالغ السالبة قبل القفل
+    for tx in transactions:
+        if float(tx.get("amount", 0.0)) < 0:
+            return {"result": {}, "status": 1, "error_message": "Invalid amount in batch"}
 
-  if not target_user: return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
-  if target_user.get("is_blocked", 0) == 1: return {"result": {}, "status": 15, "error_message": "User is banned"}
+    # 🛡️ القفل الذكي يبدأ هنا
+    async with db_lock:
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("id")) == str(user_id) or u.get("username") == str(user_id)), None)
 
-  current_balance = float(target_user.get("balance", 0.0))
-  transactions_result = []
+        if not target_user: return {"result": {}, "status": 14, "error_message": "User Does Not exist"}
+        if target_user.get("is_blocked", 0) == 1: return {"result": {}, "status": 15, "error_message": "User is banned"}
 
-  for tx in transactions:
-    tx_type = tx.get("transaction_type")
-    amount = float(tx.get("amount", 0.0))
-    if amount < 0: return {"result": {}, "status": 1, "error_message": "Invalid amount in batch"}
-    if tx_type == "debit":
-      if current_balance < amount: return {"result": {}, "status": 13, "error_message": "Insufficient Balance"}
-      current_balance -= amount
-    elif tx_type in ["credit", "cancel_debit"]:
-      current_balance += amount
-    elif tx_type in ["cancel_credit"]:
-      current_balance -= amount
-    transactions_result.append({"txn_id": random.randint(1, 1000000)})
+        current_balance = float(target_user.get("balance", 0.0))
+        transactions_result = []
 
-  target_user["balance"] = round(current_balance, 2)
-  save_db(db)
-  return {"result": {"balance": round(current_balance, 2), "transactions_result": transactions_result}, "status": 0, "error_message": "OK"} 
+        for tx in transactions:
+            tx_type = tx.get("transaction_type")
+            amount = float(tx.get("amount", 0.0))
+            if tx_type == "debit":
+                if current_balance < amount: return {"result": {}, "status": 13, "error_message": "Insufficient Balance"}
+                current_balance -= amount
+            elif tx_type in ["credit", "cancel_debit"]:
+                current_balance += amount
+            elif tx_type in ["cancel_credit"]:
+                current_balance -= amount
+            transactions_result.append({"txn_id": random.randint(1, 1000000)})
 
+        target_user["balance"] = round(current_balance, 2)
+        save_db(db)
+        
+    return {"result": {"balance": round(current_balance, 2), "transactions_result": transactions_result}, "status": 0, "error_message": "OK"}
 class ShopWithdrawRequest(BaseModel): admin_username: str; shop_username: str; amount: float
 class HandleShopWithdrawModel(BaseModel): request_id: int; decision: str; shop_username: str
 class AdminWithdrawRequest(BaseModel): admin_username: str; amount: float
@@ -1423,7 +1446,7 @@ async def request_shop_withdrawal(req: ShopWithdrawRequest):
     
     
 @app.get("/api/shop/pending-withdrawals")
-async def get_pending_withdrawals(username: str):
+async def get_pending_withdrawals(username: str, current_user: str = Depends(get_current_user)):
     db = load_db()
     if isinstance(db, list):
         return [] # إذا كانت القاعدة قديمة، لا يوجد طلبات
@@ -1440,7 +1463,7 @@ async def get_pending_withdrawals(username: str):
 
 
 @app.get("/api/shop/withdraw-requests")
-async def get_shop_withdraw_requests(username: str):
+async def get_shop_withdraw_requests(username: str, current_user: str = Depends(get_current_user)):
     db = load_db()
     if isinstance(db, list):
         return []
@@ -1454,7 +1477,31 @@ async def get_shop_withdraw_requests(username: str):
     ]
     all_my_reqs.reverse()
     return all_my_reqs
-@app.post("/api/shop/handle-withdrawal")
+async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str = Depends(get_current_user)):
+    db = load_db()
+    if isinstance(db, list):
+        raise HTTPException(status_code=500, detail="Database format is outdated")
+    
+    withdrawals = db.get("shop_withdrawals", [])
+    target_req = next((w for w in withdrawals if w.get("id") == req.request_id), None)
+    
+    if not target_req: raise HTTPException(status_code=404, detail="Demande non trouvée")
+    
+    if req.decision == "accept":
+        shop = next((u for u in db.get("users", []) if u.get("username") == target_req["shop_username"]), None)
+        admin = next((u for u in db.get("users", []) if u.get("username") == target_req["admin_username"]), None)
+        if not shop or not admin: raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        amount = target_req["amount"]
+        if shop.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez le shop")
+        
+        shop["balance"] = float(shop.get("balance", 0)) - amount
+        admin["balance"] = float(admin.get("balance", 0)) + amount
+        target_req["status"] = "accepted"
+    else:
+        target_req["status"] = "rejected"
+        
+    save_db(db)
+    return {"status": "success", "message": "Traité avec succès"}
 async def handle_shop_withdrawal(req: HandleShopWithdrawModel):
     db = load_db()
     withdrawals = db.get("shop_withdrawals", [])
@@ -1505,38 +1552,39 @@ async def seamless_wallet(request: Request):
         method = data.get("method")
         user_code = data.get("user_code")
         
-        db = load_db()
-        target_user = next((u for u in db if u.get("username") == user_code), None)
-        if not target_user: return {"status": 0, "msg": "USER_NOT_FOUND"}
-            
-        current_balance = float(target_user.get("balance", 0.0))
+        # 🛡️ القفل الذكي يبدأ هنا
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if u.get("username") == user_code), None)
+            if not target_user: return {"status": 0, "msg": "USER_NOT_FOUND"}
+                
+            current_balance = float(target_user.get("balance", 0.0))
 
-        if method == "user_balance":
-            return {"status": 1, "user_balance": round(current_balance, 2)}
-        elif method == "transaction":
-            game_type = data.get("game_type")
-            game_data = data.get(game_type, {})
-            bet_money = float(game_data.get("bet_money", 0.0))
-            win_money = float(game_data.get("win_money", 0.0))
-            
-            # 🛡️ منع المبالغ السالبة (الاختراق عبر الرهان العكسي)
-            if bet_money < 0 or win_money < 0:
-                return {"status": 0, "msg": "INVALID_AMOUNT"}
-            
-            if bet_money > 0 and current_balance < bet_money:
-                return {"status": 0, "msg": "INSUFFICIENT_FUNDS"}
-            
-            new_balance = current_balance - bet_money + win_money
-            target_user["balance"] = round(new_balance, 2)
-            save_db(db)
-            
-            return {"status": 1, "user_balance": round(new_balance, 2)}
-        else:
-            return {"status": 0, "msg": "UNKNOWN_METHOD"}
+            if method == "user_balance":
+                return {"status": 1, "user_balance": round(current_balance, 2)}
+            elif method == "transaction":
+                game_type = data.get("game_type")
+                game_data = data.get(game_type, {})
+                bet_money = float(game_data.get("bet_money", 0.0))
+                win_money = float(game_data.get("win_money", 0.0))
+                
+                # 🛡️ منع المبالغ السالبة
+                if bet_money < 0 or win_money < 0:
+                    return {"status": 0, "msg": "INVALID_AMOUNT"}
+                
+                if bet_money > 0 and current_balance < bet_money:
+                    return {"status": 0, "msg": "INSUFFICIENT_FUNDS"}
+                
+                new_balance = current_balance - bet_money + win_money
+                target_user["balance"] = round(new_balance, 2)
+                save_db(db)
+                
+                return {"status": 1, "user_balance": round(new_balance, 2)}
+            else:
+                return {"status": 0, "msg": "UNKNOWN_METHOD"}
     except Exception as e:
         print(f"Wallet Error: {e}")
         return {"status": 0, "msg": "INTERNAL_ERROR"}
-
 # ==========================================
 # 1. دالة التشفير الأساسية للتشغيل (MD5) حسب وثائقهم
 def generate_euro_signature(payload, app_key):
@@ -1757,6 +1805,21 @@ async def eurovirtuals_player_info(request: Request):
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_bet(request: Request):
     try:
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return {"status_code": 500, "status_description": "Player not found or blocked"}
+                
+            current_balance = float(target_user.get("balance", 0.0))
+            
+            if current_balance < amount:
+                return {"status_code": 500, "status_description": "Insufficient Balance"}
+                
+            new_balance = current_balance - amount
+            target_user["balance"] = round(new_balance, 2)
+            save_db(db)
         # 🛡️ التحقق الأمني من التوكن
         token = request.headers.get("Token")
         timestamp_header = request.headers.get("Timestamp")
@@ -1807,6 +1870,21 @@ async def eurovirtuals_bet(request: Request):
 @app.post("/api/eurovirtuals/callback/win")
 async def eurovirtuals_win(request: Request):
     try:
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return {"status_code": 500, "status_description": "Player not found or blocked"}
+                
+            current_balance = float(target_user.get("balance", 0.0))
+            
+            if current_balance < amount:
+                return {"status_code": 500, "status_description": "Insufficient Balance"}
+                
+            new_balance = current_balance - amount
+            target_user["balance"] = round(new_balance, 2)
+            save_db(db)
         # 🛡️ التحقق الأمني من التوكن
         token = request.headers.get("Token")
         timestamp_header = request.headers.get("Timestamp")

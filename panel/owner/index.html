@@ -463,11 +463,28 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 
+
     <script>
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.toString().replace(/[&<>'"]/g,
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         let allUsers = [];
         let allTransactionsCache = [];
-        let user = JSON.parse(localStorage.getItem('alpha_user')) || { username: 'fethi', role: 'owner' };
+        let user = JSON.parse(localStorage.getItem('alpha_user'));
+        if (!user || user.role !== 'owner') {
+            window.location.href = '/owner-login'; // طرد المتطفلين فوراً
+        }
 
         function getAuthHeaders() {
             const myToken = localStorage.getItem('token');
@@ -538,11 +555,16 @@
                 return;
             }
 
-            data.forEach(u => {
+            // 🛡️ عرض أول 100 حساب فقط لتخفيف الضغط ومنع انهيار المتصفح
+            const displayData = data.slice(0, 100);
+
+            displayData.forEach(u => {
                 const userRtp = u.rtp || 50;
                 const balance = parseFloat(u.balance || 0);
-                const usernameClean = u.username || 'Inconnu';
-                const createdByClean = u.created_by || 'System';
+
+                // 🛡️ تنظيف الاسم من الأكواد الخبيثة لمنع اختراق لوحتك
+                const usernameClean = escapeHTML(u.username || 'Inconnu');
+                const createdByClean = escapeHTML(u.created_by || 'System');
                 const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
@@ -623,9 +645,10 @@
                             let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
                             tickets.forEach((t, index) => {
                                 const ticketId = t.ticket_id || t.id || index;
-                                const username = t.username || t.player || "Inconnu";
-                                const method = t.method || "N/A";
-                                const codeVal = t.code || t.pin_code || t.reference || "N/A";
+                                // 🛡️ تنظيف البيانات من الأكواد الخبيثة
+                                const username = escapeHTML(t.username || t.player || "Inconnu");
+                                const method = escapeHTML(t.method || "N/A");
+                                const codeVal = escapeHTML(t.code || t.pin_code || t.reference || "N/A");
 
                                 const imageBtn = t.receipt_image
                                     ? `<button onclick="viewReceiptImage(${index})" class="btn btn-sm btn-info text-dark fw-bold px-2 py-0 mt-1" style="font-size: 0.65rem;">📸 عرض الإيصال</button>`
@@ -673,10 +696,10 @@
                             let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
                             withdrawals.forEach((w, index) => {
                                 const wId = w.id || w.ticket_id || w.tx_id || index;
-                                const username = w.username || w.target_username || w.player || "Inconnu";
+                                // 🛡️ تنظيف اسم المستخدم وتفاصيل السحب
+                                const username = escapeHTML(w.username || w.target_username || w.player || "Inconnu");
                                 const amount = parseFloat(w.amount || 0).toFixed(2);
-                                const details = (w.tx_id || "").split('-').slice(2).join('-') || "Détails de paiement non spécifiés";
-
+                                const details = escapeHTML((w.tx_id || "").split('-').slice(2).join('-') || "Détails de paiement non spécifiés");
                                 html += `
                                 <div class="bg-input-custom border border-danger rounded-2 shadow-sm p-2" id="withdraw-req-${wId}">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -726,7 +749,7 @@
                             let html = `<div class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;">`;
                             tickets.forEach(t => {
                                 let badgeColor = t.status === "gagne" ? "text-success" : (t.status === "perdu" ? "text-danger" : (t.status === "cashout" ? "text-warning" : "text-info"));
-                                let matchesHtml = Array.isArray(t.details_list) ? t.details_list.map(g => `• ${g.matchName} (<span class="text-warning">${g.outcome}</span>)`).join('<br>') : (t.match || "Match Inconnu");
+                                let matchesHtml = Array.isArray(t.details_list) ? t.details_list.map(g => `• ${escapeHTML(g.matchName)} (<span class="text-warning">${escapeHTML(g.outcome)}</span>)`).join('<br>') : escapeHTML(t.match || "Match Inconnu");
                                 html += `
                                 <div class="bg-input-custom border-custom rounded-2 shadow-sm p-2 d-flex flex-column flex-md-row justify-content-between gap-2">
                                     <div class="text-white" style="font-size: 0.7rem; line-height: 1.4;">
@@ -820,8 +843,7 @@
                 const isCharge = t.action === 'charge' || t.action === 'deposit_request';
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
-                const targetName = t.target_username || t.target || 'مجهول';
-
+                const targetName = escapeHTML(t.target_username || t.target || 'مجهول');
                 const receiptBtn = t.image_path ?
                     `<a href="${BACKEND_URL}/${t.image_path}" target="_blank" class="text-warning text-decoration-none ms-2" style="font-size: 0.65rem;">📸 إيصال</a>` : '';
 
@@ -842,7 +864,10 @@
         function renderCompteStatsUI(container, usersList) {
             let userOptions = `<option value="ALL">🌐 كل الموقع</option>`;
             if (usersList && usersList.length > 0) {
-                usersList.forEach(u => { userOptions += `<option value="${u.username}">👤 ${u.username}</option>`; });
+                usersList.forEach(u => {
+                    const cleanUser = escapeHTML(u.username);
+                    userOptions += `<option value="${cleanUser}">👤 ${cleanUser}</option>`;
+                });
             }
             let html = `
                 <div class="bg-input-custom border-custom p-2 rounded-2 shadow-sm mb-2">
@@ -970,9 +995,10 @@
                     return;
                 }
                 listContainer.innerHTML = tickets.map(t => {
-                    const tId = t.ticket_id || t.id || "N/A";
-                    const user = t.username || t.user || "Unknown";
-                    const status = t.status || "N/A";
+                    const tId = escapeHTML(t.ticket_id || t.id || "N/A");
+                    const user = escapeHTML(t.username || t.user || "Unknown");
+                    const status = escapeHTML(t.status || "N/A");
+                    const matchName = escapeHTML(t.match || 'Match ...');
                     return `
                     <div class="bg-input-custom border-custom rounded-2 p-2 mb-1 shadow-sm">
                         <div class="d-flex justify-content-between align-items-center">
@@ -982,7 +1008,7 @@
                             </div>
                             <span class="badge ${status === 'gagne' ? 'bg-success' : (status === 'perdu' ? 'bg-danger' : 'bg-info')} py-1 px-2 text-uppercase" style="font-size: 0.6rem;">${status}</span>
                         </div>
-                        <div class="mt-1 text-white" style="font-size: 0.7rem; line-height: 1.2;">${t.match || 'Match ...'}</div>
+                        <div class="mt-1 text-white" style="font-size: 0.7rem; line-height: 1.2;">${matchName}</div>
                     </div>`;
                 }).join('');
             } catch (e) { listContainer.innerHTML = '<div class="text-danger text-center p-2">خطأ في جلب البيانات</div>'; }
@@ -1146,35 +1172,35 @@
             }
         }
         async function rejectDeposit(ticketId) {
-    // رسالة تأكيد لحماية الأونر من الضغط بالخطأ
-    if (!confirm("Voulez-vous vraiment refuser et annuler ce dépôt ?")) return;
+            // رسالة تأكيد لحماية الأونر من الضغط بالخطأ
+            if (!confirm("Voulez-vous vraiment refuser et annuler ce dépôt ?")) return;
 
-    try {
-        // استخدام المسار السحري الموجود في السيرفر لتغيير حالة الطلب
-        const response = await fetch(`${BACKEND_URL}/api/admin/resettle-ticket`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`, // تأكد من دالة جلب التوكن الخاصة بك إذا كانت مختلفة
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                ticket_id: ticketId,
-                new_status: "refusé" // تحويل الطلب إلى مرفوض
-            })
-        });
+            try {
+                // استخدام المسار السحري الموجود في السيرفر لتغيير حالة الطلب
+                const response = await fetch(`${BACKEND_URL}/api/admin/resettle-ticket`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`, // تأكد من دالة جلب التوكن الخاصة بك إذا كانت مختلفة
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ticket_id: ticketId,
+                        new_status: "refusé" // تحويل الطلب إلى مرفوض
+                    })
+                });
 
-        if (response.ok) {
-            // تحديث القائمة فوراً لتختفي العملية المرفوضة من أمامك
-            fetchAndOpenHistory('pending'); 
-        } else {
-            const data = await response.json();
-            alert("❌ Erreur : " + (data.detail || data.message || "Impossible de refuser"));
+                if (response.ok) {
+                    // تحديث القائمة فوراً لتختفي العملية المرفوضة من أمامك
+                    fetchAndOpenHistory('pending');
+                } else {
+                    const data = await response.json();
+                    alert("❌ Erreur : " + (data.detail || data.message || "Impossible de refuser"));
+                }
+            } catch (error) {
+                alert("❌ Erreur de connexion avec le serveur.");
+                console.error(error);
+            }
         }
-    } catch (error) {
-        alert("❌ Erreur de connexion avec le serveur.");
-        console.error(error);
-    }
-}
 
         function copySecretCode(secret, event) {
             event.stopPropagation();
@@ -1186,16 +1212,8 @@
         function viewReceiptImage(index) {
             const t = window._currentPendingDeposits ? window._currentPendingDeposits[index] : null;
             if (t && t.receipt_image) {
-                const win = window.open();
-                win.document.write(`
-                    <html>
-                        <head><title>إيصال الدفع - ${t.username}</title></head>
-                        <body style="background:#040a18; color:white; text-align:center; padding:20px; font-family:sans-serif;">
-                            <h3>إيصال اللاعب: ${t.username} (الطريقة: ${t.method})</h3>
-                            <img src="${t.receipt_image}" style="max-width:90%; border-radius:10px; box-shadow:0 0 15px rgba(255,255,255,0.2); margin-top:15px;" />
-                        </body>
-                    </html>
-                `);
+                // فتح الصورة مباشرة في نافذة جديدة بأمان تام
+                window.open(`${BACKEND_URL}/${t.receipt_image}`, '_blank');
             } else {
                 alert("❌ الصورة غير موجودة أو تالفة");
             }
