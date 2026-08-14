@@ -363,6 +363,8 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     db = load_db()
     
     ticket = next((t for t in tickets_db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
+    if req.amount <= 0:
+            raise HTTPException(status_code=400, detail="Le montant doit être supérieur à zéro")
     if not ticket:
         raise HTTPException(status_code=404, detail="التذكرة غير موجودة")
     
@@ -786,6 +788,8 @@ async def get_all_network_users(admin_username: Optional[str] = None):
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
     target, admin, amount = req.target_username.lower().strip(), req.admin_username.lower().strip(), float(req.amount)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Montant invalide: ne peut pas être négatif ou zéro")
     db = load_db()
     target_user = next((u for u in db if u.get("username") == target), None)
     admin_user = next((u for u in db if u.get("username") == admin), None)
@@ -1384,6 +1388,8 @@ async def request_shop_withdrawal(req: ShopWithdrawRequest):
         admin_username = req.admin_username.lower()
         shop_username = req.shop_username.strip().lower() # 👈 تحويل لحروف صغيرة وإزالة الفراغات
         amount = float(req.amount)
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Montant invalide")
 
         if isinstance(db, list):
             db = {"users": db, "shop_withdrawals": []}
