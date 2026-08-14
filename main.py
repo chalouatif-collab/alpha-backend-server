@@ -669,16 +669,6 @@ async def login_user(request: Request, req: LoginRequest):
         raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
 
     return {"message": "success", "username": user["username"]}
-
-    db = load_db()
-    user = next((u for u in db if u["username"] == uname), None)
-
-    if not user or not verify_password(req.password, user["password"]):
-        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
-        asyncio.create_task(send_telegram_alert(bad_alert))
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
-
-    return {"message": "success", "username": user["username"]}
    
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
@@ -721,7 +711,8 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
 @app.post("/api/register")
-async def register_user(req: RegisterRequest):
+@limiter.limit("1/minute")
+async def register_user(request: Request, req: RegisterRequest):
     uname = req.username.lower().strip()
     
     # ====== 🛡️ جدار حماية: منع استخدام أسماء الإدارة الحساسة ======
@@ -800,37 +791,53 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)): # 
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
     target, admin, amount = req.target_username.lower().strip(), req.admin_username.lower().strip(), float(req.amount)
+    
+    # 🛡️ الحماية 1: منع المبالغ السالبة والصفرية
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide: ne peut pas être négatif ou zéro")
-    db = load_db()
-    target_user = next((u for u in db if u.get("username") == target), None)
-    admin_user = next((u for u in db if u.get("username") == admin), None)
-
-    if not target_user: raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-    is_master = (admin == "system" or (admin_user and admin_user.get("role") == "owner"))
     
-    if req.action == "charge":
-        if not is_master:
-            if not admin_user: raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
-            if admin_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
-            admin_user["balance"] -= amount
+    # 🛡️ الحماية 2: قفل قاعدة البيانات لمنع تضارب الطلبات السريعة (Race Condition)
+    async with db_lock:
+        db = load_db()
+        target_user = next((u for u in db if u.get("username") == target), None)
+        admin_user = next((u for u in db if u.get("username") == admin), None)
+
+        if not target_user: 
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+        is_master = (admin == "system" or (admin_user and admin_user.get("role") == "owner"))
         
-        target_user["balance"] = target_user.get("balance", 0) + amount
-        if admin != "system": target_user["daily_deposits"] = target_user.get("daily_deposits", 0) + amount
+        # 🛡️ الحماية 3 (IDOR): منع الأدمن العادي من العبث بحسابات لا تخصه
+        if not is_master and target_user.get("created_by") != admin:
+            raise HTTPException(status_code=403, detail="Accès refusé. Ce joueur ne vous appartient pas.")
 
-    elif req.action == "withdraw":
-        if target_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant")
-        target_user["balance"] -= amount
-        if not is_master and admin_user:
-            admin_user["balance"] = admin_user.get("balance", 0) + amount
+        if req.action == "charge":
+            if not is_master:
+                if not admin_user: raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
+                if admin_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez l'admin")
+                admin_user["balance"] -= amount
+            
+            target_user["balance"] = target_user.get("balance", 0) + amount
+            if admin != "system": target_user["daily_deposits"] = target_user.get("daily_deposits", 0) + amount
 
+        elif req.action == "withdraw":
+            if target_user.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant")
+            target_user["balance"] -= amount
+            if not is_master and admin_user:
+                admin_user["balance"] = admin_user.get("balance", 0) + amount
+        
+        # حفظ البيانات السحابية أثناء القفل
+        save_db(db)
+
+    # تسجيل العملية في قاعدة بيانات SQL
     db_session = SessionLocal()
-    new_tx = Transaction(admin_username=admin, target_username=target, action=req.action, amount=amount, date=datetime.now().strftime("%Y-%m-%d %H:%M"))
-    db_session.add(new_tx)
-    db_session.commit()
-    db_session.close()
-    save_db(db)
+    try:
+        new_tx = Transaction(admin_username=admin, target_username=target, action=req.action, amount=amount, date=datetime.now().strftime("%Y-%m-%d %H:%M"))
+        db_session.add(new_tx)
+        db_session.commit()
+    finally:
+        db_session.close()
+        
     return {"status": "success", "balance": target_user["balance"]}
 @app.get("/api/admin/transactions-history")
 async def get_transactions_history(username: str, current_user: str = Depends(get_admin_user)):
@@ -911,38 +918,40 @@ async def request_transaction(request: Request):
 @app.post("/api/admin/handle-request")
 async def handle_pending_request(req: HandleRequestModel, current_user: str = Depends(get_admin_user)):
     db_session = SessionLocal()
-    tx = db_session.query(Transaction).filter(Transaction.id == req.transaction_id).first()
-    if not tx or tx.admin_username != "PENDING":
+    try:
+        tx = db_session.query(Transaction).filter(Transaction.id == req.transaction_id).first()
+        if not tx or tx.admin_username != "PENDING":
+            raise HTTPException(status_code=404, detail="Demande introuvable ou déjà traitée")
+
+        if req.decision == "reject":
+            db_session.delete(tx)
+            db_session.commit()
+            return {"status": "success", "message": "Demande rejetée"}
+
+        # 🛡️ قفل قاعدة البيانات لتأمين تعديل الرصيد
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if u["username"] == tx.target_username), None)
+            
+            if not target_user:
+                raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+            if tx.action == "deposit_request":
+                target_user["balance"] = float(target_user.get("balance", 0)) + tx.amount
+                tx.action = "charge"
+            elif tx.action == "withdraw_request":
+                if target_user.get("balance", 0) < tx.amount:
+                    raise HTTPException(status_code=400, detail="Solde insuffisant pour le retrait")
+                target_user["balance"] = float(target_user.get("balance", 0)) - tx.amount
+                tx.action = "withdraw"
+
+            tx.admin_username = req.admin_username
+            db_session.commit()
+            save_db(db)
+            
+        return {"status": "success", "message": "Demande approuvée avec succès"}
+    finally:
         db_session.close()
-        raise HTTPException(status_code=404, detail="Demande introuvable ou déjà traitée")
-
-    if req.decision == "reject":
-        db_session.delete(tx)
-        db_session.commit()
-        db_session.close()
-        return {"status": "success", "message": "Demande rejetée"}
-
-    db = load_db()
-    target_user = next((u for u in db if u["username"] == tx.target_username), None)
-    if not target_user:
-        db_session.close()
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-    if tx.action == "deposit_request":
-        target_user["balance"] = float(target_user.get("balance", 0)) + tx.amount
-        tx.action = "charge"
-    elif tx.action == "withdraw_request":
-        if target_user.get("balance", 0) < tx.amount:
-            db_session.close()
-            raise HTTPException(status_code=400, detail="Solde insuffisant pour le retrait")
-        target_user["balance"] = float(target_user.get("balance", 0)) - tx.amount
-        tx.action = "withdraw"
-
-    tx.admin_username = req.admin_username
-    db_session.commit()
-    db_session.close()
-    save_db(db)
-    return {"status": "success", "message": "Demande approuvée avec succès"}
 
 @app.post("/api/admin/change-player-password")
 async def change_player_password(req: ChangePlayerPasswordRequest):
@@ -1490,28 +1499,6 @@ async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str
     if req.decision == "accept":
         shop = next((u for u in db.get("users", []) if u.get("username") == target_req["shop_username"]), None)
         admin = next((u for u in db.get("users", []) if u.get("username") == target_req["admin_username"]), None)
-        if not shop or not admin: raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-        amount = target_req["amount"]
-        if shop.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez le shop")
-        
-        shop["balance"] = float(shop.get("balance", 0)) - amount
-        admin["balance"] = float(admin.get("balance", 0)) + amount
-        target_req["status"] = "accepted"
-    else:
-        target_req["status"] = "rejected"
-        
-    save_db(db)
-    return {"status": "success", "message": "Traité avec succès"}
-async def handle_shop_withdrawal(req: HandleShopWithdrawModel):
-    db = load_db()
-    withdrawals = db.get("shop_withdrawals", [])
-    target_req = next((w for w in withdrawals if w.get("id") == req.request_id), None)
-    
-    if not target_req: raise HTTPException(status_code=404, detail="Demande non trouvée")
-    
-    if req.decision == "accept":
-        shop = next((u for u in db if u.get("username") == target_req["shop_username"]), None)
-        admin = next((u for u in db if u.get("username") == target_req["admin_username"]), None)
         if not shop or not admin: raise HTTPException(status_code=404, detail="Utilisateur introuvable")
         amount = target_req["amount"]
         if shop.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez le shop")

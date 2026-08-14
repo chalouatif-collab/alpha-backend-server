@@ -325,13 +325,24 @@
 
     <script>
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
-        let user = JSON.parse(localStorage.getItem('alpha_user')) || { username: 'fethi_sadmin', role: 'super_admin' };
-        let allAdmins = [];
+        // 🛡️ الحارس الأمني 1: طرد أي متطفل لا يملك توكن حقيقي
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/'; 
+    }
 
-        function getAuthHeaders() {
-            const token = localStorage.getItem('token');
-            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-        }
+    // 🛡️ الحارس الأمني 2: جلب بيانات المستخدم الحقيقية فقط وإغلاق الدخول الوهمي
+    let user = JSON.parse(localStorage.getItem('alpha_user'));
+    if (!user || user.role !== 'super_admin') {
+        localStorage.clear();
+        window.location.href = '/'; // طرد من يحاول تزوير رتبته
+    }
+
+    let allAdmins = [];
+
+    function getAuthHeaders() {
+        return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    }
 
         window.addEventListener('DOMContentLoaded', () => {
             const el = document.getElementById('owner-username');
@@ -362,10 +373,14 @@
             const icon = type === 'success' ? '✅' : '❌';
             toastEl.className = `toast align-items-center text-bg-dark border-0 mb-2 show shadow-lg`;
             toastEl.setAttribute('role', 'alert'); toastEl.setAttribute('aria-live', 'assertive'); toastEl.setAttribute('aria-atomic', 'true');
+            
+            // 🛡️ تعقيم الرسالة لمنع تنفيذ أي أكواد خبيثة (XSS Protection)
+            const safeMessage = typeof message === 'string' ? message.replace(/</g, "&lt;").replace(/>/g, "&gt;") : message;
+
             toastEl.innerHTML = `
                 <div class="d-flex ${type === 'success' ? 'border-success' : 'border-danger'} border-start border-3 rounded" style="background-color: var(--bg-card);">
                     <div class="toast-body fw-bold d-flex gap-2" style="font-size: 0.7rem; color: white;">
-                        <span>${icon}</span> ${message}
+                        <span>${icon}</span> ${safeMessage}
                     </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
                 </div>
@@ -401,6 +416,14 @@
         async function loadNetworkData() {
             try {
                 const uRes = await fetch(`${BACKEND_URL}/api/admin/users`, { method: 'GET', headers: getAuthHeaders() });
+                
+                // 🛡️ قاتل جلسات الزومبي: الطرد الفوري إذا انتهت صلاحية التوكن
+                if (uRes.status === 401 || uRes.status === 403) {
+                    showNotification('انتهت صلاحية الجلسة، جاري تسجيل الخروج...', 'error');
+                    setTimeout(logout, 1500);
+                    return;
+                }
+
                 if(uRes.ok){
                     const users = await uRes.json();
                     const me = users.find(u => u.username === user.username);
@@ -418,54 +441,58 @@
         }
 
         function renderAdminsList(adminsArray) {
-            const listContainer = document.getElementById('owner-network-list'); 
-            if(!listContainer) return;
-            listContainer.innerHTML = '';
-            
-            if(adminsArray.length === 0) {
-                listContainer.innerHTML = `<div class="bg-card-custom border-custom p-2 rounded-2 text-center text-secondary fw-bold" style="font-size: 0.75rem;">لا يوجد أدمنز تحت إدارتك.</div>`;
-                return;
-            }
+    const listContainer = document.getElementById('owner-network-list'); 
+    if(!listContainer) return;
+    listContainer.innerHTML = '';
+    
+    if(adminsArray.length === 0) {
+        listContainer.innerHTML = `<div class="bg-card-custom border-custom p-2 rounded-2 text-center text-secondary fw-bold" style="font-size: 0.75rem;">لا يوجد أدمنز تحت إدارتك.</div>`;
+        return;
+    }
 
-            adminsArray.forEach(u => {
-                const userRole = u.role ? u.role.toUpperCase() : 'ADMIN';
-                const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
-                const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
-                const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
-                
-                const secretBadge = u.two_factor_secret
-                ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 150px; overflow: hidden;" onclick="event.stopPropagation()">
-                       <i class="fa-solid fa-key text-success px-1" style="font-size: 0.65rem;"></i>
-                       <input type="text" value="${u.two_factor_secret}" class="bg-transparent border-0 text-warning p-0 m-0 text-center font-monospace" style="width: 80px; font-size: 0.65rem; outline: none;" readonly>
-                       <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm btn-success rounded-0 py-0 px-2 m-0 border-0" title="نسخ الكود">
-                           <i class="fa-regular fa-copy" style="font-size: 0.7rem;"></i>
-                       </button>
-                   </div>`
-                : `<span class="badge bg-secondary text-white p-1 rounded ms-2" style="font-size: 0.65rem;"><i class="fa-solid fa-key"></i> Non activé</span>`;
-                
-                listContainer.innerHTML += `
-                    <div class="bg-input-custom border-custom rounded-2 shadow-sm p-2 d-flex justify-content-between align-items-center cursor-pointer" onclick="selectForControl('${u.username}', ${userRtp})">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="position-relative bg-dark rounded-circle d-flex justify-content-center align-items-center border border-secondary" style="width: 28px; height: 28px;">
-                                <i class="fa-solid fa-user text-secondary" style="font-size: 10px;"></i>
-                                <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
-                            </div>
-                            <div>
-                                <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
-    ${usernameClean} 
-    <span class="badge bg-secondary border border-secondary text-white mx-1" style="font-size: 0.65rem; padding: 2px 5px;">ID: ${u.id || 'N/A'}</span>
-    ${secretBadge} ${phoneBadge}
-</div>
-                                <div class="text-emerald fw-bold" style="font-size: 0.6rem;">${userRole} | RTP: ${userRtp}%</div>
-                            </div>
+    adminsArray.forEach(u => {
+        const userRole = u.role ? u.role.toUpperCase() : 'ADMIN';
+        const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
+        const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
+        const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
+        
+        // 🛠️ الإصلاح البرمجي: تعريف المتغيرات المفقودة لتجنب انهيار الواجهة
+        const usernameClean = u.username;
+        const phoneBadge = u.phone ? `<span class="badge bg-secondary border border-secondary text-white mx-1" style="font-size: 0.65rem;">📞 ${u.phone}</span>` : '';
+        const safeSecret = u.two_factor_secret ? u.two_factor_secret.replace(/"/g, '&quot;') : '';
+        const secretBadge = u.two_factor_secret
+        ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 150px; overflow: hidden;" onclick="event.stopPropagation()">
+               <i class="fa-solid fa-key text-success px-1" style="font-size: 0.65rem;"></i>
+               <input type="text" value="${safeSecret}" class="bg-transparent border-0 text-warning p-0 m-0 text-center font-monospace" style="width: 80px; font-size: 0.65rem; outline: none;" readonly>
+               <button onclick="copySecretCode('${safeSecret}', event)" class="btn btn-sm btn-success rounded-0 py-0 px-2 m-0 border-0" title="نسخ الكود">
+                   <i class="fa-regular fa-copy" style="font-size: 0.7rem;"></i>
+               </button>
+           </div>`
+        : `<span class="badge bg-secondary text-white p-1 rounded ms-2" style="font-size: 0.65rem;"><i class="fa-solid fa-key"></i> Non activé</span>`;
+        
+        listContainer.innerHTML += `
+            <div class="bg-input-custom border-custom rounded-2 shadow-sm p-2 d-flex justify-content-between align-items-center cursor-pointer" onclick="selectForControl('${u.username}', ${userRtp})">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="position-relative bg-dark rounded-circle d-flex justify-content-center align-items-center border border-secondary" style="width: 28px; height: 28px;">
+                        <i class="fa-solid fa-user text-secondary" style="font-size: 10px;"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
+                    </div>
+                    <div>
+                        <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.8rem;">
+                            ${usernameClean} 
+                            <span class="badge bg-secondary border border-secondary text-white mx-1" style="font-size: 0.65rem; padding: 2px 5px;">ID: ${u.id || 'N/A'}</span>
+                            ${secretBadge} ${phoneBadge}
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="text-white fw-bold font-monospace" style="font-size: 0.75rem;">${userBalance} TND</span>
-                            <div class="btn btn-emerald rounded-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 22px; height: 22px; padding: 0; font-size: 10px;">➜</div>
-                        </div>
-                    </div>`;
-            });
-        }
+                        <div class="text-emerald fw-bold" style="font-size: 0.6rem;">${userRole} | RTP: ${userRtp}%</div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-white fw-bold font-monospace" style="font-size: 0.75rem;">${userBalance} TND</span>
+                    <div class="btn btn-emerald rounded-1 d-flex align-items-center justify-content-center shadow-sm" style="width: 22px; height: 22px; padding: 0; font-size: 10px;">➜</div>
+                </div>
+            </div>`;
+    });
+}
 
         function filterAdmins() {
             const query = document.getElementById('search-input').value.toLowerCase();
@@ -480,13 +507,23 @@
             document.getElementById('financial-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
             showNotification(`تم تحديد: ${username}`);
         }
-
-        async function executeAction(action) {
+async function executeAction(action) {
             const target_username = document.getElementById('target-action-user').value;
             const amountInput = document.getElementById('target-action-amount').value;
+            
+            // تحديد الزر الذي تم الضغط عليه
+            const btnId = action === 'charge' ? 'btn-credit' : 'btn-retirer';
+            const actionBtn = document.getElementById(btnId);
+
             if(!target_username) return showNotification('الرجاء اختيار أدمن!', 'error');
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if(amount <= 0) return showNotification('الرجاء إدخال مبلغ صحيح!', 'error');
+            const amount = parseFloat(amountInput);
+            if(isNaN(amount) || amount <= 0) return showNotification('الرجاء إدخال مبلغ رقمي صحيح!', 'error');
+
+            // 🛡️ درع النقر المزدوج: تعطيل الزر فوراً لمنع الإغراق
+            if (actionBtn) {
+                actionBtn.disabled = true;
+                actionBtn.innerText = '⏳...';
+            }
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
@@ -498,19 +535,33 @@
                     document.getElementById('target-action-amount').value = ''; 
                     await loadNetworkData(); 
                 } else { showNotification('فشلت العملية', 'error'); }
-            } catch(e) { showNotification('خطأ في الاتصال', 'error'); }
+            } catch(e) { 
+                showNotification('خطأ في الاتصال', 'error'); 
+            } finally {
+                // 🛡️ إعادة تفعيل الزر دائماً بعد انتهاء العملية
+                if (actionBtn) {
+                    actionBtn.disabled = false;
+                    actionBtn.innerText = action === 'charge' ? 'شحن' : 'سحب';
+                }
+            }
         }
-
-        async function createAdminUser() {
+       async function createAdminUser() {
             const usernameInput = document.getElementById('new-user-name');
             const passwordInput = document.getElementById('new-user-pass');
             const phoneInput = document.getElementById('new_phone');
+            const btnCreate = document.getElementById('btn-create'); // 🛡️ استهداف الزر
 
             const username = usernameInput.value.trim().toLowerCase();
             const password = passwordInput.value;
             const phone = phoneInput ? phoneInput.value.trim() : ''; 
 
             if(!username || !password) return showNotification('Remplir tous les champs!', 'error');
+
+            // 🛡️ قفل الزر لمنع الإغراق (Spam)
+            if(btnCreate) {
+                btnCreate.disabled = true;
+                btnCreate.innerText = '⏳...';
+            }
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
@@ -523,13 +574,28 @@
                     showNotification('Compte créé avec succès!', 'success');
                     usernameInput.value = ''; passwordInput.value = ''; if(phoneInput) phoneInput.value = '';
                     loadNetworkData();
-                } else { showNotification(data.detail || 'Erreur', 'error'); }
-            } catch(e) { showNotification('Erreur de connexion', 'error'); }
+                } else { 
+                    showNotification(data.detail || 'Erreur', 'error'); 
+                }
+            } catch(e) { 
+                showNotification('Erreur de connexion', 'error'); 
+            } finally {
+                // 🛡️ إعادة فتح الزر بعد انتهاء العملية
+                if(btnCreate) {
+                    btnCreate.disabled = false;
+                    btnCreate.innerText = 'تثبيت';
+                }
+            }
         }
 
         async function saveRtpAndBlock(blockStatus) {
             const target_username = document.getElementById('target-action-user').value;
-            const rtp = parseInt(document.getElementById('ctrl-rtp-range').value);
+            let rawRtp = parseInt(document.getElementById('ctrl-rtp-range').value);
+            
+            // 🛡️ درع الـ RTP: فرض الحماية ومنع أي قيمة خارج 1-99 
+            if (isNaN(rawRtp)) rawRtp = 50;
+            const rtp = Math.max(1, Math.min(99, rawRtp)); // يجبر الرقم أن يكون بين 1 و 99 حصراً
+
             if(!target_username) return showNotification('الرجاء تحديد حساب أولاً!', 'error');
             
             const res = await fetch(`${BACKEND_URL}/api/admin/configure-account`, {
@@ -627,8 +693,7 @@
                 const isCharge = t.action === 'charge'; 
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
-                const targetName = t.target_username || t.target || 'مجهول';
-                const date = t.date || 'بدون تاريخ';
+                const targetName = (t.target_username || t.target || 'مجهول').replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 
                 html += `
                     <div class="bg-input-custom border-custom rounded-2 shadow-sm p-2 d-flex justify-content-between align-items-center">
@@ -646,12 +711,17 @@
             listContainer.innerHTML = html;
         }
 
-        async function loadSportTickets() {
+       async function loadSportTickets() {
             const container = document.getElementById('panel-sadmin-sport');
             container.innerHTML = '<div class="text-center p-3 text-emerald fw-bold" style="font-size: 0.75rem;">جاري جلب الأوراق... ⏳</div>';
             
             try {
-                const usersRes = await fetch(`${BACKEND_URL}/api/admin/users?t=${Date.now()}`);
+                // 🛡️ الإصلاح 1: إضافة مفاتيح الدخول (Headers) لطلب المستخدمين
+                const usersRes = await fetch(`${BACKEND_URL}/api/admin/users?t=${Date.now()}`, { 
+                    method: 'GET', 
+                    headers: getAuthHeaders() 
+                });
+                
                 if (!usersRes.ok) return;
                 const users = await usersRes.json();
                 const myUsers = users.filter(u => u.created_by === user.username).map(u => u.username);
@@ -659,20 +729,30 @@
                 let allTicketsHtml = '';
                 
                 for (const target of myUsers) {
-                    const ticketsRes = await fetch(`${BACKEND_URL}/api/admin/get-player-tickets?username=${encodeURIComponent(target)}&t=${Date.now()}`);
+                    // 🛡️ الإصلاح 2: إضافة مفاتيح الدخول (Headers) لطلب التذاكر
+                    const ticketsRes = await fetch(`${BACKEND_URL}/api/admin/get-player-tickets?username=${encodeURIComponent(target)}&t=${Date.now()}`, { 
+                        method: 'GET', 
+                        headers: getAuthHeaders() 
+                    });
+                    
                     if (ticketsRes.ok) {
                         const tickets = await ticketsRes.json();
                         tickets.forEach(t => {
                             let badgeColor = t.status === "gagne" ? "text-success" : (t.status === "perdu" ? "text-danger" : (t.status === "cashout" ? "text-warning" : "text-info"));
+                            
+                            // 🛡️ حماية إضافية (XSS): تنظيف اسم المباراة إذا كان يحتوي على رموز غريبة
                             let matchesHtml = Array.isArray(t.details_list) ? 
-                                t.details_list.map(g => `• ${g.matchName} (<span class="text-warning">${g.outcome}</span>)`).join('<br>') : 
-                                (t.match || "Match Inconnu");
+                                t.details_list.map(g => `• ${g.matchName.replace(/</g, "&lt;")} (<span class="text-warning">${g.outcome}</span>)`).join('<br>') : 
+                                (t.match ? t.match.replace(/</g, "&lt;") : "Match Inconnu");
+
+                            // تنظيف اسم اللاعب لتجنب ثغرات الحقن (XSS)
+                            let safeTarget = target.replace(/</g, "&lt;");
 
                             allTicketsHtml += `
                                 <div class="bg-input-custom border-custom rounded-2 mb-2 shadow-sm p-2 d-flex flex-column gap-2">
                                     <div class="text-white" style="font-size: 0.7rem; line-height: 1.4;">${matchesHtml}</div>
                                     <div class="text-end font-monospace border-top border-custom pt-1" style="font-size: 0.7rem;">
-                                        <div class="text-secondary mb-0">Joueur: <span class="text-white fw-bold">${target}</span></div>
+                                        <div class="text-secondary mb-0">Joueur: <span class="text-white fw-bold">${safeTarget}</span></div>
                                         <div class="text-light mb-0">Mise: ${parseFloat(t.mise).toFixed(2)} | Cote: X${parseFloat(t.total_cote).toFixed(2)}</div>
                                         <div class="fw-bold ${badgeColor} mb-1">Gain: +${parseFloat(t.gain).toFixed(2)} TND</div>
                                         <span class="badge border border-secondary py-1 px-2 text-uppercase ${badgeColor}" style="background-color: #040a18; font-size: 0.6rem;">${t.status}</span>
@@ -698,8 +778,13 @@
         }
         
         async function submitNewPassword() {
-            const new_password = document.getElementById('new-sys-pass').value;
-            if(!new_password) return showNotification('Veuillez introduire un mot de passe!', 'error');
+            // 🛡️ مقص الفراغات: إزالة أي فراغات وهمية وتحديد طول أدنى
+            const new_password = document.getElementById('new-sys-pass').value.trim();
+            
+            if(!new_password || new_password.length < 6) {
+                return showNotification('يجب أن تتكون كلمة السر من 6 أحرف على الأقل (بدون فراغات)!', 'error');
+            }
+
             const res = await fetch(`${BACKEND_URL}/api/user/change-password`, {
                 method: 'POST', headers: getAuthHeaders(),
                 body: JSON.stringify({ username: user.username, new_password })
@@ -710,7 +795,6 @@
                 bootstrap.Modal.getInstance(document.getElementById('passwordModal')).hide();
             }
         }
-
         function logout() { 
             localStorage.removeItem('alpha_user'); 
             localStorage.clear(); 
@@ -724,6 +808,29 @@
             }).catch(err => {
                 showNotification('فشل في نسخ الكود!', 'error');
             });
+        }
+
+        // 🛡️ درع المقعد الفارغ (طرد بعد 15 دقيقة من الخمول)
+        let idleTime = 0;
+        function timerIncrement() {
+            idleTime = idleTime + 1;
+            if (idleTime > 15) { // 15 دقيقة
+                showNotification("تم تسجيل الخروج بسبب عدم النشاط!", "warning");
+                setTimeout(logout, 1500);
+            }
+        }
+        // تصفير العداد عند أي حركة
+        document.body.addEventListener('mousemove', () => idleTime = 0);
+        document.body.addEventListener('keypress', () => idleTime = 0);
+        setInterval(timerIncrement, 60000); // يفحص كل دقيقة
+
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) return false; // تعطيل F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // تعطيل Ctrl+U
         }
     </script>
 </body>

@@ -558,7 +558,28 @@
             }
         }
        
+// 🛡️ درع المقعد الفارغ (طرد بعد 15 دقيقة من الخمول)
+        let idleTime = 0;
+        function timerIncrement() {
+            idleTime = idleTime + 1;
+            if (idleTime > 15) { // 15 دقيقة
+                showNotification("تم تسجيل الخروج بسبب عدم النشاط!", "warning");
+                setTimeout(logout, 1500);
+            }
+        }
+        // تصفير العداد عند أي حركة
+        document.body.addEventListener('mousemove', () => idleTime = 0);
+        document.body.addEventListener('keypress', () => idleTime = 0);
+        setInterval(timerIncrement, 60000); // يفحص كل دقيقة
 
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) return false; // تعطيل F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // تعطيل Ctrl+U
+        }
     </script>
 
 </script>

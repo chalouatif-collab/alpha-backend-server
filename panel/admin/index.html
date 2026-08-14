@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr" dir="ltr" data-bs-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +19,7 @@
             --bg-main: #060913;
             --bg-sidebar: #090d1a;
             --bg-card: #0b101f;
-            --bg-input: #0f172a; 
+            --bg-input: #0f172a;
             --border-dark: #1e293b;
         }
 
@@ -29,11 +30,22 @@
         }
 
         /* تنسيقات مخصصة */
-        .bg-card-custom { background-color: var(--bg-card); }
-        .bg-input-custom { background-color: var(--bg-input); }
-        .border-custom { border: 1px solid var(--border-dark); }
-        .text-emerald { color: var(--emerald-primary) !important; }
-        
+        .bg-card-custom {
+            background-color: var(--bg-card);
+        }
+
+        .bg-input-custom {
+            background-color: var(--bg-input);
+        }
+
+        .border-custom {
+            border: 1px solid var(--border-dark);
+        }
+
+        .text-emerald {
+            color: var(--emerald-primary) !important;
+        }
+
         /* الأزرار الخضراء */
         .btn-emerald {
             background-color: var(--emerald-primary);
@@ -42,6 +54,7 @@
             border: none;
             transition: all 0.3s;
         }
+
         .btn-emerald:hover {
             background-color: var(--emerald-hover);
             color: #060913;
@@ -49,18 +62,22 @@
         }
 
         /* حقول الإدخال */
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             background-color: var(--bg-input) !important;
             border: 1px solid #334155 !important;
-            color: #ffffff !important; 
+            color: #ffffff !important;
             font-family: monospace;
             font-weight: bold;
         }
+
         .form-control::placeholder {
             color: #64748b !important;
             font-weight: normal;
         }
-        .form-control:focus, .form-select:focus {
+
+        .form-control:focus,
+        .form-select:focus {
             background-color: #1e293b !important;
             border-color: var(--emerald-primary) !important;
             box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.25) !important;
@@ -85,10 +102,12 @@
             width: 100%;
             text-align: left;
         }
+
         .sidebar-link:hover {
             background-color: #1e293b;
             color: #fff;
         }
+
         .active-shop-btn {
             background-color: rgba(16, 185, 129, 0.15) !important;
             border-color: var(--emerald-primary) !important;
@@ -96,14 +115,23 @@
         }
 
         /* إخفاء شريط التمرير */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .offcanvas { background-color: var(--bg-sidebar); border-right: 1px solid var(--border-dark); }
-        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .offcanvas {
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-dark);
+        }
+
         input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
         input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
             -webkit-text-fill-color: #e2e8f0 !important;
@@ -116,17 +144,21 @@
         }
     </style>
 </head>
+
 <body class="d-flex flex-column flex-md-row min-vh-100">
 
     <!-- حاوية الإشعارات -->
-    <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1055; width: 100%; max-width: 400px;"></div>
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3"
+        style="z-index: 1055; width: 100%; max-width: 400px;"></div>
 
     <!-- القائمة الجانبية (للكمبيوتر) -->
-    <aside class="d-none d-md-flex flex-column justify-content-between p-4" style="width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-dark);">
+    <aside class="d-none d-md-flex flex-column justify-content-between p-4"
+        style="width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-dark);">
         <div class="d-flex flex-column gap-4">
             <div class="bg-card-custom border-custom rounded-3 p-2 d-flex align-items-center justify-content-between">
                 <span class="small fw-bold text-secondary"><i class="fa-solid fa-globe"></i> Langue:</span>
-                <select id="lang-select" onchange="changeLanguage(this.value)" class="form-select form-select-sm w-auto border-0 shadow-none cursor-pointer">
+                <select id="lang-select" onchange="changeLanguage(this.value)"
+                    class="form-select form-select-sm w-auto border-0 shadow-none cursor-pointer">
                     <option value="fr">Français</option>
                     <option value="ar">العربية</option>
                     <option value="en">English</option>
@@ -134,24 +166,29 @@
             </div>
 
             <div>
-                <p class="text-secondary fw-black small mb-3 text-uppercase" style="letter-spacing: 2px;" id="menu-title">Gestion Admin</p>
+                <p class="text-secondary fw-black small mb-3 text-uppercase" style="letter-spacing: 2px;"
+                    id="menu-title">Gestion Admin</p>
                 <nav id="admin-sidebar-nav" class="d-flex flex-column">
-                    <button onclick="switchAdminPanelSection('reseau')" id="btn-admin-reseau" class="sidebar-link active-shop-btn">
+                    <button onclick="switchAdminPanelSection('reseau')" id="btn-admin-reseau"
+                        class="sidebar-link active-shop-btn">
                         👑 Network Created
                     </button>
                     <button onclick="switchAdminPanelSection('casino')" id="btn-admin-casino" class="sidebar-link">
                         🎰 Historique de casino
                     </button>
-                    <button onclick="switchAdminPanelSection('transfert')" id="btn-admin-transfert" class="sidebar-link">
+                    <button onclick="switchAdminPanelSection('transfert')" id="btn-admin-transfert"
+                        class="sidebar-link">
                         💸 Historique de transfére
                     </button>
-                    <button onclick="switchAdminPanelSection('transaction')" id="btn-admin-transaction" class="sidebar-link">
+                    <button onclick="switchAdminPanelSection('transaction')" id="btn-admin-transaction"
+                        class="sidebar-link">
                         📊 Historique transaction
                     </button>
                     <button onclick="switchAdminPanelSection('sport')" id="btn-admin-sport" class="sidebar-link">
                         ⚽ Tickets en cours
                     </button>
-                    <button onclick="openPasswordModal()" class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-3 text-secondary small">
+                    <button onclick="openPasswordModal()"
+                        class="btn text-start fw-bold w-100 border border-transparent hover-bg-dark mt-3 text-secondary small">
                         🔑 Modifier mon mot de passe
                     </button>
                 </nav>
@@ -159,7 +196,9 @@
         </div>
 
         <div class="pt-3 border-top border-custom mt-auto">
-            <button onclick="logout()" class="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: rgba(225, 29, 72, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: #fb7185;" id="btn-logout">
+            <button onclick="logout()" class="btn w-100 fw-bold d-flex align-items-center justify-content-center gap-2"
+                style="background-color: rgba(225, 29, 72, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: #fb7185;"
+                id="btn-logout">
                 🚪 Déconnexion
             </button>
         </div>
@@ -169,38 +208,52 @@
     <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar">
         <div class="offcanvas-header border-bottom border-custom">
             <h5 class="offcanvas-title text-emerald fw-bold"><i class="fa-solid fa-bars-staggered"></i> Menu Admin</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+                aria-label="Close"></button>
         </div>
         <div class="offcanvas-body d-flex flex-column justify-content-between p-4">
             <div class="d-flex flex-column gap-4">
                 <nav id="admin-sidebar-nav-mobile" class="d-flex flex-column">
-                    <button onclick="switchAdminPanelSection('reseau'); closeSidebarManually();" class="sidebar-link active-shop-btn">👑 Network Created</button>
-                    <button onclick="switchAdminPanelSection('casino'); closeSidebarManually();" class="sidebar-link">🎰 Historique de casino</button>
-                    <button onclick="switchAdminPanelSection('transfert'); closeSidebarManually();" class="sidebar-link">💸 Historique de transfére</button>
-                    <button onclick="switchAdminPanelSection('transaction'); closeSidebarManually();" class="sidebar-link">📊 Historique transaction</button>
-                    <button onclick="switchAdminPanelSection('sport'); closeSidebarManually();" class="sidebar-link">⚽ Tickets en cours</button>
+                    <button onclick="switchAdminPanelSection('reseau'); closeSidebarManually();"
+                        class="sidebar-link active-shop-btn">👑 Network Created</button>
+                    <button onclick="switchAdminPanelSection('casino'); closeSidebarManually();" class="sidebar-link">🎰
+                        Historique de casino</button>
+                    <button onclick="switchAdminPanelSection('transfert'); closeSidebarManually();"
+                        class="sidebar-link">💸 Historique de transfére</button>
+                    <button onclick="switchAdminPanelSection('transaction'); closeSidebarManually();"
+                        class="sidebar-link">📊 Historique transaction</button>
+                    <button onclick="switchAdminPanelSection('sport'); closeSidebarManually();" class="sidebar-link">⚽
+                        Tickets en cours</button>
                 </nav>
             </div>
             <div class="pt-3 border-top border-custom mt-auto">
-                <button onclick="logout()" class="btn w-100 fw-bold" style="background-color: rgba(225, 29, 72, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: #fb7185;">🚪 Déconnexion</button>
+                <button onclick="logout()" class="btn w-100 fw-bold"
+                    style="background-color: rgba(225, 29, 72, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: #fb7185;">🚪
+                    Déconnexion</button>
             </div>
         </div>
     </div>
 
     <!-- منطقة المحتوى الرئيسية -->
     <div class="flex-grow-1 d-flex flex-column position-relative">
-        
+
         <!-- الهيدر العلوي -->
-        <header class="bg-card-custom border-bottom border-custom px-3 py-2 d-flex justify-content-between align-items-center shadow-sm flex-shrink-0">
+        <header
+            class="bg-card-custom border-bottom border-custom px-3 py-2 d-flex justify-content-between align-items-center shadow-sm flex-shrink-0">
             <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-outline-secondary d-md-none border-0 text-white px-2 py-1 fs-4" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
+                <button class="btn btn-outline-secondary d-md-none border-0 text-white px-2 py-1 fs-4" type="button"
+                    data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
                     ☰
                 </button>
-                <span class="badge text-emerald fw-bold px-2 py-1 border rounded-2" style="background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); font-size: 0.65rem;">Admin: <span id="owner-username">Connected</span></span>
+                <span class="badge text-emerald fw-bold px-2 py-1 border rounded-2"
+                    style="background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); font-size: 0.65rem;">Admin:
+                    <span id="owner-username">Connected</span></span>
             </div>
-            <div class="border-custom px-2 py-1 rounded-2 d-flex align-items-center gap-2" style="background-color: #04060c;">
+            <div class="border-custom px-2 py-1 rounded-2 d-flex align-items-center gap-2"
+                style="background-color: #04060c;">
                 <span class="text-secondary font-sans" style="font-size: 0.65rem;">الرصيد:</span>
-                <span class="text-emerald fw-black font-monospace" style="font-size: 0.75rem;" id="admin-balance-val">0.00 TND</span>
+                <span class="text-emerald fw-black font-monospace" style="font-size: 0.75rem;"
+                    id="admin-balance-val">0.00 TND</span>
             </div>
         </header>
 
@@ -209,15 +262,19 @@
 
             <!-- القسم 1: الشبكة (Network) -->
             <div id="panel-admin-reseau" class="admin-main-view d-flex flex-column gap-3">
-                
+
                 <!-- أزرار التحكم السريع والـ RTP -->
                 <div class="bg-card-custom border-custom rounded-3 p-3 shadow-sm">
                     <div class="row g-3 align-items-end">
                         <div class="col-sm-6 col-lg-3">
-                            <label class="small text-secondary mb-1 fw-bold" id="lbl-selected-user">Compte Sélectionné:</label>
+                            <label class="small text-secondary mb-1 fw-bold" id="lbl-selected-user">Compte
+                                Sélectionné:</label>
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-input-custom border-custom"><i class="fa-solid fa-crosshairs text-emerald"></i></span>
-                                <input type="text" id="ctrl-target-user" class="form-control fw-bold text-emerald bg-input-custom border-custom" placeholder="Sélectionnez..." readonly>
+                                <span class="input-group-text bg-input-custom border-custom"><i
+                                        class="fa-solid fa-crosshairs text-emerald"></i></span>
+                                <input type="text" id="ctrl-target-user"
+                                    class="form-control fw-bold text-emerald bg-input-custom border-custom"
+                                    placeholder="Sélectionnez..." readonly>
                             </div>
                         </div>
 
@@ -227,17 +284,24 @@
                                 <span id="rtp-val-label" class="text-info fw-bold">50%</span>
                             </label>
                             <div class="d-flex gap-2">
-                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50" oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'" class="form-range mt-1 w-100">
-                                <button onclick="saveRtpAndBlock(0)" class="btn btn-sm btn-emerald px-3"><i class="fa-solid fa-check"></i></button>
-                                <button onclick="saveRtpAndBlock(1)" class="btn btn-sm btn-danger px-3"><i class="fa-solid fa-ban"></i></button>
+                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50"
+                                    oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'"
+                                    class="form-range mt-1 w-100">
+                                <button onclick="saveRtpAndBlock(0)" class="btn btn-sm btn-emerald px-3"><i
+                                        class="fa-solid fa-check"></i></button>
+                                <button onclick="saveRtpAndBlock(1)" class="btn btn-sm btn-danger px-3"><i
+                                        class="fa-solid fa-ban"></i></button>
                             </div>
                         </div>
 
                         <div class="col-sm-12 col-lg-5">
                             <label class="small text-secondary fw-bold mb-1">Mot de passe du joueur:</label>
                             <div class="input-group input-group-sm">
-                                <input type="password" id="ctrl-player-new-pass" placeholder="Nouveau mot de passe" class="form-control">
-                                <button onclick="changePlayerPasswordFromAdmin()" class="btn btn-info text-dark fw-bold"><i class="fa-solid fa-key"></i> Modifier</button>
+                                <input type="password" id="ctrl-player-new-pass" placeholder="Nouveau mot de passe"
+                                    class="form-control">
+                                <button onclick="changePlayerPasswordFromAdmin()"
+                                    class="btn btn-info text-dark fw-bold"><i class="fa-solid fa-key"></i>
+                                    Modifier</button>
                             </div>
                         </div>
                     </div>
@@ -245,11 +309,13 @@
 
                 <!-- إنشاء حساب جديد -->
                 <div class="bg-card-custom border-custom rounded-3 p-3 shadow-sm border-start border-emerald border-4">
-                    <h5 class="fw-bold text-light mb-3" style="font-size: 0.9rem;" id="title-create-user">👑 Créer un compte (Shop / Player)</h5>
+                    <h5 class="fw-bold text-light mb-3" style="font-size: 0.9rem;" id="title-create-user">👑 Créer un
+                        compte (Shop / Player)</h5>
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
                             <label class="small text-secondary mb-1 fw-bold" id="lbl-username">Nom d'utilisateur</label>
-                            <input type="text" id="new-user-name" class="form-control form-control-sm" placeholder="Ex: shop_beja">
+                            <input type="text" id="new-user-name" class="form-control form-control-sm"
+                                placeholder="Ex: shop_beja">
                         </div>
                         <div class="col-md-3">
                             <label class="small text-secondary mb-1 fw-bold" id="lbl-password">Mot de passe</label>
@@ -264,10 +330,12 @@
                         </div>
                         <div class="col-md-2">
                             <label class="small text-secondary mb-1 fw-bold">Téléphone</label>
-                            <input type="text" id="new_phone" class="form-control form-control-sm" placeholder="+216...">
+                            <input type="text" id="new_phone" class="form-control form-control-sm"
+                                placeholder="+216...">
                         </div>
                         <div class="col-md-2">
-                            <button onclick="createNetworkUser()" class="btn btn-sm btn-emerald w-100 py-1 fw-bold" id="btn-create"><i class="fa-solid fa-plus"></i> Créer</button>
+                            <button onclick="createNetworkUser()" class="btn btn-sm btn-emerald w-100 py-1 fw-bold"
+                                id="btn-create"><i class="fa-solid fa-plus"></i> Créer</button>
                         </div>
                     </div>
                 </div>
@@ -275,28 +343,41 @@
                 <!-- شحن/سحب وجدول المستخدمين -->
                 <div class="bg-card-custom border-custom rounded-3 overflow-hidden shadow-sm">
                     <!-- الشريط المالي -->
-                    <div class="p-2 border-bottom border-custom" style="background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);">
+                    <div class="p-2 border-bottom border-custom"
+                        style="background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);">
                         <div class="mb-2">
-                            <span class="fw-bold text-white small" id="title-table-console"><i class="fa-solid fa-wallet"></i> Console financière des Comptes</span>
+                            <span class="fw-bold text-white small" id="title-table-console"><i
+                                    class="fa-solid fa-wallet"></i> Console financière des Comptes</span>
                         </div>
                         <div class="d-flex flex-nowrap gap-2 overflow-x-auto pb-1 no-scrollbar align-items-center">
-                            <input type="text" id="target-action-user" class="form-control form-control-sm text-center fw-bold text-warning flex-shrink-0" style="width: 120px;" readonly placeholder="Sélectionnez...">
-                            <input type="number" id="target-action-amount" class="form-control form-control-sm text-center text-emerald fw-bold flex-shrink-0" style="width: 100px;" placeholder="Montant TND">
-                            <button onclick="executeAction('charge')" class="btn btn-sm btn-emerald fw-bold flex-shrink-0 px-3" id="btn-credit">Créditer</button>
-                            <button onclick="executeAction('withdraw')" class="btn btn-sm btn-danger fw-bold flex-shrink-0 px-3" id="btn-retirer">Retirer</button>
+                            <input type="text" id="target-action-user"
+                                class="form-control form-control-sm text-center fw-bold text-warning flex-shrink-0"
+                                style="width: 120px;" readonly placeholder="Sélectionnez...">
+                            <input type="number" id="target-action-amount"
+                                class="form-control form-control-sm text-center text-emerald fw-bold flex-shrink-0"
+                                style="width: 100px;" placeholder="Montant TND">
+                            <button onclick="executeAction('charge')"
+                                class="btn btn-sm btn-emerald fw-bold flex-shrink-0 px-3"
+                                id="btn-credit">Créditer</button>
+                            <button onclick="executeAction('withdraw')"
+                                class="btn btn-sm btn-danger fw-bold flex-shrink-0 px-3"
+                                id="btn-retirer">Retirer</button>
                         </div>
                     </div>
-                    
+
                     <!-- حقل البحث -->
                     <div class="p-2 border-bottom border-custom bg-input-custom">
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-transparent border-custom text-secondary"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control border-custom">
+                            <span class="input-group-text bg-transparent border-custom text-secondary"><i
+                                    class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="search-input" oninput="renderFilteredUsers()"
+                                placeholder="Rechercher un compte..." class="form-control border-custom">
                         </div>
                     </div>
 
                     <!-- الحاوية التي سيتم رسم كروت المستخدمين داخلها -->
-                    <div id="owner-network-tbody" class="p-2 d-flex flex-column gap-1" style="max-height: 500px; overflow-y: auto;">
+                    <div id="owner-network-tbody" class="p-2 d-flex flex-column gap-1"
+                        style="max-height: 500px; overflow-y: auto;">
                         <!-- Data -->
                     </div>
                 </div>
@@ -306,18 +387,24 @@
             <div id="panel-admin-casino" class="admin-main-view d-none">
                 <div class="bg-card-custom border-custom rounded-3 p-5 text-center text-secondary mt-3 shadow-sm">
                     <i class="fa-solid fa-ghost fs-1 mb-3"></i><br>
-                    <span class="fw-bold text-uppercase small">Aucun pari de casino enregistré sur l'ensemble de la plateforme.</span>
+                    <span class="fw-bold text-uppercase small">Aucun pari de casino enregistré sur l'ensemble de la
+                        plateforme.</span>
                 </div>
             </div>
 
             <div id="panel-admin-transfert" class="admin-main-view d-none">
                 <div class="bg-card-custom border-custom rounded-3 shadow-sm overflow-hidden mt-3">
-                    <div class="bg-input-custom p-3 border-bottom border-custom d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 text-white fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-money-bill-transfer text-emerald"></i> Historique de transfére</h6>
-                        <button onclick="loadTransactionsHistory()" class="btn btn-sm btn-outline-secondary px-2 py-0"><i class="fa-solid fa-rotate-right"></i></button>
+                    <div
+                        class="bg-input-custom p-3 border-bottom border-custom d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 text-white fw-bold" style="font-size: 0.85rem;"><i
+                                class="fa-solid fa-money-bill-transfer text-emerald"></i> Historique de transfére</h6>
+                        <button onclick="loadTransactionsHistory()"
+                            class="btn btn-sm btn-outline-secondary px-2 py-0"><i
+                                class="fa-solid fa-rotate-right"></i></button>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-dark table-sm mb-0 text-center align-middle" style="background-color: transparent;">
+                        <table class="table table-dark table-sm mb-0 text-center align-middle"
+                            style="background-color: transparent;">
                             <thead>
                                 <tr class="text-secondary small">
                                     <th>Date</th>
@@ -356,12 +443,15 @@
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content bg-card-custom border-custom shadow">
                 <div class="modal-header border-bottom border-custom">
-                    <h6 class="modal-title text-white fw-bold"><i class="fa-solid fa-key text-emerald"></i> Modifier le mot de passe</h6>
+                    <h6 class="modal-title text-white fw-bold"><i class="fa-solid fa-key text-emerald"></i> Modifier le
+                        mot de passe</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-3">
-                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe" class="form-control form-control-sm mb-3">
-                    <button onclick="submitNewPassword()" class="btn btn-emerald btn-sm w-100 fw-bold">Mettre à jour</button>
+                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe"
+                        class="form-control form-control-sm mb-3">
+                    <button onclick="submitNewPassword()" class="btn btn-emerald btn-sm w-100 fw-bold">Mettre à
+                        jour</button>
                 </div>
             </div>
         </div>
@@ -372,10 +462,22 @@
 
     <script>
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
+
+        // 🛡️ طرد المتطفلين الذين لا يملكون توكن
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/';
+
         let sessionData = localStorage.getItem('alpha_user');
         let user = sessionData ? JSON.parse(sessionData) : null;
-        let allUsers = [];
 
+        // 🛡️ إغلاق الباب الخلفي (admin_test) والتأكد من الصلاحية
+        if (!user || user.role !== 'admin') {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+
+        let allUsers = [];
+        let secureSelectedUser = "";
         function getAuthHeaders() {
             const token = localStorage.getItem('token');
             return {
@@ -394,12 +496,14 @@
             loadNetworkData();
         });
 
-        // دالة الإشعارات الأنيقة المتوافقة مع التصميم الجديد
         function showNotification(message, type = 'success') {
             const container = document.getElementById('toast-container');
             if(!container) return;
             const toast = document.createElement('div');
             const icon = type === 'success' ? '✅' : '❌';
+            
+            // 🛡️ تعقيم الرسالة بالكامل من أي أكواد خبيثة
+            const safeMessage = typeof message === 'string' ? message.replace(/</g, "&lt;").replace(/>/g, "&gt;") : message;
             
             toast.className = `toast align-items-center text-bg-dark border-0 mb-2 show shadow-lg`;
             toast.setAttribute('role', 'alert');
@@ -409,7 +513,7 @@
             toast.innerHTML = `
                 <div class="d-flex ${type === 'success' ? 'border-success' : 'border-danger'} border-start border-4 rounded" style="background-color: var(--bg-card);">
                     <div class="toast-body fw-bold d-flex gap-2" style="font-size: 0.75rem; color: white;">
-                        <span>${icon}</span> ${message}
+                        <span>${icon}</span> ${safeMessage}
                     </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close" onclick="this.parentElement.parentElement.remove()"></button>
                 </div>
@@ -454,9 +558,9 @@
 
         function closeSidebarManually() {
             const offcanvasElement = document.getElementById('mobileSidebar');
-            if(offcanvasElement) {
+            if (offcanvasElement) {
                 const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasElement);
-                if(bsOffcanvas) bsOffcanvas.hide();
+                if (bsOffcanvas) bsOffcanvas.hide();
             }
         }
 
@@ -465,23 +569,31 @@
                 el.classList.add('d-none');
                 el.classList.remove('d-flex');
             });
-            
+
             document.querySelectorAll('.sidebar-link').forEach(btn => btn.classList.remove('active-shop-btn'));
-            
+
             const targetSection = document.getElementById(`panel-admin-${sectionId}`);
             if (targetSection) {
                 targetSection.classList.remove('d-none');
-                if(sectionId === 'reseau') targetSection.classList.add('d-flex');
+                if (sectionId === 'reseau') targetSection.classList.add('d-flex');
             }
-            
+
             document.querySelectorAll(`[onclick*="switchAdminPanelSection('${sectionId}')"]`).forEach(btn => btn.classList.add('active-shop-btn'));
-            
+
             if (sectionId === 'transfert') loadTransactionsHistory();
         }
 
         async function loadNetworkData() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/users?t=${Date.now()}`, { headers: getAuthHeaders() });
+                
+                // 🛡️ قاتل الزومبي: الطرد الفوري إذا انتهت الصلاحية
+                if (res.status === 401 || res.status === 403) {
+                    showNotification('انتهت صلاحية الجلسة، سيتم تسجيل الخروج...', 'error');
+                    setTimeout(logout, 1500);
+                    return;
+                }
+
                 if (res.ok) {
                     const users = await res.json();
 
@@ -495,7 +607,9 @@
                     allUsers = users.filter(u => u.created_by && String(u.created_by).toLowerCase() === String(user.username).toLowerCase());
                     renderFilteredUsers();
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                showNotification('خطأ في الاتصال بالخادم', 'error');
+            }
         }
 
         function renderUsers(usersArray) {
@@ -508,15 +622,17 @@
                 return;
             }
 
-           usersArray.forEach(u => {
+            usersArray.forEach(u => {
                 const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
                 const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
                 const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
                 // 👉 الأسطر السحرية التي كانت مفقودة وتسببت في انهيار القائمة:
-                const usernameClean = u.username || 'Inconnu';
-                const phoneBadge = u.phone ? `<span class="badge bg-dark text-secondary border border-secondary ms-1"><i class="fa-solid fa-phone"></i> ${u.phone}</span>` : '';
+                const usernameClean = (u.username || 'Inconnu').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                // 🛡️ تعقيم رقم الهاتف لمنع اختراق XSS
+                const safePhone = u.phone ? String(u.phone).replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+                const phoneBadge = safePhone ? `<span class="badge bg-dark text-secondary border border-secondary ms-1"><i class="fa-solid fa-phone"></i> ${safePhone}</span>` : '';
 
                 const secretBadge = u.two_factor_secret
                     ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded ms-2" style="max-width: 170px; overflow: hidden;" onclick="event.stopPropagation()">
@@ -527,7 +643,7 @@
                            </button>
                        </div>`
                     : `<span class="badge bg-secondary text-white p-1 rounded small ms-2"><i class="fa-solid fa-key"></i> Non activé</span>`;
-                
+
                 // ... (باقي الكود كما هو بدون تغيير)
                 listContainer.innerHTML += `
                     <div class="bg-input-custom p-2 rounded-2 d-flex justify-content-between align-items-center border border-custom shadow-sm" style="cursor: pointer;" onclick="selectForControl('${u.username}', ${userRtp})">
@@ -566,6 +682,8 @@
         }
 
         function selectForControl(username, rtp) {
+            secureSelectedUser = username; // 🛡️ حفظ الاسم في الخزنة السرية
+            
             document.getElementById('ctrl-target-user').value = username;
             document.getElementById('target-action-user').value = username;
             document.getElementById('ctrl-rtp-range').value = rtp;
@@ -576,10 +694,16 @@
         }
 
         async function changePlayerPasswordFromAdmin() {
-            const target = document.getElementById('ctrl-target-user').value.trim().toLowerCase();
-            const newPassword = document.getElementById('ctrl-player-new-pass').value;
-            if (!target) return showNotification('الرجاء اختيار حساب أولاً', 'error');
-            if (!newPassword || newPassword.length < 4) return showNotification('كلمة المرور قصيرة جداً', 'error');
+            // 🛡️ استخدام المتغير السري بدلاً من قراءة الـ HTML المخترق
+            const target = secureSelectedUser.trim().toLowerCase();
+            const newPassword = document.getElementById('ctrl-player-new-pass').value.trim();
+            const btnModify = document.querySelector('button[onclick="changePlayerPasswordFromAdmin()"]');
+
+            if (!target) return showNotification('الرجاء اختيار حساب من القائمة أولاً!', 'error');
+            if (!newPassword || newPassword.length < 4) return showNotification('كلمة المرور قصيرة جداً (أو تحتوي على مسافات فقط)', 'error');
+
+            // 🛡️ قفل الزر لمنع الإغراق
+            if(btnModify) { btnModify.disabled = true; btnModify.innerHTML = '⏳...'; }
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/change-player-password`, {
@@ -590,14 +714,28 @@
                 if (res.ok) {
                     showNotification(`تم تعديل كلمة سر الحساب [ ${target} ] بنجاح`);
                     document.getElementById('ctrl-player-new-pass').value = '';
-                } else { showNotification('فشلت عملية التعديل', 'error'); }
-            } catch (e) { showNotification('خطأ في الاتصال بالسيرفر', 'error'); }
+                } else { 
+                    const data = await res.json();
+                    showNotification(data.detail || 'فشلت عملية التعديل', 'error'); 
+                }
+            } catch (e) { 
+                showNotification('خطأ في الاتصال بالسيرفر', 'error'); 
+            } finally {
+                // 🛡️ فتح الزر مجدداً
+                if(btnModify) { btnModify.disabled = false; btnModify.innerHTML = '<i class="fa-solid fa-key"></i> Modifier'; }
+            }
         }
-
         async function saveRtpAndBlock(blockStatus) {
-            const target_username = document.getElementById('ctrl-target-user').value;
-            const rtp = parseInt(document.getElementById('ctrl-rtp-range').value);
+            // 🛡️ استخدام المتغير السري
+            const target_username = secureSelectedUser;
+            let rawRtp = parseInt(document.getElementById('ctrl-rtp-range').value);
+            
+            // 🛡️ مقص رياضي: إجبار القيمة أن تكون بين 1 و 99 فقط حتى لو تم العبث بالـ HTML
+            if (isNaN(rawRtp)) rawRtp = 50;
+            const rtp = Math.max(1, Math.min(99, rawRtp));
+
             if (!target_username) return showNotification('Sélectionnez un compte d\'abord!', 'error');
+            
             const res = await fetch(`${BACKEND_URL}/api/admin/configure-account`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
@@ -605,84 +743,154 @@
             });
             if (res.ok) { showNotification('Configuration enregistrée!'); loadNetworkData(); }
         }
-
         async function executeAction(action) {
             const target_username = document.getElementById('target-action-user').value;
-            const amountInput = document.getElementById('target-action-amount').value;
-            
-            if(!target_username) return showNotification('Sélectionnez un compte!', 'error');
-            
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if(amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
-            
-            // توجيه العملية (شحن أو سحب) مباشرة إلى مسار تحديث الرصيد العادي
+            const amount = parseFloat(document.getElementById('target-action-amount').value);
+
+            const actionBtn = action === 'charge' ? document.getElementById('btn-credit') : document.getElementById('btn-retirer');
+
+            if (!target_username) return showNotification('Sélectionnez un compte!', 'error');
+
+            // 🛡️ الحماية المباشرة ضد الأحرف والمبالغ السالبة
+            if (isNaN(amount) || amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
+
+            // 🛡️ إيقاف الزر مؤقتاً لتجنب إرسال طلبات متكررة
+            if (actionBtn) {
+                actionBtn.disabled = true;
+                actionBtn.innerText = '⏳...';
+            }
+
             try {
-                const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, { 
-                    method: 'POST', 
-                    headers: getAuthHeaders(), 
-                    body: JSON.stringify({ 
-                        admin_username: user.username, 
-                        target_username: target_username, 
-                        action: action, // ستأخذ 'charge' للشحن و 'withdraw' للسحب
-                        amount: amount 
-                    }) 
+                // إرسال طلب السحب أو الشحن مباشرة وبدون تعقيد
+                const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        admin_username: user.username,
+                        target_username: target_username,
+                        action: action,
+                        amount: amount
+                    })
                 });
-                
+
                 const data = await res.json();
-                
+
                 if (res.ok) {
-                    showNotification(action === 'charge' ? 'تم شحن الرصيد بنجاح! ✅' : 'تم خصم الرصيد بنجاح! ✅', 'success');
+                    showNotification(action === 'charge' ? 'تم الشحن! ✅' : 'تم السحب! ✅', 'success');
                     document.getElementById('target-action-amount').value = '';
-                    // تحديث الجدول فوراً لإظهار الرصيد الجديد
-                    if (typeof loadNetworkData === 'function') {
-                        await loadNetworkData();
-                    }
+                    if (typeof loadNetworkData === 'function') await loadNetworkData();
                 } else {
                     showNotification(data.detail || 'Erreur lors de l\'opération', 'error');
                 }
-            } catch (e) { 
-                showNotification('Erreur de connexion', 'error'); 
+            } catch (e) {
+                showNotification('Erreur de connexion', 'error');
+            } finally {
+                // إعادة تشغيل الزر
+                if (actionBtn) {
+                    actionBtn.disabled = false;
+                    actionBtn.innerText = action === 'charge' ? 'Créditer' : 'Retirer';
+                }
             }
         }
 
-        async function createNetworkUser() {
-    const usernameInput = document.getElementById('new-user-name');
-    const passwordInput = document.getElementById('new-user-pass');
-    const roleSelect = document.getElementById('new-user-role');
-    const phoneInput = document.getElementById('new_phone');
+       async function createNetworkUser() {
+            const usernameInput = document.getElementById('new-user-name');
+            const passwordInput = document.getElementById('new-user-pass');
+            const roleSelect = document.getElementById('new-user-role');
+            const phoneInput = document.getElementById('new_phone');
+            const btnCreate = document.getElementById('btn-create'); // 🛡️ استهداف الزر
 
-    const username = usernameInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
-    const role = roleSelect ? roleSelect.value : 'player';
-    const phone = phoneInput ? phoneInput.value.trim() : '';
+            const username = usernameInput.value.trim().toLowerCase();
+            const password = passwordInput.value;
+            const role = roleSelect ? roleSelect.value : 'player';
+            const phone = phoneInput ? phoneInput.value.trim() : '';
 
-    if (!username || !password) return showNotification('Remplir tous les champs!', 'error');
+            if (!username || !password) return showNotification('Remplir tous les champs!', 'error');
 
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/register`, {
-            method: 'POST', headers: getAuthHeaders(),
-            body: JSON.stringify({ username, password, role, created_by: user.username, phone })
-        });
+            // 🛡️ قفل الزر لمنع الإغراق
+            if(btnCreate) {
+                btnCreate.disabled = true;
+                btnCreate.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Création...';
+            }
 
-        const data = await res.json();
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/register`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ username, password, role, created_by: user.username, phone })
+                });
 
-        if (res.ok) {
-            showNotification('Compte créé avec succès!', 'success');
-            usernameInput.value = '';
-            passwordInput.value = '';
-            if (phoneInput) phoneInput.value = '';
-            loadNetworkData(); // تحديث الجدول فوراً
-        } else {
-            showNotification(data.detail || 'Erreur lors de la création', 'error');
+                const data = await res.json();
+
+                if (res.ok) {
+                    showNotification('Compte créé avec succès!', 'success');
+                    usernameInput.value = '';
+                    passwordInput.value = '';
+                    if (phoneInput) phoneInput.value = '';
+                    loadNetworkData(); // تحديث الجدول
+                } else {
+                    showNotification(data.detail || 'Erreur lors de la création', 'error');
+                }
+            } catch (e) { 
+                showNotification('Erreur de connexion avec le serveur', 'error'); 
+            } finally {
+                // 🛡️ إعادة فتح الزر
+                if(btnCreate) {
+                    btnCreate.disabled = false;
+                    btnCreate.innerHTML = '<i class="fa-solid fa-plus"></i> Créer';
+                }
+            }
         }
-    } catch (e) { 
-        showNotification('Erreur de connexion avec le serveur', 'error'); 
-    }
-}
 
         function openPasswordModal() { new bootstrap.Modal(document.getElementById('passwordModal')).show(); }
-        async function submitNewPassword() { showNotification('Veuillez connecter cette fonction à l\'API d\'abord.', 'error'); }
+        async function submitNewPassword() {
+            const passwordInput = document.getElementById('new-sys-pass');
+            // 🛡️ مقص الفراغات: إزالة المسافات الوهمية لتجنب كلمات السر الفارغة
+            const new_password = passwordInput.value.trim();
 
+            // استهداف زر التحديث لتعطيله أثناء التحميل
+            const updateBtn = document.querySelector('#passwordModal button.btn-emerald');
+
+            if (!new_password || new_password.length < 6) {
+                return showNotification('يجب أن تتكون كلمة السر من 6 أحرف على الأقل (بدون مسافات)!', 'error');
+            }
+
+            // 🛡️ درع النقر المزدوج: قفل الزر لمنع إرسال طلبات متعددة
+            if (updateBtn) {
+                updateBtn.disabled = true;
+                updateBtn.innerText = '⏳...';
+            }
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/user/change-password`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ username: user.username, new_password: new_password })
+                });
+
+                if (res.ok) {
+                    showNotification('تم تحديث كلمة المرور بنجاح! 🔐', 'success');
+                    passwordInput.value = ''; // تفريغ الحقل
+
+                    // إغلاق النافذة المنبثقة بشكل صحيح عبر Bootstrap
+                    const modalElement = document.getElementById('passwordModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                } else {
+                    const data = await res.json();
+                    showNotification(data.detail || 'فشل في تحديث كلمة المرور', 'error');
+                }
+            } catch (e) {
+                showNotification('خطأ في الاتصال بالسيرفر', 'error');
+            } finally {
+                // 🛡️ إعادة تفعيل الزر في كل الحالات (نجاح أو فشل)
+                if (updateBtn) {
+                    updateBtn.disabled = false;
+                    updateBtn.innerText = 'Mettre à jour';
+                }
+            }
+        }
         async function loadTransactionsHistory() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/transactions-history?username=${user.username}`, { headers: getAuthHeaders() });
@@ -701,12 +909,15 @@
                         const typeBadge = isCharge ? '<span class="badge bg-success">Crédit</span>' : '<span class="badge bg-danger">Retrait</span>';
                         const amountColor = isCharge ? 'text-success' : 'text-danger';
                         const sign = isCharge ? '+' : '-';
-                        let otherParty = tx.target_username === user.username ? tx.admin_username : tx.target_username;
+                        
+                        // 🛡️ تعقيم اسم الطرف الآخر لمنع حقن الجدول!
+                        let rawOtherParty = tx.target_username === user.username ? tx.admin_username : tx.target_username;
+                        let safeOtherParty = String(rawOtherParty).replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
                         tbody.innerHTML += `
                             <tr class="border-custom">
                                 <td class="small text-secondary" style="font-size: 0.7rem;">${tx.date}</td>
-                                <td class="fw-bold text-light">${otherParty}</td>
+                                <td class="fw-bold text-light">${safeOtherParty}</td>
                                 <td>${typeBadge}</td>
                                 <td class="fw-bold font-monospace ${amountColor}">${sign}${tx.amount.toFixed(2)}</td>
                             </tr>
@@ -725,7 +936,29 @@
 
         function logout() { localStorage.clear(); window.location.href = '/'; }
 
-        
+// 🛡️ درع المقعد الفارغ (طرد بعد 15 دقيقة من الخمول)
+        let idleTime = 0;
+        function timerIncrement() {
+            idleTime = idleTime + 1;
+            if (idleTime > 15) { // 15 دقيقة
+                showNotification("تم تسجيل الخروج بسبب عدم النشاط!", "warning");
+                setTimeout(logout, 1500);
+            }
+        }
+        // تصفير العداد عند أي حركة
+        document.body.addEventListener('mousemove', () => idleTime = 0);
+        document.body.addEventListener('keypress', () => idleTime = 0);
+        setInterval(timerIncrement, 60000); // يفحص كل دقيقة
+
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) return false; // تعطيل F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // تعطيل Ctrl+U
+        }
     </script>
 </body>
+
 </html>

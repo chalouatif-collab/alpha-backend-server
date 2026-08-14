@@ -465,6 +465,7 @@
 
 
     <script>
+        let isTransactionRunning = false; // 🛡️ قفل شامل لمنع تداخل العمليات المالية
         function escapeHTML(str) {
             if (!str) return '';
             return str.toString().replace(/[&<>'"]/g,
@@ -479,16 +480,27 @@
         }
 
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
+        
+        // 🛡️ الحارس 1: التحقق من وجود التوكن لمنع الدخول المباشر
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/owner-login';
+
         let allUsers = [];
         let allTransactionsCache = [];
-        let user = JSON.parse(localStorage.getItem('alpha_user'));
+        let sessionData = localStorage.getItem('alpha_user');
+        let user = sessionData ? JSON.parse(sessionData) : null;
+        
+        // 🛡️ الحارس 2: التحقق من الصلاحيات وطرد المتطفلين
         if (!user || user.role !== 'owner') {
-            window.location.href = '/owner-login'; // طرد المتطفلين فوراً
+            localStorage.clear();
+            window.location.href = '/owner-login';
         }
 
+        // 🛡️ الخزنة السرية: لحفظ اسم المستخدم المحدد بعيداً عن أيدي الهاكرز
+        let secureSelectedUser = ""; 
+
         function getAuthHeaders() {
-            const myToken = localStorage.getItem('token');
-            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${myToken}` };
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -578,8 +590,10 @@
                    </div>`
                     : `<span class="badge bg-secondary text-white p-1 rounded ms-2" style="font-size: 0.6rem;"><i class="fa-solid fa-key"></i> Non activé</span>`;
 
-                const phoneBadge = u.phone && u.phone !== ""
-                    ? `<span class="badge bg-dark text-info border border-secondary ms-1 px-2 py-1" style="font-size: 0.65rem;"><i class="fa-solid fa-phone"></i> ${u.phone}</span>`
+               // 🛡️ تعقيم رقم الهاتف لمنع حقن السكربتات
+                const safePhone = escapeHTML(u.phone || '');
+                const phoneBadge = safePhone !== ""
+                    ? `<span class="badge bg-dark text-info border border-secondary ms-1 px-2 py-1" style="font-size: 0.65rem;"><i class="fa-solid fa-phone"></i> ${safePhone}</span>`
                     : ``;
                 container.innerHTML += `
                 <div class="bg-input-custom border-custom rounded-2 shadow-sm cursor-pointer mb-1 p-2 d-flex justify-content-between align-items-center" onclick="selectForControl('${usernameClean}', ${userRtp})">
@@ -613,6 +627,8 @@
         }
 
         function selectForControl(username, rtp) {
+            secureSelectedUser = username; // 🛡️ الحفظ في الخزنة السرية
+            
             document.getElementById('ctrl-target-user').value = username;
             document.getElementById('target-action-user').value = username;
             document.getElementById('ctrl-rtp-range').value = rtp;
@@ -1018,23 +1034,42 @@
         function logout() { localStorage.clear(); sessionStorage.clear(); window.location.href = '/'; }
 
         async function submitNewPassword() {
-            const new_password = document.getElementById('new-sys-pass').value;
-            if (!new_password) return showNotification('Veuillez introduire un mot de passe!', 'error');
-            const res = await fetch(`${BACKEND_URL}/api/user/change-password`, {
-                method: 'POST', headers: getAuthHeaders(),
-                body: JSON.stringify({ username: user.username, new_password })
-            });
-            if (res.ok) {
-                showNotification('Mot de passe mis à jour!');
-                document.getElementById('new-sys-pass').value = '';
-                bootstrap.Modal.getInstance(document.getElementById('passwordModal')).hide();
+            const passwordInput = document.getElementById('new-sys-pass');
+            // 🛡️ مقص الفراغات وحماية الطول
+            const new_password = passwordInput.value.trim();
+            const updateBtn = document.querySelector('#passwordModal button.btn-owner');
+            
+            if (!new_password || new_password.length < 6) return showNotification('يجب أن تتكون كلمة السر من 6 أحرف على الأقل (بدون مسافات)!', 'error');
+            
+            // 🛡️ قفل الزر
+            if (updateBtn) { updateBtn.disabled = true; updateBtn.innerText = '⏳...'; }
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/user/change-password`, {
+                    method: 'POST', headers: getAuthHeaders(),
+                    body: JSON.stringify({ username: user.username, new_password })
+                });
+                if (res.ok) {
+                    showNotification('Mot de passe mis à jour avec succès!', 'success');
+                    passwordInput.value = '';
+                    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
+                    if (modalInstance) modalInstance.hide();
+                } else {
+                    const data = await res.json();
+                    showNotification(data.detail || 'فشل التحديث', 'error');
+                }
+            } catch (e) {
+                showNotification('خطأ في الاتصال', 'error');
+            } finally {
+                if (updateBtn) { updateBtn.disabled = false; updateBtn.innerText = 'Mettre à jour'; }
             }
         }
 
         async function changeUserPasswordFromOwner() {
-            const target = document.getElementById('target-action-user').value;
-            const newPassword = document.getElementById('ctrl-user-new-pass').value;
-            if (!target || !newPassword || newPassword.length < 4) return showNotification('بيانات غير صحيحة', 'error');
+            const target = secureSelectedUser; // 🛡️
+            const newPassword = document.getElementById('ctrl-user-new-pass').value.trim();
+            if (!target) return showNotification('الرجاء تحديد حساب أولاً', 'error');
+            if (!newPassword || newPassword.length < 4) return showNotification('كلمة المرور قصيرة جداً', 'error');
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/change-player-password`, {
                     method: 'POST', headers: getAuthHeaders(),
@@ -1046,16 +1081,7 @@
                 } else { showNotification('فشلت العملية', 'error'); }
             } catch (e) { showNotification('خطأ في الاتصال', 'error'); }
         }
-
-        async function saveRtpAndBlock(blockStatus) {
-            const target_username = document.getElementById('ctrl-target-user').value, rtp = parseInt(document.getElementById('ctrl-rtp-range').value);
-            if (!target_username) return showNotification('Sélectionnez un compte d\'abord!', 'error');
-            const res = await fetch(`${BACKEND_URL}/api/admin/configure-account`, {
-                method: 'POST', headers: getAuthHeaders(),
-                body: JSON.stringify({ admin_username: user.username, target_username, rtp, is_blocked: blockStatus })
-            });
-            if (res.ok) { showNotification('Configuration enregistrée!'); loadNetworkData(); }
-        }
+        saveRtpAndBlock
 
         function triggerGoldRain() {
             const duration = 3 * 1000;
@@ -1068,9 +1094,12 @@
         }
 
         async function deleteAccountAction() {
-            const target_username = document.getElementById('ctrl-target-user').value;
+            const target_username = secureSelectedUser; // 🛡️
             if (!target_username) return showNotification('Sélectionnez un compte d\'abord!', 'error');
-            let headers = getAuthHeaders(); headers['Content-Type'] = 'application/json';
+            
+            if(!confirm(`هل أنت متأكد من حذف الحساب نهائياً: ${target_username}؟`)) return; // 🛡️ إضافة تأكيد للحماية من الخطأ
+
+            let headers = getAuthHeaders(); 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/delete-account`, {
                     method: 'DELETE', headers: headers, body: JSON.stringify({ admin_username: user.username, target_username: target_username })
@@ -1086,11 +1115,19 @@
         }
 
         async function executeAction(action) {
-            const target_username = document.getElementById('target-action-user').value;
+            const target_username = secureSelectedUser; // 🛡️ جلب الاسم من الخزنة
             const amountInput = document.getElementById('target-action-amount').value;
+            const actionBtn = action === 'charge' ? document.getElementById('btn-credit') : document.getElementById('btn-retirer');
+
             if (!target_username) return showNotification('Sélectionnez un compte!', 'error');
-            const amount = amountInput ? parseFloat(amountInput) : 0;
-            if (amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
+            
+            // 🛡️ حماية ضد الأحرف والمبالغ السالبة
+            const amount = parseFloat(amountInput);
+            if (isNaN(amount) || amount <= 0) return showNotification('Veuillez introduire un montant valide!', 'error');
+            
+            // 🛡️ قفل الزر لمنع الإغراق
+            if(actionBtn) { actionBtn.disabled = true; actionBtn.innerText = '⏳...'; }
+
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
                     method: 'POST', headers: getAuthHeaders(),
@@ -1102,9 +1139,12 @@
                     document.getElementById('target-action-amount').value = '';
                     loadNetworkData();
                 } else { showNotification(data.detail || 'فشلت العملية', 'error'); }
-            } catch (e) { showNotification('Erreur', 'error'); }
+            } catch (e) { 
+                showNotification('Erreur', 'error'); 
+            } finally {
+                if(actionBtn) { actionBtn.disabled = false; actionBtn.innerText = action === 'charge' ? 'Créditer' : 'Retirer'; }
+            }
         }
-
         async function createNetworkUser() {
             const usernameInput = document.getElementById('new-user-name');
             const passwordInput = document.getElementById('new-user-pass');
@@ -1133,6 +1173,13 @@
         async function checkNewDeposits() {
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-deposits`, { method: 'GET', headers: getAuthHeaders() });
+                
+                // 🛡️ قاتل الزومبي: إذا انتهى التوكن، أوقف النزيف واطرد المستخدم فوراً
+                if (res.status === 401 || res.status === 403) {
+                    logout();
+                    return;
+                }
+
                 if (res.ok) {
                     const deposits = await res.json();
                     if (deposits.length > 0) {
@@ -1143,10 +1190,11 @@
                         showNotification(`🔔 لديك ${deposits.length} طلب إيداع جديد!`, 'success');
                     }
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error("فشل الفحص التلقائي:", e); 
+            }
         }
-        setInterval(checkNewDeposits, 10000); // كل 10 ثواني لتقليل الضغط
-
+        setInterval(checkNewDeposits, 10000);
         let audioAllowed = false;
         function enableAudio() {
             audioAllowed = true;
@@ -1155,9 +1203,13 @@
         }
 
         async function approveDeposit(ticketId, username) {
+            if (isTransactionRunning) return showNotification("⏳ يرجى الانتظار، هناك عملية قيد التنفيذ...", "warning");
+            
             const amountInput = document.getElementById(`amt-${ticketId}`).value;
             if (!amountInput || amountInput <= 0) return alert("⚠️ الرجاء إدخال مبلغ صحيح");
+            
             if (confirm(`Êtes-vous sûr de vouloir créditer ${amountInput} TND à ${username} ?`)) {
+                isTransactionRunning = true; // 🛡️ تفعيل القفل
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/admin/approve-deposit`, {
                         method: 'POST', headers: getAuthHeaders(),
@@ -1168,7 +1220,11 @@
                         triggerGoldRain();
                         fetchAndOpenHistory('pending');
                     } else { alert("❌ Erreur lors de l'approbation."); }
-                } catch (error) { alert("❌ Erreur de connexion."); }
+                } catch (error) { 
+                    alert("❌ Erreur de connexion."); 
+                } finally {
+                    isTransactionRunning = false; // 🛡️ فتح القفل دائماً
+                }
             }
         }
         async function rejectDeposit(ticketId) {
@@ -1219,12 +1275,15 @@
             }
         }
         async function processWithdrawal(reqId, username, amount, actionType) {
+            if (isTransactionRunning) return showNotification("⏳ يرجى الانتظار...", "warning");
+
             const isApprove = actionType === 'approve';
             const confirmMsg = isApprove
                 ? `Êtes-vous sûr de VALIDER le retrait de ${amount} TND pour ${username} ?\n(L'argent a été envoyé au joueur)`
                 : `Êtes-vous sûr de REJETER le retrait de ${amount} TND pour ${username} ?\n(L'argent sera remboursé sur son compte)`;
 
             if (confirm(confirmMsg)) {
+                isTransactionRunning = true; // 🛡️ تفعيل القفل
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/admin/process-withdrawal`, {
                         method: 'POST',
@@ -1234,7 +1293,7 @@
 
                     if (res.ok) {
                         showNotification(isApprove ? "✅ Retrait validé !" : "❌ Retrait rejeté et remboursé !");
-                        fetchAndOpenHistory('withdrawals'); // تحديث القائمة تلقائياً
+                        fetchAndOpenHistory('withdrawals');
                         if (isApprove) triggerGoldRain();
                     } else {
                         const err = await res.json();
@@ -1242,8 +1301,32 @@
                     }
                 } catch (e) {
                     showNotification("Erreur de connexion", "error");
+                } finally {
+                    isTransactionRunning = false; // 🛡️ فتح القفل
                 }
             }
+        }
+// 🛡️ درع المقعد الفارغ (طرد بعد 15 دقيقة من الخمول)
+        let idleTime = 0;
+        function timerIncrement() {
+            idleTime = idleTime + 1;
+            if (idleTime > 15) { // 15 دقيقة
+                showNotification("تم تسجيل الخروج بسبب عدم النشاط!", "warning");
+                setTimeout(logout, 1500);
+            }
+        }
+        // تصفير العداد عند أي حركة
+        document.body.addEventListener('mousemove', () => idleTime = 0);
+        document.body.addEventListener('keypress', () => idleTime = 0);
+        setInterval(timerIncrement, 60000); // يفحص كل دقيقة
+
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) return false; // تعطيل F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // تعطيل Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // تعطيل Ctrl+U
         }
     </script>
 </body>

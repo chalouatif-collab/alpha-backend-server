@@ -2103,26 +2103,36 @@
         async function refreshPlayerBalance() {
             if (!playerSession || !playerSession.username) return;
             try {
-                const res = await fetch(`${BACKEND_URL}/api/admin/users?timestamp=${new Date().getTime()}`, { method: 'GET', headers: getAuthHeaders() });
+                // 🛡️ التعديل هنا: استخدام مسار المحفظة الآمن بدلاً من مسار الإدارة المغلق
+                const res = await fetch(`${BACKEND_URL}/gold_api`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'user_balance',
+                        user_code: playerSession.username
+                    })
+                });
+                
                 if (res.ok) {
-                    const users = await res.json();
-                    const currentMe = users.find(u => u.username === playerSession.username);
-                    if (currentMe) {
-                        playerSession.balance = currentMe.balance;
-                        // السحر هنا: نحفظ نوع الحساب الحقيقي من قاعدة البيانات
-                        playerSession.created_by = currentMe.created_by;
+                    const data = await res.json();
+                    if (data.status === 1) {
+                        playerSession.balance = data.user_balance;
                         localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
 
+                        // تحديث الأرقام في الواجهة
                         const balVal = document.getElementById('player-balance-val');
                         if (balVal) balVal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
 
                         const profBal = document.getElementById('profile-page-balance');
                         if (profBal) profBal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
+                        
+                        const modalBal = document.getElementById('modal-balance');
+                        if (modalBal) modalBal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
 
                         // =========================================================================
-                        // 🛡️ إخفاء أو إظهار الأزرار بناءً على البيانات الحقيقية من السيرفر
+                        // 🛡️ إخفاء أو إظهار أزرار السحب والإيداع بناءً على نوع الحساب
                         // =========================================================================
-                        if (currentMe.created_by !== 'Self-Register') {
+                        if (playerSession.created_by !== 'Self-Register') {
                             document.querySelectorAll('button[onclick*="toggleCashier"], button[onclick*="openDirectRetrait"]').forEach(btn => {
                                 btn.style.display = 'none';
                             });
@@ -2132,7 +2142,6 @@
                                 span.classList.add('cursor-default');
                             });
                         } else {
-                            // إذا كان الحساب مسجلاً أونلاين، نعيد إظهار الأزرار
                             document.querySelectorAll('button[onclick*="toggleCashier"], button[onclick*="openDirectRetrait"]').forEach(btn => {
                                 btn.style.display = '';
                             });
@@ -2140,7 +2149,9 @@
                         // =========================================================================
                     }
                 }
-            } catch (e) { }
+            } catch (e) { 
+                console.error("Erreur de solde:", e); 
+            }
         }
         function logoutPlayer() {
             if (balanceInterval) clearInterval(balanceInterval);
