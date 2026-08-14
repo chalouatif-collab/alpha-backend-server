@@ -396,7 +396,7 @@ class DepositRequest(BaseModel):
     receipt_image: Optional[str] = None # 👈 السطر السحري لاستقبال لقطة الشاشة
 
 @app.post("/api/deposit")
-@limiter.limit("3/minute")
+@limiter.limit("1/minute")
 async def create_deposit(request: Request, req: DepositRequest):
     try:
         db = load_tickets_db()
