@@ -2,7 +2,7 @@ import requests
 import time
 
 # 🎯 ضع رابط السيرفر الخاص بك هنا (سواء المحلي أو على Render)
-BASE_URL = "http://127.0.0.1:8000" 
+BASE_URL = "https://alpha-backend-server.onrender.com"
 # BASE_URL = "https://alpha-backend-server.onrender.com"
 
 print("🦅 بدء عملية اختبار الاختراق (Penetration Testing)...\n")
