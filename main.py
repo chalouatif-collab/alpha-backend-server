@@ -668,7 +668,15 @@ async def login_user(request: Request, req: LoginRequest):
         asyncio.create_task(send_telegram_alert(bad_alert))
         raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
 
-    return {"message": "success", "username": user["username"]}
+    # 🛡️ التعديل السحري: إصدار تصريح الدخول (التوكن) وإرفاق رتبة المستخدم ليقبلها الحارس
+    access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+    
+    return {
+        "message": "success", 
+        "username": user["username"],
+        "role": user["role"],
+        "access_token": access_token
+    }
    
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
@@ -695,21 +703,7 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
         
-    secret = user.get("two_factor_secret")
-    if not secret:
-        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية!")
-        
-    totp = pyotp.TOTP(secret)
-    if totp.verify(req.totp_code):
-        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "username": user["username"], 
-            "role": user["role"]
-        }
-    else:
-        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
+
 @app.post("/api/register")
 @limiter.limit("1/minute")
 async def register_user(request: Request, req: RegisterRequest):
