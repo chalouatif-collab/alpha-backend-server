@@ -1805,71 +1805,27 @@ async def eurovirtuals_player_info(request: Request):
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_bet(request: Request):
     try:
-        async with db_lock:
-            db = load_db()
-            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
-            
-            if not target_user or target_user.get("is_blocked") == 1:
-                return {"status_code": 500, "status_description": "Player not found or blocked"}
-                
-            current_balance = float(target_user.get("balance", 0.0))
-            
-            if current_balance < amount:
-                return {"status_code": 500, "status_description": "Insufficient Balance"}
-                
-            new_balance = current_balance - amount
-            target_user["balance"] = round(new_balance, 2)
-            save_db(db)
-        # 🛡️ التحقق الأمني من التوكن
+        # 🛡️ 1. التحقق الأمني من التوكن والهيدرز أولاً
         token = request.headers.get("Token")
         timestamp_header = request.headers.get("Timestamp")
         if token and timestamp_header:
             if not verify_callback_token(EURO_APP_KEY, timestamp_header, token):
                 return {"status_code": 401, "status_description": "Unauthorized"}
 
+        # 🛡️ 2. استقبال البيانات واستخراج المتغيرات بوضوح
         payload = await request.json()
         print(f"📦 [EUROVIRTUALS BET PAYLOAD]: {payload}")
-        
+
         player_id = payload.get("player_id")
         amount = float(payload.get("amount", 0.0))
         transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
         currency = payload.get("currency", "TND")
-        
-        # 🛡️ الحارس الأمني: رفض المبالغ السالبة
+
+        # 🛡️ 3. الحارس الأمني: رفض المبالغ السالبة قبل أي شيء
         if amount < 0:
             return {"status_code": 400, "status_description": "Invalid amount"}
-            
-        db = load_db()
-        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
-        
-        if not target_user or target_user.get("is_blocked") == 1:
-            return {"status_code": 500, "status_description": "Player not found or blocked"}
-            
-        current_balance = float(target_user.get("balance", 0.0))
-        
-        if current_balance < amount:
-            return {"status_code": 500, "status_description": "Insufficient Balance"}
-            
-        new_balance = current_balance - amount
-        target_user["balance"] = round(new_balance, 2)
-        save_db(db)
-        
-        return {
-            "status_code": 200,
-            "status_description": "Success",
-            "data": {
-                "balance": round(new_balance, 2),
-                "currency": currency,
-                "reference_id": transaction_id
-            }
-        }
-    except Exception as e:
-        return {"status_code": 500, "status_description": "Internal Server Error"}
-    
 
-@app.post("/api/eurovirtuals/callback/win")
-async def eurovirtuals_win(request: Request):
-    try:
+        # 🛡️ 4. القفل الذكي يبدأ هنا بعد تجهيز كافة المتغيرات بأمان تام
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
@@ -1885,36 +1841,7 @@ async def eurovirtuals_win(request: Request):
             new_balance = current_balance - amount
             target_user["balance"] = round(new_balance, 2)
             save_db(db)
-        # 🛡️ التحقق الأمني من التوكن
-        token = request.headers.get("Token")
-        timestamp_header = request.headers.get("Timestamp")
-        if token and timestamp_header:
-            if not verify_callback_token(EURO_APP_KEY, timestamp_header, token):
-                return {"status_code": 401, "status_description": "Unauthorized"}
 
-        payload = await request.json()
-        print(f"📦 [EUROVIRTUALS WIN PAYLOAD]: {payload}")
-        
-        player_id = payload.get("player_id")
-        payout_amount = float(payload.get("payout_amount", 0.0))
-        transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
-        currency = payload.get("currency", "TND")
-        
-        # 🛡️ الحارس الأمني: رفض المبالغ السالبة
-        if payout_amount < 0:
-            return {"status_code": 400, "status_description": "Invalid amount"}
-            
-        db = load_db()
-        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
-        
-        if not target_user or target_user.get("is_blocked") == 1:
-            return {"status_code": 500, "status_description": "Player not found or blocked"}
-            
-        current_balance = float(target_user.get("balance", 0.0))
-        new_balance = current_balance + payout_amount
-        target_user["balance"] = round(new_balance, 2)
-        save_db(db)
-        
         return {
             "status_code": 200,
             "status_description": "Success",
@@ -1925,6 +1852,57 @@ async def eurovirtuals_win(request: Request):
             }
         }
     except Exception as e:
+        print(f"Eurovirtuals Bet Error: {e}")
+        return {"status_code": 500, "status_description": "Internal Server Error"}
+
+@app.post("/api/eurovirtuals/callback/win")
+async def eurovirtuals_win(request: Request):
+    try:
+        # 🛡️ 1. التحقق الأمني من التوكن أولاً
+        token = request.headers.get("Token")
+        timestamp_header = request.headers.get("Timestamp")
+        if token and timestamp_header:
+            if not verify_callback_token(EURO_APP_KEY, timestamp_header, token):
+                return {"status_code": 401, "status_description": "Unauthorized"}
+
+        # 🛡️ 2. استقبال البيانات واستخراج المتغيرات أولاً وقبل كل شيء
+        payload = await request.json()
+        print(f"📦 [EUROVIRTUALS WIN PAYLOAD]: {payload}")
+
+        player_id = payload.get("player_id")
+        payout_amount = float(payload.get("payout_amount", 0.0))
+        transaction_id = payload.get("transaction_id", str(uuid.uuid4()))
+        currency = payload.get("currency", "TND")
+
+        # 🛡️ 3. الحارس الأمني: رفض المبالغ السالبة
+        if payout_amount < 0:
+            return {"status_code": 400, "status_description": "Invalid amount"}
+
+        # 🛡️ 4. القفل الذكي يبدأ هنا بعد تعريف كافة المتغيرات بأمان تام
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return {"status_code": 500, "status_description": "Player not found or blocked"}
+                
+            current_balance = float(target_user.get("balance", 0.0))
+            new_balance = current_balance + payout_amount
+            
+            target_user["balance"] = round(new_balance, 2)
+            save_db(db)
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": round(new_balance, 2),
+                "currency": currency,
+                "reference_id": transaction_id
+            }
+        }
+    except Exception as e:
+        print(f"Eurovirtuals Win Error: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
     
     
