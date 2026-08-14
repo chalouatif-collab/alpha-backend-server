@@ -982,8 +982,6 @@
 
     <!-- Iframes Containers -->
     <div id="casino-iframe-container" class="fixed inset-0 z-[200] bg-black hidden flex-col">
-        <button onclick="closeCasinoGame()"
-            class="absolute top-4 right-4 z-[210] bg-q-magenta text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shadow-[0_0_15px_rgba(254,9,121,0.8)] cursor-pointer">✖</button>
         <div id="casino-loader" class="absolute inset-0 flex items-center justify-center bg-black z-[-1]">
             <span class="text-q-cyan font-display text-2xl animate-pulse tracking-widest">Alphabet LOADING...</span>
         </div>
@@ -993,15 +991,13 @@
     <div id="sportsbook-overlay" class="fixed inset-0 z-[200] bg-q-bg hidden flex-col">
         <div class="h-14 w-full bg-q-panel border-b border-q-cyan/20 flex items-center justify-between px-4">
             <h2 class="text-q-cyan font-display font-bold tracking-widest uppercase">Alphabet Sports</h2>
-            <button onclick="closeSportsbook()"
-                class="text-gray-400 hover:text-white text-3xl cursor-pointer">&times;</button>
+
         </div>
         <iframe id="sportsbook-iframe" src="" frameborder="0" class="w-full h-full"></iframe>
     </div>
 
     <div id="virtual-games-overlay" class="fixed inset-0 z-[200] bg-black hidden flex-col">
-        <button onclick="closeVirtualGames()"
-            class="absolute top-4 right-4 z-[210] bg-q-gold text-black w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shadow-[0_0_15px_rgba(249,212,35,0.8)] cursor-pointer">✖</button>
+
         <div id="virtual-loader" class="absolute inset-0 flex items-center justify-center bg-black z-[-1]">
             <span class="text-q-gold font-display text-2xl animate-pulse tracking-widest">VIRTUALS LOADING...</span>
         </div>
@@ -1658,10 +1654,26 @@
 
     <!-- ================= JAVASCRIPT ================= -->
     <script>
+        // تفعيل زر العودة في الهاتف لإغلاق الألعاب
+        window.addEventListener('popstate', (event) => {
+            if (!document.getElementById('casino-iframe-container').classList.contains('hidden')) {
+                closeCasinoGame(true);
+            } else if (!document.getElementById('sportsbook-overlay').classList.contains('hidden')) {
+                closeSportsbook(true);
+            } else if (!document.getElementById('virtual-games-overlay').classList.contains('hidden')) {
+                closeVirtualGames(true);
+            }
+        });
+
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         let playerSession = null;
         let balanceInterval = null;
         let currentProfileTab = 'bets';
+        let casinoProviders = [];
+        let currentProviderGames = [];
+        let currentDisplayLimit = 40;
+        let currentActiveProviderCode = "PRAGMATIC";
+        let gamesObserver = null;
 
         // --- 1. UI Initialization &  Effects ---
         window.addEventListener('load', () => {
@@ -2272,7 +2284,6 @@
             }
         }
 
-        // --- 7. Game Launching (Casino, Sports, Virtuals) ---
         async function playCasinoGame(providerCode, gameCode) {
             if (!playerSession) return openLoginModal();
             const container = document.getElementById('casino-iframe-container');
@@ -2281,6 +2292,7 @@
             if (!container || !iframe) return;
 
             container.classList.remove('hidden'); container.classList.add('flex');
+            history.pushState({ modalOpen: true }, "", ""); // 👈 إضافة سجل وهمي لزر العودة
             if (loader) loader.style.display = 'flex';
             iframe.style.opacity = '0';
 
@@ -2290,7 +2302,6 @@
                     body: JSON.stringify({ game_code: gameCode, provider_code: providerCode, user_code: playerSession.username })
                 });
                 const data = await res.json();
-                console.log(`🔥 رد السيرفر عند تشغيل ${gameCode}:`, data);
                 if (data.launch_url) {
                     iframe.src = data.launch_url;
                     iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
@@ -2299,6 +2310,16 @@
                     closeCasinoGame();
                 }
             } catch (error) { showNotification("Erreur de connexion", "error"); closeCasinoGame(); }
+        }
+
+        function closeCasinoGame(fromPopState = false) {
+            document.getElementById('casino-iframe-container').classList.add('hidden');
+            document.getElementById('casino-iframe-container').classList.remove('flex');
+            document.getElementById('casino-iframe').src = "";
+            refreshPlayerBalance();
+            if (!fromPopState && history.state && history.state.modalOpen) {
+                history.back();
+            }
         }
         function closeCasinoGame() {
             document.getElementById('casino-iframe-container').classList.add('hidden');
@@ -2311,6 +2332,7 @@
             if (!playerSession) return openLoginModal();
             document.getElementById('sportsbook-overlay').classList.remove('hidden');
             document.getElementById('sportsbook-overlay').classList.add('flex');
+            history.pushState({ modalOpen: true }, "", ""); // 👈 إضافة سجل وهمي لزر العودة
             try {
                 const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
                     method: 'POST', headers: getAuthHeaders(),
@@ -2321,33 +2343,47 @@
                 else { showNotification("Erreur", "error"); closeSportsbook(); }
             } catch (error) { closeSportsbook(); }
         }
-        function closeSportsbook() {
+
+        function closeSportsbook(fromPopState = false) {
             document.getElementById('sportsbook-overlay').classList.add('hidden');
             document.getElementById('sportsbook-overlay').classList.remove('flex');
             document.getElementById('sportsbook-iframe').src = "about:blank";
+            if (!fromPopState && history.state && history.state.modalOpen) {
+                history.back();
+            }
         }
 
-        let casinoProviders = [];
-        let currentProviderGames = [];
-        let currentDisplayLimit = 40;
-        let currentActiveProviderCode = "PRAGMATIC";
-        let gamesObserver = null;
-
         async function initCasinoLobby() {
+            const bar = document.getElementById('providers-bar');
+            if (!bar) return;
+
+            // إذا لم تكن قائمة المزودين محملة، نقوم بجلبها من السيرفر
             if (casinoProviders.length === 0) {
-                const bar = document.getElementById('providers-bar');
                 bar.innerHTML = '<span class="text-q-cyan text-xs">Chargement...</span>';
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/get-providers`);
                     const data = await res.json();
                     casinoProviders = data.providers || data.data || [];
-                    console.log("🔥 عدد المزودين المستلمين من السيرفر هو: ", casinoProviders.length);
+
                     if (casinoProviders.length > 0) {
-                        bar.innerHTML = casinoProviders.map(p => `<button onclick="loadProviderGames('${p.code}')" class="btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-300 hover:text-white shrink-0">${p.name || p.code}</button>`).join('');
+                        bar.innerHTML = casinoProviders.map(p =>
+                            `<button onclick="loadProviderGames('${p.code}')" class="btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-300 hover:text-white shrink-0">${p.name || p.code}</button>`
+                        ).join('');
+
+                        // تحميل ألعاب أول مزود تلقائياً
                         loadProviderGames(casinoProviders[0].code);
                         setTimeout(() => enableMouseDragScroll('providers-bar'), 200);
                     }
-                } catch (e) { bar.innerHTML = '<span class="text-q-magenta text-xs">Erreur</span>'; }
+                } catch (e) {
+                    bar.innerHTML = '<span class="text-q-magenta text-xs">Erreur de chargement</span>';
+                }
+            } else {
+                // إذا كان المزودون محملين مسبقاً، نضمن إعادة رسم الشبكة وعرض الألعاب فوراً
+                if (currentProviderGames.length === 0 && casinoProviders.length > 0) {
+                    loadProviderGames(casinoProviders[0].code);
+                } else {
+                    renderCasinoGrid();
+                }
             }
         }
 
@@ -2359,12 +2395,20 @@
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider_code: providerCode })
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: providerCode })
                 });
                 const data = await res.json();
+                console.log("🔥 الألعاب المستلمة للمزود:", data);
+
+                // التقاط الألعاب سواء كانت في games أو data
                 currentProviderGames = data.games || data.data || [];
                 renderCasinoGrid();
-            } catch (e) { container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erreur</div>'; }
+            } catch (e) {
+                console.error("Erreur:", e);
+                container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erreur de chargement</div>';
+            }
         }
 
         function renderCasinoGrid() {
@@ -2514,6 +2558,7 @@
             const loader = document.getElementById('virtual-loader');
 
             container.classList.remove('hidden'); container.classList.add('flex');
+            history.pushState({ modalOpen: true }, "", ""); // 👈 إضافة سجل وهمي لزر العودة
             iframe.style.opacity = '0'; if (loader) loader.style.display = 'flex';
 
             try {
@@ -2528,11 +2573,15 @@
                 } else { showNotification(data.error || "Erreur", "error"); closeVirtualGames(); }
             } catch (error) { closeVirtualGames(); }
         }
-        function closeVirtualGames() {
+
+        function closeVirtualGames(fromPopState = false) {
             document.getElementById('virtual-games-overlay').classList.add('hidden');
             document.getElementById('virtual-games-overlay').classList.remove('flex');
             document.getElementById('virtual-games-iframe').src = "";
             refreshPlayerBalance();
+            if (!fromPopState && history.state && history.state.modalOpen) {
+                history.back();
+            }
         }
         // ================= المتغيرات المفقودة (Crash & Dictionary) =================
         let currentLangCode = "fr";

