@@ -1192,6 +1192,17 @@ async def process_login_router(request: Request, username: str = Form(...), pass
     if role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
     else: return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
     
+# -----------------------------------------
+# مسارات الدخول والحماية الثنائية
+# -----------------------------------------
+class LoginRequest(BaseModel): 
+    username: str
+    password: str
+
+class Verify2FARequest(BaseModel): 
+    username: str
+    totp_code: str = "000000"
+
 @app.post("/api/login")
 @limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
@@ -1213,34 +1224,31 @@ async def login_user(request: Request, req: LoginRequest):
         "role": user["role"],
         "access_token": access_token
     }
-@app.post("/verify-2fa")
-async def verify_2fa(request: Request, totp_code: str = Form(...)):
-    uname = request.session.get("pending_user")
-    role = request.session.get("pending_role")
-    
-    if not uname:
-        return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>انتهت الجلسة، يرجى تسجيل الدخول مجدداً. <a href='/'>العودة</a></h3>")
 
+@app.post("/api/verify-2fa")
+@limiter.limit("5/minute")
+async def verify_2fa_api(request: Request, req: Verify2FARequest):
     db = load_db()
-    user = next((u for u in db if u["username"] == uname), None)
-    secret = user.get("two_factor_secret") 
+    user = next((u for u in db if u["username"] == req.username), None)
     
-    if not secret:
-        return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>لم يتم إعداد التحقق الثنائي لهذا الحساب بعد!</h3>")
-
-    totp = pyotp.TOTP(secret)
-    if totp.verify(totp_code):
-        request.session["username"] = uname
-        request.session["role"] = role
-        request.session.pop("pending_user", None)
-        request.session.pop("pending_role", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur incorrect")
         
-        if role == "owner": return RedirectResponse(url="/panel/owner", status_code=303)
-        elif role == "super_admin": return RedirectResponse(url="/panel/super-admin", status_code=303)
-        elif role == "admin": return RedirectResponse(url="/panel/admin", status_code=303)
+    secret = user.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية!")
+        
+    totp = pyotp.TOTP(secret)
+    if totp.verify(req.totp_code):
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "username": user["username"], 
+            "role": user["role"]
+        }
     else:
-        return HTMLResponse("<h3 style='text-align:center; color:red; margin-top:50px;'>الكود السداسي غير صحيح! <a href='/'>حاول مرة أخرى</a></h3>")
-
+        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
 @app.get("/setup-2fa/{username}")
 async def setup_2fa(username: str):
     db = load_db()
