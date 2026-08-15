@@ -1869,3 +1869,346 @@ def verify_callback_token(app_key: str, timestamp: str, received_token: str) -> 
     expected_token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
     return expected_token == received_token
 
+# ==========================================
+# 🎰 نظام مزود الألعاب الجديد (SMPL - Seamless Wallet)
+# ==========================================
+import re
+
+@app.post("/api/smpl-webhook")
+async def smpl_webhook(request: Request):
+    # قراءة البيانات المرسلة كـ Form
+    form_data = await request.form()
+    data = dict(form_data)
+    
+    action = data.get("action")
+    player_id = data.get("player_id")
+    currency = data.get("currency")
+    
+    # ====================================================
+    # 🎯 1. معالجة طلب استعلام الرصيد (Balance)
+    # ====================================================
+    if action == "balance":
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Player not found or blocked"},
+                    status_code=400
+                )
+                
+            current_balance = float(target_user.get("balance", 0.0))
+            return {"balance": round(current_balance, 2)}
+            
+    # ====================================================
+    # 🎯 2. معالجة طلب الرهان وخصم الأموال (Bet)
+    # ====================================================
+    elif action == "bet":
+        amount = float(data.get("amount", 0.0))
+        transaction_id = data.get("transaction_id")
+        bet_type = data.get("type", "bet") 
+        game_uuid = data.get("game_uuid", "unknown")
+        
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Player not found or blocked"},
+                    status_code=400
+                )
+            
+            db_session = SessionLocal()
+            try:
+                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == transaction_id).first()
+                if existing_tx:
+                    return {
+                        "balance": round(float(target_user.get("balance", 0.0)), 2),
+                        "transaction_id": f"int_tx_{existing_tx.id}"
+                    }
+                
+                deduct_amount = amount if bet_type != "freespin" else 0.0
+                current_balance = float(target_user.get("balance", 0.0))
+                
+                if current_balance < deduct_amount:
+                    return JSONResponse(
+                        content={"error_code": "INSUFFICIENT_FUNDS", "error_description": "Player balance is too low"},
+                        status_code=400
+                    )
+                
+                new_balance = current_balance - deduct_amount
+                target_user["balance"] = round(new_balance, 2)
+                save_db(db)
+                
+                new_tx = Transaction(
+                    admin_username="SMPL_API",
+                    target_username=target_user["username"],
+                    action=f"bet_{bet_type} | Game: {game_uuid}",
+                    amount=-deduct_amount,
+                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    tx_id=transaction_id
+                )
+                db_session.add(new_tx)
+                db_session.commit()
+                internal_txn_id = new_tx.id
+                
+            except Exception as e:
+                db_session.rollback()
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Database operation failed"},
+                    status_code=500
+                )
+            finally:
+                db_session.close()
+
+            return {
+                "balance": round(new_balance, 2),
+                "transaction_id": f"int_tx_{internal_txn_id}"
+            }
+
+    # ====================================================
+    # 🎯 3. معالجة طلب الفوز وإضافة الأموال (Win)
+    # ====================================================
+    elif action == "win":
+        amount = float(data.get("amount", 0.0))
+        transaction_id = data.get("transaction_id")
+        win_type = data.get("type", "win")
+        game_uuid = data.get("game_uuid", "unknown")
+
+        if amount < 0:
+            return JSONResponse(
+                content={"error_code": "INTERNAL_ERROR", "error_description": "Invalid win amount"},
+                status_code=400
+            )
+            
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Player not found or blocked"},
+                    status_code=400
+                )
+            
+            db_session = SessionLocal()
+            try:
+                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == transaction_id).first()
+                if existing_tx:
+                    return {
+                        "balance": round(float(target_user.get("balance", 0.0)), 2),
+                        "transaction_id": f"int_tx_{existing_tx.id}"
+                    }
+                
+                current_balance = float(target_user.get("balance", 0.0))
+                new_balance = current_balance + amount
+                target_user["balance"] = round(new_balance, 2)
+                save_db(db)
+                
+                new_tx = Transaction(
+                    admin_username="SMPL_API",
+                    target_username=target_user["username"],
+                    action=f"win_{win_type} | Game: {game_uuid}",
+                    amount=amount,
+                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    tx_id=transaction_id
+                )
+                db_session.add(new_tx)
+                db_session.commit()
+                internal_txn_id = new_tx.id
+                
+            except Exception as e:
+                db_session.rollback()
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Database operation failed"},
+                    status_code=500
+                )
+            finally:
+                db_session.close()
+
+            return {
+                "balance": round(new_balance, 2),
+                "transaction_id": f"int_tx_{internal_txn_id}"
+            }
+
+    # ====================================================
+    # 🎯 4. معالجة طلب استرجاع الأموال (Refund)
+    # ====================================================
+    elif action == "refund":
+        amount = float(data.get("amount", 0.0))
+        transaction_id = data.get("transaction_id")
+        bet_transaction_id = data.get("bet_transaction_id")
+        game_uuid = data.get("game_uuid", "unknown")
+
+        if amount < 0:
+            return JSONResponse(
+                content={"error_code": "INTERNAL_ERROR", "error_description": "Invalid refund amount"},
+                status_code=400
+            )
+
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+
+            if not target_user or target_user.get("is_blocked") == 1:
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Player not found or blocked"},
+                    status_code=400
+                )
+
+            db_session = SessionLocal()
+            try:
+                existing_refund = db_session.query(Transaction).filter(Transaction.tx_id == transaction_id).first()
+                if existing_refund:
+                    return {
+                        "balance": round(float(target_user.get("balance", 0.0)), 2),
+                        "transaction_id": f"int_tx_{existing_refund.id}"
+                    }
+
+                already_refunded = db_session.query(Transaction).filter(
+                    Transaction.action.like(f"%Refund for Bet: {bet_transaction_id}%")
+                ).first()
+                
+                if already_refunded:
+                    return {
+                        "balance": round(float(target_user.get("balance", 0.0)), 2),
+                        "transaction_id": f"int_tx_{already_refunded.id}"
+                    }
+
+                current_balance = float(target_user.get("balance", 0.0))
+                new_balance = current_balance + amount
+                target_user["balance"] = round(new_balance, 2)
+                save_db(db)
+
+                new_tx = Transaction(
+                    admin_username="SMPL_API",
+                    target_username=target_user["username"],
+                    action=f"refund | Game: {game_uuid} | Refund for Bet: {bet_transaction_id}",
+                    amount=amount,
+                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    tx_id=transaction_id
+                )
+                db_session.add(new_tx)
+                db_session.commit()
+                internal_txn_id = new_tx.id
+
+            except Exception as e:
+                db_session.rollback()
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Database operation failed"},
+                    status_code=500
+                )
+            finally:
+                db_session.close()
+
+            return {
+                "balance": round(new_balance, 2),
+                "transaction_id": f"int_tx_{internal_txn_id}"
+            }
+
+    # ====================================================
+    # 🎯 5. معالجة طلب الإلغاء الشامل (Rollback)
+    # ====================================================
+    elif action == "rollback":
+        transaction_id = data.get("transaction_id")
+        game_uuid = data.get("game_uuid", "unknown")
+        
+        rollback_dict = {}
+        for key, value in data.items():
+            match = re.match(r"rollback_transactions\[(\d+)\]\[(\w+)\]", key)
+            if match:
+                idx = int(match.group(1))
+                field = match.group(2)
+                if idx not in rollback_dict:
+                    rollback_dict[idx] = {}
+                rollback_dict[idx][field] = value
+        
+        transactions_to_rollback = [rollback_dict[i] for i in sorted(rollback_dict.keys())]
+
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+
+            if not target_user or target_user.get("is_blocked") == 1:
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Player not found or blocked"},
+                    status_code=400
+                )
+
+            db_session = SessionLocal()
+            try:
+                existing_rollback = db_session.query(Transaction).filter(Transaction.tx_id == transaction_id).first()
+                if existing_rollback:
+                    return {
+                        "balance": round(float(target_user.get("balance", 0.0)), 2),
+                        "transaction_id": f"int_tx_{existing_rollback.id}",
+                        "rollback_transactions": [] 
+                    }
+
+                current_balance = float(target_user.get("balance", 0.0))
+                balance_adjustment = 0.0
+                rolled_back_internal_ids = []
+
+                for txn in transactions_to_rollback:
+                    agg_txn_id = txn.get('transaction_id')
+                    txn_action = txn.get('action')
+                    txn_amount = float(txn.get('amount', 0.0))
+
+                    original_tx = db_session.query(Transaction).filter(Transaction.tx_id == agg_txn_id).first()
+                    
+                    if original_tx:
+                        rolled_back_internal_ids.append(f"int_tx_{original_tx.id}")
+                    else:
+                        rolled_back_internal_ids.append(f"unknown_{agg_txn_id}")
+
+                    if txn_action == 'bet':
+                        balance_adjustment += txn_amount  
+                    elif txn_action == 'win':
+                        balance_adjustment -= txn_amount  
+                    elif txn_action == 'refund':
+                        balance_adjustment -= txn_amount  
+
+                new_balance = current_balance + balance_adjustment
+                
+                if new_balance < 0:
+                    new_balance = 0.0
+
+                target_user["balance"] = round(new_balance, 2)
+                save_db(db)
+
+                new_tx = Transaction(
+                    admin_username="SMPL_API",
+                    target_username=target_user["username"],
+                    action=f"rollback | Game: {game_uuid} | Adj: {balance_adjustment}",
+                    amount=balance_adjustment, 
+                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    tx_id=transaction_id
+                )
+                db_session.add(new_tx)
+                db_session.commit()
+                internal_txn_id = new_tx.id
+
+            except Exception as e:
+                db_session.rollback()
+                return JSONResponse(
+                    content={"error_code": "INTERNAL_ERROR", "error_description": "Database operation failed"},
+                    status_code=500
+                )
+            finally:
+                db_session.close()
+
+            return {
+                "balance": round(new_balance, 2),
+                "transaction_id": f"int_tx_{internal_txn_id}",
+                "rollback_transactions": rolled_back_internal_ids
+            }
+
+    # ====================================================
+    # ❌ معالجة أي طلب غير معروف
+    # ====================================================
+    return JSONResponse(
+        content={"error_code": "INTERNAL_ERROR", "error_description": "Unknown action"},
+        status_code=400
+    )

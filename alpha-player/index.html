@@ -1111,6 +1111,16 @@
             <span class="sidebar-text font-display font-bold text-sm tracking-widest uppercase text-white">Crash</span>
         </button>
 
+        <!-- PREMIUM SMPL -->
+        <button onclick="switchSection('smpl'); initSMPLLobby();"
+            class="sidebar-btn btn-glass text-gray-400 group cursor-pointer border-blue-500/30 hover:border-blue-500">
+            <div class="sidebar-icon"><i
+                    class="fas fa-crown text-lg text-blue-500 group-hover:scale-110 group-hover:text-yellow-400 transition-all"></i>
+            </div>
+            <span
+                class="sidebar-text font-display font-bold text-sm tracking-widest uppercase text-white">Premium</span>
+        </button>
+
     </aside>
 
     <!-- ================= Main Content Area ================= -->
@@ -1292,6 +1302,14 @@
                         <i
                             class="fas fa-plane-up text-red-500 md:text-xl group-hover:text-red-400 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500 ease-out"></i>
                         Aviator
+                    </button>
+
+                    <!-- PREMIUM (SMPL CASINO) -->
+                    <button onclick="switchSection('smpl'); initSMPLLobby();"
+                        class="shrink-0 snap-center md:flex-1 group relative px-6 py-2.5 md:py-3.5 rounded-full bg-gradient-to-r from-blue-900/40 to-purple-900/40 backdrop-blur-md border-[2px] border-blue-500 text-white font-display font-black text-xs md:text-sm lg:text-base tracking-widest uppercase flex items-center justify-center gap-2 md:gap-3 shadow-[0_0_15px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.8)] hover:border-blue-400 transition-all duration-300">
+                        <i
+                            class="fas fa-crown text-blue-400 md:text-xl group-hover:scale-125 group-hover:text-yellow-400 transition-all duration-300"></i>
+                        Premium
                     </button>
 
                 </div>
@@ -1546,6 +1564,35 @@
                                     class="hover:text-q-cyan hover:pl-2 transition-all duration-300 text-q-gold">Jeu
                                     Responsable</a></li>
                         </ul>
+                    </div>
+                    <!-- PANE: PREMIUM SMPL CASINO -->
+                    <div id="pane-smpl" class="player-view-section hidden w-full">
+                        <div
+                            class="flex flex-col md:flex-row gap-4 bg-q-panel/80 p-4 rounded-xl border border-blue-500/30 mb-4 backdrop-blur-md shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                            <h2
+                                class="text-white font-display font-black text-xl flex items-center gap-2 whitespace-nowrap">
+                                <span class="text-blue-500"><i class="fas fa-crown"></i></span> Premium Casino
+                            </h2>
+                            <input type="text" id="smpl-search-input" placeholder="Chercher un jeu Premium..."
+                                class="w-full bg-black/50 text-white border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-blue-500 transition-colors">
+                        </div>
+
+                        <!-- شريط تصنيفات المزودين داخل SMPL -->
+                        <div id="smpl-providers-bar" class="flex overflow-x-auto gap-2 hide-scroll py-2 mb-4">
+                            <button
+                                class="btn-glass active px-4 py-2 rounded-full text-xs font-bold text-white border-blue-500 bg-blue-500/20 shrink-0">Tous</button>
+                            <button
+                                class="btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0">Evolution</button>
+                        </div>
+
+                        <!-- شبكة الألعاب -->
+                        <div id="smpl-games-grid"
+                            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 w-full pb-10">
+                            <div
+                                class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display tracking-widest text-lg">
+                                LIAISON AVEC LE SERVEUR EN COURS... ⏳
+                            </div>
+                        </div>
                     </div>
 
                     <!-- طرق الدفع المتاحة -->
@@ -2112,7 +2159,7 @@
                         user_code: playerSession.username
                     })
                 });
-                
+
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 1) {
@@ -2125,7 +2172,7 @@
 
                         const profBal = document.getElementById('profile-page-balance');
                         if (profBal) profBal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
-                        
+
                         const modalBal = document.getElementById('modal-balance');
                         if (modalBal) modalBal.innerText = `${parseFloat(playerSession.balance).toFixed(2)}`;
 
@@ -2149,8 +2196,8 @@
                         // =========================================================================
                     }
                 }
-            } catch (e) { 
-                console.error("Erreur de solde:", e); 
+            } catch (e) {
+                console.error("Erreur de solde:", e);
             }
         }
         function logoutPlayer() {
@@ -2497,6 +2544,13 @@
             if (sentinel) sentinel.remove();
         }
 
+
+        // ================= محرك ألعاب SMPL Premium =================
+        function initSMPLLobby() {
+            console.log("🚀 Initialisation du lobby SMPL Premium...");
+            // ملاحظة: سيتم دمج خوارزمية جلب الألعاب (Games API) هنا
+            // لتعبئة شبكة 'smpl-games-grid' بالألعاب الحقيقية
+        }
 
 
         // Virtuals (EuroVirtuals)
