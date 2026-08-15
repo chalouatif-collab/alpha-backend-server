@@ -53,7 +53,8 @@
     <!-- حاوية الإشعارات -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 w-full max-w-sm px-4 pointer-events-none"></div>
 
-    <main class="w-full max-w-md glass-card rounded-[2rem] p-8 relative z-10 overflow-hidden">
+    <!-- تمت إزالة overflow-hidden للسماح للبطاقة بالتمدد بحرية -->
+    <main class="w-full max-w-md glass-card rounded-[2rem] p-8 relative z-10">
         
         <!-- الديكور العلوي للبطاقة -->
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
@@ -69,7 +70,7 @@
         </div>
 
         <!-- الخطوة 1: تسجيل الدخول الأساسي -->
-        <div id="step-1-login" class="space-y-5 text-sm font-bold transition-all duration-700 opacity-100 transform translate-x-0">
+        <div id="step-1-login" class="space-y-5 text-sm font-bold transition-all duration-500 opacity-100 transform translate-x-0">
             <div class="space-y-1.5">
                 <label class="text-slate-400 block px-1 text-xs uppercase tracking-wider">Identifiant</label>
                 <div class="relative">
@@ -100,8 +101,8 @@
             </button>
         </div>
 
-        <!-- الخطوة 2: التحقق الثنائي (مخفية افتراضياً) -->
-        <div id="step-2-2fa" class="space-y-5 text-sm font-bold hidden opacity-0 transform translate-x-10 transition-all duration-700 absolute top-28 left-8 right-8">
+        <!-- الخطوة 2: التحقق الثنائي (تمت إزالة التموضع المطلق لإصلاح الخلل) -->
+        <div id="step-2-2fa" class="space-y-5 text-sm font-bold hidden opacity-0 transform translate-x-10 transition-all duration-500">
             <div class="text-center mb-6">
                 <p class="text-white text-base font-bold">Vérification en deux étapes</p>
                 <p class="text-slate-400 text-xs font-normal mt-1 leading-relaxed">Veuillez saisir le code à 6 chiffres généré par votre application Google Authenticator.</p>
@@ -121,7 +122,7 @@
                 </span>
             </button>
             
-            <button onclick="resetToStep1()" class="w-full text-slate-500 hover:text-white font-normal mt-2 text-xs flex items-center justify-center gap-1 transition-colors">
+            <button onclick="resetToStep1()" class="w-full text-slate-500 hover:text-white font-normal mt-2 text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
@@ -134,7 +135,7 @@
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         let validUsername = "";
 
-        // دالة إشعارات مطورة تناسب التصميم
+        // دالة إشعارات مطورة
         function showNotification(message, type = 'success') {
             const container = document.getElementById('toast-container');
             if(!container) return;
@@ -148,12 +149,10 @@
             toast.innerHTML = `${icon} <span class="tracking-wide">${message}</span>`;
             container.appendChild(toast);
             
-            // تحريك الدخول
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-x-full');
             });
 
-            // تحريك الخروج
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-x-4');
                 setTimeout(() => toast.remove(), 300);
@@ -188,7 +187,7 @@
                 
                 validUsername = data.username;
                 
-                // أنيميشن الانتقال السينمائي
+                // الانتقال إلى الخطوة 2
                 const step1 = document.getElementById('step-1-login');
                 const step2 = document.getElementById('step-2-2fa');
                 
@@ -197,13 +196,9 @@
                 
                 setTimeout(() => {
                     step1.classList.add('hidden');
-                    step1.classList.remove('relative');
-                    step1.classList.add('absolute');
+                    step2.classList.remove('hidden');
                     
-                    step2.classList.remove('hidden', 'absolute');
-                    step2.classList.add('relative');
-                    
-                    // Trigger reflow
+                    // Trigger reflow للسماح للبطاقة بتعديل الارتفاع قبل الحركة
                     void step2.offsetWidth;
                     
                     step2.classList.remove('translate-x-10', 'opacity-0');
@@ -257,7 +252,7 @@
                 
                 showNotification('Liaison sécurisée établie !', 'success');
                 
-                // تأثير بصري للنجاح قبل التوجيه
+                // تأثير بصري للنجاح
                 document.getElementById('auth-2fa-code').classList.replace('text-cyan-400', 'text-emerald-400');
                 document.getElementById('auth-2fa-code').classList.replace('border-slate-700', 'border-emerald-500');
                 
@@ -291,16 +286,13 @@
             document.getElementById('auth-password').value = '';
             document.getElementById('auth-2fa-code').value = '';
 
-            // أنيميشن العودة
+            // الانتقال للعودة للخطوة 1
             step2.classList.remove('translate-x-0', 'opacity-100');
             step2.classList.add('translate-x-10', 'opacity-0');
             
             setTimeout(() => {
-                step2.classList.add('hidden', 'absolute');
-                step2.classList.remove('relative');
-                
-                step1.classList.remove('hidden', 'absolute');
-                step1.classList.add('relative');
+                step2.classList.add('hidden');
+                step1.classList.remove('hidden');
                 
                 void step1.offsetWidth;
                 
@@ -309,7 +301,6 @@
             }, 400);
         }
 
-        // دعم الضغط على Enter
         document.getElementById('auth-password').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') handleLoginStep1();
         });
