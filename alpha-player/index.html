@@ -2546,10 +2546,92 @@
 
 
         // ================= محرك ألعاب SMPL Premium =================
-        function initSMPLLobby() {
-            console.log("🚀 Initialisation du lobby SMPL Premium...");
-            // ملاحظة: سيتم دمج خوارزمية جلب الألعاب (Games API) هنا
-            // لتعبئة شبكة 'smpl-games-grid' بالألعاب الحقيقية
+        let smplGames = [];
+
+        async function initSMPLLobby() {
+            const container = document.getElementById('smpl-games-grid');
+            container.innerHTML = '<div class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display tracking-widest text-lg">CHARGEMENT DES JEUX PREMIUM... ⏳</div>';
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/smpl/get-games`);
+                const data = await res.json();
+                
+                if (data.status === "success" && data.games) {
+                    smplGames = data.games;
+                    renderSMPLGrid(smplGames);
+                } else {
+                    container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10">Erreur de chargement des jeux.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10">Erreur réseau.</div>';
+            }
+        }
+
+        function renderSMPLGrid(games) {
+            const container = document.getElementById('smpl-games-grid');
+            if (games.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Aucun jeu trouvé.</div>';
+                return;
+            }
+
+            container.innerHTML = games.map(g => {
+                const title = g.name || "Game";
+                const img = g.image || "https://placehold.co/400x400/0f172a/3b82f6?text=Premium";
+                const code = g.id;
+                const provider = g.provider || "Premium";
+                const isLive = g.has_lobby === 1;
+
+                return `
+                <div onclick="launchSMPLGame('${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-blue-500/20 group cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.1)] hover:border-blue-400 hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] transition-all flex flex-col h-full relative">
+                    ${isLive ? '<div class="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black px-2 py-1 rounded-bl-lg z-20 shadow-md animate-pulse">LIVE</div>' : ''}
+                    <div class="relative w-full aspect-square overflow-hidden">
+                        <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-10">
+                            <span class="bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]">JOUER</span>
+                        </div>
+                    </div>
+                    <div class="p-2 flex flex-col justify-between bg-q-panel border-t border-white/5 flex-grow">
+                        <span class="text-blue-400 text-[8px] font-black tracking-widest uppercase mb-1">${provider}</span>
+                        <span class="text-white text-[10px] md:text-xs font-bold truncate pr-1 group-hover:text-blue-300 transition-colors">${title}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function launchSMPLGame(gameUuid) {
+            if (!playerSession) return openLoginModal();
+            
+            const container = document.getElementById('casino-iframe-container');
+            const iframe = document.getElementById('casino-iframe');
+            const loader = document.getElementById('casino-loader');
+            
+            container.classList.remove('hidden'); container.classList.add('flex');
+            history.pushState({ modalOpen: true }, "", "");
+            if (loader) loader.style.display = 'flex';
+            iframe.style.opacity = '0';
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/smpl/launch`, {
+                    method: 'POST', 
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ 
+                        game_uuid: gameUuid, 
+                        user_code: playerSession.username 
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.launch_url) {
+                    iframe.src = data.launch_url;
+                    iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
+                } else {
+                    showNotification(data.error || "Erreur de lancement", "error");
+                    closeCasinoGame();
+                }
+            } catch (error) { 
+                showNotification("Erreur de connexion", "error"); 
+                closeCasinoGame(); 
+            }
         }
 
 
@@ -3042,44 +3124,77 @@
             }
         }
 
-        // ================= محرك الجاكبوت الحي (Live Jackpots) =================
-        function startJackpots() {
-            setInterval(() => {
-                const now = new Date();
+       // ================= محرك الجاكبوت الحي (Live Jackpots - Real API) =================
+        
+        // دالة الأرقام الوهمية (تعمل كخطة بديلة إذا فشل الاتصال بالمزود)
+        function simulateJackpots() {
+            const now = new Date();
+            let miniProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+            let megaVal = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000);
+            let majorVal = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350);
+            let miniVal = (miniProgress * 120);
 
-                // حساب التقدم اليومي والأسبوعي والشهري
-                let miniProgress = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
-                let megaVal = (((now.getDate() - 1) * 86400 + (now.getHours() * 3600)) / 2592000 * 1000);
-                let majorVal = ((((now.getDay() === 0 ? 7 : now.getDay()) - 1) * 86400 + (now.getHours() * 3600 + now.getMinutes() * 60)) / 604800 * 350);
-                let miniVal = (miniProgress * 120);
+            const m = document.getElementById('jackpot-mega');
+            if (m) m.innerText = megaVal.toFixed(2);
+            const maj = document.getElementById('jackpot-major');
+            if (maj) maj.innerText = majorVal.toFixed(2);
+            const min = document.getElementById('jackpot-mini');
+            if (min) min.innerText = miniVal.toFixed(2);
 
-                // تحديث الأرقام في الشاشة
-                const m = document.getElementById('jackpot-mega');
-                if (m) m.innerText = megaVal.toFixed(2);
-
-                const maj = document.getElementById('jackpot-major');
-                if (maj) maj.innerText = majorVal.toFixed(2);
-
-                const min = document.getElementById('jackpot-mini');
-                if (min) min.innerText = miniVal.toFixed(2);
-
-                // تأثير النبض الخطر للـ Mega عندما يتجاوز 700
-                const megaWrapper = document.getElementById('mega-wrapper');
-                if (megaWrapper) {
-                    if (megaVal > 700) {
-                        megaWrapper.classList.add('about-to-drop');
-                    } else {
-                        megaWrapper.classList.remove('about-to-drop');
-                    }
-                }
-            }, 1000); // تحديث كل ثانية
+            const megaWrapper = document.getElementById('mega-wrapper');
+            if (megaWrapper) {
+                if (megaVal > 700) megaWrapper.classList.add('about-to-drop');
+                else megaWrapper.classList.remove('about-to-drop');
+            }
         }
 
-        // تشغيل الجاكبوت فوراً لضمان عمله
-        setTimeout(() => {
-            startJackpots();
-        }, 500);
+        // دالة الجاكبوت الحقيقية
+        async function startRealJackpots() {
+            const fetchAndUpdate = async () => {
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/smpl/jackpots`);
+                    const data = await res.json();
+                    
+                    // التحقق من وجود بيانات حقيقية
+                    if (Array.isArray(data) && data.length > 0) {
+                        // ترتيب الجوائز من الأكبر للأصغر
+                        const sortedJackpots = data.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+                        
+                        // Mega (أكبر مبلغ)
+                        if (sortedJackpots[0] && document.getElementById('jackpot-mega')) {
+                            document.getElementById('jackpot-mega').innerText = parseFloat(sortedJackpots[0].amount).toFixed(2);
+                        }
+                        // Major (ثاني أكبر مبلغ)
+                        if (sortedJackpots[1] && document.getElementById('jackpot-major')) {
+                            document.getElementById('jackpot-major').innerText = parseFloat(sortedJackpots[1].amount).toFixed(2);
+                        }
+                        // Mini (ثالث مبلغ)
+                        if (sortedJackpots[2] && document.getElementById('jackpot-mini')) {
+                            document.getElementById('jackpot-mini').innerText = parseFloat(sortedJackpots[2].amount).toFixed(2);
+                        }
+                    } else {
+                        // تشغيل الأرقام الوهمية إذا كانت القائمة فارغة
+                        simulateJackpots();
+                    }
+                } catch (e) {
+                    console.error("Erreur Jackpots:", e);
+                    simulateJackpots(); // تشغيل الأرقام الوهمية عند انقطاع الاتصال
+                }
+            };
 
+            // جلب الأرقام فوراً عند فتح الصفحة
+            fetchAndUpdate();
+            // تحديث الأرقام كل 60 ثانية (حسب طلب المزود لعدم الضغط على السيرفر)
+            setInterval(fetchAndUpdate, 60000);
+            // إبقاء عداد الأرقام الوهمية يعمل في الخلفية كحركة بصرية في الثواني بين التحديثات
+            setInterval(simulateJackpots, 1000);
+        }
+
+        // تشغيل المحرك
+        setTimeout(() => {
+            startRealJackpots();
+        }, 500);
+        
         // ================= محرك ألعاب اليوم (6 ألعاب) =================
         async function loadGamesOfTheDay() {
             const container = document.getElementById('games-of-the-day-grid');

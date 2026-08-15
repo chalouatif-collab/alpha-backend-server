@@ -2212,3 +2212,169 @@ async def smpl_webhook(request: Request):
         content={"error_code": "INTERNAL_ERROR", "error_description": "Unknown action"},
         status_code=400
     )
+    
+    # ==========================================
+# 🎮 دوال جلب وتشغيل الألعاب لمزود SMPL
+# ==========================================
+
+# ⚠️ ملاحظة: هذه المفاتيح يجب أن يعطيها لك المندوب لاحقاً لتشغيل الألعاب الحقيقية
+SMPL_MERCHANT_ID = "ff955b5759b3885f08cf125d4454ceb4" 
+SMPL_MERCHANT_KEY = "your-merchant-key-here"
+SMPL_BASE_URL = "https://staging.smplcore.net/api/index.php/v1"
+
+# خوارزمية توقيع الطلبات لـ SMPL
+def get_smpl_headers_and_sign(data=None):
+    if data is None:
+        data = {}
+        
+    timestamp = str(int(time.time()))
+    nonce = uuid.uuid4().hex
+    
+    headers_dict = {
+        'X-Merchant-Id': SMPL_MERCHANT_ID,
+        'X-Timestamp': timestamp,
+        'X-Nonce': nonce
+    }
+    
+    # دمج البيانات مع الهيدرز للتوقيع
+    merged_params = headers_dict.copy()
+    merged_params.update(data)
+    
+    # ترتيب أبجدي والتشفير
+    sorted_params = dict(sorted(merged_params.items()))
+    hash_string = urllib.parse.urlencode(sorted_params)
+    signature = hmac.new(
+        SMPL_MERCHANT_KEY.encode('utf-8'),
+        hash_string.encode('utf-8'),
+        hashlib.sha1
+    ).hexdigest()
+    
+    headers_dict['X-Sign'] = signature
+    return headers_dict
+
+# 1. مسار جلب قائمة الألعاب
+SMPL_GAMES_CACHE = {"time": 0, "data": []}
+
+@app.get("/api/smpl/get-games")
+async def get_smpl_games():
+    current_time = time.time()
+    # استخدام ذاكرة التخزين المؤقت (Cache) لتخفيف الضغط على السيرفر
+    if current_time - SMPL_GAMES_CACHE["time"] < 3600 and SMPL_GAMES_CACHE["data"]:
+        return {"status": "success", "games": SMPL_GAMES_CACHE["data"]}
+        
+    params = {"limit": 500} # جلب أكبر عدد ممكن من الألعاب
+    headers = get_smpl_headers_and_sign(params)
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=20)
+            games_data = response.json()
+            
+            # تنظيف وتنسيق البيانات للواجهة
+            formatted_games = []
+            if isinstance(games_data, list):
+                for g in games_data:
+                    formatted_games.append({
+                        "id": g.get("uuid"),
+                        "name": g.get("name"),
+                        "image": g.get("image"),
+                        "provider": g.get("provider", "Premium"),
+                        "has_lobby": g.get("has_lobby", 0)
+                    })
+                
+                SMPL_GAMES_CACHE["time"] = current_time
+                SMPL_GAMES_CACHE["data"] = formatted_games
+            
+            return {"status": "success", "games": formatted_games}
+        except Exception as e:
+            print("SMPL Games API Error:", e)
+            return {"status": "error", "message": "Failed to fetch games"}
+
+# 2. مسار تشغيل اللعبة
+class SMPLLaunchRequest(BaseModel):
+    game_uuid: str
+    user_code: str
+
+@app.post("/api/smpl/launch")
+async def launch_smpl_game(req: SMPLLaunchRequest):
+    payload = {
+        "game_uuid": req.game_uuid,
+        "player_id": req.user_code,
+        "player_name": req.user_code,
+        "currency": "TND", 
+        "session_id": f"sess_{uuid.uuid4().hex[:10]}",
+        "return_url": "https://alphabet216.com/"
+    }
+    
+    headers = get_smpl_headers_and_sign(payload)
+    headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{SMPL_BASE_URL}/games/init", 
+                data=payload,
+                headers=headers, 
+                timeout=20
+            )
+            res_data = response.json()
+            
+            if "url" in res_data:
+                return {"launch_url": res_data["url"]}
+            else:
+                return {"error": "Échec du lancement du jeu", "details": res_data}
+        except Exception as e:
+            return {"error": "Erreur de connexion au serveur Premium"}
+        # ==========================================
+# 📊 لوحة العدادات والجاكبوت لمزود SMPL
+# ==========================================
+
+@app.get("/api/smpl/limits")
+async def get_smpl_limits():
+    """مسار مخصص لك كأدمن لمراقبة رصيدك المتبقي لدى المزود"""
+    headers = get_smpl_headers_and_sign()
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{SMPL_BASE_URL}/limits", headers=headers, timeout=15)
+            return response.json()
+        except Exception as e:
+            return {"error": "فشل الاتصال بسيرفر المزود لجلب الحدود", "details": str(e)}
+
+@app.get("/api/smpl/jackpots")
+async def get_smpl_jackpots():
+    """مسار لجلب الجوائز الكبرى (Jackpots) الحقيقية والمباشرة"""
+    headers = get_smpl_headers_and_sign()
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{SMPL_BASE_URL}/jackpots", headers=headers, timeout=15)
+            # المزود يقوم بحفظ النتيجة في الكاش لديه لمدة 60 ثانية
+            return response.json()
+        except Exception as e:
+            return {"error": "فشل الاتصال بسيرفر المزود لجلب الجاكبوت", "details": str(e)}
+        
+        # ==========================================
+# 📊 لوحة العدادات والجاكبوت لمزود SMPL
+# ==========================================
+
+@app.get("/api/smpl/limits")
+async def get_smpl_limits():
+    """مسار مخصص لك كأدمن لمراقبة رصيدك المتبقي لدى المزود"""
+    headers = get_smpl_headers_and_sign()
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{SMPL_BASE_URL}/limits", headers=headers, timeout=15)
+            return response.json()
+        except Exception as e:
+            return {"error": "فشل الاتصال بسيرفر المزود لجلب الحدود", "details": str(e)}
+
+@app.get("/api/smpl/jackpots")
+async def get_smpl_jackpots():
+    """مسار لجلب الجوائز الكبرى (Jackpots) الحقيقية والمباشرة"""
+    headers = get_smpl_headers_and_sign()
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{SMPL_BASE_URL}/jackpots", headers=headers, timeout=15)
+            # المزود يقوم بحفظ النتيجة في الكاش لديه لمدة 60 ثانية
+            return response.json()
+        except Exception as e:
+            return {"error": "فشل الاتصال بسيرفر المزود لجلب الجاكبوت", "details": str(e)}
