@@ -1027,7 +1027,7 @@
                 <button onclick="switchSection('accueil')" id="btn-menu-accueil"
                     class="btn-glass active px-5 py-2 rounded-full text-xs font-semibold tracking-wider cursor-pointer"><i
                         class="fas fa-home mr-2 text-q-cyan"></i>Accueil</button>
-                <button onclick="openSportsbook()" id="btn-menu-sport"
+                <button onclick="openSportsSelector()" id="btn-menu-sport"
                     class="btn-glass px-5 py-2 rounded-full text-xs font-semibold tracking-wider text-gray-300 hover:text-white cursor-pointer"><i
                         class="fas fa-futbol mr-2 text-green-400"></i>Sports</button>
                 <button onclick="switchSection('casino'); initCasinoLobby();" id="btn-menu-casino"
@@ -1069,7 +1069,37 @@
             </div>
         </div>
     </div>
+    <!-- ================= Modal اختيار الرياضة ================= -->
+<div id="sports-selector-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+    <div class="bg-[#1e1e2f] border border-blue-500/30 rounded-2xl p-6 w-11/12 max-w-md shadow-[0_0_40px_rgba(59,130,246,0.3)] transform scale-95 transition-transform duration-300 relative">
+        <!-- زر الإغلاق -->
+        <button onclick="closeSportsSelector()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
 
+        <h3 class="text-xl md:text-2xl font-black text-white text-center mb-6 tracking-wider font-display">CHOISISSEZ VOTRE <span class="text-blue-500">SPORT</span></h3>
+
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Sport 1 -->
+            <button onclick="launchSport1()" class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-blue-500 hover:bg-blue-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                <div class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                    <span class="text-3xl">⚽</span>
+                </div>
+                <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 1</span>
+                <span class="text-blue-400 text-[10px] mt-1 font-bold">NEXUS</span>
+            </button>
+
+            <!-- Sport 2 -->
+            <button onclick="launchSport2()" class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-green-500 hover:bg-green-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                <div class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-green-600 to-green-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.5)]">
+                    <span class="text-3xl">🏀</span>
+                </div>
+                <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 2</span>
+                <span class="text-green-400 text-[10px] mt-1 font-bold">PREMIUM</span>
+            </button>
+        </div>
+    </div>
+</div>
 
     <!-- Expandable Sidebar (Desktop) -->
     <aside class="fixed left-4 top-1/2 transform -translate-y-1/2 z-50 hidden xl:flex flex-col gap-4">
@@ -3194,7 +3224,7 @@
         setTimeout(() => {
             startRealJackpots();
         }, 500);
-        
+
         // ================= محرك ألعاب اليوم (6 ألعاب) =================
         async function loadGamesOfTheDay() {
             const container = document.getElementById('games-of-the-day-grid');
@@ -3376,7 +3406,47 @@
                 loader.style.display = 'none';
             }, 1000); // ننتظر ثانية حتى ينتهي تأثير التلاشي
         });
+// ================= دوال التحكم في نافذة اختيار الرياضة =================
 
+function openSportsSelector() {
+    // التحقق أولاً إذا كان اللاعب مسجلاً للدخول
+    if (!playerSession) return openLoginModal(); 
+
+    const modal = document.getElementById('sports-selector-modal');
+    modal.classList.remove('hidden');
+    // تفعيل الأنيميشن
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('div').classList.remove('scale-95');
+    }, 10);
+}
+
+function closeSportsSelector() {
+    const modal = document.getElementById('sports-selector-modal');
+    modal.classList.add('opacity-0');
+    modal.querySelector('div').classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300); // الانتظار حتى ينتهي تأثير الاختفاء
+}
+
+// دالة تشغيل سبور 1
+function launchSport1() {
+    closeSportsSelector();
+    // هنا نضع الدالة القديمة التي تفتح الرياضة الأولى (Nexus)
+    // إذا كانت دالتك القديمة اسمها launchSportsbook قم باستدعائها هكذا:
+    if(typeof launchSportsbook === "function") {
+        launchSportsbook();
+    }
+}
+
+// دالة تشغيل سبور 2
+function launchSport2() {
+    closeSportsSelector();
+    // هنا سنضع كود تشغيل منصة الرياضة الثانية لاحقاً
+    showNotification("Chargement Sport 2...", "success");
+    // TODO: استدعاء API السبور الثاني
+}
     </script>
 
 

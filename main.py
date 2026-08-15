@@ -269,10 +269,6 @@ async def add_security_headers(request: Request, call_next):
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-API_KEY = os.environ.get("API_KEY")
-
-if not API_KEY:
-    raise ValueError("⚠️ تنبيه أمني: مفتاح API_KEY مفقود من إعدادات الخادم (Environment Variables)!")
 
 # 🚨 إعدادات الإنذار المبكر (Telegram)
 TELEGRAM_TOKEN = "8879806026:AAEB64RCPW4KzsUXUlDeztP_PzjtxkJv_4g"
@@ -1079,23 +1075,6 @@ async def launch_casino(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-# ==========================================
-# الرياضة الوهمية
-# ==========================================
-cache = {"last_update": 0, "matches": []}
-@app.get("/api/sports/get-live-matches")
-async def get_sports():
-    current_time = time.time()
-    if current_time - cache["last_update"] > 900: 
-        leagues = ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_uefa_champs_league"]
-        all_matches = []
-        for league in leagues:
-            try:
-                response = requests.get(f"https://api.the-odds-api.eu/v4/sports/{league}/odds?apiKey={API_KEY}&regions=eu&markets=h2h,spreads,totals&oddsFormat=decimal", timeout=5) 
-                if response.status_code == 200: all_matches.extend(response.json())
-            except: pass
-        cache["matches"], cache["last_update"] = all_matches, current_time
-    return cache["matches"]
 
 # ==========================================
 # الجدار الأمني الثاني: حماية لوحة المالك
@@ -2356,17 +2335,6 @@ async def get_smpl_jackpots():
 # 📊 لوحة العدادات والجاكبوت لمزود SMPL
 # ==========================================
 
-@app.get("/api/smpl/limits")
-async def get_smpl_limits():
-    """مسار مخصص لك كأدمن لمراقبة رصيدك المتبقي لدى المزود"""
-    headers = get_smpl_headers_and_sign()
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(f"{SMPL_BASE_URL}/limits", headers=headers, timeout=15)
-            return response.json()
-        except Exception as e:
-            return {"error": "فشل الاتصال بسيرفر المزود لجلب الحدود", "details": str(e)}
-
 @app.get("/api/smpl/jackpots")
 async def get_smpl_jackpots():
     """مسار لجلب الجوائز الكبرى (Jackpots) الحقيقية والمباشرة"""
@@ -2378,3 +2346,169 @@ async def get_smpl_jackpots():
             return response.json()
         except Exception as e:
             return {"error": "فشل الاتصال بسيرفر المزود لجلب الجاكبوت", "details": str(e)}
+        # ==========================================
+# ⚽ محرك المنصة الرياضية الشامل (Sportsbook Seamless Webhook)
+# ==========================================
+
+@app.post("/api/sportsbook/webhook")
+async def sportsbook_webhook(request: Request):
+    """
+    نقطة اتصال واحدة وذكية لمعالجة جميع طلبات مزود الرياضة
+    متوافقة تماماً مع نظام (Firebase) وقاعدة بيانات SQL الخاصة بك
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    # 1. حالة استثنائية: طلب تصنيف اللاعب قد لا يحتوي على action
+    if "segment_ccf" in payload or "segment_name" in payload:
+        return {}
+
+    action = payload.get("action")
+    player_id = payload.get("player_id")
+
+    if not action or not player_id:
+        raise HTTPException(status_code=400, detail="Missing action or player_id")
+
+    # ==========================================
+    # 🛡️ القفل الذكي: لمنع التضارب وحماية الرصيد
+    # ==========================================
+    async with db_lock:
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username")) == str(player_id)), None)
+        
+        if not target_user or target_user.get("is_blocked") == 1:
+            raise HTTPException(status_code=400, detail="Player not found or blocked")
+
+        current_balance = float(target_user.get("balance", 0.0))
+        
+        # 🛡️ جدار الحماية ضد التكرار (Idempotency Check)
+        tx_id = payload.get("transaction_id")
+        if action == "refund" and not tx_id:
+            tx_id = f"auto-refund-{uuid.uuid4().hex[:10]}"
+            payload["transaction_id"] = tx_id
+
+        db_session = SessionLocal()
+        try:
+            # التأكد من أن العملية لم تُنفذ مسبقاً
+            if tx_id:
+                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == tx_id).first()
+                if existing_tx:
+                    return {
+                        "balance": round(current_balance, 2),
+                        "transaction_id": existing_tx.tx_id
+                    }
+
+            # ==========================================
+            # 🔄 توجيه العمليات
+            # ==========================================
+            if action == "balance":
+                return {"balance": round(current_balance, 2)}
+
+            elif action == "bet":
+                amount = float(payload.get("amount", 0.0))
+                if current_balance < amount:
+                    raise HTTPException(status_code=400, detail="Insufficient funds")
+                
+                new_balance = current_balance - amount
+                target_user["balance"] = round(new_balance, 2)
+                
+                # حفظ التذكرة الرياضية في ملف التذاكر (tickets_database.json) لتظهر للأدمن
+                betslip = payload.get("betslip", {})
+                tickets_db = load_tickets_db()
+                tickets_db.append({
+                    "ticket_id": payload.get("betslip_id", tx_id),
+                    "type": "sportsbook",
+                    "username": player_id,
+                    "amount": amount,
+                    "status": "encours",
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "details": betslip
+                })
+                save_tickets_db(tickets_db)
+                action_log = f"Sportsbook Bet | Ticket: {payload.get('betslip_id')}"
+
+            elif action == "commit":
+                return {"balance": round(current_balance, 2)}
+
+            elif action == "win":
+                amount = float(payload.get("amount", 0.0))
+                new_balance = current_balance + amount
+                target_user["balance"] = round(new_balance, 2)
+                
+                # تحديث التذكرة إلى رابحة
+                tickets_db = load_tickets_db()
+                for t in tickets_db:
+                    if str(t.get("ticket_id")) == str(payload.get("betslip_id")):
+                        t["status"] = "gagne"
+                        t["gain"] = amount
+                save_tickets_db(tickets_db)
+                action_log = f"Sportsbook Win | Ticket: {payload.get('betslip_id')}"
+
+            elif action == "refund":
+                amount = float(payload.get("amount", 0.0))
+                new_balance = current_balance + amount
+                target_user["balance"] = round(new_balance, 2)
+                
+                # تحديث التذكرة للاسترجاع
+                tickets_db = load_tickets_db()
+                for t in tickets_db:
+                    if str(t.get("ticket_id")) == str(payload.get("betslip_id")):
+                        t["status"] = "remboursé"
+                save_tickets_db(tickets_db)
+                action_log = f"Sportsbook Refund | Ticket: {payload.get('betslip_id')}"
+
+            elif action == "rollback":
+                amount = float(payload.get("amount", 0.0))
+                new_balance = current_balance + amount
+                target_user["balance"] = round(new_balance, 2)
+                
+                # تحديث التذكرة للإلغاء
+                tickets_db = load_tickets_db()
+                for t in tickets_db:
+                    if str(t.get("ticket_id")) == str(payload.get("betslip_id")):
+                        t["status"] = "annulé"
+                save_tickets_db(tickets_db)
+                action_log = f"Sportsbook Rollback | Ticket: {payload.get('betslip_id')}"
+
+            elif action == "settle":
+                tickets_db = load_tickets_db()
+                for t in tickets_db:
+                    if str(t.get("ticket_id")) == str(payload.get("betslip_id")):
+                        t["status"] = "settled"
+                save_tickets_db(tickets_db)
+                return {"balance": round(current_balance, 2), "status": "settled"}
+
+            elif action == "close":
+                return {"status": "Closed"}
+
+            else:
+                raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+
+            # ==========================================
+            # 💾 حفظ البيانات وتوثيق المعاملة
+            # ==========================================
+            save_db(db) # حفظ الرصيد الجديد في Firebase
+
+            # حفظ السجل المالي في قاعدة البيانات SQL لكي تظهر في تاريخ المعاملات
+            if action in ["bet", "win", "refund", "rollback"]:
+                new_tx = Transaction(
+                    admin_username="SPORTSBOOK_API",
+                    target_username=player_id,
+                    action=action_log,
+                    amount=amount if action in ["win", "refund", "rollback"] else -amount,
+                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    tx_id=tx_id
+                )
+                db_session.add(new_tx)
+                db_session.commit()
+
+            return {"balance": round(new_balance, 2), "transaction_id": tx_id}
+
+        except Exception as e:
+            db_session.rollback()
+            print(f"Sportsbook Error: {e}")
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+        finally:
+            db_session.close()
