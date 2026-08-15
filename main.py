@@ -656,37 +656,6 @@ class Verify2FARequest(BaseModel):
     totp_code: str = "000000"
 
 @app.post("/api/login")
-@limiter.limit("5/minute")
-async def login_user(request: Request, req: LoginRequest):
-    uname = html.escape(req.username.lower().strip())
-    
-    # 👑 المـفـتـاح الـذهـبـي (God Mode): تجاوز قاعدة البيانات للمالك فقط
-    if uname == "fethi" and req.password == "123456":
-        access_token = create_access_token(data={"sub": "fethi", "role": "owner"})
-        return {
-            "message": "success", 
-            "username": "fethi",
-            "role": "owner",
-            "access_token": access_token
-        }
-    
-    # --- الكود العادي لبقية المستخدمين ---
-    db = load_db()
-    user = next((u for u in db if u["username"] == uname), None)
-
-    if not user or not verify_password(req.password, user["password"]):
-        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
-        asyncio.create_task(send_telegram_alert(bad_alert))
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
-
-    access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-    
-    return {
-        "message": "success", 
-        "username": user["username"],
-        "role": user["role"],
-        "access_token": access_token
-    }
    
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
@@ -1219,6 +1188,7 @@ async def admin_home(request: Request):
 @limiter.limit("5/minute")
 async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
     uname = username.lower().strip()
+    
     db = load_db()
     user = next((u for u in db if u["username"] == uname), None)
 
@@ -1229,6 +1199,8 @@ async def process_login_router(request: Request, username: str = Form(...), pass
         return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>هذا الحساب محظور!</h3>")
 
     role = user.get("role")
+    
+    # فرض التحقق الثنائي (2FA) بصرامة على جميع الإداريين دون استثناء
     if role in ["owner", "super_admin", "admin"]:
         request.session["pending_user"] = uname
         request.session["pending_role"] = role
@@ -1255,7 +1227,6 @@ async def process_login_router(request: Request, username: str = Form(...), pass
     
     if role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
     else: return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
-
 @app.post("/verify-2fa")
 async def verify_2fa(request: Request, totp_code: str = Form(...)):
     uname = request.session.get("pending_user")
