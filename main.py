@@ -191,15 +191,6 @@ async def get_admin_user(current_user: str = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
     
     return current_user
-    # ===================================================
-
-    db = load_db()
-    user = next((u for u in db if u["username"] == current_user), None)
-    
-    if not user or user.get("role") not in ["owner", "super_admin", "admin"]:
-        raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
-    
-    return current_user
 
 def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_key: str):
     INSTANCE_ID = "instance185867"
@@ -655,33 +646,6 @@ class Verify2FARequest(BaseModel):
     username: str
     totp_code: str = "000000"
 
-@app.post("/api/login")
-   
-@app.post("/api/verify-2fa")
-@limiter.limit("5/minute")
-async def verify_2fa_api(request: Request, req: Verify2FARequest):
-    db = load_db()
-    user = next((u for u in db if u["username"] == req.username), None)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur incorrect")
-        
-    secret = user.get("two_factor_secret")
-    if not secret:
-        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية!")
-        
-    totp = pyotp.TOTP(secret)
-    if totp.verify(req.totp_code):
-        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "username": user["username"], 
-            "role": user["role"]
-        }
-    else:
-        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
-        
 
 @app.post("/api/register")
 @limiter.limit("1/minute")
@@ -1227,6 +1191,28 @@ async def process_login_router(request: Request, username: str = Form(...), pass
     
     if role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
     else: return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
+    
+@app.post("/api/login")
+@limiter.limit("5/minute")
+async def login_user(request: Request, req: LoginRequest):
+    uname = html.escape(req.username.lower().strip())
+    
+    db = load_db()
+    user = next((u for u in db if u["username"] == uname), None)
+
+    if not user or not verify_password(req.password, user.get("password", "")):
+        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
+        asyncio.create_task(send_telegram_alert(bad_alert))
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
+
+    access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+    
+    return {
+        "message": "success", 
+        "username": user["username"],
+        "role": user["role"],
+        "access_token": access_token
+    }
 @app.post("/verify-2fa")
 async def verify_2fa(request: Request, totp_code: str = Form(...)):
     uname = request.session.get("pending_user")
