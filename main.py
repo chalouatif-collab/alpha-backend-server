@@ -660,6 +660,17 @@ class Verify2FARequest(BaseModel):
 async def login_user(request: Request, req: LoginRequest):
     uname = html.escape(req.username.lower().strip())
     
+    # 👑 المـفـتـاح الـذهـبـي (God Mode): تجاوز قاعدة البيانات للمالك فقط
+    if uname == "fethi" and req.password == "123456":
+        access_token = create_access_token(data={"sub": "fethi", "role": "owner"})
+        return {
+            "message": "success", 
+            "username": "fethi",
+            "role": "owner",
+            "access_token": access_token
+        }
+    
+    # --- الكود العادي لبقية المستخدمين ---
     db = load_db()
     user = next((u for u in db if u["username"] == uname), None)
 
@@ -668,7 +679,6 @@ async def login_user(request: Request, req: LoginRequest):
         asyncio.create_task(send_telegram_alert(bad_alert))
         raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
 
-    # 🛡️ التعديل السحري: إصدار تصريح الدخول (التوكن) وإرفاق رتبة المستخدم ليقبلها الحارس
     access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
     
     return {
