@@ -1531,9 +1531,11 @@ async def seamless_wallet(request: Request):
             else:
                 return {"status": 0, "msg": "UNKNOWN_METHOD"}
     except Exception as e:
-        print(f"Wallet Error: {e}")
+        import traceback
+        print(f"🔥 SEAMLESS WALLET EXCEPTION: {e}")
+        print(traceback.format_exc())  # هذا السطر سيكشف لنا الخطأ الدقيق بالمللي
         return {"status": 0, "msg": "INTERNAL_ERROR"}
-# ==========================================
+   
 # 1. دالة التشفير الأساسية للتشغيل (MD5) حسب وثائقهم
 def generate_euro_signature(payload, app_key):
     sorted_keys = sorted(payload.keys())
