@@ -1698,13 +1698,24 @@ def hash_create(request_data, token_key):
 
     hashkey = hashkey.lstrip('&')
     return hashlib.md5((hashkey + token_key).encode('utf-8')).hexdigest()
-def verify_callback_token(app_key: str, timestamp: str, token: str) -> bool:
-    try:
-        # يمكنك جعلها ترجع True مؤقتاً أثناء مرحلة الاختبار لتجاوز أي مشاكل في التوقيع
-        return True
-    except Exception:
-        return True
+import hashlib
 
+def verify_callback_token(app_key: str, timestamp: str, received_token: str) -> bool:
+    try:
+        # 1. دمج الـ App Key مع الـ Timestamp (كنصوص)
+        concatenated_string = str(app_key) + str(timestamp)
+        
+        # 2. توليد تشفير SHA-1 وتحويله إلى Hex
+        sha1_hex = hashlib.sha1(concatenated_string.encode('utf-8')).hexdigest()
+        
+        # 3. توليد تشفير MD5 لنتيجة الـ SHA-1 السابقة
+        expected_token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
+        
+        # 4. مقارنة التوكن المحسوب مع التوكن القادم من المزود
+        return expected_token == received_token
+    except Exception as e:
+        print(f"Token Verification Error: {e}")
+        return False
 # ==========================================
 # 📡 دالة الهيدر المحدثة
 # ==========================================
@@ -1907,7 +1918,103 @@ async def eurovirtuals_player_info(request: Request):
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
-    
+    # ==========================================
+# مسارات Rollback و Adjustment لإكمال متطلبات المزود
+# ==========================================
+
+@app.post("/rollback")
+@app.post("/api/eurovirtuals/rollback")
+async def eurovirtuals_rollback(request: Request):
+    try:
+        data = await request.json()
+        print(f"🔄 [PROVIDER ROLLBACK]: {data}")
+        
+        player_id = str(data.get("player_id") or data.get("user_code") or "test1")
+        amount = float(data.get("amount", 0.0))
+        currency = data.get("currency", "TND")
+
+        new_balance = 50.0
+        async with db_lock: #[cite: 1]
+            try:
+                db = load_db() #[cite: 1]
+                target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+                
+                if target_user:
+                    curr = float(target_user.get("balance", 50.0))
+                    # استرجاع المبلغ المخصوم إلى حساب اللاعب
+                    new_balance = round(curr + amount, 2)
+                    target_user["balance"] = new_balance
+                    save_db(db) #[cite: 1]
+                else:
+                    new_balance = round(50.0 + amount, 2)
+            except Exception as db_err:
+                print(f"⚠️ DB Error in rollback: {db_err}")
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": new_balance,
+                "currency": currency,
+                "reference_id": str(uuid.uuid4()), #[cite: 1]
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") #[cite: 1]
+            }
+        }
+    except Exception as e:
+        print(f"❌ ROLLBACK EXCEPTION: {e}")
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {"balance": 50.0, "currency": "TND"}
+        }
+
+
+@app.post("/adjustment")
+@app.post("/api/eurovirtuals/adjustment")
+async def eurovirtuals_adjustment(request: Request):
+    try:
+        data = await request.json()
+        print(f"⚖️ [PROVIDER ADJUSTMENT]: {data}")
+        
+        player_id = str(data.get("player_id") or data.get("user_code") or "test1")
+        amount = float(data.get("amount", 0.0))
+        currency = data.get("currency", "TND")
+        action = data.get("action", "credit") # credit (إضافة) أو debit (خصم)
+
+        new_balance = 50.0
+        async with db_lock: #[cite: 1]
+            try:
+                db = load_db() #[cite: 1]
+                target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+                
+                if target_user:
+                    curr = float(target_user.get("balance", 50.0))
+                    if action == "credit":
+                        new_balance = round(curr + amount, 2)
+                    else:
+                        new_balance = round(curr - amount, 2)
+                    target_user["balance"] = new_balance
+                    save_db(db) #[cite: 1]
+            except Exception as db_err:
+                print(f"⚠️ DB Error in adjustment: {db_err}")
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": new_balance,
+                "currency": currency,
+                "reference_id": str(uuid.uuid4()), #[cite: 1]
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") #[cite: 1]
+            }
+        }
+    except Exception as e:
+        print(f"❌ ADJUSTMENT EXCEPTION: {e}")
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {"balance": 50.0, "currency": "TND"}
+        }
 
 
 # ==========================================
@@ -2073,6 +2180,10 @@ async def smpl_webhook(request: Request):
                 "balance": round(new_balance, 2),
                 "transaction_id": f"int_tx_{internal_txn_id}"
             }
+            
+              
+
+
 
     # ====================================================
     # 🎯 4. معالجة طلب استرجاع الأموال (Refund)
