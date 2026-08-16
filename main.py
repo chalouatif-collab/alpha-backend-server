@@ -1535,6 +1535,76 @@ async def eurovirtuals_player_info(
             "status_description": str(e)
         }
         
+@app.post("/gold_api")
+@app.post("/gold_api/gold_api")
+async def gold_api(request: Request):
+    try:
+        try:
+            data = await request.json()
+        except:
+            form = await request.form()
+            data = dict(form)
+            
+        print(f"🔥 [GOLD API REQUEST]: {data}")
+        method = str(data.get("method", "")).lower()
+        user_code = data.get("user_code")
+        
+        if not user_code:
+            return {"status": 0, "msg": "USER_NOT_FOUND", "message": "User not found"}
+
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(user_code).lower().strip()), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return {"status": 0, "msg": "USER_NOT_FOUND", "message": "User not found"}
+
+            current_balance = float(target_user.get("balance", 0.0))
+
+            # 1. الاستعلام عن الرصيد
+            if method == "user_balance" or not method:
+                return {
+                    "status": 1,
+                    "user_balance": round(current_balance, 2),
+                    "balance": round(current_balance, 2)
+                }
+            
+            # 2. تنفيذ معاملة الرهان أو الربح (Spin / Transaction)
+            elif method == "transaction" or method == "bet":
+                game_data = data.get("game_data", {})
+                if isinstance(game_data, str):
+                    import json
+                    try: game_data = json.loads(game_data)
+                    except: game_data = {}
+                
+                bet_money = float(data.get("bet_money") or game_data.get("bet_money", 0.0))
+                win_money = float(data.get("win_money") or game_data.get("win_money", 0.0))
+                
+                if current_balance < bet_money:
+                    return {"status": 0, "msg": "INSUFFICIENT_FUNDS", "message": "Insufficient funds"}
+                
+                new_balance = current_balance - bet_money + win_money
+                target_user["balance"] = round(new_balance, 2)
+                save_db(db)
+                
+                return {
+                    "status": 1,
+                    "user_balance": round(new_balance, 2),
+                    "balance": round(new_balance, 2)
+                }
+            else:
+                return {
+                    "status": 1,
+                    "user_balance": round(current_balance, 2),
+                    "balance": round(current_balance, 2)
+                }
+                
+    except Exception as e:
+        import traceback
+        print(f"🔥 GOLD API EXCEPTION: {e}")
+        print(traceback.format_exc())
+        return {"status": "ERROR", "message": "Internal Error"}        
+        
 @app.post("/bet")
 @app.post("/api/eurovirtuals/bet")
 async def eurovirtuals_bet(
