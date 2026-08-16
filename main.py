@@ -1562,68 +1562,54 @@ async def gold_api_endpoint(request: Request):
         return {"status": "ERROR", "message": "Internal Error"}        
         
 @app.post("/bet")
-@app.post("/api/bet")
 @app.post("/api/eurovirtuals/bet")
-async def direct_frontend_bet(request: Request):
+async def eurovirtuals_exact_bet(request: Request):
     try:
-        # قراءة البيانات الواردة من اللعبة بمرونة مطلقة
-        try:
-            data = await request.json()
-        except Exception:
-            try:
-                form = await request.form()
-                data = dict(form)
-            except Exception:
-                data = {}
+        data = await request.json()
+        print(f"🔥 [EXACT PROVIDER BET]: {data}")
         
-        query_params = dict(request.query_params)
-        data = {**query_params, **data}
+        player_id = data.get("player_id") or "test1"
+        amount = float(data.get("amount", 1.0))
+        currency = data.get("currency", "TND")
         
-        print(f"🎯 [DIRECT BET HIT] Data: {data}")
-        
-        user_code = data.get("user_code") or data.get("player_id") or data.get("username") or "test1"
-        bet_amount = float(data.get("bet_money") or data.get("amount") or data.get("bet") or 1.0)
-        
-        # تحديث الرصيد في قاعدة البيانات بشكل آمن تماماً
+        # خصم المبلغ من قاعدة البيانات
         new_balance = 50.0
-        try:
-            db = load_db()
-            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(user_code).lower().strip()), None)
-            if target_user:
-                current_balance = float(target_user.get("balance", 50.0))
-                new_balance = round(current_balance - bet_amount, 2)
-                target_user["balance"] = new_balance
-                save_db(db)
-            else:
-                target_user = {"username": user_code, "balance": 49.0}
-                db.append(target_user)
-                save_db(db)
-                new_balance = 49.0
-        except Exception as db_err:
-            print(f"⚠️ DB Error in /bet: {db_err}")
-            new_balance = max(0.0, 50.0 - bet_amount)
+        async with db_lock:
+            try:
+                db = load_db()
+                target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(player_id).lower().strip()), None)
+                if target_user:
+                    curr = float(target_user.get("balance", 50.0))
+                    new_balance = round(curr - amount, 2)
+                    target_user["balance"] = new_balance
+                    save_db(db)
+                else:
+                    target_user = {"username": player_id, "balance": 49.0}
+                    db.append(target_user)
+                    save_db(db)
+                    new_balance = 49.0
+            except Exception as db_err:
+                print(f"⚠️ DB Error: {db_err}")
 
-        # الرد بالصيغة التي تتوقعها اللعبة تماماً لكي تدور العجلة
+        # الصيغة الرسمية الإلزامية للمزود بدون أي نقص
         return {
-            "status": "OK",
-            "balance": new_balance,
-            "user_balance": new_balance
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": new_balance,
+                "currency": currency,
+                "reference_id": str(uuid.uuid4()),
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
         }
         
     except Exception as e:
-        print(f"❌ CRITICAL ERROR in /bet: {e}")
-        # حتى في أسوأ الظروف، نعيد نجاح لكي لا تتوقف اللعبة
+        print(f"❌ PROVIDER BET EXCEPTION: {e}")
         return {
-            "status": "OK",
-            "balance": 50.0,
-            "user_balance": 50.0
+            "status_code": 500,
+            "status_description": str(e)
         }
                 
-    except Exception as e:
-        import traceback
-        print(f"🔥 UNIFIED BET EXCEPTION: {e}")
-        print(traceback.format_exc())
-        return {"status": "ERROR", "message": "Internal Error"}
     
     
 @app.post("/win")
