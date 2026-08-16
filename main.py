@@ -1606,64 +1606,80 @@ async def gold_api(request: Request):
         return {"status": "ERROR", "message": "Internal Error"}        
         
 @app.post("/bet")
+@app.post("/api/bet")
 @app.post("/api/eurovirtuals/bet")
-async def eurovirtuals_bet(
+async def unified_bet(
     request: Request,
     x_token_key: str = Header(None, alias="x-token-key"),
     x_signature_key: str = Header(None, alias="x-signature-key"),
     x_timestamp: str = Header(None, alias="x-timestamp")
 ):
     try:
-        print(f"DEBUG: Received Headers - Token: {x_token_key}, Sig: {x_signature_key}, TS: {x_timestamp}")
-        data = await request.json()
-        player_id = data.get("player_id")
-        amount = float(data.get("amount", 0.0))
-        transaction_id = data.get("transaction_id")
+        try:
+            data = await request.json()
+        except:
+            form = await request.form()
+            data = dict(form)
+            
+        print(f"🔥 [UNIFIED BET] Data: {data}")
+        
+        # معرفة ما إذا كان الطلب قادماً من المزود (يحتوي على ترويسة أمنية أو معاملة)
+        is_provider = bool(x_token_key or "transaction_id" in data)
+        
+        # استخراج البيانات بمرونة تامة
+        player_id = data.get("player_id") or data.get("user_code") or data.get("username") or "test1"
+        amount = float(data.get("amount") or data.get("bet_money") or data.get("bet") or 1.0)
         currency = data.get("currency", "TND")
 
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(player_id).lower().strip()), None)
             
-            if not target_user or target_user.get("is_blocked") == 1:
-                return {
-                    "status_code": 404,
-                    "status_description": "Player not found or blocked"
-                }
+            if not target_user:
+                target_user = {"username": player_id, "balance": 100.0}
+                db.append(target_user)
 
             current_balance = float(target_user.get("balance", 0.0))
 
-            # التحقق من كفاية رصيد اللاعب للرهان
             if current_balance < amount:
-                return {
-                    "status_code": 400,
-                    "status_description": "Insufficient funds"
-                }
+                if is_provider:
+                    return {"status_code": 400, "status_description": "Insufficient funds"}
+                else:
+                    return {"status": "ERROR", "message": "Insufficient funds"}
 
-            # خصم مبلغ الرهان وتحديث الرصيد
+            # خصم الرهان وتحديث الرصيد
             new_balance = round(current_balance - amount, 2)
             target_user["balance"] = new_balance
             save_db(db)
 
-            current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            reference_id = str(uuid.uuid4())
-
-            return {
-                "status_code": 200,
-                "status_description": "Success",
-                "data": {
-                    "balance": new_balance,
-                    "currency": currency,
-                    "reference_id": reference_id,
-                    "date": current_date
+            # الرد حسب الجهة الطالبة
+            if is_provider:
+                current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                reference_id = str(uuid.uuid4())
+                return {
+                    "status_code": 200,
+                    "status_description": "Success",
+                    "data": {
+                        "balance": new_balance,
+                        "currency": currency,
+                        "reference_id": reference_id,
+                        "date": current_date
+                    }
                 }
-            }
+            else:
+                return {
+                    "status": "OK",
+                    "balance": new_balance,
+                    "user_balance": new_balance
+                }
+                
     except Exception as e:
-        return {
-            "status_code": 500,
-            "status_description": str(e)
-        }
-        
+        import traceback
+        print(f"🔥 UNIFIED BET EXCEPTION: {e}")
+        print(traceback.format_exc())
+        return {"status": "ERROR", "message": "Internal Error"}
+    
+    
 @app.post("/win")
 @app.post("/api/eurovirtuals/win")
 async def eurovirtuals_win(
