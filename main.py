@@ -1495,47 +1495,57 @@ async def get_server_ip():
 @app.post("/gold_api/gold_api")
 async def seamless_wallet(request: Request):
     try:
-        data = await request.json()
-        print(f"🚀 [GOLD API REQUEST]: {data}")
-        method = data.get("method")
-        user_code = data.get("user_code")
+        # محاولة قراءة الطلب سواء كان JSON أو Form Data
+        try:
+            data = await request.json()
+        except:
+            form = await request.form()
+            data = dict(form)
+            
+        print(f"🔥 [GOLD API INCOMING] -> {data}")
         
-        # 🛡️ القفل الذكي يبدأ هنا
+        user_code = data.get("user_code") or data.get("player_id") or data.get("username")
+        if not user_code:
+            return {"status": 0, "msg": "USER_NOT_FOUND"}
+
         async with db_lock:
             db = load_db()
-            target_user = next((u for u in db if u.get("username") == user_code), None)
-            if not target_user: return {"status": 0, "msg": "USER_NOT_FOUND"}
-                
-            current_balance = float(target_user.get("balance", 0.0))
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(user_code).lower().strip()), None)
+            if not target_user:
+                return {"status": 0, "msg": "USER_NOT_FOUND"}
 
-            if method == "user_balance":
+            current_balance = float(target_user.get("balance", 0.0))
+            method = str(data.get("method", "")).lower()
+
+            # إذا كانت محاولة استعلام عن الرصيد
+            if method == "user_balance" or not method:
                 return {"status": 1, "user_balance": round(current_balance, 2)}
-            elif method == "transaction":
-                game_type = data.get("game_type")
-                game_data = data.get(game_type, {})
-                bet_money = float(game_data.get("bet_money", 0.0))
-                win_money = float(game_data.get("win_money", 0.0))
-                
-                # 🛡️ منع المبالغ السالبة
-                if bet_money < 0 or win_money < 0:
-                    return {"status": 0, "msg": "INVALID_AMOUNT"}
-                
-                if bet_money > 0 and current_balance < bet_money:
-                    return {"status": 0, "msg": "INSUFFICIENT_FUNDS"}
-                
-                new_balance = current_balance - bet_money + win_money
-                target_user["balance"] = round(new_balance, 2)
-                save_db(db)
-                
-                return {"status": 1, "user_balance": round(new_balance, 2)}
-            else:
-                return {"status": 0, "msg": "UNKNOWN_METHOD"}
+
+            # إذا كانت معاملة رهان أو ربح (نلتقط أي اسم محتمل للمنهج مثل bet, transaction, debit, credit)
+            game_data = data.get("game_data", {})
+            if isinstance(game_data, str): 
+                import json
+                try: game_data = json.loads(game_data)
+                except: game_data = {}
+
+            bet_money = float(data.get("bet_money") or data.get("bet") or game_data.get("bet_money", 0.0))
+            win_money = float(data.get("win_money") or data.get("win") or game_data.get("win_money", 0.0))
+
+            if current_balance < bet_money:
+                return {"status": 0, "msg": "INSUFFICIENT_FUNDS"}
+
+            new_balance = current_balance - bet_money + win_money
+            target_user["balance"] = round(new_balance, 2)
+            save_db(db)
+
+            return {"status": 1, "user_balance": round(new_balance, 2)}
+
     except Exception as e:
         import traceback
         print(f"🔥 SEAMLESS WALLET EXCEPTION: {e}")
-        print(traceback.format_exc())  # هذا السطر سيكشف لنا الخطأ الدقيق بالمللي
+        print(traceback.format_exc())
         return {"status": 0, "msg": "INTERNAL_ERROR"}
-   
+    
 # 1. دالة التشفير الأساسية للتشغيل (MD5) حسب وثائقهم
 def generate_euro_signature(payload, app_key):
     sorted_keys = sorted(payload.keys())
