@@ -453,6 +453,7 @@
             }
 
             try {
+                // طلب واحد كافٍ وسحرm؛ السيرفر يتولى خصم الرصيد من الشوب وإضافته للاعب تلقائياً
                 const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
                     method: 'POST', 
                     headers: getAuthHeaders(),
@@ -464,35 +465,23 @@
                     })
                 });
                 
-               if(res.ok) {
-                    const secondRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
-                        method: 'POST',
-                        headers: getAuthHeaders(),
-                        body: JSON.stringify({
-                            admin_username: shopSessionUser.username,
-                            target_username: shopSessionUser.username,
-                            action: action === 'charge' ? 'withdraw' : 'charge',
-                            amount: amount
-                        })
-                    });
-
-                    if (secondRes.ok) {
-                        if (action === 'withdraw') {
-                            showNotification(`تم سحب ${amount.toFixed(2)} د.ت بنجاح لرصيد متجرك`);
-                        } else {
-                            showNotification(`تم شحن اللاعب بمبلغ ${amount.toFixed(2)} د.ت خصماً من رصيدك`);
-                        }
-                        document.getElementById('finance-amount').value = "";
-                        document.getElementById('target-player-name').value = "";
-                        await loadShopPlayersData();
+                if(res.ok) {
+                    if (action === 'withdraw') {
+                        showNotification(`تم سحب ${amount.toFixed(2)} د.ت بنجاح لرصيد متجرك`);
                     } else {
-                        showNotification('حدث خطأ أثناء تحديث رصيد المتجر', 'error');
+                        showNotification(`تم شحن اللاعب بمبلغ ${amount.toFixed(2)} د.ت خصماً من رصيدك`);
                     }
+                    document.getElementById('finance-amount').value = "";
+                    document.getElementById('target-player-name').value = "";
+                    await loadShopPlayersData(); // تحديث أوتوماتيكي لرصيد الشوب واللاعبين من السيرفر
                 } else {
                     const errData = await res.json();
                     showNotification(errData.detail || 'فشلت العملية، تأكد من رصيد اللاعب', 'error');
                 }
-            } catch(e) { showNotification('خطأ في معالجة الشبكة المالية للمحلات', 'error'); }
+            } catch(e) { 
+                console.error(e);
+                showNotification('خطأ في معالجة الشبكة المالية للمحلات', 'error'); 
+            }
         }
 
         // دالة عرض اللاعبين بحجم مصغر (Compact)
