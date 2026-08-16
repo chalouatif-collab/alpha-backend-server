@@ -718,10 +718,11 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
     safe_users = []
     
     for u in db:
-        # 🛡️ الحارس الذكي: إذا كان الذي يطلب هو "shop"، اعرض له فقط الحسابات التي أنشأها!
-        if current_role == "shop" and u.get("created_by") != current_user:
-            continue
-            
+        # 🛡️ التعديل السحري: الشوب يرى لاعبيه + يرى حسابه الشخصي (ليتحدث رصيده في الأعلى)
+        if current_role == "shop":
+            if u.get("username") != current_user and u.get("created_by") != current_user:
+                continue
+                
         safe_user = dict(u)
         safe_user.pop("password", None)
         # safe_user.pop("two_factor_secret", None) # معطلة ليظهر الكود للأونر
