@@ -750,8 +750,11 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         is_master = (admin == "system" or (admin_user and admin_user.get("role") == "owner"))
         
         # 🛡️ الحماية 3 (IDOR): منع الأدمن العادي من العبث بحسابات لا تخصه
-        if not is_master and target_user.get("created_by") != admin:
+        # الحماية 3 (IDOR) لمنع العبث بحسابات لا تخصه
+        safe_creator = str(target_user.get("created_by", "")).lower().strip()
+        if not is_master and safe_creator != admin:
             raise HTTPException(status_code=403, detail="Accès refusé. Ce joueur ne vous appartient pas.")
+            
 
         if req.action == "charge":
             if not is_master:
