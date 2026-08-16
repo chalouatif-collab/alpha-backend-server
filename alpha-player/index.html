@@ -1092,7 +1092,7 @@
             <!-- Sport 2 -->
             <button onclick="launchSport2()" class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-green-500 hover:bg-green-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
                 <div class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-green-600 to-green-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.5)]">
-                    <span class="text-3xl">🏀</span>
+                    <span class="text-3xl">⚽</span>
                 </div>
                 <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 2</span>
                 <span class="text-green-400 text-[10px] mt-1 font-bold">PREMIUM</span>
@@ -1119,7 +1119,7 @@
                 Casino</span>
         </button>
 
-        <button onclick="openSportsbook()" class="sidebar-btn btn-glass text-gray-400 group cursor-pointer">
+        <button onclick="openSportsSelector()" class="sidebar-btn btn-glass text-gray-400 group cursor-pointer">
             <div class="sidebar-icon"><i class="fas fa-futbol text-lg group-hover:text-green-400 transition-colors"></i>
             </div>
             <span class="sidebar-text font-display font-bold text-sm tracking-widest uppercase text-white">Sports</span>
@@ -1303,7 +1303,7 @@
                     </button>
 
                     <!-- SPORTS (تم ربطه بكتاب الرياضة) -->
-                    <button onclick="openSportsbook()"
+                    <button onclick="openSportsSelector()"
                         class="shrink-0 snap-center md:flex-1 group relative px-5 py-2.5 md:py-3.5 rounded-full bg-q-panel/60 backdrop-blur-md border border-green-500/40 text-white font-display text-xs md:text-sm lg:text-base tracking-widest uppercase flex items-center justify-center gap-2 md:gap-3 hover:border-green-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.6)] transition-all duration-300">
                         <i
                             class="fas fa-futbol text-green-500 md:text-xl group-hover:scale-125 transition-transform duration-300"></i>
@@ -1696,7 +1696,7 @@
             <i class="fas fa-home text-xl md:text-2xl drop-shadow-[0_0_8px_rgba(0,242,254,0.8)]"></i>
             <span class="text-[8px] md:text-[9px] font-bold tracking-widest uppercase mt-0.5">Lobby</span>
         </button>
-        <button onclick="openSportsbook()"
+        <button onclick="openSportsSelector()"
             class="flex flex-col items-center gap-1 w-[20%] text-gray-500 hover:text-green-400 hover:-translate-y-1 transition-transform cursor-pointer">
             <i class="fas fa-futbol text-lg md:text-xl"></i>
             <span class="text-[8px] md:text-[9px] font-bold tracking-widest uppercase mt-0.5">Sports</span>
@@ -3410,7 +3410,7 @@
 
 function openSportsSelector() {
     // التحقق أولاً إذا كان اللاعب مسجلاً للدخول
-    if (!playerSession) return openLoginModal(); 
+    //if (!playerSession) return openLoginModal(); 
 
     const modal = document.getElementById('sports-selector-modal');
     modal.classList.remove('hidden');

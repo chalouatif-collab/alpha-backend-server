@@ -716,7 +716,6 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)): # 
     for u in db:
         safe_user = dict(u)
         safe_user.pop("password", None)
-        safe_user.pop("two_factor_secret", None)
         safe_users.append(safe_user)
         
     return safe_users
