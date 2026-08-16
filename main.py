@@ -1200,7 +1200,8 @@ async def login_user(request: Request, req: LoginRequest):
         "message": "success", 
         "username": user["username"],
         "role": user["role"],
-        "access_token": access_token
+        "access_token": access_token ,
+        "balance": user.get("balance", 0.0),
     }
 
 @app.post("/api/verify-2fa")
@@ -1223,7 +1224,8 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
             "access_token": access_token, 
             "token_type": "bearer", 
             "username": user["username"], 
-            "role": user["role"]
+            "role": user["role"],
+            "balance": user.get("balance", 0.0)
         }
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
