@@ -1632,6 +1632,7 @@ async def get_virtual_games():
     except Exception as e:
         return {"status": "error", "error": str(e)}
 # 4. دالة تشغيل الألعاب
+# 4. دالة تشغيل الألعاب
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
@@ -1640,15 +1641,33 @@ async def launch_eurovirtuals(request: Request):
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
+        # ==========================================
+        # 🛡️ استخراج رصيد اللاعب من قاعدة البيانات
+        # ==========================================
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
+            
+            if not target_user or target_user.get("is_blocked") == 1:
+                return {"error": "Player not found or blocked"}
+                
+            current_balance = float(target_user.get("balance", 0.0))
+
+        # ==========================================
+        # 📦 تجهيز البيانات (Payload) كما طلب المزود
+        # ==========================================
         payload = {
             "player_id": user_code,
             "player_name": user_code,
             "player_token": "tok_" + user_code,
             "currency": "TND",
             "demo": 0,
-            "game_uuid": game_uuid, # إضافة معرف اللعبة لكي لا يفتح الـ Lobby دائماً
-            "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals/callback" 
-        
+            "game_uuid": game_uuid,
+            "balance": current_balance,   # 👈 تم إضافة الرصيد الفعلي
+            "country": "TN",            # 👈 تم إضافة البلد
+            "language": "fr",           # 👈 تم إضافة اللغة
+            "device": "desktop"         # 👈 تم إضافة نوع الجهاز
+            # تم حذف callback_url استجابة لطلب المزود
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
@@ -1667,6 +1686,7 @@ async def launch_eurovirtuals(request: Request):
             response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
             print("🔍 LAUNCH STATUS:", response.status_code)
             print("🔍 LAUNCH RESPONSE TEXT:", response.text)
+            
             try:
                 response_data = response.json()
             except Exception:
@@ -1685,7 +1705,6 @@ async def launch_eurovirtuals(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-
 # ==========================================
 # حماية مسارات EuroVirtuals باستخدام التوكن
 # ==========================================
