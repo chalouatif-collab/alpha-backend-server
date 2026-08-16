@@ -187,7 +187,7 @@ async def get_admin_user(current_user: str = Depends(get_current_user)):
     db = load_db()
     user = next((u for u in db if u["username"] == current_user), None)
     
-    if not user or user.get("role") not in ["owner", "super_admin", "admin"]:
+    if not user or user.get("role") not in ["owner", "super_admin", "admin", "shop"]:
         raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
     
     return current_user
@@ -708,14 +708,23 @@ async def fix_missing_user_ids(current_user: str = Depends(get_admin_user)):
         return {"status": "error", "message": f"حدث خطأ: {str(e)}"}
 
 @app.get("/api/admin/users")
-async def get_all_network_users(current_user: str = Depends(get_admin_user)): # 👈 1. أضفنا قفل الأدمن
+async def get_all_network_users(current_user: str = Depends(get_admin_user)): 
     db = load_db()
+    
+    # 🛡️ معرفة من هو الذي يطلب القائمة الآن؟
+    current_admin = next((u for u in db if u["username"] == current_user), None)
+    current_role = current_admin.get("role") if current_admin else "player"
+
     safe_users = []
     
-    # 🛡️ 2. تنظيف البيانات: نزع كلمات المرور وأسرار 2FA قبل إرسالها للواجهة
     for u in db:
+        # 🛡️ الحارس الذكي: إذا كان الذي يطلب هو "shop"، اعرض له فقط الحسابات التي أنشأها!
+        if current_role == "shop" and u.get("created_by") != current_user:
+            continue
+            
         safe_user = dict(u)
         safe_user.pop("password", None)
+        # safe_user.pop("two_factor_secret", None) # معطلة ليظهر الكود للأونر
         safe_users.append(safe_user)
         
     return safe_users
