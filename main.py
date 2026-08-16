@@ -733,7 +733,6 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
     target = req.target_username.lower().strip()
-    admin = req.admin_username.lower().strip()
     amount = float(req.amount)
 
     if amount <= 0:
@@ -742,54 +741,47 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     async with db_lock:
         db = load_db()
         
-        # 🛡️ التعديل الأول: البحث بحروف صغيرة لضمان التعرف على الحسابات (شوب أو لاعب)
+        # البحث عن اللاعب والمدير الحالي اعتماداً على التوكن الموثوق 100%
         target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == target), None)
-        admin_user = next((u for u in db if str(u.get("username", "")).lower().strip() == admin), None)
+        admin_user = next((u for u in db if str(u.get("username", "")).lower().strip() == current_user.lower().strip()), None)
 
         if not target_user:
             raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        if not admin_user:
+            raise HTTPException(status_code=404, detail="Compte administrateur introuvable")
 
-        # 🛡️ التعديل الثاني: تعريف الصلاحيات بدقة
-        is_master = (admin == "system" or (admin_user and admin_user.get("role") in ["owner", "super_admin", "admin"]))
+        current_role = admin_user.get("role", "")
+        is_master = (current_user.lower() == "system" or current_role in ["owner", "super_admin", "admin"])
+        admin = current_user.lower().strip()
 
-        # 🛡️ التعديل الثالث: التأكد من ملكية الشوب للاعب (بدون مشاكل الحروف الكبيرة)
+        # التحقق من ملكية الشوب للالاعب الجديد
         safe_creator = str(target_user.get("created_by", "")).lower().strip()
         if not is_master and safe_creator != admin:
             raise HTTPException(status_code=403, detail="Accès refusé. Ce joueur ne vous appartient pas.")
 
-        # 💰 تنفيذ عملية الشحن (يخصم من الشوب ويضيف للاعب)
+        # تنفيذ عملية الشحن (خصم من الشوب وإضافة للاعب)
         if req.action == "charge":
             if not is_master:
-                if not admin_user: 
-                    raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
                 if float(admin_user.get("balance", 0)) < amount: 
                     raise HTTPException(status_code=400, detail="Solde insuffisant")
-                
-                # خصم الرصيد من المتجر
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) - amount, 2)
             
-            # إضافة الرصيد للاعب
             target_user["balance"] = round(float(target_user.get("balance", 0)) + amount, 2)
-            if admin != "system":
+            if current_user.lower() != "system":
                 target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + amount
 
-        # 💸 تنفيذ عملية السحب (يخصم من اللاعب ويضيف للشوب)
+        # تنفيذ عملية السحب (خصم من اللاعب وإضافة للشوب)
         elif req.action == "withdraw":
             if float(target_user.get("balance", 0)) < amount: 
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez le joueur")
             
-            # خصم الرصيد من اللاعب
             target_user["balance"] = round(float(target_user.get("balance", 0)) - amount, 2)
             
             if not is_master:
-                if not admin_user: 
-                    raise HTTPException(status_code=404, detail="القائم بالعملية غير موجود")
-                # إضافة الرصيد للمتجر
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
                 
         save_db(db)
         return {"status": "success", "message": "Opération réussie"}
-    
     
 @app.get("/api/admin/transactions-history")
 async def get_transactions_history(username: str, current_user: str = Depends(get_admin_user)):
