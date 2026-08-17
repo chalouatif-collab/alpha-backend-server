@@ -1514,6 +1514,7 @@ async def gold_api_endpoint(request: Request):
 
 @app.post("/win")
 @app.post("/api/eurovirtuals/win")
+@app.post("/api/eurovirtuals/callback/win")
 async def eurovirtuals_win(request: Request):
     try:
         data = await request.json()
@@ -1565,6 +1566,7 @@ async def eurovirtuals_win(request: Request):
 
 @app.post("/bet")
 @app.post("/api/eurovirtuals/bet")
+@app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_exact_bet(request: Request):
     try:
         try:
@@ -1801,9 +1803,6 @@ async def launch_eurovirtuals(request: Request):
                 
             current_balance = float(target_user.get("balance", 0.0))
 
-        # ==========================================
-        # 📦 Prepare Payload
-        # ==========================================
         payload = {
             "player_id": user_code,
             "player_name": user_code,
@@ -1814,7 +1813,9 @@ async def launch_eurovirtuals(request: Request):
             "balance": current_balance,
             "country": "TN",
             "language": "fr",
-            "device": "desktop"
+            "device": "desktop",
+            # 👈 إرجاع رابط الكول باك لكي يعرف المزود أين يرسل الرهانات
+            "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals" 
         }
 
         # Double check if hash_create needs the timestamp or headers included
@@ -1924,6 +1925,7 @@ async def eurovirtuals_player_info(request: Request):
 
 @app.post("/rollback")
 @app.post("/api/eurovirtuals/rollback")
+@app.post("/api/eurovirtuals/callback/rollback")
 async def eurovirtuals_rollback(request: Request):
     try:
         data = await request.json()
@@ -1971,6 +1973,7 @@ async def eurovirtuals_rollback(request: Request):
 
 @app.post("/adjustment")
 @app.post("/api/eurovirtuals/adjustment")
+@app.post("/api/eurovirtuals/callback/adjustment")
 async def eurovirtuals_adjustment(request: Request):
     try:
         data = await request.json()
