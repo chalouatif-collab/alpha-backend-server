@@ -1923,30 +1923,43 @@ async def eurovirtuals_player_info(request: Request):
 # مسارات Rollback و Adjustment لإكمال متطلبات المزود
 # ==========================================
 
+# ==========================================
+# معالجة طلب استرجاع الأموال (Rollback) المحدث
+# ==========================================
+
 @app.post("/rollback")
 @app.post("/api/eurovirtuals/rollback")
-@app.post("/api/eurovirtuals/callback/rollback")
+@app.post("/api/eurovirtuals/callback/rollback") # 👈 مسار المهندس
 async def eurovirtuals_rollback(request: Request):
     try:
         data = await request.json()
         print(f"🔄 [PROVIDER ROLLBACK]: {data}")
         
-        player_id = str(data.get("player_id") or data.get("user_code") or "test1")
-        amount = float(data.get("amount", 0.0))
+        player_id = str(data.get("player_id") or "test1")
+        # سحب المبلغ من الحقل الصحيح حسب وثيقة المزود
+        amount = float(data.get("payout_amount") or data.get("bet_amount") or 0.0)
         currency = data.get("currency", "TND")
+        action = data.get("action", "rollback_bet")
 
         new_balance = 50.0
-        async with db_lock: #[cite: 1]
+        async with db_lock:
             try:
-                db = load_db() #[cite: 1]
+                db = load_db()
                 target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
                 
                 if target_user:
                     curr = float(target_user.get("balance", 50.0))
-                    # استرجاع المبلغ المخصوم إلى حساب اللاعب
-                    new_balance = round(curr + amount, 2)
+                    
+                    # 🛡️ الذكاء الاصطناعي للاسترجاع حسب الوثيقة
+                    if action == "rollback_win":
+                        # إذا كان استرجاع فوز خاطئ، نقوم بخصم المبلغ من اللاعب
+                        new_balance = round(curr - amount, 2)
+                    else:
+                        # إذا كان استرجاع رهان ملغى، نعيد المبلغ للاعب
+                        new_balance = round(curr + amount, 2)
+                        
                     target_user["balance"] = new_balance
-                    save_db(db) #[cite: 1]
+                    save_db(db)
                 else:
                     new_balance = round(50.0 + amount, 2)
             except Exception as db_err:
@@ -1958,46 +1971,59 @@ async def eurovirtuals_rollback(request: Request):
             "data": {
                 "balance": new_balance,
                 "currency": currency,
-                "reference_id": str(uuid.uuid4()), #[cite: 1]
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") #[cite: 1]
+                "reference_id": str(uuid.uuid4()),
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
     except Exception as e:
         print(f"❌ ROLLBACK EXCEPTION: {e}")
+        # الرد دائماً بـ 200 كما تطلب الوثيقة
         return {
             "status_code": 200,
             "status_description": "Success",
             "data": {"balance": 50.0, "currency": "TND"}
         }
 
+# ==========================================
+# معالجة طلب تسوية الرصيد (Adjustment) المحدث
+# ==========================================
 
 @app.post("/adjustment")
 @app.post("/api/eurovirtuals/adjustment")
-@app.post("/api/eurovirtuals/callback/adjustment")
+@app.post("/api/eurovirtuals/callback/adjustment") # 👈 مسار المهندس الجديد
 async def eurovirtuals_adjustment(request: Request):
     try:
         data = await request.json()
         print(f"⚖️ [PROVIDER ADJUSTMENT]: {data}")
         
-        player_id = str(data.get("player_id") or data.get("user_code") or "test1")
-        amount = float(data.get("amount", 0.0))
+        player_id = str(data.get("player_id") or "test1")
+        
+        # 🛡️ نأخذ القيمة المطلقة (الموجبة) للمبلغ دائماً لكي لا نقع في فخ السالب مع السالب
+        amount = abs(float(data.get("amount", 0.0)))
         currency = data.get("currency", "TND")
-        action = data.get("action", "credit") # credit (إضافة) أو debit (خصم)
+        action = data.get("action", "")
 
         new_balance = 50.0
-        async with db_lock: #[cite: 1]
+        async with db_lock:
             try:
-                db = load_db() #[cite: 1]
+                db = load_db()
                 target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
                 
                 if target_user:
                     curr = float(target_user.get("balance", 50.0))
-                    if action == "credit":
-                        new_balance = round(curr + amount, 2)
-                    else:
+                    
+                    # 🛡️ تطبيق منطق الإضافة أو الخصم حسب الإجراء المكتوب في الوثيقة
+                    if action == "wallet_adjustment_debit":
+                        # خصم من الرصيد
                         new_balance = round(curr - amount, 2)
+                    else:
+                        # إضافة للرصيد (wallet_adjustment_credit)
+                        new_balance = round(curr + amount, 2)
+                        
                     target_user["balance"] = new_balance
-                    save_db(db) #[cite: 1]
+                    save_db(db)
+                else:
+                    new_balance = round(50.0 + amount, 2)
             except Exception as db_err:
                 print(f"⚠️ DB Error in adjustment: {db_err}")
 
@@ -2007,19 +2033,18 @@ async def eurovirtuals_adjustment(request: Request):
             "data": {
                 "balance": new_balance,
                 "currency": currency,
-                "reference_id": str(uuid.uuid4()), #[cite: 1]
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") #[cite: 1]
+                "reference_id": str(uuid.uuid4()),
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
     except Exception as e:
         print(f"❌ ADJUSTMENT EXCEPTION: {e}")
+        # الرد دائماً بـ 200 كما تطلب الوثيقة
         return {
             "status_code": 200,
             "status_description": "Success",
             "data": {"balance": 50.0, "currency": "TND"}
         }
-
-
 # ==========================================
 # 🎰 نظام مزود الألعاب الجديد (SMPL - Seamless Wallet)
 # ==========================================
