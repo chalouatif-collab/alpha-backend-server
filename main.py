@@ -1672,35 +1672,51 @@ import time
 # ==========================================
 # 🔐 خوارزمية التشفير الرسمية من EuroVirtuals (Kelvin)
 # ==========================================
-def sort_nested_array(array):
-    if isinstance(array, dict):
-        sorted_array = {}
-        for key in sorted(array.keys()):
-            value = array[key]
-            if isinstance(value, (dict, list)):
-                sorted_array[key] = sort_nested_array(value)
+def hash_create(request_data: dict, key: str) -> str:
+    # Step 1: Sort the keys in the request
+    keys = sorted(request_data.keys())
+    hashkey = ""
+
+    # Step 2: Iterate through sorted keys
+    for k in keys:
+        value = request_data[k]
+
+        if isinstance(value, dict):
+            # Step 3a: Handle nested maps
+            nested_keys = sorted(value.keys())
+            for nested_key in nested_keys:
+                nested_value = value[nested_key]
+                # Serialize to JSON (removing spaces for tight formatting)
+                serialized = json.dumps(nested_value, separators=(',', ':'), sort_keys=True)
+                md5_hash = hashlib.md5(serialized.encode('utf-8')).hexdigest()
+                hashkey += f"&{nested_key}={md5_hash}"
+
+        elif isinstance(value, list):
+            # Step 3b: Handle arrays
+            for index in range(len(value)):
+                array_value = value[index]
+                # Serialize to JSON
+                serialized = json.dumps(array_value, separators=(',', ':'), sort_keys=True)
+                md5_hash = hashlib.md5(serialized.encode('utf-8')).hexdigest()
+                hashkey += f"&{index}={md5_hash}"
+
+        else:
+            # Step 3c: Handle primitive types
+            if isinstance(value, bool):
+                val_str = str(value).lower()
             else:
-                sorted_array[key] = value
-        return sorted_array
-    elif isinstance(array, list):
-        return [sort_nested_array(item) if isinstance(item, (dict, list)) else item for item in array]
-    else:
-        return array
+                val_str = str(value)
+            
+            hashkey += f"&{k}={val_str}"
 
-def hash_create(request_data, token_key):
-    hashkey = ''
-    if isinstance(request_data, dict):
-        request_data = sort_nested_array(request_data)
-        for key, value in sorted(request_data.items()):
-            if isinstance(value, dict):
-                for key_val, val in value.items():
-                    hashkey += f"&{key_val}={hashlib.md5(json.dumps(val, sort_keys=True).encode('utf-8')).hexdigest()}"
-                continue
-            hashkey += f"&{key}={value}"
-
+    # Step 4: Trim leading separator
     hashkey = hashkey.lstrip('&')
-    return hashlib.md5((hashkey + token_key).encode('utf-8')).hexdigest()
-import hashlib
+
+    # Step 5: Append the tokenKey/appKey to the concatenated string
+    final_string = hashkey + str(key)
+
+    # Step 6: Compute the final MD5 hash of the entire string
+    return hashlib.md5(final_string.encode('utf-8')).hexdigest()
 
 def verify_callback_token(app_key: str, timestamp: str, received_token: str) -> bool:
     try:
@@ -1770,11 +1786,12 @@ async def get_virtual_games():
             
             # === التعديل السحري لربط الصور بالواجهة ===
             for game in games_list:
-                if "thumbnail" in game:
-                    game["image"] = game["thumbnail"]
-                    game["img"] = game["thumbnail"]
-            # ==========================================
-            
+                        # 🛡️ سحب الصورة سواء كان اسمها logo (كما في الوثيقة) أو thumbnail
+                        image_url = game.get("logo") or game.get("thumbnail") or ""
+                        if image_url:
+                            game["image"] = image_url
+                            game["img"] = image_url
+                    # ==========================================
             return {"status": "success", "games": games_list}
         else:
             return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
