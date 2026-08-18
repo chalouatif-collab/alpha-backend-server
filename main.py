@@ -1579,15 +1579,29 @@ async def eurovirtuals_exact_bet(request: Request):
                 data = {}
         
         print(f"🔥 [EXACT PROVIDER BET RAW DATA]: {data}")
-        
         try:
+            # === 🛡️ الجدار الأمني: التحقق من صحة التوقيع ===
+            received_signature = request.headers.get("x-signature-key")
+            
+            # نستخدم دالة التشفير الرسمية للمقارنة
+            expected_signature = hash_create(data, EURO_APP_KEY)
+            
+            if received_signature != expected_signature:
+                print(f"🚨 SECURITY ALERT: Invalid Signature! Expected: {expected_signature}, Got: {received_signature}")
+                return {
+                    "status_code": 401,
+                    "status_description": "Invalid Signature"
+                }
+        
+        
             player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
             
-            # استخراج المبلغ بأمان تام لتجنب خطأ NoneType
-            raw_amount = data.get("amount") or data.get("bet") or data.get("bet_money")
-            try:
-                amount = float(raw_amount) if raw_amount is not None else 1.0
-            except (TypeError, ValueError):
+            # الطريقة الصحيحة لالتقاط الصفر في بايثون (Zero Amount Bug Fix)
+            if "amount" in data:
+                amount = float(data["amount"])
+            elif "bet" in data:
+                amount = float(data["bet"])
+            else:
                 amount = 1.0
                 
             currency = str(data.get("currency") or "TND")
@@ -1600,10 +1614,28 @@ async def eurovirtuals_exact_bet(request: Request):
                     target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
                     if target_user:
                         curr = float(target_user.get("balance", 50.0) or 50.0)
-                        new_balance = round(curr - amount, 2)
+                        expected_balance = curr - amount
+                        
+                        # 🚨 إضافة شرط التحقق من الرصيد هنا
+                        if expected_balance < 0:
+                            # إرجاع رد بخطأ في الرصيد ولكن مع حالة HTTP 200 كما يطلب المزود
+                            return {
+                                "status_code": 400, # أو الكود المحدد في توثيقهم لخطأ الرصيد
+                                "status_description": "Insufficient Balance"
+                            }
+                            
+                        # ✅ الرصيد كافٍ، نستمر في خصم المبلغ
+                        new_balance = round(expected_balance, 2)
                         target_user["balance"] = new_balance
                         save_db(db)
                     else:
+                        # 🚨 تعديل هام: إذا كان هذا لاعب جديد والرصيد المطلوب أكبر من 50 (الرصيد الافتراضي)
+                        if amount > 50.0:
+                             return {
+                                "status_code": 400, 
+                                "status_description": "Insufficient Balance"
+                            }
+                        
                         target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
                         db.append(target_user)
                         save_db(db)
@@ -1611,6 +1643,7 @@ async def eurovirtuals_exact_bet(request: Request):
                 except Exception as db_err:
                     print(f"⚠️ DB Error in bet: {db_err}")
 
+            # ✅ في حال نجاح الخصم، نقوم بإرجاع هذا الرد
             return {
                 "status_code": 200,
                 "status_description": "Success",
