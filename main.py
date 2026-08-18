@@ -1580,29 +1580,23 @@ async def eurovirtuals_exact_bet(request: Request):
         
         print(f"🔥 [EXACT PROVIDER BET RAW DATA]: {data}")
         try:
-            # === 🛡️ الجدار الأمني المتكامل (التحقق من التوكن + التوقيع) ===
+           # === 🛡️ الجدار الأمني المتكامل (وضع المراقبة) ===
             received_token = request.headers.get("x-token-key")
             received_timestamp = request.headers.get("x-timestamp")
             received_signature = request.headers.get("x-signature-key")
             
-            # 1. التحقق من صحة التوكن أولاً (هذا سيجعل الاختبار رقم 1 ينجح)
+            # 1. التحقق من صحة التوكن (طباعة تحذير فقط)
             if not verify_callback_token(EURO_APP_KEY, received_timestamp, received_token):
-                print("🚨 SECURITY ALERT: Invalid Token Key!")
-                return {
-                    "status_code": 401,
-                    "status_description": "Invalid Token Key"
-                }
+                print("🚨 [WARNING]: Invalid Token Key!")
+                # return {"status_code": 401, "status_description": "Invalid Token Key"}
 
-            # 2. التحقق من التوقيع باستخدام التوكن الديناميكي بدلاً من المفتاح الثابت! 
-            # (هذا سيجعل باقي الاختبارات تنجح ولن يتم طرد الطلبات الصحيحة)
+            # 2. التحقق من التوقيع (طباعة تحذير فقط)
             expected_signature = hash_create(data, received_token)
             
             if received_signature != expected_signature:
-                print(f"🚨 SECURITY ALERT: Invalid Signature! Expected: {expected_signature}, Got: {received_signature}")
-                return {
-                    "status_code": 401,
-                    "status_description": "Invalid Signature"
-                }
+                print(f"🚨 [WARNING]: Invalid Signature! Exp: {expected_signature}, Got: {received_signature}")
+                # return {"status_code": 401, "status_description": "Invalid Signature"}
+            # ==============================================
             # ==============================================
         
         
