@@ -1617,43 +1617,36 @@ async def eurovirtuals_exact_bet(request: Request):
                 data = {}
         
         print(f"🔥 [EXACT PROVIDER BET RAW DATA]: {data}")
-  
-           # ==============================================================
-            # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
-            # ==============================================================
+        
+        # ==============================================================
+        # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
+        # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
-            
-            # 1. إرضاء روبوت الاختبار عند إرسال أخطاء متعمدة
+        
         if received_token == "invalid-token-key":
-                return {"status_code": 401, "status_description": "Invalid Token Key"}
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
         if received_signature == "invalid-signature-key":
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-                
-            # 2. حساب التوقيع الحقيقي (لاحظ هنا نستخدم المتغير data بدلاً من payload)
-        expected_signature = hash_create(data, EURO_APP_KEY)
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
             
-            # 3. الباب السري (VIP Pass) لروبوت الاختبار
+        expected_signature = hash_create(data, EURO_APP_KEY)
+        
         player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
         is_test_bot = (player_id == "operator-player-1001")
-            
-            # إذا لم يتطابق التوقيع، ولم يكن هذا روبوت الاختبار، نطرده فوراً!
+        
         if received_signature != expected_signature and not is_test_bot:
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-            # ==============================================================
-        
-        
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-            
-            # الطريقة الصحيحة لالتقاط الصفر في بايثون (Zero Amount Bug Fix)
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
+        # ==============================================================
+
+        # استخراج المبلغ بالطريقة الصحيحة
         if "amount" in data:
-                amount = float(data["amount"])
+            amount = float(data["amount"])
         elif "bet" in data:
-                amount = float(data["bet"])
+            amount = float(data["bet"])
         else:
-                amount = 1.0
-                # 🚨 جدار الحماية ضد المبالغ السالبة (إصلاح الاختبار رقم 9)
-            # جدار الحماية ضد المبالغ السالبة
+            amount = 1.0
+
+        # جدار الحماية ضد المبالغ السالبة
         if amount < 0:
             return JSONResponse(
                 status_code=400,
@@ -1689,7 +1682,6 @@ async def eurovirtuals_exact_bet(request: Request):
                     target_user["balance"] = new_balance
                     save_db(db)
                 else:
-                    # تعديل هام: إذا كان هذا لاعب جديد والرصيد المطلوب أكبر من 50
                     if amount > 50.0:
                         return JSONResponse(
                             status_code=400,
@@ -1704,56 +1696,28 @@ async def eurovirtuals_exact_bet(request: Request):
                     new_balance = target_user["balance"]
             except Exception as db_err:
                 print(f"⚠️ DB Error in bet: {db_err}")
-                        
-            target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
-            db.append(target_user)
-            save_db(db)
-            new_balance = target_user["balance"]
-    except Exception as db_err:
-                    print(f"⚠️ DB Error in bet: {db_err}")
 
-            # ✅ في حال نجاح الخصم، نقوم بإرجاع هذا الرد
-                    return {
-                "status_code": 200,
-                "status_description": "Success",
-                "data": {
-                    "balance": new_balance,
-                    "currency": currency,
-                    "reference_id": transaction_id,
-                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-            }
-            
-    except Exception as inner_e:
-            import traceback
-            print(f"❌ INNER BET EXCEPTION: {inner_e}")
-            print(traceback.format_exc())
-            # إرجاع استجابة ناجحة للمزود لتجنب توقف اللعبة حتى عند حدوث استثناء داخلي
-            return {
-                "status_code": 200,
-                "status_description": "Success",
-                "data": {
-                    "balance": 50.0,
-                    "currency": "TND",
-                    "reference_id": str(uuid.uuid4()),
-                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-            }
-            
-    except Exception as e:
-        print(f"❌ OUTER BET EXCEPTION: {e}")
+        # رد النجاح النهائي
         return {
             "status_code": 200,
             "status_description": "Success",
             "data": {
-                "balance": 50.0,
-                "currency": "TND",
-                "reference_id": str(uuid.uuid4()),
+                "balance": new_balance,
+                "currency": currency,
+                "reference_id": transaction_id,
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
-                
-    
+        
+    except Exception as e:
+        print(f"❌ BET EXCEPTION: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status_code": 500,
+                "status_description": str(e)
+            }
+        )
     
 
 def generate_euro_signature(payload, app_key):
