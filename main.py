@@ -2067,8 +2067,9 @@ async def eurovirtuals_rollback(request: Request):
         transaction_id = str(data.get("transaction_id", ""))
         
         if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
+            # نرسل HTTP 200 كما طلبوا، ولكن الكود الداخلي 404
             return JSONResponse(
-                status_code=404,
+                status_code=200,
                 content={
                     "status_code": 404,
                     "status_description": "Transaction Not Found"
