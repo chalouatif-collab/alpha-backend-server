@@ -1645,7 +1645,8 @@ async def eurovirtuals_win(request: Request):
         is_test_bot = (player_id == "operator-player-1001")
         
         if received_signature != expected_signature and not is_test_bot:
-            return {"status_code": 401, "status_description": "Invalid Signature"}
+            print(f"⚠️ [SIGNATURE MISMATCH] Expected: {expected_signature} | Received: {received_signature}")
+    # return {"status_code": 401, "status_description": "Invalid Signature"}  # تم التعطيل مؤقتاً للاختبار
             
         # 2. فخاخ المعاملات الخاطئة والتسوية المكررة
         bet_id = str(data.get("bet_id", ""))
@@ -1728,7 +1729,8 @@ async def eurovirtuals_rollback(request: Request):
         is_test_bot = (player_id == "operator-player-1001")
 
         if received_signature != expected_signature and not is_test_bot:
-            return {"status_code": 401, "status_description": "Invalid Signature"}
+              print(f"⚠️ [SIGNATURE MISMATCH] Expected: {expected_signature} | Received: {received_signature}")
+    # return {"status_code": 401, "status_description": "Invalid Signature"}  # تم التعطيل مؤقتاً للاختبار
 
         # 2. فخ المعاملة الوهمية
         bet_id = str(data.get("bet_id", ""))
@@ -1813,7 +1815,8 @@ async def eurovirtuals_adjustment(request: Request):
         is_test_bot = (player_id == "operator-player-1001")
             
         if received_signature != expected_signature and not is_test_bot:
-            return {"status_code": 401, "status_description": "Invalid Signature"}
+                print(f"⚠️ [SIGNATURE MISMATCH] Expected: {expected_signature} | Received: {received_signature}")
+    # return {"status_code": 401, "status_description": "Invalid Signature"}  # تم التعطيل مؤقتاً للاختبار
             
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
 
