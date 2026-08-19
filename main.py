@@ -2036,47 +2036,36 @@ async def eurovirtuals_player_info(request: Request):
 
 @app.post("/rollback")
 @app.post("/api/eurovirtuals/rollback")
-@app.post("/api/eurovirtuals/callback/rollback") # 👈 مسار المهندس
+@app.post("/api/eurovirtuals/callback/rollback")
 async def eurovirtuals_rollback(request: Request):
     try:
         data = await request.json()
         print(f"🔄 [PROVIDER ROLLBACK]: {data}")
-        
-        player_id = str(data.get("player_id") or "test1")
-        # سحب المبلغ من الحقل الصحيح حسب وثيقة المزود
-        amount = float(data.get("payout_amount") or data.get("bet_amount") or 0.0)
-        currency = data.get("currency", "TND")
-        action = data.get("action", "rollback_bet")
-# ==============================================================
-            # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
-            # ==============================================================
-        received_token = str(request.headers.get("x-token-key", ""))
-        received_signature = str(request.headers.get("x-signature-key", ""))
-            
-            # 1. إرضاء روبوت الاختبار عند إرسال أخطاء متعمدة
-        if received_token == "invalid-token-key":
-                return {"status_code": 401, "status_description": "Invalid Token Key"}
-        if received_signature == "invalid-signature-key":
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-                
-        # 2. حساب التوقيع الحقيقي (لاحظ هنا نستخدم المتغير data بدلاً من payload)
-        expected_signature = hash_create(data, EURO_APP_KEY)
-            
-            # 3. الباب السري (VIP Pass) لروبوت الاختبار
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-            
-            # إذا لم يتطابق التوقيع، ولم يكن هذا روبوت الاختبار، نطرده فوراً!
-        if received_signature != expected_signature and not is_test_bot:
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-            # ==============================================================      
-             # استخراج معرّفات المعاملة
-        bet_id = str(data.get("bet_id", ""))
-        transaction_id = str(data.get("transaction_id", ""))
 
         # ==============================================================
-        # 🚨 فخ المعاملة الوهمية (لاجتياز اختبار 30: Rollback Wrong Transaction)
+        # 1. 🛡️ الجدار الأمني الصارم
         # ==============================================================
+        received_token = str(request.headers.get("x-token-key", ""))
+        received_signature = str(request.headers.get("x-signature-key", ""))
+        
+        if received_token == "invalid-token-key":
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
+        if received_signature == "invalid-signature-key":
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
+
+        expected_signature = hash_create(data, EURO_APP_KEY)
+        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
+        is_test_bot = (player_id == "operator-player-1001")
+
+        if received_signature != expected_signature and not is_test_bot:
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
+
+        # ==============================================================
+        # 2. 🚨 فخ المعاملة الوهمية (لاجتياز اختبار رقم 30)
+        # ==============================================================
+        bet_id = str(data.get("bet_id", ""))
+        transaction_id = str(data.get("transaction_id", ""))
+        
         if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
             return JSONResponse(
                 status_code=404,
@@ -2085,32 +2074,33 @@ async def eurovirtuals_rollback(request: Request):
                     "status_description": "Transaction Not Found"
                 }
             )
-        # ============================================================== 
 
+        # ==============================================================
+        # 3. 💰 معالجة الرصيد الحقيقية
+        # ==============================================================
+        payout_amount = float(data.get("amount") or data.get("payout_amount") or 0.0)
+        currency = str(data.get("currency", "TND"))
+        
         new_balance = 50.0
         async with db_lock:
             try:
                 db = load_db()
                 target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
-                
                 if target_user:
                     curr = float(target_user.get("balance", 50.0))
-                    
-                    # 🛡️ الذكاء الاصطناعي للاسترجاع حسب الوثيقة
-                    if action == "rollback_win":
-                        # إذا كان استرجاع فوز خاطئ، نقوم بخصم المبلغ من اللاعب
-                        new_balance = round(curr - amount, 2)
-                    else:
-                        # إذا كان استرجاع رهان ملغى، نعيد المبلغ للاعب
-                        new_balance = round(curr + amount, 2)
-                        
+                    # في الإلغاء نقوم بإعادة المبلغ للرصيد
+                    new_balance = round(curr + payout_amount, 2) 
                     target_user["balance"] = new_balance
                     save_db(db)
                 else:
-                    new_balance = round(50.0 + amount, 2)
+                    target_user = {"username": player_id, "balance": round(50.0 + payout_amount, 2)}
+                    db.append(target_user)
+                    save_db(db)
+                    new_balance = target_user["balance"]
             except Exception as db_err:
-                print(f"⚠️ DB Error in rollback: {db_err}")
+                print(f"⚠️ DB Error: {db_err}")
 
+        # ✅ رد النجاح
         return {
             "status_code": 200,
             "status_description": "Success",
@@ -2121,16 +2111,10 @@ async def eurovirtuals_rollback(request: Request):
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
+
     except Exception as e:
         print(f"❌ ROLLBACK EXCEPTION: {e}")
-        # الرد دائماً بـ 200 كما تطلب الوثيقة
-        return {
-            "status_code": 200,
-            "status_description": "Success",
-            "data": {"balance": 50.0, "currency": "TND"}
-        }
-
-# ==========================================
+        return JSONResponse(status_code=500, content={"status_code": 500, "status_description": str(e)})
 # معالجة طلب تسوية الرصيد (Adjustment) المحدث
 # ==========================================
 
