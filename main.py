@@ -1604,14 +1604,14 @@ async def eurovirtuals_exact_bet(request: Request):
             # 1. التحقق من صحة التوكن (طباعة تحذير فقط)
             if not verify_callback_token(EURO_APP_KEY, received_timestamp, received_token):
                 print("🚨 [WARNING]: Invalid Token Key!")
-                # return {"status_code": 401, "status_description": "Invalid Token Key"}
+                return {"status_code": 401, "status_description": "Invalid Token Key"}
 
             # 2. التحقق من التوقيع (طباعة تحذير فقط)
             expected_signature = hash_create(data, received_token)
             
             if received_signature != expected_signature:
                 print(f"🚨 [WARNING]: Invalid Signature! Exp: {expected_signature}, Got: {received_signature}")
-                # return {"status_code": 401, "status_description": "Invalid Signature"}
+                return {"status_code": 401, "status_description": "Invalid Signature"}
             # ==============================================
             # ==============================================
         
@@ -1955,8 +1955,30 @@ async def eurovirtuals_player_info(request: Request):
             
         print(f"📦 [PLAYER_INFO PAYLOAD]: {payload}")
         
-        player_id = str(payload.get("player_id") or payload.get("user_code") or payload.get("player_name") or "test1")
+        # ==============================================================
+        # 🛡️ الجدار الأمني الشامل (Token + Signature)
+        # ==============================================================
+        received_token = request.headers.get("x-token-key")
+        received_timestamp = request.headers.get("x-timestamp")
+        received_signature = request.headers.get("x-signature-key")
         
+        # 1. فحص التوكن
+        if not verify_callback_token(EURO_APP_KEY, received_timestamp, received_token):
+            return {
+                "status_code": 401,
+                "status_description": "Invalid Token Key"
+            }
+            
+        # 2. فحص التوقيع (باستخدام دالة hash_create الموجودة في كودك)
+        expected_signature = hash_create(payload, received_token)
+        if received_signature != expected_signature:
+            return {
+                "status_code": 401,
+                "status_description": "Invalid Signature"
+            }
+        # ==============================================================
+        
+        player_id = str(payload.get("player_id") or payload.get("user_code") or payload.get("player_name") or "test1")
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
