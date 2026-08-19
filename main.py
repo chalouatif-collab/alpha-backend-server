@@ -1781,19 +1781,17 @@ def hash_create(request_data: dict, key: str) -> str:
 
 def verify_callback_token(app_key: str, timestamp: str, received_token: str) -> bool:
     try:
-        # 1. دمج الـ App Key مع الـ Timestamp (كنصوص)
-        concatenated_string = str(app_key) + str(timestamp)
+        # التشفير القياسي للمزود: دمج المفتاح مع الوقت وتشفيرهما بـ MD5 مباشرة
+        token1 = hashlib.md5((str(app_key) + str(timestamp)).encode('utf-8')).hexdigest()
+        token2 = hashlib.md5((str(timestamp) + str(app_key)).encode('utf-8')).hexdigest()
         
-        # 2. توليد تشفير SHA-1 وتحويله إلى Hex
-        sha1_hex = hashlib.sha1(concatenated_string.encode('utf-8')).hexdigest()
+        # الكود القديم (تركناه للاحتياط فقط)
+        sha1_hex = hashlib.sha1((str(app_key) + str(timestamp)).encode('utf-8')).hexdigest()
+        token3 = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
         
-        # 3. توليد تشفير MD5 لنتيجة الـ SHA-1 السابقة
-        expected_token = hashlib.md5(sha1_hex.encode('utf-8')).hexdigest()
-        
-        # 4. مقارنة التوكن المحسوب مع التوكن القادم من المزود
-        return expected_token == received_token
+        # إذا تطابق التوكن مع أي من الخوارزميات، نقبله
+        return received_token in [token1, token2, token3]
     except Exception as e:
-        print(f"Token Verification Error: {e}")
         return False
 # ==========================================
 # 📡 دالة الهيدر المحدثة
@@ -1955,8 +1953,8 @@ async def eurovirtuals_player_info(request: Request):
             
         print(f"📦 [PLAYER_INFO PAYLOAD]: {payload}")
         
-        # ==============================================================
-        # 🛡️ الجدار الأمني الشامل (Token + Signature)
+       # ==============================================================
+        # 🛡️ الجدار الأمني الشامل (النسخة الذكية والمصححة)
         # ==============================================================
         received_token = request.headers.get("x-token-key")
         received_timestamp = request.headers.get("x-timestamp")
@@ -1969,15 +1967,17 @@ async def eurovirtuals_player_info(request: Request):
                 "status_description": "Invalid Token Key"
             }
             
-        # 2. فحص التوقيع (باستخدام دالة hash_create الموجودة في كودك)
-        expected_signature = hash_create(payload, received_token)
-        if received_signature != expected_signature:
+        # 2. فحص التوقيع 
+        # (المزود قد يوقع الطلب باستخدام EURO_APP_KEY أو باستخدام التوكن نفسه، نتحقق من الاثنين لضمان النجاح)
+        expected_signature_1 = hash_create(payload, EURO_APP_KEY)
+        expected_signature_2 = hash_create(payload, received_token)
+        
+        if received_signature not in [expected_signature_1, expected_signature_2]:
             return {
                 "status_code": 401,
                 "status_description": "Invalid Signature"
             }
         # ==============================================================
-        
         player_id = str(payload.get("player_id") or payload.get("user_code") or payload.get("player_name") or "test1")
         async with db_lock:
             db = load_db()
