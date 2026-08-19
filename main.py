@@ -1653,7 +1653,7 @@ async def eurovirtuals_exact_bet(request: Request):
         else:
             amount = 1.0
 
-        # 3. اعتراض المبالغ السالبة بـ HTTP 400 صريح
+        # جدار الحماية ضد المبالغ السالبة
         if amount < 0:
             return JSONResponse(
                 status_code=400,
