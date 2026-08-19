@@ -1496,20 +1496,36 @@ async def get_server_ip():
 @app.post("/gold_api")
 async def gold_api_endpoint(request: Request):
     try:
-        return {
-            "status": 1,
-            "status_code": 200,
-            "user_balance": 100.0,
-            "balance": 100.0,
-            "currency": "TND"
-        }
+        # 1. استلام الطلب من الواجهة
+        data = await request.json()
+        user_code = data.get("user_code")
+        
+        if not user_code:
+            return {"status": 0, "error": "user_code manquant"}
+
+        # 2. البحث عن اللاعب في قاعدة البيانات
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(user_code).lower().strip()), None)
+        
+        # 3. إذا وجدنا اللاعب، نرسل رصيده الحقيقي المحدث
+        if target_user:
+            actual_balance = float(target_user.get("balance", 0.0))
+            return {
+                "status": 1,
+                "status_code": 200,
+                "user_balance": round(actual_balance, 2),
+                "balance": round(actual_balance, 2),
+                "currency": "TND"
+            }
+        else:
+            return {"status": 0, "error": "Joueur introuvable"}
+
     except Exception as e:
         import traceback
         print(f"🔥 GOLD API EXCEPTION: {e}")
         return {
-            "status": 1,
-            "balance": 100.0,
-            "user_balance": 100.0
+            "status": 0,
+            "error": "Erreur serveur"
         }
 
 @app.post("/win")

@@ -2177,10 +2177,10 @@
             if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 4000);
         }
 
-        async function refreshPlayerBalance() {
+       async function refreshPlayerBalance() {
             if (!playerSession || !playerSession.username) return;
             try {
-                // 🛡️ التعديل هنا: استخدام مسار المحفظة الآمن بدلاً من مسار الإدارة المغلق
+                // 🛡️ التعديل هنا: استخدام مسار المحفظة الآمن
                 const res = await fetch(`${BACKEND_URL}/gold_api`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2192,8 +2192,23 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.status === 1) {
-                        playerSession.balance = data.user_balance;
+                    
+                    // 🔍 سطر المراقبة: سيطبع رد السيرفر في الكونسول لنكشف اللغز
+                    console.log("💰 [DEBUG] API Balance Response:", data); 
+
+                    // 🧠 ذكاء اصطناعي لالتقاط الرصيد أياً كان شكل الرد متجاهلين شرط status الصارم
+                    let newBalance = null;
+                    
+                    if (data.user_balance !== undefined) {
+                        newBalance = data.user_balance;
+                    } else if (data.balance !== undefined) {
+                        newBalance = data.balance;
+                    } else if (data.data && data.data.balance !== undefined) {
+                        newBalance = data.data.balance;
+                    }
+
+                    if (newBalance !== null) {
+                        playerSession.balance = newBalance;
                         localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
 
                         // تحديث الأرقام في الواجهة
@@ -2224,10 +2239,14 @@
                             });
                         }
                         // =========================================================================
+                    } else {
+                        console.warn("⚠️ السيرفر رد بنجاح ولكن لم نعثر على قيمة الرصيد في الرد!");
                     }
+                } else {
+                    console.error("❌ السيرفر رفض الطلب، رمز الخطأ:", res.status);
                 }
             } catch (e) {
-                console.error("Erreur de solde:", e);
+                console.error("🚨 Erreur de solde:", e);
             }
         }
         function logoutPlayer() {
@@ -2409,12 +2428,7 @@
                 history.back();
             }
         }
-        function closeCasinoGame() {
-            document.getElementById('casino-iframe-container').classList.add('hidden');
-            document.getElementById('casino-iframe-container').classList.remove('flex');
-            document.getElementById('casino-iframe').src = "";
-            refreshPlayerBalance();
-        }
+        
 
         async function openSportsbook() {
             if (!playerSession) return openLoginModal();
@@ -3400,7 +3414,7 @@
         }
         // إخفاء شاشة التحميل بنعومة عندما يكتمل تحميل كل شيء
         window.addEventListener('load', function () {
-            const loader = document.getElementById('magic-loader');
+            const loader = document.getElementById('preloader');
             loader.style.opacity = '0';
             setTimeout(() => {
                 loader.style.display = 'none';
@@ -3447,6 +3461,16 @@ function launchSport2() {
     showNotification("Chargement Sport 2...", "success");
     // TODO: استدعاء API السبور الثاني
 }
+
+// ================= محرك الاستماع الذكي للألعاب =================
+        // هذا الكود يستمع لأي حركة أو رسالة قادمة من اللعبة (Iframe) ويجبر الواجهة على تحديث الرصيد فوراً
+        window.addEventListener("message", (event) => {
+            // نتحقق من أن هناك جلسة لاعب فعالة
+            if (playerSession && playerSession.username) {
+                // نطلب من السيرفر جلب الرصيد الجديد فوراً بمجرد حدوث أي تغيير داخل اللعبة
+                refreshPlayerBalance();
+            }
+        });
     </script>
 
 
