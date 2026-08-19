@@ -1593,15 +1593,17 @@ async def eurovirtuals_exact_bet(request: Request):
                 curr = float(target_user.get("balance", 50.0) or 50.0)
                 expected_balance = curr - amount
                 
+                # 🔴 التعديل الأخير: إرجاع 402 بدلاً من 400 كما يطلب المزود 🔴
                 if expected_balance < 0 or "insufficient" in round_id or "insufficient" in transaction_id:
-                    return {"status_code": 400, "status_description": "Insufficient Balance"}
+                    return {"status_code": 402, "status_description": "Insufficient Balance"}
                     
                 new_balance = round(expected_balance, 2)
                 target_user["balance"] = new_balance
                 save_db(db)
             else:
+                # 🔴 إرجاع 402 هنا أيضاً 🔴
                 if amount > 50.0 or "insufficient" in round_id or "insufficient" in transaction_id:
-                    return {"status_code": 400, "status_description": "Insufficient Balance"}
+                    return {"status_code": 402, "status_description": "Insufficient Balance"}
                 target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
                 db.append(target_user)
                 save_db(db)
@@ -1619,7 +1621,6 @@ async def eurovirtuals_exact_bet(request: Request):
         }
     except Exception as e:
         return {"status_code": 500, "status_description": str(e)}
-
 # ==========================================
 # 2. دالة الفوز (Win)
 # ==========================================
