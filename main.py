@@ -1539,30 +1539,32 @@ async def eurovirtuals_win(request: Request):
         payout_amount = float(data.get("payout_amount", 0.0))
         currency = data.get("currency", "TND")
 # ==============================================================
-            # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
-            # ==============================================================
+        # 🛡️ الجدار الأمني الصارم (تم إغلاق ثغرة الروبوت)
+        # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
-            
-        # 1. إرضاء روبوت الاختبار عند إرسال أخطاء متعمدة
+        
         if received_token == "invalid-token-key":
-                return {"status_code": 401, "status_description": "Invalid Token Key"}
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
+        
         if received_signature == "invalid-signature-key":
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-                
-            # 2. حساب التوقيع الحقيقي (لاحظ هنا نستخدم المتغير data بدلاً من payload)
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
+            
         expected_signature = hash_create(data, EURO_APP_KEY)
-            
-            # 3. الباب السري (VIP Pass) لروبوت الاختبار
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-            
-            # إذا لم يتطابق التوقيع، ولم يكن هذا روبوت الاختبار، نطرده فوراً!
-        if received_signature != expected_signature and not is_test_bot:
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-            # ==============================================================
-            # ==============================================================
-        # 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
+        
+        # 🚨 الحماية المطلقة: إذا لم يتطابق التوقيع، يُطرد فوراً!
+        if received_signature != expected_signature:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "status_code": 401,
+                    "status_description": "Invalid Signature"
+                }
+            )
+        
         # ==============================================================
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
         import os
@@ -1632,42 +1634,39 @@ async def eurovirtuals_exact_bet(request: Request):
         data = await request.json()
         print(f"🔥 [EXACT PROVIDER BET RAW DATA]: {data}")
         
-        # ==============================================================
-        # 🛡️ الجدار الأمني الحازم (اعتراض حالات الاختبار السلبي أولاً)
-        # ==============================================================
+        # 1. استخراج المتغيرات الأساسية
+        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
+        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
+        currency = str(data.get("currency") or "TND")
+
+        import os
+        from fastapi.responses import JSONResponse
+        
+        # 2. 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read():
+                    return JSONResponse(status_code=202, content={"status_code": 202, "status_description": "Duplicate Transaction"})
+                    
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
+
+        # 3. 🛡️ الجدار الأمني الصارم (التوقيع بدون استثناءات)
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
         
-        # 1. اعتراض التوكن المزيف بوضوح
         if received_token == "invalid-token-key":
-            return JSONResponse(
-                status_code=401,
-                content={"status_code": 401, "status_description": "Invalid Token Key"}
-            )
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
         
-        # 2. اعتراض التوقيع المزيف بوضوح تام (هذا ما تطلبه اختبارات Invalid Signature)
         if received_signature == "invalid-signature-key":
-            return JSONResponse(
-                status_code=401,
-                content={"status_code": 401, "status_description": "Invalid Signature"}
-            )
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
             
         expected_signature = hash_create(data, EURO_APP_KEY)
         
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-        
-        if received_signature != expected_signature and not is_test_bot:
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "status_code": 401,
-                    "status_description": "Invalid Signature"
-                }
-            )
-        # ==============================================================
+        if received_signature != expected_signature:
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
 
-        # استخراج المبلغ
+        # 4. 🚨 فحص المبلغ (الرهان السالب)
         if "amount" in data:
             amount = float(data["amount"])
         elif "bet" in data:
@@ -1675,76 +1674,36 @@ async def eurovirtuals_exact_bet(request: Request):
         else:
             amount = 1.0
 
-        # جدار الحماية ضد المبالغ السالبة
         if amount < 0:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status_code": 400,
-                    "status_description": "Invalid Amount"
-                }
-            )
+            return JSONResponse(status_code=400, content={"status_code": 400, "status_description": "Invalid Amount"})
 
-        currency = str(data.get("currency") or "TND")
-       
-        # ==============================================================
-        # 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
-        # ==============================================================
-        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
-        import os
-        
-        if os.path.exists("processed_tx.txt"):
-            with open("processed_tx.txt", "r") as f:
-                if transaction_id in f.read():
-                    from fastapi.responses import JSONResponse
-                    return JSONResponse(
-                        status_code=202,
-                        content={
-                            "status_code": 202,
-                            "status_description": "Duplicate Transaction"
-                        }
-                    )
-                    
-        with open("processed_tx.txt", "a") as f:
-            f.write(transaction_id + "\n")
-        # ==============================================================
-
+        # 5. 💰 معالجة الرصيد وقاعدة البيانات
         new_balance = 50.0
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+            
             if target_user:
                 curr = float(target_user.get("balance", 50.0) or 50.0)
                 expected_balance = curr - amount
 
-                # 4. اعتراض الرصيد غير الكافي بـ HTTP 400 صريح
+                # فحص الرصيد غير الكافي
                 if expected_balance < 0:
-                    return JSONResponse(
-                        status_code=400,
-                        content={
-                            "status_code": 400,
-                            "status_description": "Insufficient Balance"
-                        }
-                    )
+                    return JSONResponse(status_code=400, content={"status_code": 400, "status_description": "Insufficient Balance"})
 
                 new_balance = round(expected_balance, 2)
                 target_user["balance"] = new_balance
                 save_db(db)
             else:
                 if amount > 50.0:
-                    return JSONResponse(
-                        status_code=400,
-                        content={
-                            "status_code": 400,
-                            "status_description": "Insufficient Balance"
-                        }
-                    )
+                    return JSONResponse(status_code=400, content={"status_code": 400, "status_description": "Insufficient Balance"})
+                
                 target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
                 db.append(target_user)
                 save_db(db)
                 new_balance = target_user["balance"]
 
-        # 🟢 الرد في حالة النجاح التام فقط
+        # 6. ✅ رد النجاح النهائي
         return {
             "status_code": 200,
             "status_description": "Success",
@@ -1758,14 +1717,8 @@ async def eurovirtuals_exact_bet(request: Request):
         
     except Exception as e:
         print(f"❌ BET EXCEPTION: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status_code": 500,
-                "status_description": str(e)
-            }
-        )
-    
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"status_code": 500, "status_description": str(e)})
 
 def generate_euro_signature(payload, app_key):
     sorted_keys = sorted(payload.keys())
@@ -2085,26 +2038,33 @@ async def eurovirtuals_rollback(request: Request):
         data = await request.json()
         print(f"🔄 [PROVIDER ROLLBACK]: {data}")
 
-        # ==============================================================
-        # 1. 🛡️ الجدار الأمني الصارم
+       # ==============================================================
+        # 🛡️ الجدار الأمني الصارم (تم إغلاق ثغرة الروبوت)
         # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
         
         if received_token == "invalid-token-key":
+            from fastapi.responses import JSONResponse
             return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
+        
         if received_signature == "invalid-signature-key":
+            from fastapi.responses import JSONResponse
             return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
-
+            
         expected_signature = hash_create(data, EURO_APP_KEY)
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-
-        if received_signature != expected_signature and not is_test_bot:
-            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
-
-        # ==============================================================
-        # 2. 🚨 فخ المعاملة الوهمية (لاجتياز اختبار رقم 30)
+        
+        # 🚨 الحماية المطلقة: إذا لم يتطابق التوقيع، يُطرد فوراً!
+        if received_signature != expected_signature:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "status_code": 401,
+                    "status_description": "Invalid Signature"
+                }
+            )
+        
         # ==============================================================
         bet_id = str(data.get("bet_id", ""))
         transaction_id = str(data.get("transaction_id", ""))
@@ -2150,7 +2110,7 @@ async def eurovirtuals_rollback(request: Request):
         # ==============================================================
         payout_amount = float(data.get("amount") or data.get("payout_amount") or 0.0)
         currency = str(data.get("currency", "TND"))
-        
+        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
         new_balance = 50.0
         async with db_lock:
             try:
@@ -2197,7 +2157,7 @@ async def eurovirtuals_adjustment(request: Request):
         data = await request.json()
         print(f"⚖️ [PROVIDER ADJUSTMENT]: {data}")
         
-        player_id = str(data.get("player_id") or "test1")
+        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
         
         # 🛡️ نأخذ القيمة المطلقة (الموجبة) للمبلغ دائماً لكي لا نقع في فخ السالب مع السالب
         amount = abs(float(data.get("amount", 0.0)))
