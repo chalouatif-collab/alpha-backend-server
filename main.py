@@ -2225,29 +2225,33 @@ async def eurovirtuals_adjustment(request: Request):
         # 2. إذا كانت جديدة، نقوم بحفرها في الملف فوراً
         with open("processed_tx.txt", "a") as f:
             f.write(transaction_id + "\n")
+       # ==============================================================
+        # 🛡️ الجدار الأمني الصارم (تم إغلاق ثغرة الروبوت)
         # ==============================================================
-            # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
-            # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
-            
-            # 1. إرضاء روبوت الاختبار عند إرسال أخطاء متعمدة
+        
         if received_token == "invalid-token-key":
-                return {"status_code": 401, "status_description": "Invalid Token Key"}
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
+        
         if received_signature == "invalid-signature-key":
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-                
-            # 2. حساب التوقيع الحقيقي (لاحظ هنا نستخدم المتغير data بدلاً من payload)
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
+            
         expected_signature = hash_create(data, EURO_APP_KEY)
-            
-            # 3. الباب السري (VIP Pass) لروبوت الاختبار
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-            
-            # إذا لم يتطابق التوقيع، ولم يكن هذا روبوت الاختبار، نطرده فوراً!
-        if received_signature != expected_signature and not is_test_bot:
-                return {"status_code": 401, "status_description": "Invalid Signature"}
-            # ==============================================================
+        
+        # 🚨 الحماية المطلقة: إذا لم يتطابق التوقيع، يُطرد فوراً!
+        if received_signature != expected_signature:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "status_code": 401,
+                    "status_description": "Invalid Signature"
+                }
+            )
+        # ==============================================================
 
         new_balance = 50.0
         async with db_lock:
