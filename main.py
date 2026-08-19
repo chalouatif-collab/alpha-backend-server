@@ -31,7 +31,7 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 import uuid
-PROCESSED_TRANSACTIONS = set()
+
 
 # ==========================================
 # 🎰 إعدادات الكازينو (NexusGGR)
@@ -1561,22 +1561,26 @@ async def eurovirtuals_win(request: Request):
         if received_signature != expected_signature and not is_test_bot:
                 return {"status_code": 401, "status_description": "Invalid Signature"}
             # ==============================================================
-            # 1. استخراج رقم المعاملة
+            # ==============================================================
+        # 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
+        # ==============================================================
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
-
-        # ==============================================================
-        # 2. 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
-        # ==============================================================
-        if transaction_id in PROCESSED_TRANSACTIONS:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=202,
-                content={
-                    "status_code": 202,
-                    "status_description": "Duplicate Transaction"
-                }
-            )
-        PROCESSED_TRANSACTIONS.add(transaction_id)
+        import os
+        
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read():
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=202,
+                        content={
+                            "status_code": 202,
+                            "status_description": "Duplicate Transaction"
+                        }
+                    )
+                    
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
         # ==============================================================
         new_balance = 50.0
         async with db_lock:
@@ -1682,19 +1686,27 @@ async def eurovirtuals_exact_bet(request: Request):
             )
 
         currency = str(data.get("currency") or "TND")
+       
+        # ==============================================================
+        # 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
+        # ==============================================================
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
-        # ==============================================================
-        # 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
-        # ==============================================================
-        if transaction_id in PROCESSED_TRANSACTIONS:
-            return JSONResponse(
-                status_code=202,
-                content={
-                    "status_code": 202,
-                    "status_description": "Duplicate Transaction"
-                }
-            )
-        PROCESSED_TRANSACTIONS.add(transaction_id)
+        import os
+        
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read():
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=202,
+                        content={
+                            "status_code": 202,
+                            "status_description": "Duplicate Transaction"
+                        }
+                    )
+                    
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
         # ==============================================================
 
         new_balance = 50.0
@@ -2099,15 +2111,28 @@ async def eurovirtuals_rollback(request: Request):
         # ==============================================================
         # 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
         # ==============================================================
-        if transaction_id in PROCESSED_TRANSACTIONS:
-            return JSONResponse(
-                status_code=202,
-                content={
-                    "status_code": 202,
-                    "status_description": "Duplicate Transaction"
-                }
-            )
-        PROCESSED_TRANSACTIONS.add(transaction_id)
+        # ==============================================================
+        # 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
+        # ==============================================================
+        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
+        import os
+        
+        # 1. التحقق إذا كانت المعاملة مسجلة في الملف
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read():
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=202,
+                        content={
+                            "status_code": 202,
+                            "status_description": "Duplicate Transaction"
+                        }
+                    )
+                    
+        # 2. إذا كانت جديدة، نقوم بحفرها في الملف فوراً
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
         # ==============================================================
         
         if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
@@ -2178,24 +2203,29 @@ async def eurovirtuals_adjustment(request: Request):
         amount = abs(float(data.get("amount", 0.0)))
         currency = data.get("currency", "TND")
         action = data.get("action", "")
-        # 1. استخراج رقم المعاملة
+        
+        # 🛡️ جدار حماية المعاملات المكررة (الذاكرة الحديدية)
+        # ==============================================================
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
-
+        import os
+        
+        # 1. التحقق إذا كانت المعاملة مسجلة في الملف
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read():
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=202,
+                        content={
+                            "status_code": 202,
+                            "status_description": "Duplicate Transaction"
+                        }
+                    )
+                    
+        # 2. إذا كانت جديدة، نقوم بحفرها في الملف فوراً
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
         # ==============================================================
-        # 2. 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
-        # ==============================================================
-        if transaction_id in PROCESSED_TRANSACTIONS:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=202,
-                content={
-                    "status_code": 202,
-                    "status_description": "Duplicate Transaction"
-                }
-            )
-        PROCESSED_TRANSACTIONS.add(transaction_id)
-        # ==============================================================
-# ==============================================================
             # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
             # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
