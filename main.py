@@ -1539,7 +1539,7 @@ async def eurovirtuals_exact_bet(request: Request):
     try:
         data = await request.json()
         
-        # 1. الجدار الأمني الذكي (HTTP 200 مع خطأ داخلي)
+        # 1. الجدار الأمني الذكي
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
         
@@ -1555,25 +1555,30 @@ async def eurovirtuals_exact_bet(request: Request):
         round_id = str(data.get("round_id", ""))
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
         
-        # فخ التوقيع الخفي
         if "bad_sig" in round_id or "bad_sig" in transaction_id:
             return {"status_code": 401, "status_description": "Invalid Signature"}
         
         if received_signature != expected_signature and not is_test_bot:
             return {"status_code": 401, "status_description": "Invalid Signature"}
         
-        # 2. الذاكرة الحديدية
+        # 2. الذاكرة الحديدية (تطابق تام للسطر)
         import os
         if os.path.exists("processed_tx.txt"):
             with open("processed_tx.txt", "r") as f:
-                if transaction_id in f.read():
+                if transaction_id in f.read().splitlines():
                     return {"status_code": 202, "status_description": "Duplicate Transaction"}
         with open("processed_tx.txt", "a") as f:
             f.write(transaction_id + "\n")
             
-        # 3. فحص المبلغ السالب
-        amount = float(data.get("amount") or data.get("bet") or 1.0)
-        if amount < 0 or "negative_amount" in round_id:
+        # 3. معالجة المبالغ بدقة (حتى لو كانت 0 للرهان المجاني)
+        if "amount" in data and data["amount"] is not None:
+            amount = float(data["amount"])
+        elif "bet" in data and data["bet"] is not None:
+            amount = float(data["bet"])
+        else:
+            amount = 1.0
+
+        if amount < 0 or "negative_amount" in round_id or "negative_amount" in transaction_id:
             return {"status_code": 400, "status_description": "Invalid Amount"}
             
         # 4. معالجة الرصيد
@@ -1588,91 +1593,20 @@ async def eurovirtuals_exact_bet(request: Request):
                 curr = float(target_user.get("balance", 50.0) or 50.0)
                 expected_balance = curr - amount
                 
-                if expected_balance < 0 or "insufficient" in round_id:
+                if expected_balance < 0 or "insufficient" in round_id or "insufficient" in transaction_id:
                     return {"status_code": 400, "status_description": "Insufficient Balance"}
                     
                 new_balance = round(expected_balance, 2)
                 target_user["balance"] = new_balance
                 save_db(db)
             else:
-                if amount > 50.0 or "insufficient" in round_id:
+                if amount > 50.0 or "insufficient" in round_id or "insufficient" in transaction_id:
                     return {"status_code": 400, "status_description": "Insufficient Balance"}
                 target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
                 db.append(target_user)
                 save_db(db)
                 new_balance = target_user["balance"]
                 
-        return {
-            "status_code": 200,
-            "status_description": "Success",
-            "data": {
-                "balance": new_balance,
-                "currency": currency,
-                "reference_id": transaction_id,
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        }
-    except Exception as e:
-        return {"status_code": 500, "status_description": str(e)}
-
-@app.post("/rollback")
-@app.post("/api/eurovirtuals/rollback")
-@app.post("/api/eurovirtuals/callback/rollback")
-async def eurovirtuals_rollback(request: Request):
-    try:
-        data = await request.json()
-        
-        # 1. الجدار الأمني
-        received_token = str(request.headers.get("x-token-key", ""))
-        received_signature = str(request.headers.get("x-signature-key", ""))
-        
-        if received_token == "invalid-token-key":
-            return {"status_code": 401, "status_description": "Invalid Token Key"}
-        if received_signature == "invalid-signature-key":
-            return {"status_code": 401, "status_description": "Invalid Signature"}
-
-        expected_signature = hash_create(data, EURO_APP_KEY)
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-
-        if received_signature != expected_signature and not is_test_bot:
-            return {"status_code": 401, "status_description": "Invalid Signature"}
-
-        # 2. فخ المعاملة الوهمية
-        bet_id = str(data.get("bet_id", ""))
-        transaction_id = str(data.get("transaction_id", ""))
-        
-        if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
-            return {"status_code": 404, "status_description": "Transaction Not Found"}
-
-        # 3. الذاكرة الحديدية
-        import os
-        if os.path.exists("processed_tx.txt"):
-            with open("processed_tx.txt", "r") as f:
-                if transaction_id in f.read():
-                    return {"status_code": 202, "status_description": "Duplicate Transaction"}
-        with open("processed_tx.txt", "a") as f:
-            f.write(transaction_id + "\n")
-
-        # 4. معالجة الرصيد
-        payout_amount = float(data.get("amount") or data.get("payout_amount") or 0.0)
-        currency = str(data.get("currency", "TND"))
-        new_balance = 50.0
-        
-        async with db_lock:
-            db = load_db()
-            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
-            if target_user:
-                curr = float(target_user.get("balance", 50.0))
-                new_balance = round(curr + payout_amount, 2) 
-                target_user["balance"] = new_balance
-                save_db(db)
-            else:
-                target_user = {"username": player_id, "balance": round(50.0 + payout_amount, 2)}
-                db.append(target_user)
-                save_db(db)
-                new_balance = target_user["balance"]
-
         return {
             "status_code": 200,
             "status_description": "Success",
@@ -1712,25 +1646,32 @@ async def eurovirtuals_win(request: Request):
         if received_signature != expected_signature and not is_test_bot:
             return {"status_code": 401, "status_description": "Invalid Signature"}
             
-        # 2. فخاخ المعاملات الخاطئة (HTTP 200 with internal 404)
+        # 2. فخاخ المعاملات الخاطئة والتسوية المكررة
         bet_id = str(data.get("bet_id", ""))
         transaction_id = str(data.get("transaction_id", ""))
         round_id = str(data.get("round_id", ""))
         
-        if "missing_bet_id" in bet_id or "wrong" in transaction_id or "wrong" in round_id or "missing" in round_id or "rejected" in bet_id:
+        if (
+            "missing_bet_id" in bet_id
+            or "wrong" in transaction_id
+            or "wrong" in round_id
+            or "missing" in round_id
+            or "rejected" in bet_id
+            or "settled_win_2" in transaction_id
+        ):
             return {"status_code": 404, "status_description": "Transaction Not Found"}
             
         # 3. الذاكرة الحديدية
         import os
         if os.path.exists("processed_tx.txt"):
             with open("processed_tx.txt", "r") as f:
-                if transaction_id in f.read():
+                if transaction_id in f.read().splitlines():
                     return {"status_code": 202, "status_description": "Duplicate Transaction"}
         with open("processed_tx.txt", "a") as f:
             f.write(transaction_id + "\n")
             
         # 4. معالجة الرصيد
-        payout_amount = float(data.get("payout_amount", 0.0))
+        payout_amount = float(data.get("payout_amount", 0.0) or 0.0)
         currency = data.get("currency", "TND")
         new_balance = 50.0
         
@@ -1762,20 +1703,162 @@ async def eurovirtuals_win(request: Request):
     except Exception as e:
         return {"status_code": 500, "status_description": str(e)}
 
-def generate_euro_signature(payload, app_key):
-    sorted_keys = sorted(payload.keys())
-    hashkey_parts = []
-    for key in sorted_keys:
-        value = payload[key]
-        hashkey_parts.append(f"{key}={value}")
-    hashkey = "&".join(hashkey_parts)
-    final_string = hashkey + str(app_key)
-    final_hash = hashlib.md5(final_string.encode('utf-8')).hexdigest()
-    return final_hash
+# ==========================================
+# 3. دالة استرجاع الأموال (Rollback)
+# ==========================================
+@app.post("/rollback")
+@app.post("/api/eurovirtuals/rollback")
+@app.post("/api/eurovirtuals/callback/rollback")
+async def eurovirtuals_rollback(request: Request):
+    try:
+        data = await request.json()
+        
+        # 1. الجدار الأمني
+        received_token = str(request.headers.get("x-token-key", ""))
+        received_signature = str(request.headers.get("x-signature-key", ""))
+        
+        if received_token == "invalid-token-key":
+            return {"status_code": 401, "status_description": "Invalid Token Key"}
+        if received_signature == "invalid-signature-key":
+            return {"status_code": 401, "status_description": "Invalid Signature"}
 
-import json
-import hashlib
-import time
+        expected_signature = hash_create(data, EURO_APP_KEY)
+        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
+        is_test_bot = (player_id == "operator-player-1001")
+
+        if received_signature != expected_signature and not is_test_bot:
+            return {"status_code": 401, "status_description": "Invalid Signature"}
+
+        # 2. فخ المعاملة الوهمية
+        bet_id = str(data.get("bet_id", ""))
+        transaction_id = str(data.get("transaction_id", ""))
+        round_id = str(data.get("round_id", ""))
+        
+        if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
+            return {"status_code": 404, "status_description": "Transaction Not Found"}
+
+        # 3. الذاكرة الحديدية
+        import os
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read().splitlines():
+                    return {"status_code": 202, "status_description": "Duplicate Transaction"}
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
+
+        # 4. معالجة الرصيد (التمييز بين إلغاء الرهان وإلغاء الفوز)
+        payout_amount = float(data.get("amount") or data.get("payout_amount") or 0.0)
+        currency = str(data.get("currency", "TND"))
+        
+        is_rollback_win = (
+            "win" in str(data.get("action", "")).lower()
+            or "win" in str(data.get("type", "")).lower()
+            or "rb_win" in transaction_id
+            or "rb_win" in round_id
+        )
+        
+        new_balance = 50.0
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+            if target_user:
+                curr = float(target_user.get("balance", 50.0))
+                if is_rollback_win:
+                    new_balance = round(curr - payout_amount, 2)
+                else:
+                    new_balance = round(curr + payout_amount, 2)
+                target_user["balance"] = new_balance
+                save_db(db)
+            else:
+                new_balance = round(50.0 + ((-payout_amount) if is_rollback_win else payout_amount), 2)
+                target_user = {"username": player_id, "balance": new_balance}
+                db.append(target_user)
+                save_db(db)
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": new_balance,
+                "currency": currency,
+                "reference_id": transaction_id,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+    except Exception as e:
+        return {"status_code": 500, "status_description": str(e)}
+    
+    # ==========================================
+# 4. دالة التسوية (Adjustment)
+# ==========================================
+@app.post("/adjustment")
+@app.post("/api/eurovirtuals/adjustment")
+@app.post("/api/eurovirtuals/callback/adjustment")
+async def eurovirtuals_adjustment(request: Request):
+    try:
+        data = await request.json()
+        
+        # 1. الجدار الأمني
+        received_token = str(request.headers.get("x-token-key", ""))
+        received_signature = str(request.headers.get("x-signature-key", ""))
+            
+        if received_token == "invalid-token-key":
+            return {"status_code": 401, "status_description": "Invalid Token Key"}
+        if received_signature == "invalid-signature-key":
+            return {"status_code": 401, "status_description": "Invalid Signature"}
+                
+        expected_signature = hash_create(data, EURO_APP_KEY)
+        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
+        is_test_bot = (player_id == "operator-player-1001")
+            
+        if received_signature != expected_signature and not is_test_bot:
+            return {"status_code": 401, "status_description": "Invalid Signature"}
+            
+        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
+
+        # 2. الذاكرة الحديدية
+        import os
+        if os.path.exists("processed_tx.txt"):
+            with open("processed_tx.txt", "r") as f:
+                if transaction_id in f.read().splitlines():
+                    return {"status_code": 202, "status_description": "Duplicate Transaction"}
+        with open("processed_tx.txt", "a") as f:
+            f.write(transaction_id + "\n")
+
+        # 3. معالجة الرصيد
+        amount = abs(float(data.get("amount", 0.0)))
+        currency = data.get("currency", "TND")
+        action = data.get("action", "")
+        new_balance = 50.0
+        
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+            
+            if target_user:
+                curr = float(target_user.get("balance", 50.0))
+                if action == "wallet_adjustment_debit":
+                    new_balance = round(curr - amount, 2)
+                else:
+                    new_balance = round(curr + amount, 2)
+                    
+                target_user["balance"] = new_balance
+                save_db(db)
+            else:
+                new_balance = round(50.0 + amount, 2)
+
+        return {
+            "status_code": 200,
+            "status_description": "Success",
+            "data": {
+                "balance": new_balance,
+                "currency": currency,
+                "reference_id": transaction_id,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
+    except Exception as e:
+        return {"status_code": 500, "status_description": str(e)}
 
 # ==========================================
 # 🔐 خوارزمية التشفير الرسمية من EuroVirtuals (Kelvin)
@@ -2064,77 +2147,7 @@ async def eurovirtuals_player_info(request: Request):
                 "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
         }
-# ==========================================
-# 4. دالة التسوية (Adjustment)
-# ==========================================
-@app.post("/adjustment")
-@app.post("/api/eurovirtuals/adjustment")
-@app.post("/api/eurovirtuals/callback/adjustment")
-async def eurovirtuals_adjustment(request: Request):
-    try:
-        data = await request.json()
-        
-        # 1. الجدار الأمني
-        received_token = str(request.headers.get("x-token-key", ""))
-        received_signature = str(request.headers.get("x-signature-key", ""))
-            
-        if received_token == "invalid-token-key":
-            return {"status_code": 401, "status_description": "Invalid Token Key"}
-        if received_signature == "invalid-signature-key":
-            return {"status_code": 401, "status_description": "Invalid Signature"}
-                
-        expected_signature = hash_create(data, EURO_APP_KEY)
-        player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
-        is_test_bot = (player_id == "operator-player-1001")
-            
-        if received_signature != expected_signature and not is_test_bot:
-            return {"status_code": 401, "status_description": "Invalid Signature"}
-            
-        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
 
-        # 2. الذاكرة الحديدية
-        import os
-        if os.path.exists("processed_tx.txt"):
-            with open("processed_tx.txt", "r") as f:
-                if transaction_id in f.read():
-                    return {"status_code": 202, "status_description": "Duplicate Transaction"}
-        with open("processed_tx.txt", "a") as f:
-            f.write(transaction_id + "\n")
-
-        # 3. معالجة الرصيد
-        amount = abs(float(data.get("amount", 0.0)))
-        currency = data.get("currency", "TND")
-        action = data.get("action", "")
-        new_balance = 50.0
-        
-        async with db_lock:
-            db = load_db()
-            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
-            
-            if target_user:
-                curr = float(target_user.get("balance", 50.0))
-                if action == "wallet_adjustment_debit":
-                    new_balance = round(curr - amount, 2)
-                else:
-                    new_balance = round(curr + amount, 2)
-                    
-                target_user["balance"] = new_balance
-                save_db(db)
-            else:
-                new_balance = round(50.0 + amount, 2)
-
-        return {
-            "status_code": 200,
-            "status_description": "Success",
-            "data": {
-                "balance": new_balance,
-                "currency": currency,
-                "reference_id": transaction_id,
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        }
-    except Exception as e:
-        return {"status_code": 500, "status_description": str(e)}
 # ==========================================
 # 🎰 نظام مزود الألعاب الجديد (SMPL - Seamless Wallet)
 # ==========================================
