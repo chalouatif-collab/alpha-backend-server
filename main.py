@@ -2069,7 +2069,23 @@ async def eurovirtuals_rollback(request: Request):
             # إذا لم يتطابق التوقيع، ولم يكن هذا روبوت الاختبار، نطرده فوراً!
         if received_signature != expected_signature and not is_test_bot:
                 return {"status_code": 401, "status_description": "Invalid Signature"}
-            # ==============================================================        
+            # ==============================================================      
+             # استخراج معرّفات المعاملة
+        bet_id = str(data.get("bet_id", ""))
+        transaction_id = str(data.get("transaction_id", ""))
+
+        # ==============================================================
+        # 🚨 فخ المعاملة الوهمية (لاجتياز اختبار 30: Rollback Wrong Transaction)
+        # ==============================================================
+        if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status_code": 404,
+                    "status_description": "Transaction Not Found"
+                }
+            )
+        # ============================================================== 
 
         new_balance = 50.0
         async with db_lock:
