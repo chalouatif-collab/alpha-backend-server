@@ -1655,7 +1655,7 @@ async def eurovirtuals_exact_bet(request: Request):
                 # 🚨 جدار الحماية ضد المبالغ السالبة (إصلاح الاختبار رقم 9)
             if amount < 0:
                 return {
-                    "status_code": 500,
+                    "status_code": 400,
                     "status_description": "Invalid Amount"
                 }
                 
@@ -1675,7 +1675,7 @@ async def eurovirtuals_exact_bet(request: Request):
                         if expected_balance < 0:
                             # إرجاع رد بخطأ في الرصيد ولكن مع حالة HTTP 200 كما يطلب المزود
                             return {
-                                "status_code": 500, # أو الكود المحدد في توثيقهم لخطأ الرصيد
+                                "status_code": 400, # أو الكود المحدد في توثيقهم لخطأ الرصيد
                                 "status_description": "Insufficient Balance"
                             }
                             
