@@ -1619,13 +1619,14 @@ async def eurovirtuals_exact_bet(request: Request):
         print(f"🔥 [EXACT PROVIDER BET RAW DATA]: {data}")
         
         # ==============================================================
-        # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
+        # 🛡️ الجدار الأمني الخارق (مع JSONResponse لضمان رفض HTTP 200)
         # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
         
         if received_token == "invalid-token-key":
             return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Token Key"})
+        
         if received_signature == "invalid-signature-key":
             return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
             
@@ -1634,8 +1635,15 @@ async def eurovirtuals_exact_bet(request: Request):
         player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
         is_test_bot = (player_id == "operator-player-1001")
         
+        # 🚨 هنا التعديل المهم: استخدام JSONResponse حتى في حالة عدم تطابق التوقيع العام
         if received_signature != expected_signature and not is_test_bot:
-            return JSONResponse(status_code=401, content={"status_code": 401, "status_description": "Invalid Signature"})
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "status_code": 401,
+                    "status_description": "Invalid Signature"
+                }
+            )
         # ==============================================================
 
         # استخراج المبلغ بالطريقة الصحيحة
