@@ -1607,19 +1607,11 @@ async def eurovirtuals_win(request: Request):
 @app.post("/api/eurovirtuals/callback/bet")
 async def eurovirtuals_exact_bet(request: Request):
     try:
-        try:
-            data = await request.json()
-        except Exception:
-            try:
-                form = await request.form()
-                data = dict(form)
-            except Exception:
-                data = {}
-        
+        data = await request.json()
         print(f"🔥 [EXACT PROVIDER BET RAW DATA]: {data}")
         
         # ==============================================================
-        # 🛡️ الجدار الأمني الخارق (مع JSONResponse لضمان رفض HTTP 200)
+        # 🛡️ الجدار الأمني الخارق (التحقق من التوكن والتوقيع)
         # ==============================================================
         received_token = str(request.headers.get("x-token-key", ""))
         received_signature = str(request.headers.get("x-signature-key", ""))
@@ -1635,7 +1627,6 @@ async def eurovirtuals_exact_bet(request: Request):
         player_id = str(data.get("player_id") or data.get("user_code") or data.get("username") or "test1")
         is_test_bot = (player_id == "operator-player-1001")
         
-        # 🚨 هنا التعديل المهم: استخدام JSONResponse حتى في حالة عدم تطابق التوقيع العام
         if received_signature != expected_signature and not is_test_bot:
             return JSONResponse(
                 status_code=401,
@@ -1646,7 +1637,7 @@ async def eurovirtuals_exact_bet(request: Request):
             )
         # ==============================================================
 
-        # استخراج المبلغ بالطريقة الصحيحة
+        # استخراج المبلغ
         if "amount" in data:
             amount = float(data["amount"])
         elif "bet" in data:
@@ -1654,7 +1645,7 @@ async def eurovirtuals_exact_bet(request: Request):
         else:
             amount = 1.0
 
-        # جدار الحماية ضد المبالغ السالبة
+        # فحص المبلغ السالب
         if amount < 0:
             return JSONResponse(
                 status_code=400,
@@ -1669,43 +1660,40 @@ async def eurovirtuals_exact_bet(request: Request):
 
         new_balance = 50.0
         async with db_lock:
-            try:
-                db = load_db()
-                target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
-                if target_user:
-                    curr = float(target_user.get("balance", 50.0) or 50.0)
-                    expected_balance = curr - amount
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+            if target_user:
+                curr = float(target_user.get("balance", 50.0) or 50.0)
+                expected_balance = curr - amount
 
-                    # جدار الحماية للرصيد غير الكافي
-                    if expected_balance < 0:
-                        return JSONResponse(
-                            status_code=400,
-                            content={
-                                "status_code": 400,
-                                "status_description": "Insufficient Balance"
-                            }
-                        )
+                # فحص الرصيد غير الكافي
+                if expected_balance < 0:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status_code": 400,
+                            "status_description": "Insufficient Balance"
+                        }
+                    )
 
-                    new_balance = round(expected_balance, 2)
-                    target_user["balance"] = new_balance
-                    save_db(db)
-                else:
-                    if amount > 50.0:
-                        return JSONResponse(
-                            status_code=400,
-                            content={
-                                "status_code": 400,
-                                "status_description": "Insufficient Balance"
-                            }
-                        )
-                    target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
-                    db.append(target_user)
-                    save_db(db)
-                    new_balance = target_user["balance"]
-            except Exception as db_err:
-                print(f"⚠️ DB Error in bet: {db_err}")
+                new_balance = round(expected_balance, 2)
+                target_user["balance"] = new_balance
+                save_db(db)
+            else:
+                if amount > 50.0:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status_code": 400,
+                            "status_description": "Insufficient Balance"
+                        }
+                    )
+                target_user = {"username": player_id, "balance": max(0.0, 50.0 - amount)}
+                db.append(target_user)
+                save_db(db)
+                new_balance = target_user["balance"]
 
-        # رد النجاح النهائي
+        # 🟢 الرد الحقيقي في حال النجاح فقط
         return {
             "status_code": 200,
             "status_description": "Success",
@@ -1719,6 +1707,7 @@ async def eurovirtuals_exact_bet(request: Request):
         
     except Exception as e:
         print(f"❌ BET EXCEPTION: {e}")
+        # في حالة حدوث خطأ تقني داخلي، نعيد 500 ولا نتحايل بـ 200
         return JSONResponse(
             status_code=500,
             content={
