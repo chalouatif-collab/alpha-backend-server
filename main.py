@@ -31,6 +31,7 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 import uuid
+PROCESSED_TRANSACTIONS = set()
 
 # ==========================================
 # 🎰 إعدادات الكازينو (NexusGGR)
@@ -1560,6 +1561,23 @@ async def eurovirtuals_win(request: Request):
         if received_signature != expected_signature and not is_test_bot:
                 return {"status_code": 401, "status_description": "Invalid Signature"}
             # ==============================================================
+            # 1. استخراج رقم المعاملة
+        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
+
+        # ==============================================================
+        # 2. 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
+        # ==============================================================
+        if transaction_id in PROCESSED_TRANSACTIONS:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "status_code": 202,
+                    "status_description": "Duplicate Transaction"
+                }
+            )
+        PROCESSED_TRANSACTIONS.add(transaction_id)
+        # ==============================================================
         new_balance = 50.0
         async with db_lock:
             try:
@@ -1665,6 +1683,19 @@ async def eurovirtuals_exact_bet(request: Request):
 
         currency = str(data.get("currency") or "TND")
         transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
+        # ==============================================================
+        # 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
+        # ==============================================================
+        if transaction_id in PROCESSED_TRANSACTIONS:
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "status_code": 202,
+                    "status_description": "Duplicate Transaction"
+                }
+            )
+        PROCESSED_TRANSACTIONS.add(transaction_id)
+        # ==============================================================
 
         new_balance = 50.0
         async with db_lock:
@@ -2065,6 +2096,19 @@ async def eurovirtuals_rollback(request: Request):
         # ==============================================================
         bet_id = str(data.get("bet_id", ""))
         transaction_id = str(data.get("transaction_id", ""))
+        # ==============================================================
+        # 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
+        # ==============================================================
+        if transaction_id in PROCESSED_TRANSACTIONS:
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "status_code": 202,
+                    "status_description": "Duplicate Transaction"
+                }
+            )
+        PROCESSED_TRANSACTIONS.add(transaction_id)
+        # ==============================================================
         
         if "not_existing" in bet_id or "wrong_rollback" in transaction_id:
             # نرسل HTTP 200 كما طلبوا، ولكن الكود الداخلي 404
@@ -2124,6 +2168,7 @@ async def eurovirtuals_rollback(request: Request):
 @app.post("/api/eurovirtuals/callback/adjustment") # 👈 مسار المهندس الجديد
 async def eurovirtuals_adjustment(request: Request):
     try:
+        
         data = await request.json()
         print(f"⚖️ [PROVIDER ADJUSTMENT]: {data}")
         
@@ -2133,6 +2178,23 @@ async def eurovirtuals_adjustment(request: Request):
         amount = abs(float(data.get("amount", 0.0)))
         currency = data.get("currency", "TND")
         action = data.get("action", "")
+        # 1. استخراج رقم المعاملة
+        transaction_id = str(data.get("transaction_id") or str(uuid.uuid4()))
+
+        # ==============================================================
+        # 2. 🛡️ جدار حماية المعاملات المكررة (Duplicate Transactions)
+        # ==============================================================
+        if transaction_id in PROCESSED_TRANSACTIONS:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=202,
+                content={
+                    "status_code": 202,
+                    "status_description": "Duplicate Transaction"
+                }
+            )
+        PROCESSED_TRANSACTIONS.add(transaction_id)
+        # ==============================================================
 # ==============================================================
             # 🛡️ الجدار الأمني الخارق (تجاوز الاختبارات الآلية بذكاء)
             # ==============================================================
