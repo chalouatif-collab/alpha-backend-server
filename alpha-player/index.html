@@ -3563,36 +3563,38 @@
                 modal.classList.add('hidden');
             }, 300); // الانتظار حتى ينتهي تأثير الاختفاء
         }
-
-        // دالة تشغيل السبورتبوك الأول (مثل Nexus Sports)
+// زر الرياضة الأول: Nexus Sports
         function launchSport1() {
             closeSportsSelector();
-            openSportsbookForProvider('SPORTSBOOK_1'); // أو كود المزود الأول لديك
+            openSportsbookForProvider('nexus'); // كود مزود نكسيس
         }
 
-        // دالة تشغيل السبورتبوك الثاني (إذا كان لديك مزود رياضة ثانٍ)
+        // زر الرياضة الثاني: SMPL Sports
         function launchSport2() {
             closeSportsSelector();
-            openSportsbookForProvider('SPORTSBOOK_2'); // أو كود المزود الثاني لديك
+            openSportsbookForProvider('smpl'); // كود مزود سمبل
         }
 
-        // الدالة الموحدة لفتح الـ Iframe الخاص بالرياضة
+        // الدالة الموحدة الذكية التي تتعامل مع المزودين معاً
         async function openSportsbookForProvider(providerCode) {
             if (!playerSession) return openLoginModal();
             
             const overlay = document.getElementById('sportsbook-overlay');
             const iframe = document.getElementById('sportsbook-iframe');
+            const loader = document.getElementById('casino-loader'); // استخدام نفس اللودر للتحميل
             
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
             history.pushState({ modalOpen: true }, "", "");
-            
+            if (loader) loader.style.display = 'flex';
+            iframe.style.opacity = '0';
+
             try {
                 const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
                     method: 'POST', 
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ 
-                        provider_code: providerCode, 
+                        provider_code: providerCode, // يرسل إما 'nexus' أو 'smpl'
                         game_code: 'SPORTSBOOK', 
                         user_code: playerSession.username 
                     })
@@ -3601,8 +3603,9 @@
                 
                 if (data.launch_url) {
                     iframe.src = data.launch_url;
+                    iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
                 } else {
-                    showNotification("Sportsbook non disponible", "error");
+                    showNotification(data.error || "Sportsbook non disponible", "error");
                     closeSportsbook();
                 }
             } catch (error) { 

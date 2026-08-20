@@ -2910,15 +2910,33 @@ async def sportsbook_webhook(request: Request):
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook_api(req: SportsLaunchRequest):
     try:
-        payload = {
-            "user_code": req.user_code,
-            "provider_code": req.provider_code,
-            "currency": "TND"
-        }
+        launch_url = ""
         
-        launch_url = f"https://your-sports-provider-iframe-url.com/?user={req.user_code}"
-        
+        if req.provider_code.lower() == "smpl":
+            # 👈 رابط وطلب إطلاق السبورتبوك الخاص بـ SMPL
+            # (نفس توقيع وهيدرز ألعاب الكازينو لـ SMPL ولكن مسار الرياضة)
+            smpl_sports_endpoint = f"{SMPL_BASE_URL}/sportsbook/launch" # أو المسار الخاص بالرياضة لديهم
+            
+            payload = {
+                "user_code": req.user_code,
+                "currency": "TND"
+            }
+            headers = get_smpl_headers_and_sign(payload)
+            
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(smpl_sports_endpoint, json=payload, headers=headers, timeout=20)
+                data = resp.json()
+                launch_url = data.get("launch_url") or data.get("url")
+                
+        elif req.provider_code.lower() == "nexus":
+            # 👈 رابط وطلب إطلاق السبورتبوك الخاص بـ Nexus القديم
+            launch_url = f"https://nexus-sports-provider-url.com/launch?user={req.user_code}"
+            
+        if not launch_url:
+            raise HTTPException(status_code=400, detail="المزود رفض الطلب أو الرابط غير متاح")
+            
         return {"status": "success", "launch_url": launch_url}
+        
     except Exception as e:
         print("❌ [SPORTSBOOK ERROR]:", e)
-        return {"status": "error", "message": "Failed to launch sportsbook"}
+        return {"status": "error", "message": str(e)}
