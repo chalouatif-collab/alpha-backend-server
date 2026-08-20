@@ -2625,19 +2625,17 @@ async def get_smpl_games():
 # 1. مسار جلب المزودين (الشركات) فقط لإنشاء الأزرار
 @app.get("/api/smpl/providers")
 async def get_smpl_providers():
-    # التأكد من أن الألعاب محملة في الذاكرة (Cache) أولاً
     if not SMPL_GAMES_CACHE["data"] or (time.time() - SMPL_GAMES_CACHE["time"] > 3600):
         await get_smpl_games()
 
-    # استخراج أسماء المزودين بدون تكرار (مثل: Endorphina, Tomhorn)
-    unique_providers = set()
+    providers_map = {}
     for game in SMPL_GAMES_CACHE["data"]:
-        provider_name = game.get("provider")
-        if provider_name:
-            unique_providers.add(provider_name)
+        p_name = game.get("provider")
+        p_image = game.get("image")
+        if p_name and p_name not in providers_map:
+            providers_map[p_name] = p_image # التقاط صورة أول لعبة للمزود كشعار له
 
-    # تحويلها إلى قائمة منسقة جاهزة للواجهة الأمامية
-    provider_list = [{"code": p, "name": p} for p in sorted(list(unique_providers))]
+    provider_list = [{"code": p, "name": p, "logo": img} for p, img in sorted(providers_map.items())]
     return {"status": "success", "providers": provider_list}
 
 # 2. مسار جلب ألعاب مزود معين عند الضغط على زره

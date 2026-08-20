@@ -2608,7 +2608,6 @@
             const bar = document.getElementById('smpl-providers-bar');
             if (!bar) return;
 
-            // تحميل أسماء المزودين مرة واحدة فقط وتبقى في الموقع
             if (smplProviders.length === 0) {
                 bar.innerHTML = '<span class="text-blue-500 text-xs">Chargement des fournisseurs... ⏳</span>';
                 try {
@@ -2617,9 +2616,15 @@
                     smplProviders = data.providers || [];
 
                     if (smplProviders.length > 0) {
-                        bar.innerHTML = smplProviders.map(p =>
-                            `<button id="btn-smpl-prov-${p.code}" onclick="loadSMPLProviderGames('${p.code}')" class="smpl-prov-btn btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0 transition-all">${p.name}</button>`
-                        ).join('');
+                        // رسم الأزرار مع لوجو المزود المستخرج تلقائياً
+                        bar.innerHTML = smplProviders.map(p => {
+                            const logoHtml = p.logo 
+                                ? `<img src="${p.logo}" class="w-5 h-5 object-cover rounded-full border border-blue-400/40 shrink-0" onerror="this.replaceWith(document.createElement('i')).className='fas fa-crown text-blue-400 text-xs'">` 
+                                : `<i class="fas fa-crown text-blue-400 text-xs"></i>`;
+
+                            return `<button id="btn-smpl-prov-${p.code}" onclick="loadSMPLProviderGames('${p.code}')" class="smpl-prov-btn btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0 transition-all flex items-center gap-2">${logoHtml} <span>${p.name}</span></button>`;
+                        }).join('');
+
                         setTimeout(() => enableMouseDragScroll('smpl-providers-bar'), 200);
                         loadSMPLProviderGames(smplProviders[0].code);
                     } else {
@@ -2632,11 +2637,10 @@
                 if (currentSMPLGames.length === 0 && smplProviders.length > 0) {
                     loadSMPLProviderGames(smplProviders[0].code);
                 } else {
-                    renderSMPLGridInternal(currentSMPLGames); // إعادتها بدون تحميل من جديد
+                    renderSMPLGridInternal(currentSMPLGames);
                 }
             }
         }
-
         async function loadSMPLProviderGames(providerCode) {
             currentActiveSMPLProvider = providerCode;
             currentSMPLDisplayLimit = 50; 
