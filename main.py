@@ -2542,9 +2542,13 @@ def get_smpl_headers_and_sign(data=None):
 # 1. مسار جلب قائمة الألعاب
 SMPL_GAMES_CACHE = {"time": 0, "data": []}
 
+# 1. مسار جلب قائمة الألعاب
+SMPL_GAMES_CACHE = {"time": 0, "data": []}
+
 @app.get("/api/smpl/get-games")
 async def get_smpl_games():
     current_time = time.time()
+    # استخدام ذاكرة التخزين المؤقت (Cache)
     if current_time - SMPL_GAMES_CACHE["time"] < 3600 and SMPL_GAMES_CACHE["data"]:
         return {"status": "success", "games": SMPL_GAMES_CACHE["data"]}
         
@@ -2554,34 +2558,34 @@ async def get_smpl_games():
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=20)
-            
-            # 🔍 السطر الكاشف: سيطبع رد المزود الحقيقي في سجلات السيرفر
-            print(f"🔥 [SMPL RAW RESPONSE] Status: {response.status_code} | Body: {response.text}")
-            
             games_data = response.json()
-            formatted_games = []
             
-            if isinstance(games_data, list):
-                for g in games_data:
-                    formatted_games.append({
-                        "id": g.get("uuid"),
-                        "name": g.get("name"),
-                        "image": g.get("image"),
-                        "provider": g.get("provider", "Premium"),
-                        "has_lobby": g.get("has_lobby", 0)
-                    })
-                
+            # 🔍 الحل السحري: استخراج الألعاب من داخل صندوق 'items' إذا كان موجوداً
+            actual_games_list = []
+            if isinstance(games_data, dict) and "items" in games_data:
+                actual_games_list = games_data["items"]
+            elif isinstance(games_data, list):
+                actual_games_list = games_data
+
+            formatted_games = []
+            for g in actual_games_list:
+                formatted_games.append({
+                    "id": g.get("uuid"),
+                    "name": g.get("name"),
+                    "image": g.get("image"),
+                    "provider": g.get("provider", "Premium"),
+                    "has_lobby": g.get("has_lobby", 0)
+                })
+            
+            # حفظ الألعاب في الذاكرة لتسريع التحميل
+            if formatted_games:
                 SMPL_GAMES_CACHE["time"] = current_time
                 SMPL_GAMES_CACHE["data"] = formatted_games
-            else:
-                print("⚠️ [SMPL WARNING] المزود لم يرسل قائمة بل أرسل:", games_data)
-            
+                
             return {"status": "success", "games": formatted_games}
         except Exception as e:
             print("❌ [SMPL EXCEPTION]:", e)
             return {"status": "error", "message": "Failed to fetch games"}
-
-
 # 2. مسار تشغيل اللعبة
 class SMPLLaunchRequest(BaseModel):
     game_uuid: str
