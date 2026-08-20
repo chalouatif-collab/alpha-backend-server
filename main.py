@@ -2548,10 +2548,10 @@ async def get_smpl_games():
     if current_time - SMPL_GAMES_CACHE["time"] < 3600 and SMPL_GAMES_CACHE["data"]:
         return {"status": "success", "games": SMPL_GAMES_CACHE["data"]}
         
-    games_dict = {} # 👈 سنستخدم قاموس لدمج نسخ الحاسوب والهاتف معاً
+    games_dict = {} 
     
     current_page = 1
-    max_pages = 5 
+    max_pages = 20 # 👈 رفعنا العدد لنجلب كل الـ 17,000 لعبة بدون نقصان
     
     async with httpx.AsyncClient() as client:
         try:
@@ -2559,7 +2559,7 @@ async def get_smpl_games():
                 params = {"per-page": 2000, "page": current_page} 
                 headers = get_smpl_headers_and_sign(params)
                 
-                response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=20)
+                response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=25)
                 games_data = response.json()
                 
                 actual_games_list = []
@@ -2579,7 +2579,6 @@ async def get_smpl_games():
                     raw_name = g.get("name", "Unknown")
                     uuid_val = g.get("uuid") or g.get("id")
                     
-                    # تنظيف الاسم ليكون هو المفتاح المرجعي
                     clean_name = raw_name
                     is_mobile_version = False
                     
@@ -2587,7 +2586,6 @@ async def get_smpl_games():
                         clean_name = clean_name[:-7].strip()
                         is_mobile_version = True
                     
-                    # إذا كانت اللعبة جديدة، ننشئ لها صندوقاً
                     key = clean_name.lower()
                     if key not in games_dict:
                         games_dict[key] = {
@@ -2599,7 +2597,6 @@ async def get_smpl_games():
                             "mobile_id": None
                         }
                     
-                    # حفظ الرمز في المكان المناسب (هاتف أو حاسوب)
                     if is_mobile_version or g.get("is_mobile") == 1:
                         games_dict[key]["mobile_id"] = uuid_val
                     else:
@@ -2607,13 +2604,11 @@ async def get_smpl_games():
 
                 current_page += 1
             
-            # تجهيز القائمة النهائية
             all_formatted_games = []
             for k, v in games_dict.items():
-                # إذا لم يكن هناك نسخة هاتف، نستخدم نسخة الحاسوب كبديل، والعكس صحيح
                 if not v["desktop_id"]: v["desktop_id"] = v["mobile_id"]
                 if not v["mobile_id"]: v["mobile_id"] = v["desktop_id"]
-                v["id"] = v["desktop_id"] # الحفاظ على التوافق مع الكود القديم
+                v["id"] = v["desktop_id"] 
                 all_formatted_games.append(v)
 
             if all_formatted_games:
@@ -2624,7 +2619,7 @@ async def get_smpl_games():
         except Exception as e:
             print("❌ [SMPL EXCEPTION]:", e)
             return {"status": "error", "message": "Failed to fetch games"}
-# 🚀 المسارات الجديدة لتنظيم الواجهة مثل Nexus
+# 🚀 المسارات الجديدة لتنظيم الواجهة مثل 
 # ==========================================
 
 # 1. مسار جلب المزودين (الشركات) فقط لإنشاء الأزرار
