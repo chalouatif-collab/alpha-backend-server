@@ -2505,8 +2505,8 @@ async def smpl_webhook(request: Request):
 # ==========================================
 
 # ⚠️ ملاحظة: هذه المفاتيح يجب أن يعطيها لك المندوب لاحقاً لتشغيل الألعاب الحقيقية
-SMPL_MERCHANT_ID = "ff955b5759b3885f08cf125d4454ceb4" 
-SMPL_MERCHANT_KEY = "your-merchant-key-here"
+SMPL_MERCHANT_ID = "510d8aa3f49b130f65e4d7270707c350" 
+SMPL_MERCHANT_KEY = "0abb91bec41b964ca647783e3b4fafb93151e626"
 SMPL_BASE_URL = "https://staging.smplcore.net/api/index.php/v1"
 
 # خوارزمية توقيع الطلبات لـ SMPL
