@@ -3564,22 +3564,60 @@
             }, 300); // الانتظار حتى ينتهي تأثير الاختفاء
         }
 
-        // دالة تشغيل سبور 1
+        // دالة تشغيل السبورتبوك الأول (مثل Nexus Sports)
         function launchSport1() {
             closeSportsSelector();
-            // هنا نضع الدالة القديمة التي تفتح الرياضة الأولى (Nexus)
-            // إذا كانت دالتك القديمة اسمها launchSportsbook قم باستدعائها هكذا:
-            if (typeof launchSportsbook === "function") {
-                launchSportsbook();
+            openSportsbookForProvider('SPORTSBOOK_1'); // أو كود المزود الأول لديك
+        }
+
+        // دالة تشغيل السبورتبوك الثاني (إذا كان لديك مزود رياضة ثانٍ)
+        function launchSport2() {
+            closeSportsSelector();
+            openSportsbookForProvider('SPORTSBOOK_2'); // أو كود المزود الثاني لديك
+        }
+
+        // الدالة الموحدة لفتح الـ Iframe الخاص بالرياضة
+        async function openSportsbookForProvider(providerCode) {
+            if (!playerSession) return openLoginModal();
+            
+            const overlay = document.getElementById('sportsbook-overlay');
+            const iframe = document.getElementById('sportsbook-iframe');
+            
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            history.pushState({ modalOpen: true }, "", "");
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
+                    method: 'POST', 
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ 
+                        provider_code: providerCode, 
+                        game_code: 'SPORTSBOOK', 
+                        user_code: playerSession.username 
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.launch_url) {
+                    iframe.src = data.launch_url;
+                } else {
+                    showNotification("Sportsbook non disponible", "error");
+                    closeSportsbook();
+                }
+            } catch (error) { 
+                showNotification("Erreur de connexion", "error");
+                closeSportsbook(); 
             }
         }
 
-        // دالة تشغيل سبور 2
-        function launchSport2() {
-            closeSportsSelector();
-            // هنا سنضع كود تشغيل منصة الرياضة الثانية لاحقاً
-            showNotification("Chargement Sport 2...", "success");
-            // TODO: استدعاء API السبور الثاني
+        function closeSportsbook(fromPopState = false) {
+            document.getElementById('sportsbook-overlay').classList.add('hidden');
+            document.getElementById('sportsbook-overlay').classList.remove('flex');
+            document.getElementById('sportsbook-iframe').src = "about:blank";
+            if (!fromPopState && history.state && history.state.modalOpen) {
+                history.back();
+            }
         }
 
         // ================= محرك الاستماع الذكي للألعاب =================

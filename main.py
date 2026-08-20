@@ -32,7 +32,12 @@ from firebase_admin import credentials
 from firebase_admin import db
 import uuid
 PROCESSED_TRANSACTIONS = set()
+from pydantic import BaseModel
 
+class SportsLaunchRequest(BaseModel):
+    provider_code: str
+    game_code: str
+    user_code: str
 # ==========================================
 # 🎰 إعدادات الكازينو (NexusGGR)
 # ==========================================
@@ -2899,3 +2904,21 @@ async def sportsbook_webhook(request: Request):
             raise HTTPException(status_code=500, detail="Internal Server Error")
         finally:
             db_session.close()
+            
+            
+
+@app.post("/api/provider/launch-sportsbook")
+async def launch_sportsbook_api(req: SportsLaunchRequest):
+    try:
+        payload = {
+            "user_code": req.user_code,
+            "provider_code": req.provider_code,
+            "currency": "TND"
+        }
+        
+        launch_url = f"https://your-sports-provider-iframe-url.com/?user={req.user_code}"
+        
+        return {"status": "success", "launch_url": launch_url}
+    except Exception as e:
+        print("❌ [SPORTSBOOK ERROR]:", e)
+        return {"status": "error", "message": "Failed to launch sportsbook"}
