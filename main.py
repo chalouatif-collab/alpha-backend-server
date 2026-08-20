@@ -2545,20 +2545,22 @@ SMPL_GAMES_CACHE = {"time": 0, "data": []}
 @app.get("/api/smpl/get-games")
 async def get_smpl_games():
     current_time = time.time()
-    # استخدام ذاكرة التخزين المؤقت (Cache) لتخفيف الضغط على السيرفر
     if current_time - SMPL_GAMES_CACHE["time"] < 3600 and SMPL_GAMES_CACHE["data"]:
         return {"status": "success", "games": SMPL_GAMES_CACHE["data"]}
         
-    params = {"limit": 500} # جلب أكبر عدد ممكن من الألعاب
+    params = {"limit": 500} 
     headers = get_smpl_headers_and_sign(params)
     
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=20)
-            games_data = response.json()
             
-            # تنظيف وتنسيق البيانات للواجهة
+            # 🔍 السطر الكاشف: سيطبع رد المزود الحقيقي في سجلات السيرفر
+            print(f"🔥 [SMPL RAW RESPONSE] Status: {response.status_code} | Body: {response.text}")
+            
+            games_data = response.json()
             formatted_games = []
+            
             if isinstance(games_data, list):
                 for g in games_data:
                     formatted_games.append({
@@ -2571,11 +2573,14 @@ async def get_smpl_games():
                 
                 SMPL_GAMES_CACHE["time"] = current_time
                 SMPL_GAMES_CACHE["data"] = formatted_games
+            else:
+                print("⚠️ [SMPL WARNING] المزود لم يرسل قائمة بل أرسل:", games_data)
             
             return {"status": "success", "games": formatted_games}
         except Exception as e:
-            print("SMPL Games API Error:", e)
+            print("❌ [SMPL EXCEPTION]:", e)
             return {"status": "error", "message": "Failed to fetch games"}
+
 
 # 2. مسار تشغيل اللعبة
 class SMPLLaunchRequest(BaseModel):
