@@ -2545,18 +2545,17 @@ SMPL_GAMES_CACHE = {"time": 0, "data": []}
 @app.get("/api/smpl/get-games")
 async def get_smpl_games():
     current_time = time.time()
-    # استخدام ذاكرة التخزين المؤقت (Cache)
     if current_time - SMPL_GAMES_CACHE["time"] < 3600 and SMPL_GAMES_CACHE["data"]:
         return {"status": "success", "games": SMPL_GAMES_CACHE["data"]}
         
-    all_formatted_games = []
+    games_dict = {} # 👈 سنستخدم قاموس لدمج نسخ الحاسوب والهاتف معاً
+    
     current_page = 1
-    max_pages = 5 # 👈 سنجلب 5 صفحات (آلاف الألعاب) لضمان ظهور كل المزودين
+    max_pages = 5 
     
     async with httpx.AsyncClient() as client:
         try:
             while current_page <= max_pages:
-                # 🔍 الحل: نطلب 2000 لعبة في الصفحة الواحدة بدلاً من 50!
                 params = {"per-page": 2000, "page": current_page} 
                 headers = get_smpl_headers_and_sign(params)
                 
@@ -2566,29 +2565,57 @@ async def get_smpl_games():
                 actual_games_list = []
                 if isinstance(games_data, dict) and "items" in games_data:
                     actual_games_list = games_data["items"]
-                    # تحديث الحد الأقصى للصفحات بناءً على رد المزود
                     total_api_pages = games_data.get("_meta", {}).get("pageCount", 1)
                     if total_api_pages < max_pages:
                         max_pages = total_api_pages
                 elif isinstance(games_data, list):
                     actual_games_list = games_data
-                    max_pages = 1 # لا يوجد صفحات
+                    max_pages = 1 
                 
                 if not actual_games_list:
                     break
 
                 for g in actual_games_list:
-                    all_formatted_games.append({
-                        "id": g.get("uuid") or g.get("id"),
-                        "name": g.get("name"),
-                        "image": g.get("image"),
-                        "provider": g.get("provider", "Premium"),
-                        "has_lobby": g.get("has_lobby", 0)
-                    })
-                
+                    raw_name = g.get("name", "Unknown")
+                    uuid_val = g.get("uuid") or g.get("id")
+                    
+                    # تنظيف الاسم ليكون هو المفتاح المرجعي
+                    clean_name = raw_name
+                    is_mobile_version = False
+                    
+                    if clean_name.lower().endswith(" mobile"):
+                        clean_name = clean_name[:-7].strip()
+                        is_mobile_version = True
+                    
+                    # إذا كانت اللعبة جديدة، ننشئ لها صندوقاً
+                    key = clean_name.lower()
+                    if key not in games_dict:
+                        games_dict[key] = {
+                            "name": clean_name,
+                            "image": g.get("image"),
+                            "provider": g.get("provider", "Premium"),
+                            "has_lobby": g.get("has_lobby", 0),
+                            "desktop_id": None,
+                            "mobile_id": None
+                        }
+                    
+                    # حفظ الرمز في المكان المناسب (هاتف أو حاسوب)
+                    if is_mobile_version or g.get("is_mobile") == 1:
+                        games_dict[key]["mobile_id"] = uuid_val
+                    else:
+                        games_dict[key]["desktop_id"] = uuid_val
+
                 current_page += 1
             
-            # حفظ كل الألعاب في الذاكرة لتسريع التحميل
+            # تجهيز القائمة النهائية
+            all_formatted_games = []
+            for k, v in games_dict.items():
+                # إذا لم يكن هناك نسخة هاتف، نستخدم نسخة الحاسوب كبديل، والعكس صحيح
+                if not v["desktop_id"]: v["desktop_id"] = v["mobile_id"]
+                if not v["mobile_id"]: v["mobile_id"] = v["desktop_id"]
+                v["id"] = v["desktop_id"] # الحفاظ على التوافق مع الكود القديم
+                all_formatted_games.append(v)
+
             if all_formatted_games:
                 SMPL_GAMES_CACHE["time"] = current_time
                 SMPL_GAMES_CACHE["data"] = all_formatted_games
@@ -2597,7 +2624,6 @@ async def get_smpl_games():
         except Exception as e:
             print("❌ [SMPL EXCEPTION]:", e)
             return {"status": "error", "message": "Failed to fetch games"}
-
 # 🚀 المسارات الجديدة لتنظيم الواجهة مثل Nexus
 # ==========================================
 

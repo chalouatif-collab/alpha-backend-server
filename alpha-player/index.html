@@ -2694,10 +2694,9 @@
             renderSMPLGridInternal(currentSMPLGames);
         }
 
-        // 4. دالة الرسم مع نظام "التحميل التدريجي" (Infinite Scroll)
+        // 4. دالة الرسم مع نظام "التحميل التدريجي" 
         function renderSMPLGridInternal(gamesArray) {
             const container = document.getElementById('smpl-games-grid');
-            // قطع المصفوفة وعرض 40 لعبة فقط في البداية
             const gamesToDisplay = gamesArray.slice(0, currentSMPLDisplayLimit);
 
             if (gamesToDisplay.length === 0) {
@@ -2708,12 +2707,15 @@
             container.innerHTML = gamesToDisplay.map(g => {
                 const title = g.name || "Game";
                 const img = g.image || "https://placehold.co/400x400/0f172a/3b82f6?text=Premium";
-                const code = g.id || g.uuid; 
                 const provider = g.provider || "Premium";
                 const isLive = g.has_lobby === 1;
+                
+                // 👈 السر هنا: نجهز رمزي الحاسوب والهاتف
+                const desktopCode = g.desktop_id || g.id;
+                const mobileCode = g.mobile_id || g.id;
 
                 return `
-                <div onclick="launchSMPLGame('${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-blue-500/20 group cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.1)] hover:border-blue-400 hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] transition-all flex flex-col h-full relative">
+                <div onclick="launchSMPLGame('${desktopCode}', '${mobileCode}')" class="bg-black/50 rounded-xl overflow-hidden border border-blue-500/20 group cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.1)] hover:border-blue-400 hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] transition-all flex flex-col h-full relative">
                     ${isLive ? '<div class="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black px-2 py-1 rounded-bl-lg z-20 shadow-md animate-pulse">LIVE</div>' : ''}
                     <div class="relative w-full aspect-square overflow-hidden">
                         <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
@@ -2728,7 +2730,6 @@
                 </div>`;
             }).join('');
 
-            // 5. زر مخفي بأسفل الصفحة، عندما يراه المتصفح يحمل 40 لعبة إضافية
             let sentinel = document.getElementById('smpl-games-scroll-sentinel');
             if (currentSMPLDisplayLimit < gamesArray.length) {
                 if (!sentinel) {
@@ -2755,8 +2756,14 @@
             }
         }
 
-        async function launchSMPLGame(gameUuid) {
+        async function launchSMPLGame(desktopUuid, mobileUuid) {
             if (!playerSession) return openLoginModal();
+            
+            // 👈 رادار الأجهزة: نكتشف إن كان اللاعب يستخدم هاتفاً أم شاشة حاسوب
+            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+            
+            // نختار الرمز المناسب لجهازه
+            const finalGameUuid = (isMobileDevice && mobileUuid && mobileUuid !== 'undefined') ? mobileUuid : desktopUuid;
             
             const container = document.getElementById('casino-iframe-container');
             const iframe = document.getElementById('casino-iframe');
@@ -2772,7 +2779,7 @@
                     method: 'POST', 
                     headers: getAuthHeaders(),
                     body: JSON.stringify({ 
-                        game_uuid: gameUuid, 
+                        game_uuid: finalGameUuid, // نرسل الرمز المخصص لنجعله يفتح بسلاسة
                         user_code: playerSession.username 
                     })
                 });
