@@ -1070,36 +1070,47 @@
         </div>
     </div>
     <!-- ================= Modal اختيار الرياضة ================= -->
-<div id="sports-selector-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 opacity-0">
-    <div class="bg-[#1e1e2f] border border-blue-500/30 rounded-2xl p-6 w-11/12 max-w-md shadow-[0_0_40px_rgba(59,130,246,0.3)] transform scale-95 transition-transform duration-300 relative">
-        <!-- زر الإغلاق -->
-        <button onclick="closeSportsSelector()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-
-        <h3 class="text-xl md:text-2xl font-black text-white text-center mb-6 tracking-wider font-display">CHOISISSEZ VOTRE <span class="text-blue-500">SPORT</span></h3>
-
-        <div class="grid grid-cols-2 gap-4">
-            <!-- Sport 1 -->
-            <button onclick="launchSport1()" class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-blue-500 hover:bg-blue-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-                <div class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                    <span class="text-3xl">⚽</span>
-                </div>
-                <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 1</span>
-                <span class="text-blue-400 text-[10px] mt-1 font-bold">NEXUS</span>
+    <div id="sports-selector-modal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+        <div
+            class="bg-[#1e1e2f] border border-blue-500/30 rounded-2xl p-6 w-11/12 max-w-md shadow-[0_0_40px_rgba(59,130,246,0.3)] transform scale-95 transition-transform duration-300 relative">
+            <!-- زر الإغلاق -->
+            <button onclick="closeSportsSelector()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
             </button>
 
-            <!-- Sport 2 -->
-            <button onclick="launchSport2()" class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-green-500 hover:bg-green-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-                <div class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-green-600 to-green-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.5)]">
-                    <span class="text-3xl">⚽</span>
-                </div>
-                <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 2</span>
-                <span class="text-green-400 text-[10px] mt-1 font-bold">PREMIUM</span>
-            </button>
+            <h3 class="text-xl md:text-2xl font-black text-white text-center mb-6 tracking-wider font-display">
+                CHOISISSEZ VOTRE <span class="text-blue-500">SPORT</span></h3>
+
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Sport 1 -->
+                <button onclick="launchSport1()"
+                    class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-blue-500 hover:bg-blue-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                    <div
+                        class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                        <span class="text-3xl">⚽</span>
+                    </div>
+                    <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 1</span>
+                    <span class="text-blue-400 text-[10px] mt-1 font-bold">NEXUS</span>
+                </button>
+
+                <!-- Sport 2 -->
+                <button onclick="launchSport2()"
+                    class="flex flex-col items-center justify-center p-4 bg-black/50 border border-white/10 rounded-xl hover:border-green-500 hover:bg-green-500/10 transition-all group shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                    <div
+                        class="w-16 h-16 mb-3 rounded-full bg-gradient-to-tr from-green-600 to-green-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.5)]">
+                        <span class="text-3xl">⚽</span>
+                    </div>
+                    <span class="text-white font-bold text-sm tracking-wider uppercase">Sport 2</span>
+                    <span class="text-green-400 text-[10px] mt-1 font-bold">PREMIUM</span>
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
     <!-- Expandable Sidebar (Desktop) -->
     <aside class="fixed left-4 top-1/2 transform -translate-y-1/2 z-50 hidden xl:flex flex-col gap-4">
@@ -1569,6 +1580,32 @@
         <div id="pane-sport" class="player-view-section hidden w-full min-h-[800px]">
             <div class="text-center text-q-cyan py-10 font-display animate-pulse">Ouverture des sports en cours...</div>
         </div>
+        <!-- PANE: PREMIUM SMPL CASINO -->
+                    <div id="pane-smpl" class="player-view-section hidden w-full">
+                        <div
+                            class="flex flex-col md:flex-row gap-4 bg-q-panel/80 p-4 rounded-xl border border-blue-500/30 mb-4 backdrop-blur-md shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                            <h2
+                                class="text-white font-display font-black text-xl flex items-center gap-2 whitespace-nowrap">
+                                <span class="text-blue-500"><i class="fas fa-crown"></i></span> Premium Casino
+                            </h2>
+                            <input type="text" id="smpl-search-input" onkeyup="filterSMPLGames()" placeholder="Chercher un jeu Premium..."
+                                class="w-full bg-black/50 text-white border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-blue-500 transition-colors">
+                        </div>
+
+                        <!-- شريط تصنيفات المزودين داخل SMPL -->
+                        <div id="smpl-providers-bar" class="flex overflow-x-auto gap-2 hide-scroll py-2 mb-4">
+                            <!-- سيتم تعبئتها بالجافاسكريبت -->
+                        </div>
+
+                        <!-- شبكة الألعاب -->
+                        <div id="smpl-games-grid"
+                            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 w-full pb-10">
+                            <div
+                                class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display tracking-widest text-lg">
+                                LIAISON AVEC LE SERVEUR EN COURS... ⏳
+                            </div>
+                        </div>
+                    </div>
         <!-- ================= FOOTER & LEGAL (TERMS, PAYMENTS, LIMITS) ================= -->
         <footer
             class="relative mt-20 bg-q-panel/40 border-t border-white/10 backdrop-blur-xl pt-10 pb-8 rounded-t-3xl shadow-[0_-10px_30px_rgba(0,0,0,0.5)] w-full">
@@ -1595,36 +1632,7 @@
                                     Responsable</a></li>
                         </ul>
                     </div>
-                    <!-- PANE: PREMIUM SMPL CASINO -->
-                    <div id="pane-smpl" class="player-view-section hidden w-full">
-                        <div
-                            class="flex flex-col md:flex-row gap-4 bg-q-panel/80 p-4 rounded-xl border border-blue-500/30 mb-4 backdrop-blur-md shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-                            <h2
-                                class="text-white font-display font-black text-xl flex items-center gap-2 whitespace-nowrap">
-                                <span class="text-blue-500"><i class="fas fa-crown"></i></span> Premium Casino
-                            </h2>
-                            <input type="text" id="smpl-search-input" placeholder="Chercher un jeu Premium..."
-                                class="w-full bg-black/50 text-white border border-white/10 rounded-lg px-4 py-2 outline-none focus:border-blue-500 transition-colors">
-                        </div>
-
-                        <!-- شريط تصنيفات المزودين داخل SMPL -->
-                        <div id="smpl-providers-bar" class="flex overflow-x-auto gap-2 hide-scroll py-2 mb-4">
-                            <button
-                                class="btn-glass active px-4 py-2 rounded-full text-xs font-bold text-white border-blue-500 bg-blue-500/20 shrink-0">Tous</button>
-                            <button
-                                class="btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0">Evolution</button>
-                        </div>
-
-                        <!-- شبكة الألعاب -->
-                        <div id="smpl-games-grid"
-                            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 w-full pb-10">
-                            <div
-                                class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display tracking-widest text-lg">
-                                LIAISON AVEC LE SERVEUR EN COURS... ⏳
-                            </div>
-                        </div>
-                    </div>
-
+                    
                     <!-- طرق الدفع المتاحة -->
                     <div>
                         <h4 class="text-white font-display font-bold text-lg mb-4 flex items-center gap-2">
@@ -2177,7 +2185,7 @@
             if (!balanceInterval) balanceInterval = setInterval(refreshPlayerBalance, 4000);
         }
 
-       async function refreshPlayerBalance() {
+        async function refreshPlayerBalance() {
             if (!playerSession || !playerSession.username) return;
             try {
                 // 🛡️ التعديل هنا: استخدام مسار المحفظة الآمن
@@ -2192,13 +2200,13 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    
+
                     // 🔍 سطر المراقبة: سيطبع رد السيرفر في الكونسول لنكشف اللغز
                     //console.log("💰 [DEBUG] API Balance Response:", data); 
 
                     // 🧠 ذكاء اصطناعي لالتقاط الرصيد أياً كان شكل الرد متجاهلين شرط status الصارم
                     let newBalance = null;
-                    
+
                     if (data.user_balance !== undefined) {
                         newBalance = data.user_balance;
                     } else if (data.balance !== undefined) {
@@ -2428,7 +2436,7 @@
                 history.back();
             }
         }
-        
+
 
         async function openSportsbook() {
             if (!playerSession) return openLoginModal();
@@ -2589,39 +2597,118 @@
         }
 
 
-        // ================= محرك ألعاب SMPL Premium =================
-        let smplGames = [];
+       // ================= محرك ألعاب SMPL Premium =================
+        let smplProviders = [];
+        let currentSMPLGames = [];
+        let currentActiveSMPLProvider = "";
+        let currentSMPLDisplayLimit = 40; // 👈 سر السرعة: تحميل 40 لعبة فقط في البداية
+        let smplGamesObserver = null;
 
         async function initSMPLLobby() {
-            const container = document.getElementById('smpl-games-grid');
-            container.innerHTML = '<div class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display tracking-widest text-lg">CHARGEMENT DES JEUX PREMIUM... ⏳</div>';
+            const bar = document.getElementById('smpl-providers-bar');
+            if (!bar) return;
 
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/smpl/get-games`);
-                const data = await res.json();
-                
-                if (data.status === "success" && data.games) {
-                    smplGames = data.games;
-                    renderSMPLGrid(smplGames);
-                } else {
-                    container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10">Erreur de chargement des jeux.</div>';
+            // 1. جلب المزودين (الشركات) ديناميكياً من السيرفر
+            if (smplProviders.length === 0) {
+                bar.innerHTML = '<span class="text-blue-500 text-xs">Chargement des fournisseurs... ⏳</span>';
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/smpl/providers`);
+                    const data = await res.json();
+                    smplProviders = data.providers || [];
+
+                    if (smplProviders.length > 0) {
+                        // 2. بناء الأزرار تلقائياً بدون كتابتها يدوياً!
+                        bar.innerHTML = smplProviders.map(p =>
+                            `<button id="btn-smpl-prov-${p.code}" onclick="loadSMPLProviderGames('${p.code}')" class="smpl-prov-btn btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0 transition-all">${p.name}</button>`
+                        ).join('');
+
+                        // تفعيل السحب الأفقي بالماوس
+                        setTimeout(() => enableMouseDragScroll('smpl-providers-bar'), 200);
+                        
+                        // 3. تحميل ألعاب أول شركة تلقائياً
+                        loadSMPLProviderGames(smplProviders[0].code);
+                    } else {
+                        bar.innerHTML = '<span class="text-gray-500 text-xs">Aucun fournisseur trouvé.</span>';
+                        document.getElementById('smpl-games-grid').innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Aucun jeu trouvé.</div>';
+                    }
+                } catch (e) {
+                    bar.innerHTML = '<span class="text-red-500 text-xs">Erreur de chargement</span>';
                 }
-            } catch (e) {
-                container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10">Erreur réseau.</div>';
+            } else {
+                // العودة للقسم دون إعادة التحميل من الصفر
+                if (currentSMPLGames.length === 0 && smplProviders.length > 0) {
+                    loadSMPLProviderGames(smplProviders[0].code);
+                } else {
+                    renderSMPLGrid();
+                }
             }
         }
 
-        function renderSMPLGrid(games) {
+        async function loadSMPLProviderGames(providerCode) {
+            currentActiveSMPLProvider = providerCode;
+            currentSMPLDisplayLimit = 40; // تصفير عداد الألعاب عند تغيير الشركة
+
+            // تلوين زر الشركة النشطة باللون الأزرق
+            document.querySelectorAll('.smpl-prov-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-blue-500', 'bg-blue-500/20', 'text-white');
+                btn.classList.add('border-transparent', 'text-gray-400');
+            });
+            const activeBtn = document.getElementById(`btn-smpl-prov-${providerCode}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-gray-400');
+                activeBtn.classList.add('active', 'border-blue-500', 'bg-blue-500/20', 'text-white');
+            }
+
             const container = document.getElementById('smpl-games-grid');
-            if (games.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display tracking-widest text-lg">CHARGEMENT DES JEUX... ⏳</div>';
+
+            try {
+                // جلب ألعاب هذه الشركة فقط من السيرفر (سريعة جداً بفضل الـ Cache في السيرفر)
+                const res = await fetch(`${BACKEND_URL}/api/smpl/games-by-provider`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: providerCode })
+                });
+                const data = await res.json();
+
+                currentSMPLGames = data.games || [];
+                renderSMPLGrid();
+                
+                // تصفير حقل البحث
+                const searchInput = document.getElementById('smpl-search-input');
+                if (searchInput) searchInput.value = '';
+
+            } catch (e) {
+                console.error("Erreur SMPL:", e);
+                container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erreur de connexion.</div>';
+            }
+        }
+
+        function filterSMPLGames() {
+            const term = document.getElementById('smpl-search-input').value.toLowerCase();
+            const filtered = currentSMPLGames.filter(g => (g.name || "").toLowerCase().includes(term));
+            renderSMPLGridInternal(filtered);
+        }
+
+        function renderSMPLGrid() {
+            renderSMPLGridInternal(currentSMPLGames);
+        }
+
+        // 4. دالة الرسم مع نظام "التحميل التدريجي" (Infinite Scroll)
+        function renderSMPLGridInternal(gamesArray) {
+            const container = document.getElementById('smpl-games-grid');
+            // قطع المصفوفة وعرض 40 لعبة فقط في البداية
+            const gamesToDisplay = gamesArray.slice(0, currentSMPLDisplayLimit);
+
+            if (gamesToDisplay.length === 0) {
                 container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Aucun jeu trouvé.</div>';
                 return;
             }
 
-            container.innerHTML = games.map(g => {
+            container.innerHTML = gamesToDisplay.map(g => {
                 const title = g.name || "Game";
                 const img = g.image || "https://placehold.co/400x400/0f172a/3b82f6?text=Premium";
-                const code = g.id;
+                const code = g.id || g.uuid; 
                 const provider = g.provider || "Premium";
                 const isLive = g.has_lobby === 1;
 
@@ -2640,6 +2727,32 @@
                     </div>
                 </div>`;
             }).join('');
+
+            // 5. زر مخفي بأسفل الصفحة، عندما يراه المتصفح يحمل 40 لعبة إضافية
+            let sentinel = document.getElementById('smpl-games-scroll-sentinel');
+            if (currentSMPLDisplayLimit < gamesArray.length) {
+                if (!sentinel) {
+                    sentinel = document.createElement('div');
+                    sentinel.id = 'smpl-games-scroll-sentinel';
+                    sentinel.className = 'col-span-full text-center py-6 text-blue-500 font-display animate-pulse text-xs';
+                    sentinel.innerHTML = 'Chargement de plus de jeux... 🔄';
+                    container.parentNode.appendChild(sentinel);
+                }
+
+                if (!smplGamesObserver) {
+                    smplGamesObserver = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting && currentSMPLDisplayLimit < gamesArray.length) {
+                                currentSMPLDisplayLimit += 40;
+                                renderSMPLGridInternal(gamesArray);
+                            }
+                        });
+                    }, { rootMargin: '300px' });
+                }
+                smplGamesObserver.observe(sentinel);
+            } else if (sentinel) {
+                sentinel.remove();
+            }
         }
 
         async function launchSMPLGame(gameUuid) {
@@ -3168,8 +3281,8 @@
             }
         }
 
-       // ================= محرك الجاكبوت الحي (Live Jackpots - Real API) =================
-        
+        // ================= محرك الجاكبوت الحي (Live Jackpots - Real API) =================
+
         // دالة الأرقام الوهمية (تعمل كخطة بديلة إذا فشل الاتصال بالمزود)
         function simulateJackpots() {
             const now = new Date();
@@ -3198,12 +3311,12 @@
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/smpl/jackpots`);
                     const data = await res.json();
-                    
+
                     // التحقق من وجود بيانات حقيقية
                     if (Array.isArray(data) && data.length > 0) {
                         // ترتيب الجوائز من الأكبر للأصغر
                         const sortedJackpots = data.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
-                        
+
                         // Mega (أكبر مبلغ)
                         if (sortedJackpots[0] && document.getElementById('jackpot-mega')) {
                             document.getElementById('jackpot-mega').innerText = parseFloat(sortedJackpots[0].amount).toFixed(2);
@@ -3420,49 +3533,49 @@
                 loader.style.display = 'none';
             }, 1000); // ننتظر ثانية حتى ينتهي تأثير التلاشي
         });
-// ================= دوال التحكم في نافذة اختيار الرياضة =================
+        // ================= دوال التحكم في نافذة اختيار الرياضة =================
 
-function openSportsSelector() {
-    // التحقق أولاً إذا كان اللاعب مسجلاً للدخول
-    //if (!playerSession) return openLoginModal(); 
+        function openSportsSelector() {
+            // التحقق أولاً إذا كان اللاعب مسجلاً للدخول
+            //if (!playerSession) return openLoginModal(); 
 
-    const modal = document.getElementById('sports-selector-modal');
-    modal.classList.remove('hidden');
-    // تفعيل الأنيميشن
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modal.querySelector('div').classList.remove('scale-95');
-    }, 10);
-}
+            const modal = document.getElementById('sports-selector-modal');
+            modal.classList.remove('hidden');
+            // تفعيل الأنيميشن
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-95');
+            }, 10);
+        }
 
-function closeSportsSelector() {
-    const modal = document.getElementById('sports-selector-modal');
-    modal.classList.add('opacity-0');
-    modal.querySelector('div').classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300); // الانتظار حتى ينتهي تأثير الاختفاء
-}
+        function closeSportsSelector() {
+            const modal = document.getElementById('sports-selector-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300); // الانتظار حتى ينتهي تأثير الاختفاء
+        }
 
-// دالة تشغيل سبور 1
-function launchSport1() {
-    closeSportsSelector();
-    // هنا نضع الدالة القديمة التي تفتح الرياضة الأولى (Nexus)
-    // إذا كانت دالتك القديمة اسمها launchSportsbook قم باستدعائها هكذا:
-    if(typeof launchSportsbook === "function") {
-        launchSportsbook();
-    }
-}
+        // دالة تشغيل سبور 1
+        function launchSport1() {
+            closeSportsSelector();
+            // هنا نضع الدالة القديمة التي تفتح الرياضة الأولى (Nexus)
+            // إذا كانت دالتك القديمة اسمها launchSportsbook قم باستدعائها هكذا:
+            if (typeof launchSportsbook === "function") {
+                launchSportsbook();
+            }
+        }
 
-// دالة تشغيل سبور 2
-function launchSport2() {
-    closeSportsSelector();
-    // هنا سنضع كود تشغيل منصة الرياضة الثانية لاحقاً
-    showNotification("Chargement Sport 2...", "success");
-    // TODO: استدعاء API السبور الثاني
-}
+        // دالة تشغيل سبور 2
+        function launchSport2() {
+            closeSportsSelector();
+            // هنا سنضع كود تشغيل منصة الرياضة الثانية لاحقاً
+            showNotification("Chargement Sport 2...", "success");
+            // TODO: استدعاء API السبور الثاني
+        }
 
-// ================= محرك الاستماع الذكي للألعاب =================
+        // ================= محرك الاستماع الذكي للألعاب =================
         // هذا الكود يستمع لأي حركة أو رسالة قادمة من اللعبة (Iframe) ويجبر الواجهة على تحديث الرصيد فوراً
         window.addEventListener("message", (event) => {
             // نتحقق من أن هناك جلسة لاعب فعالة

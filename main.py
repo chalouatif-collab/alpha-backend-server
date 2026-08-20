@@ -2542,9 +2542,6 @@ def get_smpl_headers_and_sign(data=None):
 # 1. مسار جلب قائمة الألعاب
 SMPL_GAMES_CACHE = {"time": 0, "data": []}
 
-# 1. مسار جلب قائمة الألعاب
-SMPL_GAMES_CACHE = {"time": 0, "data": []}
-
 @app.get("/api/smpl/get-games")
 async def get_smpl_games():
     current_time = time.time()
@@ -2552,42 +2549,55 @@ async def get_smpl_games():
     if current_time - SMPL_GAMES_CACHE["time"] < 3600 and SMPL_GAMES_CACHE["data"]:
         return {"status": "success", "games": SMPL_GAMES_CACHE["data"]}
         
-    params = {"limit": 500} 
-    headers = get_smpl_headers_and_sign(params)
+    all_formatted_games = []
+    current_page = 1
+    max_pages = 5 # 👈 سنجلب 5 صفحات (آلاف الألعاب) لضمان ظهور كل المزودين
     
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=20)
-            games_data = response.json()
-            
-            # 🔍 الحل السحري: استخراج الألعاب من داخل صندوق 'items' إذا كان موجوداً
-            actual_games_list = []
-            if isinstance(games_data, dict) and "items" in games_data:
-                actual_games_list = games_data["items"]
-            elif isinstance(games_data, list):
-                actual_games_list = games_data
-
-            formatted_games = []
-            for g in actual_games_list:
-                formatted_games.append({
-                    "id": g.get("uuid"),
-                    "name": g.get("name"),
-                    "image": g.get("image"),
-                    "provider": g.get("provider", "Premium"),
-                    "has_lobby": g.get("has_lobby", 0)
-                })
-            
-            # حفظ الألعاب في الذاكرة لتسريع التحميل
-            if formatted_games:
-                SMPL_GAMES_CACHE["time"] = current_time
-                SMPL_GAMES_CACHE["data"] = formatted_games
+            while current_page <= max_pages:
+                # 🔍 الحل: نطلب 2000 لعبة في الصفحة الواحدة بدلاً من 50!
+                params = {"per-page": 2000, "page": current_page} 
+                headers = get_smpl_headers_and_sign(params)
                 
-            return {"status": "success", "games": formatted_games}
+                response = await client.get(f"{SMPL_BASE_URL}/games", params=params, headers=headers, timeout=20)
+                games_data = response.json()
+                
+                actual_games_list = []
+                if isinstance(games_data, dict) and "items" in games_data:
+                    actual_games_list = games_data["items"]
+                    # تحديث الحد الأقصى للصفحات بناءً على رد المزود
+                    total_api_pages = games_data.get("_meta", {}).get("pageCount", 1)
+                    if total_api_pages < max_pages:
+                        max_pages = total_api_pages
+                elif isinstance(games_data, list):
+                    actual_games_list = games_data
+                    max_pages = 1 # لا يوجد صفحات
+                
+                if not actual_games_list:
+                    break
+
+                for g in actual_games_list:
+                    all_formatted_games.append({
+                        "id": g.get("uuid") or g.get("id"),
+                        "name": g.get("name"),
+                        "image": g.get("image"),
+                        "provider": g.get("provider", "Premium"),
+                        "has_lobby": g.get("has_lobby", 0)
+                    })
+                
+                current_page += 1
+            
+            # حفظ كل الألعاب في الذاكرة لتسريع التحميل
+            if all_formatted_games:
+                SMPL_GAMES_CACHE["time"] = current_time
+                SMPL_GAMES_CACHE["data"] = all_formatted_games
+                
+            return {"status": "success", "games": all_formatted_games}
         except Exception as e:
             print("❌ [SMPL EXCEPTION]:", e)
             return {"status": "error", "message": "Failed to fetch games"}
-        
-        # ==========================================
+
 # 🚀 المسارات الجديدة لتنظيم الواجهة مثل Nexus
 # ==========================================
 
