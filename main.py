@@ -2910,33 +2910,26 @@ async def sportsbook_webhook(request: Request):
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook_api(req: SportsLaunchRequest):
     try:
+        # سنضيف طباعة (Print) لكل خطوة لتظهر لك في الـ Terminal في VS Code
+        print(f"DEBUG: Trying to launch {req.provider_code} for user {req.user_code}")
+        
         launch_url = ""
         
         if req.provider_code.lower() == "smpl":
-            # 👈 رابط وطلب إطلاق السبورتبوك الخاص بـ SMPL
-            # (نفس توقيع وهيدرز ألعاب الكازينو لـ SMPL ولكن مسار الرياضة)
-            smpl_sports_endpoint = f"{SMPL_BASE_URL}/sportsbook/launch" # أو المسار الخاص بالرياضة لديهم
-            
-            payload = {
-                "user_code": req.user_code,
-                "currency": "TND"
-            }
-            headers = get_smpl_headers_and_sign(payload)
-            
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(smpl_sports_endpoint, json=payload, headers=headers, timeout=20)
-                data = resp.json()
-                launch_url = data.get("launch_url") or data.get("url")
-                
+            # (نفس كود SMPL الذي يعمل معك في الكازينو)
+            # تأكد أنك تستخدم نفس الـ headers والـ endpoint الصحيح
+            ...
         elif req.provider_code.lower() == "nexus":
-            # 👈 رابط وطلب إطلاق السبورتبوك الخاص بـ Nexus القديم
-            launch_url = f"https://nexus-sports-provider-url.com/launch?user={req.user_code}"
+            # أرجوك، ضع هنا رابط الـ API الحقيقي الخاص بنكسيس
+            # أو إذا كانوا يرسلون لك الرابط عبر طلب API، تأكد من صحة الرابط!
+            print("DEBUG: Nexus provider triggered. URL placeholder needs real API.")
+            launch_url = "https://YOUR_ACTUAL_NEXUS_API_URL/..." 
             
         if not launch_url:
-            raise HTTPException(status_code=400, detail="المزود رفض الطلب أو الرابط غير متاح")
+            return {"status": "error", "message": "المزود لم يرسل رابطاً، تأكد من الـ API"}
             
         return {"status": "success", "launch_url": launch_url}
         
     except Exception as e:
-        print("❌ [SPORTSBOOK ERROR]:", e)
+        print(f"❌ [CRITICAL ERROR]: {str(e)}") # هذا سيظهر لك السبب الحقيقي
         return {"status": "error", "message": str(e)}
