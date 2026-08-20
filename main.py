@@ -2586,6 +2586,47 @@ async def get_smpl_games():
         except Exception as e:
             print("❌ [SMPL EXCEPTION]:", e)
             return {"status": "error", "message": "Failed to fetch games"}
+        
+        # ==========================================
+# 🚀 المسارات الجديدة لتنظيم الواجهة مثل Nexus
+# ==========================================
+
+# 1. مسار جلب المزودين (الشركات) فقط لإنشاء الأزرار
+@app.get("/api/smpl/providers")
+async def get_smpl_providers():
+    # التأكد من أن الألعاب محملة في الذاكرة (Cache) أولاً
+    if not SMPL_GAMES_CACHE["data"] or (time.time() - SMPL_GAMES_CACHE["time"] > 3600):
+        await get_smpl_games()
+
+    # استخراج أسماء المزودين بدون تكرار (مثل: Endorphina, Tomhorn)
+    unique_providers = set()
+    for game in SMPL_GAMES_CACHE["data"]:
+        provider_name = game.get("provider")
+        if provider_name:
+            unique_providers.add(provider_name)
+
+    # تحويلها إلى قائمة منسقة جاهزة للواجهة الأمامية
+    provider_list = [{"code": p, "name": p} for p in sorted(list(unique_providers))]
+    return {"status": "success", "providers": provider_list}
+
+# 2. مسار جلب ألعاب مزود معين عند الضغط على زره
+class SMPLProviderRequest(BaseModel):
+    provider_code: str
+
+@app.post("/api/smpl/games-by-provider")
+async def get_smpl_games_by_provider(req: SMPLProviderRequest):
+    # التأكد من أن الألعاب محملة
+    if not SMPL_GAMES_CACHE["data"] or (time.time() - SMPL_GAMES_CACHE["time"] > 3600):
+        await get_smpl_games()
+
+    # فلترة الألعاب وإرجاع ألعاب هذه الشركة فقط
+    target_provider = req.provider_code.lower().strip()
+    filtered_games = [
+        game for game in SMPL_GAMES_CACHE["data"]
+        if str(game.get("provider", "")).lower().strip() == target_provider
+    ]
+
+    return {"status": "success", "games": filtered_games}
 # 2. مسار تشغيل اللعبة
 class SMPLLaunchRequest(BaseModel):
     game_uuid: str
