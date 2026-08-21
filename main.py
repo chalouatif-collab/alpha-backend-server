@@ -2666,6 +2666,70 @@ class SMPLLaunchRequest(BaseModel):
     game_uuid: str
     user_code: str
 
+@app.post("/api/smpl/callback")
+async def smpl_callback(request: Request):
+    try:
+        data = await request.json()
+        method = data.get("method")
+        user_code = data.get("player_id") or data.get("user_code")
+        
+        # 1. جلب رصيد اللاعب من قاعدة البيانات الخاصة بك
+        async with db_lock:
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
+            
+            if not target_user:
+                return {"status": 0, "error": "Player not found"}
+            
+            current_balance = float(target_user.get("balance", 0.0))
+
+        # 2. الرد حسب الطلب الذي يرسله المزود
+        # طلب التحقق من الرصيد أو الجلسة
+        if method in ["balance", "get_balance", "user_auth"]:
+            return {
+                "status": 1,
+                "balance": current_balance,
+                "currency": "USD" # (اجعلها TND عندما يتم تفعيلها لديهم)
+            }
+            
+        # طلب خصم رصيد (رهان - Bet)
+        elif method in ["bet", "withdraw"]:
+            amount = float(data.get("amount", 0.0))
+            if current_balance < amount:
+                return {"status": 0, "error": "Insufficient funds"}
+            
+            async with db_lock:
+                db = load_db()
+                for u in db:
+                    if str(u.get("username")) == str(user_code):
+                        u["balance"] = float(u["balance"]) - amount
+                        current_balance = u["balance"]
+                        break
+                save_db(db)
+                
+            return {"status": 1, "balance": current_balance}
+
+        # طلب إضافة رصيد (ربح - Win)
+        elif method in ["win", "deposit"]:
+            amount = float(data.get("amount", 0.0))
+            
+            async with db_lock:
+                db = load_db()
+                for u in db:
+                    if str(u.get("username")) == str(user_code):
+                        u["balance"] = float(u["balance"]) + amount
+                        current_balance = u["balance"]
+                        break
+                save_db(db)
+                
+            return {"status": 1, "balance": current_balance}
+
+        return {"status": 1, "balance": current_balance}
+
+    except Exception as e:
+        return {"status": 0, "error": str(e)}
+
+
 @app.post("/api/smpl/launch")
 async def launch_smpl_game(req: SMPLLaunchRequest):
     payload = {
