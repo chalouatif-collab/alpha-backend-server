@@ -2997,21 +2997,36 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
         # 2. الرياضة القديمة (Nexus - Iframe)
         # ====================================================
         elif req.provider_code.lower() == "nexus":
-            payload = {
-                "method": "game_launch",
-                "agent_code": AGENT_CODE,
-                "agent_token": AGENT_TOKEN,
-                "provider_code": "SPORTSBOOK", 
-                "game_code": "SPORTSBOOK",
-                "user_code": req.user_code,
-                "lang": "fr",
-                "lobby_url": "https://alphabet216.com/"
-            }
-            headers = {"Content-Type": "application/json"}
-            endpoint = PROVIDER_ENDPOINT.rstrip('/')
-            
             async with httpx.AsyncClient() as client:
-                response = await client.post(endpoint, json=payload, headers=headers)
+                # 1. جلب قائمة ألعاب الرياضة تلقائياً لمعرفة الـ game_code الصحيح من مزود SPORTSBOOK
+                games_payload = {
+                    "method": "game_list",
+                    "agent_code": AGENT_CODE,
+                    "agent_token": AGENT_TOKEN,
+                    "provider_code": "SPORTSBOOK"
+                }
+                list_res = await client.post(PROVIDER_ENDPOINT, json=games_payload, timeout=15)
+                list_data = list_res.json()
+                
+                games = list_data.get("games") or list_data.get("data") or []
+                game_code = "SPORTSBOOK" # قيمة احتياطية
+                
+                if games and len(games) > 0:
+                    game_code = games[0].get("game_code") or games[0].get("id")
+
+                # 2. إرسال طلب التشغيل بالـ game_code الصحيح والمستخرج طازجاً
+                launch_payload = {
+                    "method": "game_launch",
+                    "agent_code": AGENT_CODE,
+                    "agent_token": AGENT_TOKEN,
+                    "provider_code": "SPORTSBOOK", 
+                    "game_code": game_code,
+                    "user_code": req.user_code,
+                    "lang": "fr",
+                    "lobby_url": "https://alphabet216.com/"
+                }
+                
+                response = await client.post(PROVIDER_ENDPOINT, json=launch_payload, timeout=20)
                 response_data = response.json()
                 
                 game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
@@ -3020,7 +3035,6 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                     return {"status": "success", "launch_url": game_url}
                 else:
                     return {"status": "error", "error": "المزود رفض الطلب", "details": response_data}
-                    
     except Exception as e:
         print(f"❌ [CRITICAL ERROR IN SPORTSBOOK]: {str(e)}")
         return {"status": "error", "error": str(e)}
