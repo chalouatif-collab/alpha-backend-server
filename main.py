@@ -1023,39 +1023,6 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
         except Exception as e:
             return {"status": 0, "msg": "Error"}
 
-@app.post("/api/provider/launch-sportsbook")
-async def launch_sportsbook(request: Request):
-    try:
-        data = await request.json()
-        payload = {
-            "method": "game_launch",
-            "agent_code": AGENT_CODE,
-            "agent_token": AGENT_TOKEN,
-            "provider_code": str(data.get("provider_code")), 
-            "game_code": str(data.get("game_code")),
-            "user_code": str(data.get("user_code", "test_user")),
-            "lang": "fr",
-            "lobby_url": "https://alphabet216.com/"
-        }
-        
-        headers = {"Content-Type": "application/json"}
-        endpoint = PROVIDER_ENDPOINT.rstrip('/')
-        response = requests.post(endpoint, json=payload, headers=headers)
-        
-        try:
-            response_data = response.json()
-        except Exception:
-            return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
-            
-        game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
-        
-        if game_url:
-            return {"launch_url": game_url}
-        else:
-            return {"error": "المزود رفض الطلب", "details": response_data}
-            
-    except Exception as e:
-        return {"error": str(e)}
     
 @app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
@@ -2955,10 +2922,10 @@ async def launch_sportsbook(request: Request):
         provider_code = str(data.get("provider_code", "")).lower()
         user_code = str(data.get("user_code", "test_user"))
         
-        print(f"DEBUG: Launching sportsbook for provider: {provider_code}, user: {user_code}")
+        print(f"DEBUG: Unified Sportsbook Launch -> Provider: {provider_code}, User: {user_code}")
         
         # ====================================================
-        # 1. إذا كان المزود هو SMPL (الرياضة الجديدة)
+        # 1. إذا كان الطلب يخص الرياضة الجديدة (SMPL)
         # ====================================================
         if provider_code == "smpl":
             payload = {
@@ -2986,7 +2953,7 @@ async def launch_sportsbook(request: Request):
                     return {"error": "Erreur d'initialisation SMPL", "details": res_data}
 
         # ====================================================
-        # 2. إذا كان المزود هو Nexus (نفس كودك الأصلي تماماً الذي كان يعمل)
+        # 2. إذا كان الطلب يخص الرياضة الأصلية (Nexus / Nexustrike)
         # ====================================================
         else:
             payload = {
@@ -3002,23 +2969,24 @@ async def launch_sportsbook(request: Request):
             
             headers = {"Content-Type": "application/json"}
             endpoint = PROVIDER_ENDPOINT.rstrip('/')
-            response = requests.post(endpoint, json=payload, headers=headers)
             
-            try:
-                response_data = response.json()
-            except Exception:
-                return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
+            async with httpx.AsyncClient() as client:
+                response = await client.post(endpoint, json=payload, headers=headers, timeout=20)
+                try:
+                    response_data = response.json()
+                except Exception:
+                    return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
+                    
+                game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
                 
-            game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
-            
-            if game_url:
-                return {"launch_url": game_url}
-            else:
-                return {"error": "المزود رفض الطلب", "details": response_data}
+                if game_url:
+                    return {"launch_url": game_url}
+                else:
+                    return {"error": "المزود رفض الطلب", "details": response_data}
                 
     except Exception as e:
+        print(f"❌ [CRITICAL ERROR IN LAUNCH SPORTSBOOK]: {str(e)}")
         return {"error": str(e)}
-    
     @app.get("/api/get-sportsbook-uuid")
     async def fetch_sportsbook_uuid():
             # نستخدم دالة التشفير الجاهزة لديك
