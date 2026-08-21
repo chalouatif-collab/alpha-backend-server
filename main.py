@@ -2949,23 +2949,26 @@ async def sportsbook_webhook(request: Request):
             
 
 @app.post("/api/provider/launch-sportsbook")
-async def launch_sportsbook_api(req: SportsLaunchRequest):
+async def launch_sportsbook(request: Request):
     try:
-        print(f"DEBUG: Trying to launch {req.provider_code} for user {req.user_code}")
+        data = await request.json()
+        provider_code = str(data.get("provider_code", "")).lower()
+        user_code = str(data.get("user_code", "test_user"))
+        
+        print(f"DEBUG: Launching sportsbook for provider: {provider_code}, user: {user_code}")
         
         # ====================================================
-        # 1. الرياضة الجديدة (SMPL Sportsbook API)
+        # 1. إذا كان المزود هو SMPL (الرياضة الجديدة)
         # ====================================================
-        if req.provider_code.lower() == "smpl":
+        if provider_code == "smpl":
             payload = {
                 "sportsbook_uuid": "YOUR_SPORTSBOOK_UUID_HERE", 
                 "currency": "TND",
                 "session_id": f"sess_{uuid.uuid4().hex[:10]}",
-                "player_id": req.user_code,
-                "player_name": req.user_code,
+                "player_id": user_code,
+                "player_name": user_code,
                 "return_url": "https://alphabet216.com/"
             }
-            
             headers = get_smpl_headers_and_sign(payload)
             headers['Content-Type'] = 'application/json'
             
@@ -2977,62 +2980,44 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                     timeout=20
                 )
                 res_data = response.json()
-                
                 if "url" in res_data:
-                    return {
-                        "status": "success",
-                        "launch_url": res_data["url"]
-                    }
+                    return {"launch_url": res_data["url"]}
                 else:
-                    print("❌ SMPL Sports Error:", res_data)
-                    return {"status": "error", "error": "Erreur d'initialisation SMPL", "details": res_data}
+                    return {"error": "Erreur d'initialisation SMPL", "details": res_data}
 
         # ====================================================
-        # 2. الرياضة القديمة (Nexus - Iframe)
+        # 2. إذا كان المزود هو Nexus (نفس كودك الأصلي تماماً الذي كان يعمل)
         # ====================================================
-        elif req.provider_code.lower() == "nexus":
-            async with httpx.AsyncClient() as client:
-                # 1. جلب قائمة ألعاب الرياضة تلقائياً لمعرفة الـ game_code الصحيح من مزود SPORTSBOOK
-                games_payload = {
-                    "method": "game_list",
-                    "agent_code": AGENT_CODE,
-                    "agent_token": AGENT_TOKEN,
-                    "provider_code": "SPORTSBOOK"
-                }
-                list_res = await client.post(PROVIDER_ENDPOINT, json=games_payload, timeout=15)
-                list_data = list_res.json()
-                
-                games = list_data.get("games") or list_data.get("data") or []
-                game_code = "SPORTSBOOK" # قيمة احتياطية
-                
-                if games and len(games) > 0:
-                    game_code = games[0].get("game_code") or games[0].get("id")
-
-                # 2. إرسال طلب التشغيل باستخدام req بدل data غير المعرف
-                launch_payload = {
-                    "method": "game_launch",
-                    "agent_code": AGENT_CODE,
-                    "agent_token": AGENT_TOKEN,
-                    "provider_code": "SPORTSBOOK",
-                    "game_code": game_code,
-                    "user_code": req.user_code,
-                    "lang": "fr",
-                    "lobby_url": "https://alphabet216.com/"
-                }
-
-                response = await client.post(PROVIDER_ENDPOINT, json=launch_payload, timeout=20)
+        else:
+            payload = {
+                "method": "game_launch",
+                "agent_code": AGENT_CODE,
+                "agent_token": AGENT_TOKEN,
+                "provider_code": str(data.get("provider_code", "SPORTSBOOK")), 
+                "game_code": str(data.get("game_code", "SPORTSBOOK")),
+                "user_code": user_code,
+                "lang": "fr",
+                "lobby_url": "https://alphabet216.com/"
+            }
+            
+            headers = {"Content-Type": "application/json"}
+            endpoint = PROVIDER_ENDPOINT.rstrip('/')
+            response = requests.post(endpoint, json=payload, headers=headers)
+            
+            try:
                 response_data = response.json()
+            except Exception:
+                return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
                 
-                game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
+            game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
+            
+            if game_url:
+                return {"launch_url": game_url}
+            else:
+                return {"error": "المزود رفض الطلب", "details": response_data}
                 
-                if game_url:
-                    return {"status": "success", "launch_url": game_url}
-                else:
-                    return {"status": "error", "error": "المزود رفض الطلب", "details": response_data}
-                    
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR IN SPORTSBOOK]: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        return {"error": str(e)}
     
     @app.get("/api/get-sportsbook-uuid")
     async def fetch_sportsbook_uuid():
