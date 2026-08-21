@@ -2957,10 +2957,7 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
         # 1. الرياضة الجديدة (SMPL Sportsbook API)
         # ====================================================
         if req.provider_code.lower() == "smpl":
-            
-            # 🎯 1. تجهيز البيانات كما يطلبها التوثيق بالضبط
             payload = {
-                # ⚠️ تنبيه: يجب وضع الـ UUID الحقيقي للرياضة هنا (يمكنك جلبه عبر مسار GET /sportsbooks)
                 "sportsbook_uuid": "YOUR_SPORTSBOOK_UUID_HERE", 
                 "currency": "TND",
                 "session_id": f"sess_{uuid.uuid4().hex[:10]}",
@@ -2969,12 +2966,10 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                 "return_url": "https://alphabet216.com/"
             }
             
-            # 🎯 2. دمج الهيدرز والتشفير بخوارزمية HMAC SHA1 (دالتك الحالية تدعم هذا بشكل ممتاز)
             headers = get_smpl_headers_and_sign(payload)
             headers['Content-Type'] = 'application/json'
             
             async with httpx.AsyncClient() as client:
-                # 🎯 3. إرسال الطلب إلى مسار التهيئة
                 response = await client.post(
                     f"{SMPL_BASE_URL}/sportsbooks/init", 
                     json=payload,
@@ -2983,7 +2978,6 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                 )
                 res_data = response.json()
                 
-                # 🎯 4. استلام الرابط السري
                 if "url" in res_data:
                     return {
                         "status": "success",
@@ -3014,16 +3008,17 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                 if games and len(games) > 0:
                     game_code = games[0].get("game_code") or games[0].get("id")
 
+                # 2. إرسال طلب التشغيل باستخدام req بدل data غير المعرف
                 launch_payload = {
-            "method": "game_launch",
-            "agent_code": AGENT_CODE,
-            "agent_token": AGENT_TOKEN,
-            "provider_code": str(data.get("provider_code")),
-            "game_code": str(data.get("game_code")),
-            "user_code": str(data.get("user_code", "test_user")),
-            "lang": "fr",
-            "lobby_url": "https://alphabet216.com/"
-        }
+                    "method": "game_launch",
+                    "agent_code": AGENT_CODE,
+                    "agent_token": AGENT_TOKEN,
+                    "provider_code": "SPORTSBOOK",
+                    "game_code": game_code,
+                    "user_code": req.user_code,
+                    "lang": "fr",
+                    "lobby_url": "https://alphabet216.com/"
+                }
 
                 response = await client.post(PROVIDER_ENDPOINT, json=launch_payload, timeout=20)
                 response_data = response.json()
@@ -3034,6 +3029,7 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                     return {"status": "success", "launch_url": game_url}
                 else:
                     return {"status": "error", "error": "المزود رفض الطلب", "details": response_data}
+                    
     except Exception as e:
         print(f"❌ [CRITICAL ERROR IN SPORTSBOOK]: {str(e)}")
         return {"status": "error", "error": str(e)}
