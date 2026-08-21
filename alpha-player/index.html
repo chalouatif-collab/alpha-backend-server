@@ -2,6 +2,7 @@
 <html lang="fr" dir="ltr">
 
 <head>
+    <script src="https://ui.invisiblesport.com/bt-renderer.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Alphabet216 - Premium Casino</title>
@@ -989,12 +990,12 @@
     </div>
 
     <div id="sportsbook-overlay" class="fixed inset-0 z-[200] bg-q-bg hidden flex-col">
-        <div class="h-14 w-full bg-q-panel border-b border-q-cyan/20 flex items-center justify-between px-4">
-            <h2 class="text-q-cyan font-display font-bold tracking-widest uppercase">Alphabet Sports</h2>
-
-        </div>
-        <iframe id="sportsbook-iframe" src="" frameborder="0" class="w-full h-full"></iframe>
+    <div class="h-14 w-full bg-q-panel border-b border-q-cyan/20 flex items-center justify-between px-4">
+        <h2 class="text-q-cyan font-display font-bold tracking-widest uppercase">Alphabet Sports</h2>
     </div>
+    <!-- هنا التغيير السحري: استبدلنا iframe بـ div الخاص بمزود Betby -->
+    <div id="bettech" class="w-full flex-grow relative bg-[#02000a]"></div>
+</div>
 
     <div id="virtual-games-overlay" class="fixed inset-0 z-[200] bg-black hidden flex-col">
 
@@ -2426,13 +2427,13 @@
 
                 // 3. إرسال الطلب
                 const res = await fetch(endpointUrl, {
-                    method: 'POST', 
+                    method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify(requestBody)
                 });
-                
+
                 const data = await res.json();
-                
+
                 if (data.launch_url) {
                     iframe.src = data.launch_url;
                     iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
@@ -2440,9 +2441,9 @@
                     showNotification(data.error || "Jeu non disponible", "error");
                     closeCasinoGame();
                 }
-            } catch (error) { 
-                showNotification("Erreur de connexion", "error"); 
-                closeCasinoGame(); 
+            } catch (error) {
+                showNotification("Erreur de connexion", "error");
+                closeCasinoGame();
             }
         }
 
@@ -2728,64 +2729,66 @@
             }
         }
 
-        // ================= دالة رسم ألعاب SMPL (مطابقة لنظام نكسيس) =================
-        function renderSMPLGridInternal(gamesArray) {
-            const container = document.getElementById('smpl-games-grid');
+       function renderSMPLGridInternal(gamesArray) {
+    const container = document.getElementById('smpl-games-grid');
+    const gamesToDisplay = gamesArray.slice(0, currentSMPLDisplayLimit);
 
-            // جلب الدفعة الحالية من الألعاب فقط (لتخفيف الضغط على الهاتف)
-            const gamesToDisplay = gamesArray.slice(0, currentSMPLDisplayLimit);
+    // 🎯 استخدمنا سيرفر موثوق بألوان موقعك (خلفية بنفسجية ونص سماوي)
+    const ALPHABET_FALLBACK = "https://placehold.co/400x400/180A2B/00f2fe?text=Alphabet216";
 
-            // رسم البطاقات بنفس تصميم الكازينو العادي تماماً
-            container.innerHTML = gamesToDisplay.map(g => {
-                const title = g.game_name || g.name || "Premium Game";
-                const img = g.banner || g.image || g.thumb || "https://placehold.co/400x400/0f172a/3b82f6?text=Premium";
-                const code = g.game_code || g.id;
+    container.innerHTML = gamesToDisplay.map(g => {
+        const title = g.game_name || g.name || "Premium Game";
+        const code = g.game_code || g.id;
+        
+        let img = g.banner || g.image || g.thumb;
 
-                return `
-                <div onclick="playCasinoGame('SMPL', '${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-blue-500 transition-all flex flex-col h-full">
-                    <div class="relative w-full aspect-square overflow-hidden">
-                        <img src="${img}" alt="${title}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" onerror="this.src='https://placehold.co/400x400/0f172a/3b82f6?text=Premium'">
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
-                            <span class="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]">JOUER</span>
-                        </div>
-                    </div>
-                    <div class="p-2 flex justify-between items-center bg-q-panel border-t border-white/5 flex-grow">
-                        <span class="text-white text-[10px] font-bold truncate pr-1 group-hover:text-blue-500 transition-colors">${title}</span>
-                    </div>
-                </div>`;
-            }).join('');
-
-            // ================= نظام التمرير اللانهائي (Infinite Scroll) =================
-            let sentinel = document.getElementById('smpl-games-scroll-sentinel');
-
-            // إذا كان لا يزال هناك ألعاب لم تُعرض بعد
-            if (currentSMPLDisplayLimit < gamesArray.length) {
-                // إنشاء مؤشر التحميل السفلي إذا لم يكن موجوداً
-                if (!sentinel) {
-                    sentinel = document.createElement('div');
-                    sentinel.id = 'smpl-games-scroll-sentinel';
-                    sentinel.className = 'col-span-full text-center py-6 text-blue-500 font-display animate-pulse text-xs';
-                    sentinel.innerHTML = 'Chargement de plus de jeux Premium... 🔄';
-                    container.parentNode.appendChild(sentinel);
-                }
-
-                // مراقبة المؤشر السفلي، إذا ظهر في الشاشة نحمل المزيد
-                if (!smplGamesObserver) {
-                    smplGamesObserver = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                            if (entry.isIntersecting && currentSMPLDisplayLimit < gamesArray.length) {
-                                currentSMPLDisplayLimit += 30; // إضافة 30 لعبة جديدة عند النزول
-                                renderSMPLGridInternal(gamesArray);
-                            }
-                        });
-                    }, { rootMargin: '300px' }); // يبدأ التحميل قبل أن يصل اللاعب للنهاية بـ 300 بيكسل
-                }
-                smplGamesObserver.observe(sentinel);
-            } else if (sentinel) {
-                // إذا انتهت الألعاب، نزيل مؤشر التحميل
-                sentinel.remove();
-            }
+        // الفلتر الذكي: إذا كان الرابط فارغاً أو يحتوي على كلمة Premium القديمة
+        if (!img || img.includes("text=Premium") || img === "") {
+            img = ALPHABET_FALLBACK;
         }
+
+        return `
+        <div onclick="playCasinoGame('SMPL', '${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-blue-500 transition-all flex flex-col h-full">
+            <div class="relative w-full aspect-square overflow-hidden bg-[#0B001A]">
+                <!-- أضفنا this.onerror=null لمنع المتصفح من الدخول في حلقة مفرغة وظهور السواد -->
+                <img src="${img}" alt="${title}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" onerror="this.onerror=null; this.src='${ALPHABET_FALLBACK}'">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px]">
+                    <span class="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]">JOUER</span>
+                </div>
+            </div>
+            <div class="p-2 flex justify-between items-center bg-q-panel border-t border-white/5 flex-grow">
+                <span class="text-white text-[10px] font-bold truncate pr-1 group-hover:text-blue-500 transition-colors">${title}</span>
+            </div>
+        </div>`;
+    }).join('');
+
+    // ================= نظام التمرير اللانهائي (Infinite Scroll) =================
+    let sentinel = document.getElementById('smpl-games-scroll-sentinel');
+
+    if (currentSMPLDisplayLimit < gamesArray.length) {
+        if (!sentinel) {
+            sentinel = document.createElement('div');
+            sentinel.id = 'smpl-games-scroll-sentinel';
+            sentinel.className = 'col-span-full text-center py-6 text-blue-500 font-display animate-pulse text-xs';
+            sentinel.innerHTML = 'Chargement de plus de jeux Premium... 🔄';
+            container.parentNode.appendChild(sentinel);
+        }
+
+        if (!smplGamesObserver) {
+            smplGamesObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && currentSMPLDisplayLimit < gamesArray.length) {
+                        currentSMPLDisplayLimit += 30; 
+                        renderSMPLGridInternal(gamesArray);
+                    }
+                });
+            }, { rootMargin: '300px' }); 
+        }
+        smplGamesObserver.observe(sentinel);
+    } else if (sentinel) {
+        sentinel.remove();
+    }
+}
 
         async function launchSpecificVirtualGame(gameUuid) {
             if (!playerSession) return openLoginModal();
@@ -3500,35 +3503,51 @@
             openSportsbookForProvider('smpl'); // كود مزود سمبل
         }
 
-        // الدالة الموحدة الذكية التي تتعامل مع المزودين معاً
-        async function openSportsbookForProvider(providerCode) {
+  async function openSportsbookForProvider(providerCode) {
             if (!playerSession) return openLoginModal();
 
             const overlay = document.getElementById('sportsbook-overlay');
-            const iframe = document.getElementById('sportsbook-iframe');
-            const loader = document.getElementById('casino-loader'); // استخدام نفس اللودر للتحميل
-
+            const bettechContainer = document.getElementById('bettech');
+            const loader = document.getElementById('casino-loader'); 
+            
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
             history.pushState({ modalOpen: true }, "", "");
+            
             if (loader) loader.style.display = 'flex';
-            iframe.style.opacity = '0';
+            bettechContainer.innerHTML = ''; // تنظيف الحاوية
 
             try {
+                // 1. طلب الرابط من سيرفرك
                 const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
-                        provider_code: providerCode, // يرسل إما 'nexus' أو 'smpl'
-                        game_code: 'SPORTSBOOK',
-                        user_code: playerSession.username
+                        provider_code: providerCode,
+                        user_code: playerSession.username,
+                        game_code: "SPORTSBOOK"
                     })
                 });
                 const data = await response.json();
 
                 if (data.launch_url) {
-                    iframe.src = data.launch_url;
-                    iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
+                    // 2. سحب كود الـ HTML من رابط SMPL وحقنه في الحاوية
+                    const htmlResponse = await fetch(data.launch_url);
+                    const htmlContent = await htmlResponse.text();
+                    
+                    if (loader) loader.style.display = 'none';
+                    
+                    // حقن الكود وتشغيل السكربتات المدمجة فيه
+                    bettechContainer.innerHTML = htmlContent;
+                    
+                    // إجبار المتصفح على تشغيل السكربت الذي تم حقنه
+                    Array.from(bettechContainer.querySelectorAll("script")).forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+
                 } else {
                     showNotification(data.error || "Sportsbook non disponible", "error");
                     closeSportsbook();
@@ -3540,14 +3559,21 @@
         }
 
         function closeSportsbook(fromPopState = false) {
-            document.getElementById('sportsbook-overlay').classList.add('hidden');
-            document.getElementById('sportsbook-overlay').classList.remove('flex');
-            document.getElementById('sportsbook-iframe').src = "about:blank";
+            const overlay = document.getElementById('sportsbook-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+            
+            // تنظيف الكود وحذفه من الشاشة تماماً كما يطلب المزود
+            if (typeof bt !== 'undefined' && bt.kill) {
+                bt.kill();
+            }
+
             if (!fromPopState && history.state && history.state.modalOpen) {
                 history.back();
             }
         }
-
         // ================= محرك الاستماع الذكي للألعاب =================
         // هذا الكود يستمع لأي حركة أو رسالة قادمة من اللعبة (Iframe) ويجبر الواجهة على تحديث الرصيد فوراً
         window.addEventListener("message", (event) => {
@@ -3557,7 +3583,7 @@
                 refreshPlayerBalance();
             }
         });
-       
+
         // ================= محرك الألعاب الافتراضية (Virtuals) =================
         let currentVirtualGames = [];
 
@@ -3598,14 +3624,14 @@
         function renderVirtualsGrid(gamesArray) {
             const container = document.getElementById('virtuals-games-grid');
             if (!container) return;
-            
+
             container.innerHTML = gamesArray.map(g => {
                 const title = g.game_name || g.name || "Virtual Game";
                 const img = g.banner || g.image || g.thumb || "https://placehold.co/400x400/180A2B/F9D423?text=Virtuals";
-                
+
                 // 👈 التعديل السحري هنا: إعطاء الأولوية القصوى للـ UUID
-                const code = g.uuid || g.game_uuid || g.game_code || g.id; 
-                
+                const code = g.uuid || g.game_uuid || g.game_code || g.id;
+
                 return `
                 <div onclick="launchSpecificVirtualGame('${code}')" class="bg-q-panel/60 backdrop-blur-md rounded-xl overflow-hidden border border-white/10 group cursor-pointer shadow-[0_0_15px_rgba(249,212,35,0.05)] hover:border-q-gold transition-all flex flex-col h-full relative">
                     <div class="relative w-full aspect-square overflow-hidden">

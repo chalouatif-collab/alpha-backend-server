@@ -2951,26 +2951,94 @@ async def sportsbook_webhook(request: Request):
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook_api(req: SportsLaunchRequest):
     try:
-        # سنضيف طباعة (Print) لكل خطوة لتظهر لك في الـ Terminal في VS Code
         print(f"DEBUG: Trying to launch {req.provider_code} for user {req.user_code}")
         
-        launch_url = ""
-        
+        # ====================================================
+        # 1. الرياضة الجديدة (SMPL Sportsbook API)
+        # ====================================================
         if req.provider_code.lower() == "smpl":
-            # (نفس كود SMPL الذي يعمل معك في الكازينو)
-            # تأكد أنك تستخدم نفس الـ headers والـ endpoint الصحيح
-            ...
+            
+            # 🎯 1. تجهيز البيانات كما يطلبها التوثيق بالضبط
+            payload = {
+                # ⚠️ تنبيه: يجب وضع الـ UUID الحقيقي للرياضة هنا (يمكنك جلبه عبر مسار GET /sportsbooks)
+                "sportsbook_uuid": "YOUR_SPORTSBOOK_UUID_HERE", 
+                "currency": "TND",
+                "session_id": f"sess_{uuid.uuid4().hex[:10]}",
+                "player_id": req.user_code,
+                "player_name": req.user_code,
+                "return_url": "https://alphabet216.com/"
+            }
+            
+            # 🎯 2. دمج الهيدرز والتشفير بخوارزمية HMAC SHA1 (دالتك الحالية تدعم هذا بشكل ممتاز)
+            headers = get_smpl_headers_and_sign(payload)
+            headers['Content-Type'] = 'application/json'
+            
+            async with httpx.AsyncClient() as client:
+                # 🎯 3. إرسال الطلب إلى مسار التهيئة
+                response = await client.post(
+                    f"{SMPL_BASE_URL}/sportsbooks/init", 
+                    json=payload,
+                    headers=headers,
+                    timeout=20
+                )
+                res_data = response.json()
+                
+                # 🎯 4. استلام الرابط السري
+                if "url" in res_data:
+                    return {
+                        "status": "success",
+                        "launch_url": res_data["url"]
+                    }
+                else:
+                    print("❌ SMPL Sports Error:", res_data)
+                    return {"status": "error", "error": "Erreur d'initialisation SMPL", "details": res_data}
+
+        # ====================================================
+        # 2. الرياضة القديمة (Nexus - Iframe)
+        # ====================================================
         elif req.provider_code.lower() == "nexus":
-            # أرجوك، ضع هنا رابط الـ API الحقيقي الخاص بنكسيس
-            # أو إذا كانوا يرسلون لك الرابط عبر طلب API، تأكد من صحة الرابط!
-            print("DEBUG: Nexus provider triggered. URL placeholder needs real API.")
-            launch_url = "https://YOUR_ACTUAL_NEXUS_API_URL/..." 
+            payload = {
+                "method": "game_launch",
+                "agent_code": AGENT_CODE,
+                "agent_token": AGENT_TOKEN,
+                "provider_code": "SPORTSBOOK", 
+                "game_code": "SPORTSBOOK",
+                "user_code": req.user_code,
+                "lang": "fr",
+                "lobby_url": "https://alphabet216.com/"
+            }
+            headers = {"Content-Type": "application/json"}
+            endpoint = PROVIDER_ENDPOINT.rstrip('/')
             
-        if not launch_url:
-            return {"status": "error", "message": "المزود لم يرسل رابطاً، تأكد من الـ API"}
-            
-        return {"status": "success", "launch_url": launch_url}
-        
+            async with httpx.AsyncClient() as client:
+                response = await client.post(endpoint, json=payload, headers=headers)
+                response_data = response.json()
+                
+                game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
+                
+                if game_url:
+                    return {"status": "success", "launch_url": game_url}
+                else:
+                    return {"status": "error", "error": "المزود رفض الطلب", "details": response_data}
+                    
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR]: {str(e)}") # هذا سيظهر لك السبب الحقيقي
-        return {"status": "error", "message": str(e)}
+        print(f"❌ [CRITICAL ERROR IN SPORTSBOOK]: {str(e)}")
+        return {"status": "error", "error": str(e)}
+    
+    @app.get("/api/get-sportsbook-uuid")
+    async def fetch_sportsbook_uuid():
+            # نستخدم دالة التشفير الجاهزة لديك
+            headers = get_smpl_headers_and_sign()
+            
+            async with httpx.AsyncClient() as client:
+                try:
+                    # نرسل الطلب لمسار الرياضات حسب التوثيق
+                    response = await client.get(
+                        f"{SMPL_BASE_URL}/sportsbooks", 
+                        headers=headers,
+                        timeout=15
+                    )
+                    data = response.json()
+                    return {"status": "success", "data_from_smpl": data}
+                except Exception as e:
+                    return {"status": "error", "details": str(e)}
