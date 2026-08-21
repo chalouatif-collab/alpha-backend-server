@@ -3014,18 +3014,17 @@ async def launch_sportsbook_api(req: SportsLaunchRequest):
                 if games and len(games) > 0:
                     game_code = games[0].get("game_code") or games[0].get("id")
 
-                # 2. إرسال طلب التشغيل بالـ game_code الصحيح والمستخرج طازجاً
                 launch_payload = {
-                    "method": "game_launch",
-                    "agent_code": AGENT_CODE,
-                    "agent_token": AGENT_TOKEN,
-                    "provider_code": "SPORTSBOOK", 
-                    "game_code": game_code,
-                    "user_code": req.user_code,
-                    "lang": "fr",
-                    "lobby_url": "https://alphabet216.com/"
-                }
-                
+            "method": "game_launch",
+            "agent_code": AGENT_CODE,
+            "agent_token": AGENT_TOKEN,
+            "provider_code": str(data.get("provider_code")),
+            "game_code": str(data.get("game_code")),
+            "user_code": str(data.get("user_code", "test_user")),
+            "lang": "fr",
+            "lobby_url": "https://alphabet216.com/"
+        }
+
                 response = await client.post(PROVIDER_ENDPOINT, json=launch_payload, timeout=20)
                 response_data = response.json()
                 
