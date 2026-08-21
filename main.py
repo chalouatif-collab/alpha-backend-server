@@ -2672,7 +2672,7 @@ async def launch_smpl_game(req: SMPLLaunchRequest):
         "game_uuid": req.game_uuid,
         "player_id": req.user_code,
         "player_name": req.user_code,
-        "currency": "TND", 
+        "currency": "USD", 
         "session_id": f"sess_{uuid.uuid4().hex[:10]}",
         "return_url": "https://alphabet216.com/"
     }
