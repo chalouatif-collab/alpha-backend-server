@@ -2601,51 +2601,61 @@
         let smplProviders = [];
         let currentSMPLGames = [];
         let currentActiveSMPLProvider = "";
-        let currentSMPLDisplayLimit = 50; // 👈 التحميل بالـ 50 لعبة كما طلبت لحماية الهواتف
+        let currentSMPLDisplayLimit = 30; // 👈 التحميل بالـ 30 لعبة كما طلبت لحماية الهواتف
         let smplGamesObserver = null;
+
+       // دالة مساعدة لرسم شريط المزودين
+        function drawProvidersBar(bar) {
+            bar.innerHTML = smplProviders.map(p => {
+                const logoHtml = p.logo 
+                    ? `<img src="${p.logo}" class="w-5 h-5 object-cover rounded-full border border-blue-400/40 shrink-0" onerror="this.replaceWith(document.createElement('i')).className='fas fa-crown text-blue-400 text-xs'">` 
+                    : `<i class="fas fa-crown text-blue-400 text-xs"></i>`;
+                return `<button id="btn-smpl-prov-${p.code}" onclick="loadSMPLProviderGames('${p.code}')" class="smpl-prov-btn btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0 transition-all flex items-center gap-2">${logoHtml} <span>${p.name}</span></button>`;
+            }).join('');
+            setTimeout(() => enableMouseDragScroll('smpl-providers-bar'), 200);
+        }
 
         async function initSMPLLobby() {
             const bar = document.getElementById('smpl-providers-bar');
             if (!bar) return;
 
-            if (smplProviders.length === 0) {
-                bar.innerHTML = '<span class="text-blue-500 text-xs">Chargement des fournisseurs... ⏳</span>';
-                try {
-                    const res = await fetch(`${BACKEND_URL}/api/smpl/providers`);
-                    const data = await res.json();
-                    smplProviders = data.providers || [];
-
-                    if (smplProviders.length > 0) {
-                        // رسم الأزرار مع لوجو المزود المستخرج تلقائياً
-                        bar.innerHTML = smplProviders.map(p => {
-                            const logoHtml = p.logo 
-                                ? `<img src="${p.logo}" class="w-5 h-5 object-cover rounded-full border border-blue-400/40 shrink-0" onerror="this.replaceWith(document.createElement('i')).className='fas fa-crown text-blue-400 text-xs'">` 
-                                : `<i class="fas fa-crown text-blue-400 text-xs"></i>`;
-
-                            return `<button id="btn-smpl-prov-${p.code}" onclick="loadSMPLProviderGames('${p.code}')" class="smpl-prov-btn btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-400 hover:text-white shrink-0 transition-all flex items-center gap-2">${logoHtml} <span>${p.name}</span></button>`;
-                        }).join('');
-
-                        setTimeout(() => enableMouseDragScroll('smpl-providers-bar'), 200);
-                        loadSMPLProviderGames(smplProviders[0].code);
-                    } else {
-                        bar.innerHTML = '<span class="text-gray-500 text-xs">Aucun fournisseur trouvé.</span>';
-                    }
-                } catch (e) {
-                    bar.innerHTML = '<span class="text-red-500 text-xs">Erreur</span>';
-                }
+            // 1. استرجاع المزودين من ذاكرة هاتف اللاعب (الظهور الفوري)
+            const cachedProviders = localStorage.getItem('smpl_providers_cache');
+            if (cachedProviders) {
+                smplProviders = JSON.parse(cachedProviders);
+                drawProvidersBar(bar);
+                // تشغيل آخر مزود كان يلعب عليه اللاعب، أو الأول
+                const lastProvider = localStorage.getItem('smpl_last_provider') || smplProviders[0].code;
+                loadSMPLProviderGames(lastProvider);
             } else {
-                if (currentSMPLGames.length === 0 && smplProviders.length > 0) {
-                    loadSMPLProviderGames(smplProviders[0].code);
-                } else {
-                    renderSMPLGridInternal(currentSMPLGames);
+                bar.innerHTML = '<span class="text-blue-500 text-xs">Chargement des fournisseurs... ⏳</span>';
+            }
+
+            // 2. تحديث البيانات في الخلفية (صامت بدون إزعاج)
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/smpl/providers`);
+                const data = await res.json();
+                if (data.providers && data.providers.length > 0) {
+                    smplProviders = data.providers;
+                    localStorage.setItem('smpl_providers_cache', JSON.stringify(smplProviders));
+                    
+                    if (!cachedProviders) {
+                        drawProvidersBar(bar);
+                        loadSMPLProviderGames(smplProviders[0].code);
+                    }
                 }
+            } catch (e) {
+                if (!cachedProviders) bar.innerHTML = '<span class="text-red-500 text-xs">Erreur</span>';
             }
         }
+
         async function loadSMPLProviderGames(providerCode) {
             currentActiveSMPLProvider = providerCode;
             currentSMPLDisplayLimit = 50; 
             
-            // 🧹 المكنسة الذكية: إيقاف المراقب القديم وحذفه لمنع تداخل المزودين!
+            // حفظ آخر مزود لفتحه فوراً المرة القادمة
+            localStorage.setItem('smpl_last_provider', providerCode);
+            
             if (smplGamesObserver) {
                 smplGamesObserver.disconnect();
                 smplGamesObserver = null;
@@ -2653,7 +2663,6 @@
             const oldSentinel = document.getElementById('smpl-games-scroll-sentinel');
             if (oldSentinel) oldSentinel.remove();
 
-            // تلوين الزر
             document.querySelectorAll('.smpl-prov-btn').forEach(btn => {
                 btn.classList.remove('active', 'border-blue-500', 'bg-blue-500/20', 'text-white');
                 btn.classList.add('border-transparent', 'text-gray-400');
@@ -2662,11 +2671,21 @@
             if (activeBtn) {
                 activeBtn.classList.remove('border-transparent', 'text-gray-400');
                 activeBtn.classList.add('active', 'border-blue-500', 'bg-blue-500/20', 'text-white');
+                activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); // تمرير تلقائي للزر
             }
 
             const container = document.getElementById('smpl-games-grid');
-            container.innerHTML = '<div class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display text-lg">CHARGEMENT DES JEUX... ⏳</div>';
 
+            // 1. العرض الفوري للألعاب من الهاتف!
+            const cachedGames = localStorage.getItem(`smpl_games_${providerCode}`);
+            if (cachedGames) {
+                currentSMPLGames = JSON.parse(cachedGames);
+                renderSMPLGridInternal(currentSMPLGames);
+            } else {
+                container.innerHTML = '<div class="col-span-full text-center text-blue-500 py-10 animate-pulse font-display text-lg">CHARGEMENT DES JEUX... ⏳</div>';
+            }
+
+            // 2. الجلب من السيرفر في الخلفية
             try {
                 const res = await fetch(`${BACKEND_URL}/api/smpl/games-by-provider`, {
                     method: 'POST',
@@ -2675,191 +2694,19 @@
                 });
                 const data = await res.json();
 
-                currentSMPLGames = data.games || [];
-                renderSMPLGridInternal(currentSMPLGames);
-                
-                const searchInput = document.getElementById('smpl-search-input');
-                if (searchInput) searchInput.value = '';
-
+                if (data.games) {
+                    currentSMPLGames = data.games;
+                    // تحديث الكاش في الهاتف
+                    localStorage.setItem(`smpl_games_${providerCode}`, JSON.stringify(currentSMPLGames));
+                    
+                    // إذا لم تكن موجودة في الهاتف سابقاً، نرسمها الآن
+                    if (!cachedGames) {
+                        renderSMPLGridInternal(currentSMPLGames);
+                    }
+                }
             } catch (e) {
-                container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erreur de connexion.</div>';
+                if (!cachedGames) container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erreur de connexion.</div>';
             }
-        }
-
-        function filterSMPLGames() {
-            const term = document.getElementById('smpl-search-input').value.toLowerCase();
-            const filtered = currentSMPLGames.filter(g => (g.name || "").toLowerCase().includes(term));
-            
-            // تنظيف المراقب عند البحث لتفادي المشاكل
-            currentSMPLDisplayLimit = 50;
-            if (smplGamesObserver) {
-                smplGamesObserver.disconnect();
-                smplGamesObserver = null;
-            }
-            const oldSentinel = document.getElementById('smpl-games-scroll-sentinel');
-            if (oldSentinel) oldSentinel.remove();
-
-            renderSMPLGridInternal(filtered);
-        }
-
-        function renderSMPLGridInternal(gamesArray) {
-            const container = document.getElementById('smpl-games-grid');
-            const gamesToDisplay = gamesArray.slice(0, currentSMPLDisplayLimit);
-
-            if (gamesToDisplay.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-10">Aucun jeu trouvé.</div>';
-                return;
-            }
-
-            container.innerHTML = gamesToDisplay.map(g => {
-                const title = g.name || "Game";
-                const img = g.image || "https://placehold.co/400x400/0f172a/3b82f6?text=Premium";
-                const provider = g.provider || "Premium";
-                const isLive = g.has_lobby === 1;
-                
-                const desktopCode = g.desktop_id || g.id;
-                const mobileCode = g.mobile_id || g.id;
-
-                return `
-                <div onclick="launchSMPLGame('${desktopCode}', '${mobileCode}')" class="bg-black/50 rounded-xl overflow-hidden border border-blue-500/20 group cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.1)] hover:border-blue-400 hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] transition-all flex flex-col h-full relative">
-                    ${isLive ? '<div class="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black px-2 py-1 rounded-bl-lg z-20 shadow-md animate-pulse">LIVE</div>' : ''}
-                    <div class="relative w-full aspect-square overflow-hidden">
-                        <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 backdrop-blur-[1px] z-10">
-                            <span class="bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]">JOUER</span>
-                        </div>
-                    </div>
-                    <div class="p-2 flex flex-col justify-between bg-q-panel border-t border-white/5 flex-grow">
-                        <span class="text-blue-400 text-[8px] font-black tracking-widest uppercase mb-1">${provider}</span>
-                        <span class="text-white text-[10px] md:text-xs font-bold truncate pr-1 group-hover:text-blue-300 transition-colors">${title}</span>
-                    </div>
-                </div>`;
-            }).join('');
-
-            // المستشعر الجديد محمي وداخل الحاوية فقط
-            let sentinel = document.getElementById('smpl-games-scroll-sentinel');
-            if (currentSMPLDisplayLimit < gamesArray.length) {
-                if (!sentinel) {
-                    sentinel = document.createElement('div');
-                    sentinel.id = 'smpl-games-scroll-sentinel';
-                    sentinel.className = 'col-span-full text-center py-6 text-blue-500 font-display animate-pulse text-xs';
-                    sentinel.innerHTML = 'Chargement de plus de jeux... 🔄';
-                    container.appendChild(sentinel); 
-                }
-
-                if (!smplGamesObserver) {
-                    smplGamesObserver = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                            if (entry.isIntersecting && currentSMPLDisplayLimit < gamesArray.length) {
-                                currentSMPLDisplayLimit += 50; // 👈 تزيد 50 في كل مرة
-                                renderSMPLGridInternal(gamesArray);
-                            }
-                        });
-                    }, { rootMargin: '300px' });
-                }
-                smplGamesObserver.observe(sentinel);
-            } else if (sentinel) {
-                sentinel.remove();
-            }
-        }
-
-        async function launchSMPLGame(desktopUuid, mobileUuid) {
-            if (!playerSession) return openLoginModal();
-            
-            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-            const finalGameUuid = (isMobileDevice && mobileUuid && mobileUuid !== 'undefined') ? mobileUuid : desktopUuid;
-            
-            const container = document.getElementById('casino-iframe-container');
-            const iframe = document.getElementById('casino-iframe');
-            const loader = document.getElementById('casino-loader');
-            
-            container.classList.remove('hidden'); container.classList.add('flex');
-            history.pushState({ modalOpen: true }, "", "");
-            if (loader) loader.style.display = 'flex';
-            iframe.style.opacity = '0';
-
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/smpl/launch`, {
-                    method: 'POST', 
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ game_uuid: finalGameUuid, user_code: playerSession.username })
-                });
-                const data = await res.json();
-                
-                if (data.launch_url) {
-                    iframe.src = data.launch_url;
-                    iframe.onload = () => { if (loader) loader.style.display = 'none'; iframe.style.opacity = '1'; };
-                } else {
-                    showNotification(data.error || "Erreur de lancement", "error");
-                    closeCasinoGame();
-                }
-            } catch (error) { 
-                showNotification("Erreur de connexion", "error"); 
-                closeCasinoGame(); 
-            }
-        }
-
-        // Virtuals (EuroVirtuals)
-        const virtualCategories = [
-            { id: "all", name: "🎰 Tous" }, { id: "football", name: "⚽ Football" }, { id: "horses", name: "🏇 Chevaux" },
-            { id: "greyhounds", name: "🐕 Lévriers" }, { id: "motor", name: "🏍️ Motos" }, { id: "penalty", name: "🥅 Penalty" }
-        ];
-        let currentVirtuals = [];
-
-        function initVirtualsLobby() {
-            const bar = document.getElementById('virtual-categories-bar');
-            bar.innerHTML = virtualCategories.map(cat => `<button onclick="filterVirtualsByCategory('${cat.id}')" id="btn-vcat-${cat.id}" class="vcat-tab-btn btn-glass px-4 py-2 rounded-full text-xs font-bold text-gray-300 hover:text-white shrink-0">${cat.name}</button>`).join('');
-            fetchEuroVirtualsGames('all');
-        }
-        async function fetchEuroVirtualsGames(categoryId) {
-            const container = document.getElementById('virtuals-games-grid');
-            container.innerHTML = '<div class="col-span-full text-center text-q-gold py-10 animate-pulse">Chargement Virtuels... ⏳</div>';
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`);
-                const data = await response.json();
-                if (data.status === "success" && data.games) {
-                    currentVirtuals = data.games;
-                    filterVirtualsByCategory(categoryId);
-                } else {
-                    container.innerHTML = `<div class="col-span-full text-center text-rose-500 py-10 font-bold">Erreur</div>`;
-                }
-            } catch (error) { container.innerHTML = '<div class="col-span-full text-center text-red-500 py-10">Erreur serveur</div>'; }
-        }
-        function filterVirtualsByCategory(categoryId) {
-            document.querySelectorAll('.vcat-tab-btn').forEach(btn => { btn.classList.remove('active', 'border-q-gold'); btn.classList.add('border-white/10'); });
-            const activeBtn = document.getElementById(`btn-vcat-${categoryId}`);
-            if (activeBtn) { activeBtn.classList.add('active', 'border-q-gold'); activeBtn.classList.remove('border-white/10'); }
-
-            let filtered = currentVirtuals;
-            if (categoryId !== 'all') {
-                const kw = categoryId === 'football' ? 'foot' : categoryId === 'horses' ? 'horse' : categoryId === 'greyhounds' ? 'hound' : categoryId;
-                filtered = currentVirtuals.filter(g => (g.game_name || g.name || "").toLowerCase().includes(kw));
-            }
-            renderVirtualsGrid(filtered);
-        }
-        function filterVirtualGames() {
-            const term = document.getElementById('virtual-search-input').value.toLowerCase();
-            const filtered = currentVirtuals.filter(g => (g.game_name || g.name || "").toLowerCase().includes(term));
-            renderVirtualsGrid(filtered);
-        }
-        function renderVirtualsGrid(games) {
-            const container = document.getElementById('virtuals-games-grid');
-            container.innerHTML = games.map(g => {
-                const img = g.logo || g.banner || g.image || "https://placehold.co/400x400/1a0b2e/FACC15";
-                const code = g.game_uuid || g.game_code || g.id;
-                return `
-                <div onclick="launchSpecificVirtualGame('${code}')" class="bg-black/50 rounded-xl overflow-hidden border border-white/5 group cursor-pointer shadow-lg hover:border-q-gold transition-all flex flex-col h-full">
-                    <div class="relative w-full aspect-square overflow-hidden">
-                        <img src="${img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                            <span class="bg-q-gold text-black text-[10px] font-bold px-4 py-2 rounded-full">JOUER</span>
-                        </div>
-                    </div>
-                    <div class="p-2 flex justify-between items-center bg-q-panel border-t border-white/5 flex-grow">
-                        <span class="text-white text-[10px] font-bold truncate pr-1 group-hover:text-q-gold">${g.game_name || g.name}</span>
-                    </div>
-                </div>`;
-            }).join('');
         }
 
         async function launchSpecificVirtualGame(gameUuid) {
