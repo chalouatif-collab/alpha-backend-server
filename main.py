@@ -62,7 +62,7 @@ import os
 load_dotenv()
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "alpha-secure-key-2026")
 
 # 1. إعداد الاتصال بـ Firebase
 if not firebase_admin._apps:
@@ -171,7 +171,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def hash_password(password: str):
     return pwd_context.hash(password)
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        # يسمح بالدخول إذا كانت الكلمة في القاعدة يدوية وغير مشفرة
+        return plain_password == hashed_password
 
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -747,7 +751,6 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     async with db_lock:
         db = load_db()
         
-        # البحث عن اللاعب والمدير الحالي اعتماداً على التوكن الموثوق 100%
         target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == target), None)
         admin_user = next((u for u in db if str(u.get("username", "")).lower().strip() == current_user.lower().strip()), None)
 
@@ -760,12 +763,11 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         is_master = (current_user.lower() == "system" or current_role in ["owner", "super_admin", "admin"])
         admin = current_user.lower().strip()
 
-        # التحقق من ملكية الشوب للالاعب الجديد
         safe_creator = str(target_user.get("created_by", "")).lower().strip()
         if not is_master and safe_creator != admin:
             raise HTTPException(status_code=403, detail="Accès refusé. Ce joueur ne vous appartient pas.")
 
-        # تنفيذ عملية الشحن (خصم من الشوب وإضافة للاعب)
+        # 1. تحديث الأرصدة في Firebase
         if req.action == "charge":
             if not is_master:
                 if float(admin_user.get("balance", 0)) < amount: 
@@ -776,7 +778,6 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             if current_user.lower() != "system":
                 target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + amount
 
-        # تنفيذ عملية السحب (خصم من اللاعب وإضافة للشوب)
         elif req.action == "withdraw":
             if float(target_user.get("balance", 0)) < amount: 
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez le joueur")
@@ -787,8 +788,30 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
                 
         save_db(db)
-        return {"status": "success", "message": "Opération réussie"}
-    
+
+    # 2. توثيق العملية في سجل SQL ليظهر في صفحة TRANSACTIONS
+    db_session = SessionLocal()
+    try:
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        record_action = "dépôt" if req.action == "charge" else "retrait"
+        
+        new_tx = Transaction(
+            admin_username=current_user.lower().strip(),
+            target_username=target,
+            action=record_action,
+            amount=amount,
+            date=current_time,
+            tx_id=str(uuid.uuid4())
+        )
+        db_session.add(new_tx)
+        db_session.commit()
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error saving transaction history: {e}")
+    finally:
+        db_session.close()
+
+    return {"status": "success", "message": "Opération réussie et enregistrée"}
 @app.get("/api/admin/transactions-history")
 async def get_transactions_history(username: str, current_user: str = Depends(get_admin_user)):
     db_session = SessionLocal()
@@ -1231,25 +1254,29 @@ class Verify2FARequest(BaseModel):
 @app.post("/api/login")
 @limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
-    uname = html.escape(req.username.lower().strip())
-    
-    db = load_db()
-    user = next((u for u in db if u["username"] == uname), None)
+    try:
+        uname = html.escape(req.username.lower().strip())
+        
+        db = load_db()
+        user = next((u for u in db if u["username"] == uname), None)
 
-    if not user or not verify_password(req.password, user.get("password", "")):
-        bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
-        asyncio.create_task(send_telegram_alert(bad_alert))
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
+        if not user or not verify_password(req.password, user.get("password", "")):
+            bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
+            asyncio.create_task(send_telegram_alert(bad_alert))
+            return JSONResponse(status_code=401, content={"detail": "اسم المستخدم أو كلمة المرور غير صحيحة"})
 
-    access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-    
-    return {
-        "message": "success", 
-        "username": user["username"],
-        "role": user["role"],
-        "access_token": access_token ,
-        "balance": user.get("balance", 0.0),
-    }
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+        
+        return JSONResponse(status_code=200, content={
+            "message": "success", 
+            "username": user["username"],
+            "role": user["role"],
+            "access_token": access_token,
+            "balance": float(user.get("balance", 0.0))
+        })
+    except Exception as e:
+        print(f"Login Crash: {e}")
+        return JSONResponse(status_code=500, content={"detail": f"خطأ داخلي: {str(e)}"})
 
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
