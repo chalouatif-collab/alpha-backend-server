@@ -246,24 +246,8 @@ limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
-app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://alphabet216.com",
-        "https://www.admin-alphabets.com",
-        "https://admin-alphabets.com",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+# 1. إعدادات الـ CORS (مرة واحدة فقط وبدون تكرار)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -271,6 +255,8 @@ app.add_middleware(
         "https://alpha-player-frontend.onrender.com",
         "https://www.admin-alphabets.com",
         "https://admin-alphabets.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
         "http://localhost:5500",
         "http://127.0.0.1:5500"
     ],
@@ -278,6 +264,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 2. ترويسات الأمان (مرة واحدة فقط)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
