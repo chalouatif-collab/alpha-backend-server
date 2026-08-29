@@ -56,7 +56,6 @@ EURO_APP_KEY = os.getenv("EURO_APP_KEY", "")
 EURO_API_KEY = os.getenv("EURO_API_KEY", "")
 EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.staging.betkraft.co.uk")
 
-
 from dotenv import load_dotenv
 import os
 
@@ -245,7 +244,6 @@ from slowapi.errors import RateLimitExceeded
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI()
-from fastapi.middleware.cors import CORSMiddleware
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
