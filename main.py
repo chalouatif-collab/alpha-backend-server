@@ -832,8 +832,6 @@ async def get_user_transactions(current_user: str = Depends(get_current_user)):
     for d in user_deposits:
         status_map = {"pending": "En attente", "approuvé": "Approuvé", "rejected": "Refusé"}
         raw_status = str(d.get("status", "pending")).lower()
-        
-        # تنسيق التاريخ
         try:
             dt_obj = datetime.fromisoformat(d.get("date", ""))
             formatted_date = dt_obj.strftime("%Y-%m-%d %H:%M")
@@ -849,32 +847,45 @@ async def get_user_transactions(current_user: str = Depends(get_current_user)):
             "timestamp": d.get("date", "")
         })
 
-    # 2. جلب السحوبات (Retrait) من SQL Database
+    # 2. جلب جميع العمليات (سحوبات وشحن يدوي) من قاعدة بيانات SQL
     db_session = SessionLocal()
     try:
-        withdrawals = db_session.query(Transaction).filter(
-            Transaction.target_username == current_user.lower(),
-            Transaction.action.like("withdraw_request%")
+        # جلب كل العمليات الخاصة بهذا اللاعب
+        sql_txs = db_session.query(Transaction).filter(
+            Transaction.target_username == current_user.lower()
         ).all()
 
-        for w in withdrawals:
-            status_map = {"PENDING": "En attente", "APPROVED": "Approuvé", "REJECTED": "Refusé"}
+        for w in sql_txs:
+            action_lower = str(w.action).lower()
             
-            # استنتاج طريقة السحب من وصف العملية
+            # إخفاء رهانات الألعاب وأرباحها لكي لا تزحم سجل الشحن والسحب
+            if action_lower in ["bet", "win", "rollback", "adjustment"]:
+                continue
+            
+            # تحديد النوع: إيداع أم سحب
+            tx_type = "Retrait"
+            if "dépôt" in action_lower or "charge" in action_lower or "deposit" in action_lower:
+                tx_type = "Dépôt"
+            
+            # استنتاج الطريقة
             method = "Virement"
-            if "D17" in str(w.action): method = "D17"
-            elif "Mandat" in str(w.action): method = "Mandat"
+            if "d17" in action_lower: method = "D17"
+            elif "mandat" in action_lower: method = "Mandat"
+            else: method = "Agent/Shop" # هذا سيميز الشحن اليدوي من الإدارة
+
+            # تحديد الحالة
+            status = "Approuvé" if w.admin_username.lower() != "pending" else "En attente"
 
             history.append({
                 "date": str(w.date)[:16],
-                "type": "Retrait",
+                "type": tx_type,
                 "method": method,
                 "amount": float(w.amount),
-                "status": status_map.get(w.admin_username, "En attente"),
+                "status": status,
                 "timestamp": str(w.date)
             })
     except Exception as e:
-        print(f"Error fetching withdrawals: {e}")
+        print(f"Error fetching user SQL transactions: {e}")
     finally:
         db_session.close()
 
@@ -882,7 +893,6 @@ async def get_user_transactions(current_user: str = Depends(get_current_user)):
     history.sort(key=lambda x: x["timestamp"], reverse=True)
     
     return {"status": "success", "data": history}
-
 @app.post("/api/admin/request-transaction")
 async def request_transaction(request: Request):
     db_session = SessionLocal()
