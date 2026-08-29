@@ -248,12 +248,14 @@ app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
-# 🛑 السماح للموقع بالتواصل مع السيرفر بحرية تامة وتخطي حظر الـ CORS
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://alphabet216.com",
-        "https://www.alphabet216.com",
+        "https://www.admin-alphabets.com",
+        "https://admin-alphabets.com",
         "http://localhost:3000",
         "http://127.0.0.1:3000"
     ],
@@ -261,11 +263,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-from starlette.middleware.sessions import SessionMiddleware
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 app.add_middleware(
     CORSMiddleware,
