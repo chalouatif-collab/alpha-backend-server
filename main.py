@@ -716,7 +716,48 @@ async def fix_missing_user_ids(current_user: str = Depends(get_admin_user)):
         return {"status": "success", "message": f"عملية ناجحة! تم منح ID جديد لـ {updated_count} حساب/حسابات قديمة."}
     except Exception as e:
         return {"status": "error", "message": f"حدث خطأ: {str(e)}"}
+class HandleHugeWinRequest(BaseModel):
+    tx_id: int
+    decision: str # 'approve' or 'reject'
 
+@app.get("/api/admin/pending-huge-wins")
+async def get_pending_huge_wins(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
+    try:
+        txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING_HUGE_WIN").all()
+        return [{"id": t.id, "target_username": t.target_username, "amount": float(t.amount), "action": t.action, "date": t.date} for t in txs]
+    finally:
+        db_session.close()
+
+@app.post("/api/admin/handle-huge-win")
+async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends(get_admin_user)):
+    # حماية إضافية: الأونر أو السوبر أدمن فقط من يوافق
+    db = load_db()
+    admin = next((u for u in db if u["username"] == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
+
+    db_session = SessionLocal()
+    try:
+        tx = db_session.query(Transaction).filter(Transaction.id == req.tx_id).first()
+        if not tx or tx.admin_username != "PENDING_HUGE_WIN":
+            return JSONResponse(status_code=404, content={"detail": "الطلب غير موجود أو تمت معالجته"})
+
+        if req.decision == "approve":
+            async with db_lock:
+                target_user = next((u for u in db if str(u["username"]).lower() == str(tx.target_username).lower()), None)
+                if target_user:
+                    target_user["balance"] = round(float(target_user.get("balance", 0)) + tx.amount, 2)
+                    save_db(db)
+            tx.admin_username = f"APPROVED_BY_{current_user.upper()}"
+        else:
+            tx.admin_username = f"REJECTED_BY_{current_user.upper()}"
+
+        db_session.commit()
+        return {"status": "success", "message": "تمت معالجة الربح الضخم بنجاح"}
+    finally:
+        db_session.close() 
+        
 @app.get("/api/admin/users")
 async def get_all_network_users(current_user: str = Depends(get_admin_user)): 
     db = load_db()
@@ -1503,20 +1544,30 @@ async def seamless_wallet_handler(request: Request):
                 player_balance -= bet_money
 
             if txn_type in ["credit", "debit_credit"]:
-                player_balance += win_money
+                # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
+                if win_money >= 30000:
+                    db_session = SessionLocal()
+                    try:
+                        new_tx = Transaction(
+                            admin_username="PENDING_HUGE_WIN",
+                            target_username=target_user["username"],
+                            action="huge_win (Nexus)",
+                            amount=win_money,
+                            date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            tx_id=tx_data.get("txn_id", str(uuid.uuid4()))
+                        )
+                        db_session.add(new_tx)
+                        db_session.commit()
+                    except Exception as e:
+                        db_session.rollback()
+                    finally:
+                        db_session.close()
+                else:
+                    player_balance += win_money # الإضافة الطبيعية للأرباح العادية
 
-            # حفظ الرصيد الجديد في قاعدة البيانات
             target_user["balance"] = player_balance
             save_db(db)
-
             return JSONResponse(content={"status": 1, "user_balance": round(player_balance, 2)})
-        else:
-            return JSONResponse(content={"status": 0, "msg": "UNKNOWN_METHOD"})
-    except Exception as e:
-        import traceback
-        print(f"🔥 GOLD API EXCEPTION: {e}")
-        return JSONResponse(content={"status": 0, "msg": "INTERNAL_ERROR"})
-
 # ==========================================
 # 🔐 EuroVirtuals Security & Hashing (الإصدار الذهبي النهائي)
 # ==========================================
@@ -1761,41 +1812,39 @@ async def eurovirtuals_win(request: Request):
             finally:
                 db_session.close()
 
-            if is_dup: return err_resp(200, "Success") 
+if is_dup: return err_resp(200, "Success") 
 
-            if action in ["result_bet", "result_lost"]:
-                if not original_bet_exists:
-                    return err_resp(404, "Not Found")
-                
-                if bet_id and bet_id != "None":
-                    file_path = "settled_bets.txt"
-                    if os.path.exists(file_path):
-                        with open(file_path, "r") as f:
-                            if bet_id in f.read().splitlines():
-                                return err_resp(400, "Already Settled")
+            # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
+            if payout_amount >= 30000:
+                db_session = SessionLocal()
+                try:
+                    db_session.add(Transaction(
+                        admin_username="PENDING_HUGE_WIN", 
+                        target_username=player_id, 
+                        action="huge_win (EuroVirtuals)", 
+                        amount=payout_amount, 
+                        date=current_time, 
+                        tx_id=tx_id
+                    ))
+                    db_session.commit()
+                finally:
+                    db_session.close()
+                # 👈 نخدع المزود بالنجاح ليصمت، لكن لا نضيف شيئاً للرصيد
+                return err_resp(200, "Success")
 
+            # مسار الأرباح الطبيعية
             new_balance = round(curr + payout_amount, 2)
             target_user["balance"] = new_balance
             save_db(db)
 
+        # توثيق الربح العادي
         db_session = SessionLocal()
         try:
-            new_tx = Transaction(admin_username="EUROVIRTUALS_API", target_username=player_id, action="win", amount=payout_amount, date=current_time, tx_id=tx_id)
-            db_session.add(new_tx)
+            db_session.add(Transaction(admin_username="EUROVIRTUALS_API", target_username=player_id, action="win", amount=payout_amount, date=current_time, tx_id=tx_id))
             db_session.commit()
-        except:
-            db_session.rollback()
         finally:
             db_session.close()
-
-        if action in ["result_bet", "result_lost"] and bet_id and bet_id != "None":
-            with open("settled_bets.txt", "a") as f:
-                f.write(bet_id + "\n")
-
         return JSONResponse(content={"status_code": 200, "status_description": "Success", "data": {"balance": new_balance, "currency": currency, "reference_id": tx_id, "date": current_time}}, status_code=200)
-    except Exception as e:
-        return JSONResponse(content={"status_code": 500, "status_description": "Internal Server Error"}, status_code=200)
-
 @app.post("/rollback")
 @app.post("/api/eurovirtuals/rollback")
 @app.post("/api/eurovirtuals/callback/rollback")
