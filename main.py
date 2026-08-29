@@ -247,6 +247,11 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+from starlette.middleware.sessions import SessionMiddleware
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
