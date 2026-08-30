@@ -824,21 +824,36 @@ async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends
 async def get_all_network_users(current_user: str = Depends(get_admin_user)): 
     db = load_db()
     
-    # 🛡️ معرفة من هو الذي يطلب القائمة الآن؟
+    # معرفة من هو الذي يطلب القائمة الآن؟
     current_admin = next((u for u in db if u["username"] == current_user), None)
-    current_role = current_admin.get("role") if current_admin else "player"
+    current_role = current_admin.get("role", "player")
 
     safe_users = []
     
     for u in db:
-        # 🛡️ التعديل السحري: الشوب يرى لاعبيه + يرى حسابه الشخصي (ليتحدث رصيده في الأعلى)
+        target_role = u.get("role", "player")
+        is_self = (u.get("username") == current_user)
+        
+        # 1. الشوب (Shop): يرى نفسه واللاعبين الذين قام بإنشائهم فقط
         if current_role == "shop":
-            if u.get("username") != current_user and u.get("created_by") != current_user:
+            if not is_self and u.get("created_by") != current_user:
                 continue
                 
+        # 2. المانجر (Manager): يرى نفسه وحسابات الشوب واللاعبين فقط (ممنوع من رؤية الإدارة العليا)
+        elif current_role == "manager":
+            if not is_self and target_role in ["owner", "super_admin", "admin", "manager"]:
+                continue
+                
+        # 3. الأدمن (Admin): يرى نفسه ومن تحته (ممنوع من رؤية الأونر والسوبر أدمن)
+        elif current_role == "admin":
+            if not is_self and target_role in ["owner", "super_admin"]:
+                continue
+                
+        # الأونر والسوبر أدمن يمرون بدون فلاتر (يرون الجميع)
+
         safe_user = dict(u)
         safe_user.pop("password", None)
-        # safe_user.pop("two_factor_secret", None) # معطلة ليظهر الكود للأونر
+        # safe_user.pop("two_factor_secret", None)
         safe_users.append(safe_user)
         
     return safe_users
