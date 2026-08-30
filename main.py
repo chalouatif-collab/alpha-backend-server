@@ -824,33 +824,33 @@ async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends
 async def get_all_network_users(current_user: str = Depends(get_admin_user)): 
     db = load_db()
     
-    # معرفة من هو الذي يطلب القائمة الآن؟
     current_admin = next((u for u in db if u["username"] == current_user), None)
     current_role = current_admin.get("role", "player")
+
+    # 1. الأونر والسوبر أدمن يرون جميع الحسابات في الشبكة
+    if current_role in ["owner", "super_admin", "system"]:
+        allowed_users = {u["username"] for u in db}
+    else:
+        # 2. بناء شجرة الصلاحيات (Network Tree) للمانجر والأدمن والشوب
+        allowed_users = {current_user}
+        to_process = [current_user]
+        
+        # حلقة بحث ذكية: تجلب الحسابات التي أنشأها، ثم حسابات وكلائه، وهكذا...
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
 
     safe_users = []
     
     for u in db:
-        target_role = u.get("role", "player")
-        is_self = (u.get("username") == current_user)
-        
-        # 1. الشوب (Shop): يرى نفسه واللاعبين الذين قام بإنشائهم فقط
-        if current_role == "shop":
-            if not is_self and u.get("created_by") != current_user:
-                continue
-                
-        # 2. المانجر (Manager): يرى نفسه وحسابات الشوب واللاعبين فقط (ممنوع من رؤية الإدارة العليا)
-        elif current_role == "manager":
-            if not is_self and target_role in ["owner", "super_admin", "admin", "manager"]:
-                continue
-                
-        # 3. الأدمن (Admin): يرى نفسه ومن تحته (ممنوع من رؤية الأونر والسوبر أدمن)
-        elif current_role == "admin":
-            if not is_self and target_role in ["owner", "super_admin"]:
-                continue
-                
-        # الأونر والسوبر أدمن يمرون بدون فلاتر (يرون الجميع)
-
+        # إذا لم يكن الحساب ضمن شجرة صلاحيات هذا المستخدم، تجاوزه
+        if u["username"] not in allowed_users:
+            continue
+            
         safe_user = dict(u)
         safe_user.pop("password", None)
         # safe_user.pop("two_factor_secret", None)
