@@ -2521,22 +2521,44 @@ async def fraud_detection(current_user: str = Depends(get_admin_user)):
         "shared_phones": suspicious_phones
     }
     
+from typing import Optional
+
 @app.get("/api/admin/analytics/ggr")
-async def get_ggr_analytics(current_user: str = Depends(get_admin_user)):
+async def get_ggr_analytics(
+    year: Optional[int] = Query(None), 
+    month: Optional[int] = Query(None), 
+    current_user: str = Depends(get_admin_user)
+):
     db_session = SessionLocal()
     try:
-        # جلب جميع معاملات الرهان والأرباح المسجلة في قاعدة البيانات
         txs = db_session.query(Transaction).filter(
             Transaction.action.in_(["bet", "win", "rollback"])
         ).all()
         
-        total_bets = sum(t.amount for t in txs if t.action == "bet")
-        total_wins = sum(t.amount for t in txs if t.action == "win")
+        filtered_txs = []
+        for t in txs:
+            if not t.date:
+                continue
+            try:
+                # استخراج السنة والشهر من تاريخ العملية (تنسيق: YYYY-MM-DD...)
+                date_part = str(t.date).split(" ")[0]
+                parts = date_part.split("-")
+                if len(parts) >= 2:
+                    t_year = int(parts[0])
+                    t_month = int(parts[1])
+                    
+                    if year and t_year != year:
+                        continue
+                    if month and t_month != month:
+                        continue
+            except Exception:
+                pass
+            filtered_txs.append(t)
         
-        # حساب GGR (صافي دخل الكازينو)
+        total_bets = sum(t.amount for t in filtered_txs if t.action == "bet")
+        total_wins = sum(t.amount for t in filtered_txs if t.action == "win")
+        
         ggr = total_bets - total_wins
-        
-        # حساب نسبة الـ RTP الفعلية
         actual_rtp = (total_wins / total_bets * 100) if total_bets > 0 else 0.0
         
         return {

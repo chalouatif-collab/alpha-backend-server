@@ -476,49 +476,75 @@
                     <section class="card-mini border-start border-warning border-3 mt-2 mb-2">
                         <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
                             <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i
-                                    class="fa-solid fa-chart-line"></i> 📊 تحليلات الإيرادات وصافي الكازينو (GGR)</span>
-                            <button onclick="fetchGGRAnalytics()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄
-                                تحديث</button>
+                                    class="fa-solid fa-chart-line"></i> 📊 تحليلات الإيرادات الصافية (GGR)</span>
+                            <div class="d-flex gap-1 align-items-center">
+                                <!-- فلتر الشهر -->
+                                <select id="ggr-month" class="form-select form-select-mini py-0 px-1 font-mono"
+                                    style="font-size: 0.65rem; width: 85px;">
+                                    <option value="">كل الأشهر</option>
+                                    <option value="1">جانفي (1)</option>
+                                    <option value="2">فيفري (2)</option>
+                                    <option value="3">مارس (3)</option>
+                                    <option value="4">أفريل (4)</option>
+                                    <option value="5">ماي (5)</option>
+                                    <option value="6">جوان (6)</option>
+                                    <option value="7">جويلية (7)</option>
+                                    <option value="8">أوت (8)</option>
+                                    <option value="9">سبتمبر (9)</option>
+                                    <option value="10">أكتوبر (10)</option>
+                                    <option value="11">نوفمبر (11)</option>
+                                    <option value="12">ديسمبر (12)</option>
+                                </select>
+                                <!-- فلتر السنة -->
+                                <select id="ggr-year" class="form-select form-select-mini py-0 px-1 font-mono"
+                                    style="font-size: 0.65rem; width: 70px;">
+                                    <option value="2026">2026</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                </select>
+                                <button onclick="fetchGGRAnalytics()" class="btn btn-mini btn-outline-warning py-0 px-2"
+                                    style="font-size: 0.65rem;">🔍 تصفية</button>
+                            </div>
                         </div>
                         <div class="row g-1 text-center font-mono mt-1" style="font-size: 0.7rem;">
                             <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                <span class="text-secondary d-block" style="font-size: 0.65rem;">إجمالي الرهانات</span>
+                                <span class="text-secondary d-block" style="font-size: 0.60rem;">إجمالي الرهانات</span>
                                 <span id="ggr-bets" class="fw-bold text-white">0.00 TND</span>
                             </div>
                             <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                <span class="text-secondary d-block" style="font-size: 0.65rem;">أرباح اللاعبين</span>
+                                <span class="text-secondary d-block" style="font-size: 0.60rem;">أرباح اللاعبين</span>
                                 <span id="ggr-wins" class="fw-bold text-info">0.00 TND</span>
                             </div>
                             <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                <span class="text-secondary d-block" style="font-size: 0.65rem;">صافي الكازينو
+                                <span class="text-secondary d-block" style="font-size: 0.60rem;">صافي الكازينو
                                     (GGR)</span>
                                 <span id="ggr-profit" class="fw-bold text-success">0.00 TND</span>
                             </div>
                             <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                <span class="text-secondary d-block" style="font-size: 0.65rem;">نسبة العائد RTP</span>
+                                <span class="text-secondary d-block" style="font-size: 0.60rem;">نسبة العائد RTP</span>
                                 <span id="ggr-rtp" class="fw-bold text-warning">0.0%</span>
                             </div>
                         </div>
-                    </section>
-                    <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
+                </section>
+                <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
+                <section class="card-mini p-0 overflow-hidden">
+                    <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
                     <section class="card-mini p-0 overflow-hidden">
-                        <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
-                        <section class="card-mini p-0 overflow-hidden">
-                            <div class="p-1.5 border-bottom border-dark bg-black">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
-                                        style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                                    <input type="text" id="search-input" oninput="renderFilteredUsers()"
-                                        placeholder="Rechercher un compte..."
-                                        class="form-control form-control-mini border-dark py-1">
-                                </div>
+                        <div class="p-1.5 border-bottom border-dark bg-black">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
+                                    style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                <input type="text" id="search-input" oninput="renderFilteredUsers()"
+                                    placeholder="Rechercher un compte..."
+                                    class="form-control form-control-mini border-dark py-1">
                             </div>
-                            <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
-                                style="max-height: 400px; overflow-y: auto;">
-                                <!-- يتم حقن الحسابات هنا -->
-                            </div>
-                        </section>
+                        </div>
+                        <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
+                            style="max-height: 400px; overflow-y: auto;">
+                            <!-- يتم حقن الحسابات هنا -->
+                        </div>
                     </section>
+                </section>
     </div>
 
     <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
@@ -1628,8 +1654,15 @@
         }
 
         async function fetchGGRAnalytics() {
+    const month = document.getElementById('ggr-month').value;
+    const year = document.getElementById('ggr-year').value;
+    
+    let url = `${BACKEND_URL}/api/admin/analytics/ggr?`;
+    if (month) url += `month=${month}&`;
+    if (year) url += `year=${year}&`;
+
     try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/analytics/ggr`, { headers: getAuthHeaders() });
+        const res = await fetch(url, { headers: getAuthHeaders() });
         if (res.ok) {
             const data = await res.json();
             document.getElementById('ggr-bets').innerText = data.total_bets.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' TND';
@@ -1637,7 +1670,6 @@
             
             const profitEl = document.getElementById('ggr-profit');
             profitEl.innerText = data.ggr.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' TND';
-            // تغيير لون النص للأخضر إذا كان المكسب إيجابياً وللأحمر إذا كان سالباً
             profitEl.className = data.ggr >= 0 ? "fw-bold text-success" : "fw-bold text-danger";
             
             document.getElementById('ggr-rtp').innerText = data.actual_rtp + '%';
@@ -1647,8 +1679,13 @@
     }
 }
 
-// جلب الإحصائيات تلقائياً فور تحميل اللوحة
+// جلب الإحصائيات الشهرية والسنوية تلقائياً عند فتح اللوحة
 document.addEventListener('DOMContentLoaded', () => {
+    // تحديد السنة الحالية تلقائياً في القائمة المنسدلة
+    const currentYear = new Date().getFullYear();
+    const yearSelect = document.getElementById('ggr-year');
+    if (yearSelect) yearSelect.value = currentYear;
+    
     fetchGGRAnalytics();
 });
     </script>
