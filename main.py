@@ -827,15 +827,15 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
     current_admin = next((u for u in db if u["username"] == current_user), None)
     current_role = current_admin.get("role", "player")
 
-    # 1. الأونر والسوبر أدمن يرون جميع الحسابات في الشبكة
-    if current_role in ["owner", "super_admin", "system"]:
+    # 1. الأونر فقط (المالك) هو من يرى جميع الحسابات في الشبكة
+    if current_role in ["owner", "system"]:
         allowed_users = {u["username"] for u in db}
     else:
-        # 2. بناء شجرة الصلاحيات (Network Tree) للمانجر والأدمن والشوب
+        # 2. المانجر، السوبر أدمن، الأدمن، والشوب يخضعون لشجرة الصلاحيات
+        # (يرى فقط نفسه ومن تم إنشاؤه تحته في الشجرة)
         allowed_users = {current_user}
         to_process = [current_user]
         
-        # حلقة بحث ذكية: تجلب الحسابات التي أنشأها، ثم حسابات وكلائه، وهكذا...
         while to_process:
             parent = to_process.pop(0)
             children = [u["username"] for u in db if u.get("created_by") == parent]
@@ -845,9 +845,7 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
                     to_process.append(child)
 
     safe_users = []
-    
     for u in db:
-        # إذا لم يكن الحساب ضمن شجرة صلاحيات هذا المستخدم، تجاوزه
         if u["username"] not in allowed_users:
             continue
             
@@ -857,7 +855,6 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
         safe_users.append(safe_user)
         
     return safe_users
-
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
     target = req.target_username.lower().strip()
