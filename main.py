@@ -1542,6 +1542,7 @@ async def seamless_wallet_handler(request: Request):
             tx_data = data.get(game_type, {})
             bet_money = float(tx_data.get("bet_money", 0))
             win_money = float(tx_data.get("win_money", 0))
+            print(f"🚨 NEXUS WIN DETECTED: Amount={win_money}")
             txn_type = tx_data.get("txn_type")
 
             if txn_type in ["debit", "debit_credit"]:
@@ -1789,6 +1790,7 @@ async def eurovirtuals_win(request: Request):
                 return 0.0
 
         payout_amount = safe_float(data.get("payout_amount") or data.get("amount"))
+        print(f"🚨 EUROVIRTUALS WIN DETECTED: Player={player_id}, Amount={payout_amount}")
 
         async with db_lock:
             db = load_db()
@@ -1892,6 +1894,7 @@ async def eurovirtuals_rollback(request: Request):
                 return 0.0
 
         payout_amount = safe_float(data.get("amount") or data.get("payout_amount"))
+        print(f"🚨 EUROVIRTUALS WIN DETECTED: Player={player_id}, Amount={payout_amount}")
         is_rollback_win = ("win" in action.lower() or "win" in str(data.get("type", "")).lower())
 
         async with db_lock:
