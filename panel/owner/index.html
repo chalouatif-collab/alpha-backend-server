@@ -969,7 +969,41 @@
                     } else { body.innerHTML = `<div class="text-center p-3 text-danger" style="font-size: 0.75rem;">خطأ في جلب البيانات</div>`; }
                 } catch (e) { body.innerHTML = `<div class="text-center p-3 text-danger" style="font-size: 0.75rem;">Erreur API</div>`; }
             }
-            else { body.innerHTML = `<div class="text-center p-3 text-secondary" style="font-size: 0.75rem;">Casino en maintenance...</div>`; }
+            else if (safeType === 'casino') {
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/admin/casino-history`, { headers: getAuthHeaders() });
+                    if (res.ok) {
+                        const history = await res.json();
+                        if (history && history.length > 0) {
+                            let html = `<div class="d-flex flex-column gap-1.5" style="max-height: 350px; overflow-y: auto;">`;
+                            history.forEach(t => {
+                                const isWin = t.action === 'win';
+                                const badgeColor = isWin ? 'text-success' : 'text-danger';
+                                const sign = isWin ? '+' : '-';
+                                const actionName = isWin ? 'Gain (ربح)' : 'Mise (رهان)';
+                                
+                                html += `
+                                <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
+                                    <div>
+                                        <div class="text-white fw-bold">👤 ${escapeHTML(t.username)}</div>
+                                        <div class="text-secondary font-mono" style="font-size: 0.6rem;">🕒 ${t.date}</div>
+                                    </div>
+                                    <div class="text-end font-mono">
+                                        <span class="badge border border-secondary text-uppercase ${badgeColor} py-0 px-1 mb-1" style="font-size: 0.55rem;">${actionName}</span>
+                                        <div class="${badgeColor} fw-bold" style="font-size: 0.75rem;">${sign}${parseFloat(t.amount).toFixed(2)} TND</div>
+                                    </div>
+                                </div>`;
+                            });
+                            html += `</div>`;
+                            body.innerHTML = html;
+                        } else {
+                            body.innerHTML = `<div class="text-center p-3 text-secondary" style="font-size: 0.75rem;">لا توجد سجلات كازينو حتى الآن.</div>`;
+                        }
+                    }
+                } catch (e) {
+                    body.innerHTML = `<div class="text-center p-3 text-danger" style="font-size: 0.75rem;">Erreur API</div>`;
+                }
+            }
         }
 
         function renderTransactionsModalUI(container) {

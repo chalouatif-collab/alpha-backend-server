@@ -2658,3 +2658,48 @@ async def get_ggr_analytics(
         return {"status": "error", "total_bets": 0, "total_wins": 0, "ggr": 0, "actual_rtp": 0}
     finally:
         db_session.close()
+        
+@app.get("/api/admin/casino-history")
+async def get_casino_history(current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    current_admin = next((u for u in db if u["username"] == current_user), None)
+    current_role = current_admin.get("role", "player")
+
+    # 1. تحديد من المسموح برؤيتهم بناءً على الرتبة وشجرة الوكلاء
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
+    db_session = SessionLocal()
+    try:
+        # 2. جلب حركات الكازينو فقط (الرهانات والأرباح)
+        txs = db_session.query(Transaction).filter(
+            Transaction.action.in_(["bet", "win", "rollback"])
+        ).all()
+        
+        result = []
+        for t in txs:
+            username = t.username or t.target_username
+            # فلترة: هل اللاعب ينتمي لشبكة هذا المدير؟
+            if username in allowed_users:
+                result.append({
+                    "id": t.id,
+                    "username": username,
+                    "action": t.action,
+                    "amount": t.amount,
+                    "date": str(t.date)
+                })
+                
+        result.reverse() # الأحدث أولاً
+        return result[:500] # نكتفي بآخر 500 عملية لتسريع الأداء
+    finally:
+        db_session.close()
