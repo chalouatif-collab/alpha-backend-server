@@ -1371,7 +1371,8 @@ async def login_user(request: Request, req: LoginRequest):
             bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
             asyncio.create_task(send_telegram_alert(bad_alert))
             return JSONResponse(status_code=401, content={"detail": "اسم المستخدم أو كلمة المرور غير صحيحة"})
-
+        user["last_ip"] = verify_nexus_ip(request)
+        save_db(db)
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
         
         return JSONResponse(status_code=200, content={
@@ -1383,6 +1384,7 @@ async def login_user(request: Request, req: LoginRequest):
         })
     except Exception as e:
         print(f"Login Crash: {e}")
+        
         return JSONResponse(status_code=500, content={"detail": f"خطأ داخلي: {str(e)}"})
 
 @app.post("/api/verify-2fa")
@@ -2492,3 +2494,29 @@ async def set_promo(data: PromoModel, current_user: str = Depends(get_admin_user
     
     with open(PROMO_FILE, "w") as f: json.dump(data.dict(), f)
     return {"status": "success", "message": "تم حفظ إعدادات العرض بنجاح"}    
+
+@app.get("/api/admin/fraud-detection")
+async def fraud_detection(current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    ip_map = {}
+    phone_map = {}
+    
+    for u in db:
+        ip = u.get("last_ip") or u.get("ip")
+        phone = u.get("phone")
+        uname = u.get("username")
+        
+        if ip:
+            ip_map.setdefault(ip, []).append(uname)
+        if phone and phone != "00000000" and phone != "":
+            phone_map.setdefault(phone, []).append(uname)
+            
+    # تصفية الحسابات التي تشترك في نفس الـ IP أو الهاتف (أكثر من حساب)
+    suspicious_ips = {ip: users for ip, users in ip_map.items() if len(users) > 1}
+    suspicious_phones = {phone: users for phone, users in phone_map.items() if len(users) > 1}
+    
+    return {
+        "status": "success",
+        "shared_ips": suspicious_ips,
+        "shared_phones": suspicious_phones
+    }

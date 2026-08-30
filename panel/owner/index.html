@@ -454,6 +454,16 @@
             <button onclick="savePromoConfig()" class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام الآلي</button>
         </div>
     </div>
+    <!-- ================= أداة كشف الاحتيال وتعدد الحسابات ================= -->
+<section class="card-mini border-start border-danger border-3 mt-2 mb-2">
+    <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+        <span class="fw-bold text-danger small" style="font-size: 0.75rem;"><i class="fa-solid fa-user-shield"></i> 🛡️ كشف الاحتيال وتعدد الحسابات (Anti-Fraud)</span>
+        <button onclick="fetchFraudData()" class="btn btn-mini btn-outline-danger py-0 px-2">🔍 فحص الشبكة</button>
+    </div>
+    <div id="fraud-results-container" class="text-white small p-1 font-mono" style="font-size: 0.7rem; max-height: 150px; overflow-y: auto;">
+        <span class="text-secondary">اضغط على زر "فحص الشبكة" لكشف الحسابات المرتبطة بنفس عنوان الـ IP أو الهاتف...</span>
+    </div>
+
 </section>
             <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
             <section class="card-mini p-0 overflow-hidden">
@@ -1540,6 +1550,47 @@ async function savePromoConfig() {
 
 // أضف هذا السطر مع أوامر التحميل الأولية لتحديث الواجهة فور الدخول
 document.addEventListener('DOMContentLoaded', fetchPromoConfig);
+
+async function fetchFraudData() {
+    const container = document.getElementById('fraud-results-container');
+    container.innerHTML = '<span class="text-warning">⏳ جاري فحص قواعد البيانات وتحليل عناوين الـ IP والهواتف...</span>';
+    
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/fraud-detection`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            const data = await res.json();
+            let htmlContent = '';
+            
+            const hasIps = Object.keys(data.shared_ips || {}).length > 0;
+            const hasPhones = Object.keys(data.shared_phones || {}).length > 0;
+            
+            if (!hasIps && !hasPhones) {
+                container.innerHTML = '<span class="text-success">✅ نظيف تماماً! لم يتم اكتشاف حسابات متطابقة تشترك في نفس الـ IP أو رقم الهاتف.</span>';
+                return;
+            }
+            
+            if (hasIps) {
+                htmlContent += '<b class="text-danger">⚠️ حسابات تشترك في نفس عنوان الـ IP:</b><br>';
+                for (const [ip, users] of Object.entries(data.shared_ips)) {
+                    htmlContent += `• IP: <code>${ip}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
+                }
+            }
+            
+            if (hasPhones) {
+                htmlContent += '<br><b class="text-danger">⚠️ حسابات تشترك في نفس رقم الهاتف:</b><br>';
+                for (const [phone, users] of Object.entries(data.shared_phones)) {
+                    htmlContent += `• هاتف: <code>${phone}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
+                }
+            }
+            
+            container.innerHTML = htmlContent;
+        } else {
+            container.innerHTML = '<span class="text-danger">❌ فشل جلب بيانات الفحص الأمني.</span>';
+        }
+    } catch (e) {
+        container.innerHTML = '<span class="text-danger">❌ خطأ في الاتصال بالسيرفر.</span>';
+    }
+}
     </script>
 </body>
 
