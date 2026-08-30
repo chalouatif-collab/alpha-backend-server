@@ -1551,8 +1551,8 @@ async def seamless_wallet_handler(request: Request):
                 player_balance -= bet_money
 
             if txn_type in ["credit", "debit_credit"]:
-                # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
-                if win_money >= 30000:
+                # 🛑 الجدار الأمني للربح الضخم (15 ألف أو أكثر)
+                if win_money >= 15000:
                     db_session = SessionLocal()
                     try:
                         new_tx = Transaction(
