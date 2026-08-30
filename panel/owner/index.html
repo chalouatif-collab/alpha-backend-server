@@ -294,6 +294,23 @@
                         <!-- يتم حقن الحسابات هنا -->
                     </div>
                 </section>
+                </section>
+
+                <!-- ================= جدار الأرباح الضخمة (30K+) ================= -->
+                <section class="card-mini border-start border-warning border-3 mt-2" id="huge-wins-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                        <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> 🚨 أرباح ضخمة معلقة</span>
+                        <button onclick="fetchHugeWins()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄 تحديث</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="w-full text-white w-100" style="font-size: 0.7rem;">
+                            <tbody id="huge-wins-tbody" class="d-flex flex-column gap-1 mt-1">
+                                <!-- سيتم جلب الأرباح هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
             </div>
 
             <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
@@ -1188,6 +1205,72 @@
         setInterval(timerIncrement, 60000);
 
         document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // ==========================================
+        // نظام الجدار الأمني للأرباح الضخمة (30,000+)
+        // ==========================================
+        async function fetchHugeWins() {
+            const section = document.getElementById('huge-wins-section');
+            const tbody = document.getElementById('huge-wins-tbody');
+            
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/pending-huge-wins`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    if (data.length === 0) {
+                        section.style.display = 'none'; // إخفاء القسم إذا لم توجد أرباح معلقة
+                        return;
+                    }
+
+                    section.style.display = 'block'; // إظهار القسم عند وجود إنذار
+                    tbody.innerHTML = '';
+                    
+                    data.forEach(tx => {
+                        const amountFormatted = parseFloat(tx.amount).toLocaleString('fr-FR', { minimumFractionDigits: 2 });
+                        tbody.innerHTML += `
+                            <tr class="bg-black border border-warning rounded p-1 d-flex justify-content-between align-items-center">
+                                <td class="px-2 font-mono fw-bold text-info">${escapeHTML(tx.target_username)}</td>
+                                <td class="px-2 font-mono fw-bold text-success" style="font-size: 0.8rem;">+${amountFormatted} TND</td>
+                                <td class="px-2 d-flex gap-1">
+                                    <button onclick="handleHugeWin(${tx.id}, 'approve')" class="btn btn-mini btn-success py-0 px-2 fw-bold">✅</button>
+                                    <button onclick="handleHugeWin(${tx.id}, 'reject')" class="btn btn-mini btn-danger py-0 px-2 fw-bold">❌</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (e) { console.error("Error fetching huge wins"); }
+        }
+
+        async function handleHugeWin(txId, decision) {
+            const isApproving = decision === 'approve';
+            if (!confirm(isApproving ? '⚠️ متأكد من الموافقة وضخ المبلغ؟' : '🛑 متأكد من الرفض؟')) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/handle-huge-win`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ tx_id: txId, decision: decision })
+                });
+
+                if (res.ok) {
+                    showNotification(isApproving ? '✅ تمت الموافقة!' : '✅ تم الرفض!', 'success');
+                    if (isApproving) triggerGoldRain();
+                    fetchHugeWins(); // تحديث القائمة
+                    loadNetworkData(); // تحديث رصيد اللاعب في الواجهة
+                } else {
+                    const data = await res.json();
+                    showNotification(data.detail || 'Erreur', 'error');
+                }
+            } catch (error) {
+                showNotification('Erreur de connexion', 'error');
+            }
+        }
+
+        // تشغيل مراقب الأرباح الضخمة كل 15 ثانية بجانب المراقب القديم
+        setInterval(fetchHugeWins, 15000);
+        document.addEventListener('DOMContentLoaded', fetchHugeWins);
     </script>
 </body>
 
