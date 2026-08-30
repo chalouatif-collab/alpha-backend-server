@@ -2236,3 +2236,45 @@ async def launch_sportsbook(request: Request):
                     return {"status": "success", "data_from_smpl": data}
                 except Exception as e:
                     return {"status": "error", "details": str(e)}
+                
+class HandleHugeWinRequest(BaseModel):
+    tx_id: int
+    decision: str # 'approve' or 'reject'
+
+@app.get("/api/admin/pending-huge-wins")
+async def get_pending_huge_wins(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
+    try:
+        txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING_HUGE_WIN").all()
+        return [{"id": t.id, "target_username": t.target_username, "amount": float(t.amount), "action": t.action, "date": t.date} for t in txs]
+    finally:
+        db_session.close()
+
+@app.post("/api/admin/handle-huge-win")
+async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends(get_admin_user)):
+    # حماية إضافية: الأونر أو السوبر أدمن فقط من يوافق
+    db = load_db()
+    admin = next((u for u in db if u["username"] == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
+
+    db_session = SessionLocal()
+    try:
+        tx = db_session.query(Transaction).filter(Transaction.id == req.tx_id).first()
+        if not tx or tx.admin_username != "PENDING_HUGE_WIN":
+            return JSONResponse(status_code=404, content={"detail": "الطلب غير موجود أو تمت معالجته"})
+
+        if req.decision == "approve":
+            async with db_lock:
+                target_user = next((u for u in db if str(u["username"]).lower() == str(tx.target_username).lower()), None)
+                if target_user:
+                    target_user["balance"] = round(float(target_user.get("balance", 0)) + tx.amount, 2)
+                    save_db(db)
+            tx.admin_username = f"APPROVED_BY_{current_user.upper()}"
+        else:
+            tx.admin_username = f"REJECTED_BY_{current_user.upper()}"
+
+        db_session.commit()
+        return {"status": "success", "message": "تمت معالجة الربح الضخم بنجاح"}
+    finally:
+        db_session.close()                
