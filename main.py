@@ -1418,13 +1418,15 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
     totp = pyotp.TOTP(secret)
     if totp.verify(req.totp_code):
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        return {
-            "access_token": access_token, 
-            "token_type": "bearer", 
-            "username": user["username"], 
+        
+        # 👈 التعديل هنا: إرجاع الرد بنفس صيغة الدخول العادي تماماً ليحفظه المتصفح
+        return JSONResponse(status_code=200, content={
+            "message": "success", 
+            "username": user["username"],
             "role": user["role"],
-            "balance": user.get("balance", 0.0)
-        }
+            "access_token": access_token,
+            "balance": float(user.get("balance", 0.0))
+        })
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
 @app.get("/setup-2fa/{username}")
