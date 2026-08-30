@@ -409,81 +409,116 @@
                     </div>
                 </div>
             </section>
-<!-- ================= نظام العروض الآلية ================= -->
-<section class="card-mini border-start border-success border-3 mt-2 mb-2">
-    <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-        <span class="fw-bold text-success small" style="font-size: 0.75rem;"><i class="fa-solid fa-robot"></i> 🤖 نظام العروض الآلي (الشحن = لفات)</span>
-        <div class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" id="promo-active">
-            <label class="form-check-label text-white small" for="promo-active">تفعيل العرض</label>
-        </div>
-    </div>
-    <div class="row g-1 align-items-center mt-1 text-center font-mono" style="font-size: 0.7rem;">
-        <div class="col-4 col-md-2">
-            <label class="text-secondary d-block mb-1">يوم العرض</label>
-            <select id="promo-day" class="form-select form-select-mini py-0.5">
-                <option value="Monday">الإثنين</option>
-                <option value="Tuesday">الثلاثاء</option>
-                <option value="Wednesday">الأربعاء</option>
-                <option value="Thursday">الخميس</option>
-                <option value="Friday">الجمعة</option>
-                <option value="Saturday">السبت</option>
-                <option value="Sunday">الأحد</option>
-            </select>
-        </div>
-        <div class="col-4 col-md-2">
-            <label class="text-secondary d-block mb-1">الحد الأدنى للشحن</label>
-            <input type="number" id="promo-min" class="form-control form-control-mini text-center" value="50">
-        </div>
-        <div class="col-4 col-md-2">
-            <label class="text-secondary d-block mb-1">عدد اللفات</label>
-            <input type="number" id="promo-spins" class="form-control form-control-mini text-center" value="10">
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="text-secondary d-block mb-1">المزود</label>
-            <select id="promo-provider" class="form-select form-select-mini py-0.5">
-                <option value="PRAGMATIC">Pragmatic</option>
-                <option value="NETENT">NetEnt</option>
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="text-secondary d-block mb-1">كود اللعبة</label>
-            <input type="text" id="promo-game" class="form-control form-control-mini text-center" value="vs20doghouse">
-        </div>
-        <div class="col-12 col-md-2 mt-auto">
-            <button onclick="savePromoConfig()" class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام الآلي</button>
-        </div>
-    </div>
-    <!-- ================= أداة كشف الاحتيال وتعدد الحسابات ================= -->
-<section class="card-mini border-start border-danger border-3 mt-2 mb-2">
-    <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-        <span class="fw-bold text-danger small" style="font-size: 0.75rem;"><i class="fa-solid fa-user-shield"></i> 🛡️ كشف الاحتيال وتعدد الحسابات (Anti-Fraud)</span>
-        <button onclick="fetchFraudData()" class="btn btn-mini btn-outline-danger py-0 px-2">🔍 فحص الشبكة</button>
-    </div>
-    <div id="fraud-results-container" class="text-white small p-1 font-mono" style="font-size: 0.7rem; max-height: 150px; overflow-y: auto;">
-        <span class="text-secondary">اضغط على زر "فحص الشبكة" لكشف الحسابات المرتبطة بنفس عنوان الـ IP أو الهاتف...</span>
-    </div>
-
-</section>
-            <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
-            <section class="card-mini p-0 overflow-hidden">
-                <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
-                <section class="card-mini p-0 overflow-hidden">
-                    <div class="p-1.5 border-bottom border-dark bg-black">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
-                                style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="search-input" oninput="renderFilteredUsers()"
-                                placeholder="Rechercher un compte..."
-                                class="form-control form-control-mini border-dark py-1">
+            <!-- ================= نظام العروض الآلية ================= -->
+            <section class="card-mini border-start border-success border-3 mt-2 mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                    <span class="fw-bold text-success small" style="font-size: 0.75rem;"><i
+                            class="fa-solid fa-robot"></i> 🤖 نظام العروض الآلي (الشحن = لفات)</span>
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="promo-active">
+                        <label class="form-check-label text-white small" for="promo-active">تفعيل العرض</label>
+                    </div>
+                </div>
+                <div class="row g-1 align-items-center mt-1 text-center font-mono" style="font-size: 0.7rem;">
+                    <div class="col-4 col-md-2">
+                        <label class="text-secondary d-block mb-1">يوم العرض</label>
+                        <select id="promo-day" class="form-select form-select-mini py-0.5">
+                            <option value="Monday">الإثنين</option>
+                            <option value="Tuesday">الثلاثاء</option>
+                            <option value="Wednesday">الأربعاء</option>
+                            <option value="Thursday">الخميس</option>
+                            <option value="Friday">الجمعة</option>
+                            <option value="Saturday">السبت</option>
+                            <option value="Sunday">الأحد</option>
+                        </select>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <label class="text-secondary d-block mb-1">الحد الأدنى للشحن</label>
+                        <input type="number" id="promo-min" class="form-control form-control-mini text-center"
+                            value="50">
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <label class="text-secondary d-block mb-1">عدد اللفات</label>
+                        <input type="number" id="promo-spins" class="form-control form-control-mini text-center"
+                            value="10">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="text-secondary d-block mb-1">المزود</label>
+                        <select id="promo-provider" class="form-select form-select-mini py-0.5">
+                            <option value="PRAGMATIC">Pragmatic</option>
+                            <option value="NETENT">NetEnt</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="text-secondary d-block mb-1">كود اللعبة</label>
+                        <input type="text" id="promo-game" class="form-control form-control-mini text-center"
+                            value="vs20doghouse">
+                    </div>
+                    <div class="col-12 col-md-2 mt-auto">
+                        <button onclick="savePromoConfig()"
+                            class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام الآلي</button>
+                    </div>
+                </div>
+                <!-- ================= أداة كشف الاحتيال وتعدد الحسابات ================= -->
+                <section class="card-mini border-start border-danger border-3 mt-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                        <span class="fw-bold text-danger small" style="font-size: 0.75rem;"><i
+                                class="fa-solid fa-user-shield"></i> 🛡️ كشف الاحتيال وتعدد الحسابات (Anti-Fraud)</span>
+                        <button onclick="fetchFraudData()" class="btn btn-mini btn-outline-danger py-0 px-2">🔍 فحص
+                            الشبكة</button>
+                    </div>
+                    <div id="fraud-results-container" class="text-white small p-1 font-mono"
+                        style="font-size: 0.7rem; max-height: 150px; overflow-y: auto;">
+                        <span class="text-secondary">اضغط على زر "فحص الشبكة" لكشف الحسابات المرتبطة بنفس عنوان الـ IP
+                            أو الهاتف...</span>
+                    </div>
+                    <!-- ================= لوحة تحليلات الإيرادات الصافية (GGR Analytics) ================= -->
+                    <section class="card-mini border-start border-warning border-3 mt-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                            <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i
+                                    class="fa-solid fa-chart-line"></i> 📊 تحليلات الإيرادات وصافي الكازينو (GGR)</span>
+                            <button onclick="fetchGGRAnalytics()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄
+                                تحديث</button>
                         </div>
-                    </div>
-                    <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
-                        style="max-height: 400px; overflow-y: auto;">
-                        <!-- يتم حقن الحسابات هنا -->
-                    </div>
-                </section>
-            </section>
+                        <div class="row g-1 text-center font-mono mt-1" style="font-size: 0.7rem;">
+                            <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                <span class="text-secondary d-block" style="font-size: 0.65rem;">إجمالي الرهانات</span>
+                                <span id="ggr-bets" class="fw-bold text-white">0.00 TND</span>
+                            </div>
+                            <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                <span class="text-secondary d-block" style="font-size: 0.65rem;">أرباح اللاعبين</span>
+                                <span id="ggr-wins" class="fw-bold text-info">0.00 TND</span>
+                            </div>
+                            <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                <span class="text-secondary d-block" style="font-size: 0.65rem;">صافي الكازينو
+                                    (GGR)</span>
+                                <span id="ggr-profit" class="fw-bold text-success">0.00 TND</span>
+                            </div>
+                            <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                <span class="text-secondary d-block" style="font-size: 0.65rem;">نسبة العائد RTP</span>
+                                <span id="ggr-rtp" class="fw-bold text-warning">0.0%</span>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
+                    <section class="card-mini p-0 overflow-hidden">
+                        <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
+                        <section class="card-mini p-0 overflow-hidden">
+                            <div class="p-1.5 border-bottom border-dark bg-black">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
+                                        style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                    <input type="text" id="search-input" oninput="renderFilteredUsers()"
+                                        placeholder="Rechercher un compte..."
+                                        class="form-control form-control-mini border-dark py-1">
+                                </div>
+                            </div>
+                            <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
+                                style="max-height: 400px; overflow-y: auto;">
+                                <!-- يتم حقن الحسابات هنا -->
+                            </div>
+                        </section>
+                    </section>
     </div>
 
     <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
@@ -1480,117 +1515,142 @@
         }
 
         async function cancelFreeSpins() {
-    const tourId = document.getElementById('fs-cancel-tour-id').value.trim();
-    if (!tourId) return showNotification("أدخل رقم الجولة (Tour ID) أولاً!", "error");
+            const tourId = document.getElementById('fs-cancel-tour-id').value.trim();
+            if (!tourId) return showNotification("أدخل رقم الجولة (Tour ID) أولاً!", "error");
 
-    if (!confirm(`هل أنت متأكد من إلغاء الجولة ${tourId}؟ سيتم استرجاع رصيد اللفات المتبقية.`)) return;
+            if (!confirm(`هل أنت متأكد من إلغاء الجولة ${tourId}؟ سيتم استرجاع رصيد اللفات المتبقية.`)) return;
 
-    const btn = document.getElementById('btn-cancel-fs');
-    btn.disabled = true;
-    btn.innerText = "⏳...";
+            const btn = document.getElementById('btn-cancel-fs');
+            btn.disabled = true;
+            btn.innerText = "⏳...";
 
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/cancel-freespins`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ tour_id: tourId })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showNotification(`✅ ${data.message}`, "success");
+                    document.getElementById('fs-cancel-tour-id').value = '';
+                } else {
+                    showNotification(`❌ ${data.detail}`, "error");
+                }
+            } catch (e) {
+                showNotification("خطأ في الاتصال بالسيرفر", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "إلغاء الجولة";
+            }
+        }
+
+        async function fetchPromoConfig() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/promo`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('promo-active').checked = data.is_active;
+                    document.getElementById('promo-day').value = data.day_of_week;
+                    document.getElementById('promo-min').value = data.min_amount;
+                    document.getElementById('promo-spins').value = data.spins;
+                    document.getElementById('promo-provider').value = data.provider;
+                    document.getElementById('promo-game').value = data.game;
+                }
+            } catch (e) { }
+        }
+
+        async function savePromoConfig() {
+            const payload = {
+                is_active: document.getElementById('promo-active').checked,
+                day_of_week: document.getElementById('promo-day').value,
+                min_amount: parseFloat(document.getElementById('promo-min').value),
+                spins: parseInt(document.getElementById('promo-spins').value),
+                provider: document.getElementById('promo-provider').value,
+                game: document.getElementById('promo-game').value,
+                max_win: 10000 // قيمة افتراضية للحد الأقصى للربح
+            };
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/promo`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) showNotification("✅ تم حفظ إعدادات العرض الآلي بنجاح!", "success");
+                else showNotification("❌ حدث خطأ أثناء الحفظ", "error");
+            } catch (e) { showNotification("خطأ في الاتصال", "error"); }
+        }
+
+        // أضف هذا السطر مع أوامر التحميل الأولية لتحديث الواجهة فور الدخول
+        document.addEventListener('DOMContentLoaded', fetchPromoConfig);
+
+        async function fetchFraudData() {
+            const container = document.getElementById('fraud-results-container');
+            container.innerHTML = '<span class="text-warning">⏳ جاري فحص قواعد البيانات وتحليل عناوين الـ IP والهواتف...</span>';
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/fraud-detection`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    let htmlContent = '';
+
+                    const hasIps = Object.keys(data.shared_ips || {}).length > 0;
+                    const hasPhones = Object.keys(data.shared_phones || {}).length > 0;
+
+                    if (!hasIps && !hasPhones) {
+                        container.innerHTML = '<span class="text-success">✅ نظيف تماماً! لم يتم اكتشاف حسابات متطابقة تشترك في نفس الـ IP أو رقم الهاتف.</span>';
+                        return;
+                    }
+
+                    if (hasIps) {
+                        htmlContent += '<b class="text-danger">⚠️ حسابات تشترك في نفس عنوان الـ IP:</b><br>';
+                        for (const [ip, users] of Object.entries(data.shared_ips)) {
+                            htmlContent += `• IP: <code>${ip}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
+                        }
+                    }
+
+                    if (hasPhones) {
+                        htmlContent += '<br><b class="text-danger">⚠️ حسابات تشترك في نفس رقم الهاتف:</b><br>';
+                        for (const [phone, users] of Object.entries(data.shared_phones)) {
+                            htmlContent += `• هاتف: <code>${phone}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
+                        }
+                    }
+
+                    container.innerHTML = htmlContent;
+                } else {
+                    container.innerHTML = '<span class="text-danger">❌ فشل جلب بيانات الفحص الأمني.</span>';
+                }
+            } catch (e) {
+                container.innerHTML = '<span class="text-danger">❌ خطأ في الاتصال بالسيرفر.</span>';
+            }
+        }
+
+        async function fetchGGRAnalytics() {
     try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/cancel-freespins`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ tour_id: tourId })
-        });
-        const data = await res.json();
-        
+        const res = await fetch(`${BACKEND_URL}/api/admin/analytics/ggr`, { headers: getAuthHeaders() });
         if (res.ok) {
-            showNotification(`✅ ${data.message}`, "success");
-            document.getElementById('fs-cancel-tour-id').value = '';
-        } else {
-            showNotification(`❌ ${data.detail}`, "error");
+            const data = await res.json();
+            document.getElementById('ggr-bets').innerText = data.total_bets.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' TND';
+            document.getElementById('ggr-wins').innerText = data.total_wins.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' TND';
+            
+            const profitEl = document.getElementById('ggr-profit');
+            profitEl.innerText = data.ggr.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' TND';
+            // تغيير لون النص للأخضر إذا كان المكسب إيجابياً وللأحمر إذا كان سالباً
+            profitEl.className = data.ggr >= 0 ? "fw-bold text-success" : "fw-bold text-danger";
+            
+            document.getElementById('ggr-rtp').innerText = data.actual_rtp + '%';
         }
     } catch (e) {
-        showNotification("خطأ في الاتصال بالسيرفر", "error");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "إلغاء الجولة";
+        console.error("Error fetching GGR analytics");
     }
 }
 
-async function fetchPromoConfig() {
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/promo`, { headers: getAuthHeaders() });
-        if (res.ok) {
-            const data = await res.json();
-            document.getElementById('promo-active').checked = data.is_active;
-            document.getElementById('promo-day').value = data.day_of_week;
-            document.getElementById('promo-min').value = data.min_amount;
-            document.getElementById('promo-spins').value = data.spins;
-            document.getElementById('promo-provider').value = data.provider;
-            document.getElementById('promo-game').value = data.game;
-        }
-    } catch (e) {}
-}
-
-async function savePromoConfig() {
-    const payload = {
-        is_active: document.getElementById('promo-active').checked,
-        day_of_week: document.getElementById('promo-day').value,
-        min_amount: parseFloat(document.getElementById('promo-min').value),
-        spins: parseInt(document.getElementById('promo-spins').value),
-        provider: document.getElementById('promo-provider').value,
-        game: document.getElementById('promo-game').value,
-        max_win: 10000 // قيمة افتراضية للحد الأقصى للربح
-    };
-
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/promo`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(payload)
-        });
-        if (res.ok) showNotification("✅ تم حفظ إعدادات العرض الآلي بنجاح!", "success");
-        else showNotification("❌ حدث خطأ أثناء الحفظ", "error");
-    } catch (e) { showNotification("خطأ في الاتصال", "error"); }
-}
-
-// أضف هذا السطر مع أوامر التحميل الأولية لتحديث الواجهة فور الدخول
-document.addEventListener('DOMContentLoaded', fetchPromoConfig);
-
-async function fetchFraudData() {
-    const container = document.getElementById('fraud-results-container');
-    container.innerHTML = '<span class="text-warning">⏳ جاري فحص قواعد البيانات وتحليل عناوين الـ IP والهواتف...</span>';
-    
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/admin/fraud-detection`, { headers: getAuthHeaders() });
-        if (res.ok) {
-            const data = await res.json();
-            let htmlContent = '';
-            
-            const hasIps = Object.keys(data.shared_ips || {}).length > 0;
-            const hasPhones = Object.keys(data.shared_phones || {}).length > 0;
-            
-            if (!hasIps && !hasPhones) {
-                container.innerHTML = '<span class="text-success">✅ نظيف تماماً! لم يتم اكتشاف حسابات متطابقة تشترك في نفس الـ IP أو رقم الهاتف.</span>';
-                return;
-            }
-            
-            if (hasIps) {
-                htmlContent += '<b class="text-danger">⚠️ حسابات تشترك في نفس عنوان الـ IP:</b><br>';
-                for (const [ip, users] of Object.entries(data.shared_ips)) {
-                    htmlContent += `• IP: <code>${ip}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
-                }
-            }
-            
-            if (hasPhones) {
-                htmlContent += '<br><b class="text-danger">⚠️ حسابات تشترك في نفس رقم الهاتف:</b><br>';
-                for (const [phone, users] of Object.entries(data.shared_phones)) {
-                    htmlContent += `• هاتف: <code>${phone}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
-                }
-            }
-            
-            container.innerHTML = htmlContent;
-        } else {
-            container.innerHTML = '<span class="text-danger">❌ فشل جلب بيانات الفحص الأمني.</span>';
-        }
-    } catch (e) {
-        container.innerHTML = '<span class="text-danger">❌ خطأ في الاتصال بالسيرفر.</span>';
-    }
-}
+// جلب الإحصائيات تلقائياً فور تحميل اللوحة
+document.addEventListener('DOMContentLoaded', () => {
+    fetchGGRAnalytics();
+});
     </script>
 </body>
 

@@ -2520,3 +2520,34 @@ async def fraud_detection(current_user: str = Depends(get_admin_user)):
         "shared_ips": suspicious_ips,
         "shared_phones": suspicious_phones
     }
+    
+@app.get("/api/admin/analytics/ggr")
+async def get_ggr_analytics(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
+    try:
+        # جلب جميع معاملات الرهان والأرباح المسجلة في قاعدة البيانات
+        txs = db_session.query(Transaction).filter(
+            Transaction.action.in_(["bet", "win", "rollback"])
+        ).all()
+        
+        total_bets = sum(t.amount for t in txs if t.action == "bet")
+        total_wins = sum(t.amount for t in txs if t.action == "win")
+        
+        # حساب GGR (صافي دخل الكازينو)
+        ggr = total_bets - total_wins
+        
+        # حساب نسبة الـ RTP الفعلية
+        actual_rtp = (total_wins / total_bets * 100) if total_bets > 0 else 0.0
+        
+        return {
+            "status": "success",
+            "total_bets": round(total_bets, 2),
+            "total_wins": round(total_wins, 2),
+            "ggr": round(ggr, 2),
+            "actual_rtp": round(actual_rtp, 2)
+        }
+    except Exception as e:
+        print(f"Analytics Error: {e}")
+        return {"status": "error", "total_bets": 0, "total_wins": 0, "ggr": 0, "actual_rtp": 0}
+    finally:
+        db_session.close()
