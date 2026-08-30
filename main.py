@@ -197,7 +197,7 @@ async def get_admin_user(current_user: str = Depends(get_current_user)):
     db = load_db()
     user = next((u for u in db if u["username"] == current_user), None)
     
-    if not user or user.get("role") not in ["owner", "super_admin", "admin", "shop"]:
+    if not user or user.get("role") not in ["owner","manager", "super_admin", "admin", "shop"]:
         raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
     
     return current_user
@@ -350,6 +350,12 @@ async def get_admin_panel():
 async def get_shop_panel():
     with open("panel/shop/index.html", "r", encoding="utf-8") as f:
         return f.read()
+    
+@app.get("/panel/manager", response_class=HTMLResponse)
+@app.get("/panel/manager/", response_class=HTMLResponse)
+async def get_manager_panel():
+    with open("panel/manager/index.html", "r", encoding="utf-8") as f:
+        return f.read()    
     
 class ResettleTicketRequest(BaseModel):
     ticket_id: str
@@ -857,7 +863,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             raise HTTPException(status_code=404, detail="Compte administrateur introuvable")
 
         current_role = admin_user.get("role", "")
-        is_master = (current_user.lower() == "system" or current_role in ["owner", "super_admin", "admin"])
+        is_master = (current_user.lower() == "system" or current_role in ["owner","manager", "super_admin", "admin"])
         admin = current_user.lower().strip()
 
         safe_creator = str(target_user.get("created_by", "")).lower().strip()
@@ -1129,7 +1135,7 @@ async def change_my_password(req: ChangeMyPasswordRequest, current_user: str = D
     target_username = req.username.lower().strip()
     
     # 🛡️ الحارس الأمني: يمنع أي مستخدم من تغيير كلمة مرور حساب آخر
-    if current_user != target_username and current_user not in ["fethi", "admin", "owner", "super_admin"]:
+    if current_user != target_username and current_user not in ["fethi","manager", "admin", "owner", "super_admin","shop"]:
         raise HTTPException(status_code=403, detail="Non autorisé: Vous ne pouvez pas modifier le mot de passe d'un autre utilisateur")
         
     db = load_db()
@@ -1296,9 +1302,11 @@ async def logout_owner(request: Request):
 async def admin_home(request: Request):
     role = request.session.get("role")
     if role == "owner": return RedirectResponse(url="/panel/owner", status_code=303)
+    elif role == "manager": return RedirectResponse(url="/panel/manager", status_code=303)
     elif role == "super_admin": return RedirectResponse(url="/panel/super_admin", status_code=303)
     elif role == "admin": return RedirectResponse(url="/panel/admin", status_code=303)
     elif role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
+    
     
     with open("index.html", "r", encoding="utf-8") as f:
         return f.read()
