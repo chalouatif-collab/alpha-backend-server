@@ -536,7 +536,35 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
         
         with open(TICKETS_FILE, "w", encoding="utf-8") as f:
             json.dump(db, f, indent=4, ensure_ascii=False)
+        # --- بداية مشغل البونص التلقائي ---
+            promo = load_promo()
+            current_day = datetime.now().strftime("%A") # يجلب اسم اليوم بالإنجليزية
             
+            if promo.get("is_active") and amount >= promo.get("min_amount", 50) and current_day == promo.get("day_of_week"):
+                import asyncio
+                # تجهيز طلب اللفات المجانية
+                expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                tour_id = f"auto_fs_{uuid.uuid4().hex[:8]}"
+                fs_payload = {
+                    "method": "tour_create",
+                    "agent_code": AGENT_CODE,
+                    "agent_token": AGENT_TOKEN,
+                    "user_code": target_user["username"],
+                    "provider_code": promo.get("provider"),
+                    "game_code": promo.get("game"),
+                    "bet_level": 1,
+                    "spin_count": promo.get("spins"),
+                    "amount": promo.get("max_win"),
+                    "expiration_time": expiration,
+                    "tour_id": tour_id
+                }
+                # تشغيله في الخلفية دون تعطيل عملية الشحن الأساسية
+                async def send_auto_fs():
+                    async with httpx.AsyncClient() as client:
+                        try: await client.post(GOLD_API_URL, json=fs_payload, timeout=10.0)
+                        except: pass
+                asyncio.create_task(send_auto_fs())
+            # --- نهاية مشغل البونص ---    
         return {"status": "success", "message": f"تمت الموافقة وإضافة {real_amount} بنجاح"}
         
     except Exception as e:
@@ -1551,8 +1579,8 @@ async def seamless_wallet_handler(request: Request):
                 player_balance -= bet_money
 
             if txn_type in ["credit", "debit_credit"]:
-                # 🛑 الجدار الأمني للربح الضخم (15 ألف أو أكثر)
-                if win_money >= 15000:
+                # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
+                if win_money >= 30000:
                     db_session = SessionLocal()
                     try:
                         new_tx = Transaction(
@@ -2325,4 +2353,120 @@ async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends
         db_session.commit()
         return {"status": "success", "message": "تمت معالجة الربح الضخم بنجاح"}
     finally:
-        db_session.close()                
+        db_session.close()           
+from pydantic import BaseModel
+from datetime import datetime, timedelta
+import uuid
+
+class FreeSpinRequest(BaseModel):
+    target_username: str
+    provider_code: str
+    game_code: str
+    spin_count: int
+    amount: float
+    bet_level: int = 1
+
+@app.post("/api/admin/grant-freespins")
+async def grant_free_spins(req: FreeSpinRequest, current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    admin = next((u for u in db if u["username"] == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
+
+    # تحديد انتهاء الصلاحية (بعد 7 أيام من الآن) وتحويله لصيغة ISO المطلوبة
+    expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    tour_id = f"fs_{uuid.uuid4().hex[:10]}"
+
+    payload = {
+        "method": "tour_create",
+        "agent_code": AGENT_CODE, # تأكد أن هذه المتغيرات معرفة في أعلى ملفك
+        "agent_token": AGENT_TOKEN,
+        "user_code": req.target_username,
+        "provider_code": req.provider_code,
+        "game_code": req.game_code,
+        "bet_level": req.bet_level,
+        "spin_count": req.spin_count,
+        "amount": req.amount,
+        "expiration_time": expiration,
+        "tour_id": tour_id
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(GOLD_API_URL, json=payload, timeout=15.0)
+            res_data = response.json()
+            
+            if res_data.get("status") == 1:
+                real_win = res_data.get("real_win", 0)
+                return {"status": "success", "message": f"تم إرسال {req.spin_count} لفة!", "real_win": real_win}
+            else:
+                error_msg = res_data.get("detail") or res_data.get("msg") or "رفض المزود الطلب"
+                return JSONResponse(status_code=400, content={"detail": f"خطأ المزود: {error_msg}"})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"detail": f"خطأ في الاتصال: {str(e)}"}) 
+        
+class CancelTourRequest(BaseModel):
+            tour_id: str
+
+@app.post("/api/admin/cancel-freespins")
+async def cancel_free_spins(req: CancelTourRequest, current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    admin = next((u for u in db if u["username"] == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
+
+    payload = {
+        "method": "tour_cancel",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "tour_id": req.tour_id
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(GOLD_API_URL, json=payload, timeout=15.0)
+            res_data = response.json()
+            
+            if res_data.get("status") == 1:
+                refund = res_data.get("canceled_money", 0)
+                rest = res_data.get("rest_count", 0)
+                return {"status": "success", "message": f"تم الإلغاء! استرجاع: {refund} TND (تبقى {rest} لفة غير ملعوبة)."}
+            else:
+                error_msg = res_data.get("detail") or res_data.get("msg") or "رفض المزود الطلب"
+                return JSONResponse(status_code=400, content={"detail": f"خطأ المزود: {error_msg}"})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"detail": f"خطأ في الاتصال: {str(e)}"})   
+        
+import json
+import os
+from pydantic import BaseModel
+
+PROMO_FILE = "promo_config.json"
+
+def load_promo():
+    if os.path.exists(PROMO_FILE):
+        with open(PROMO_FILE, "r") as f: return json.load(f)
+    return {"is_active": False, "day_of_week": "Friday", "min_amount": 50, "spins": 10, "game": "vs20doghouse", "provider": "PRAGMATIC", "max_win": 10000}
+
+class PromoModel(BaseModel):
+    is_active: bool
+    day_of_week: str
+    min_amount: float
+    spins: int
+    game: str
+    provider: str
+    max_win: float
+
+@app.get("/api/admin/promo")
+async def get_promo(current_user: str = Depends(get_admin_user)):
+    return load_promo()
+
+@app.post("/api/admin/promo")
+async def set_promo(data: PromoModel, current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    admin = next((u for u in db if u["username"] == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="مرفوض")
+    
+    with open(PROMO_FILE, "w") as f: json.dump(data.dict(), f)
+    return {"status": "success", "message": "تم حفظ إعدادات العرض بنجاح"}    

@@ -10,7 +10,9 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
@@ -40,7 +42,7 @@
             border: 1px solid var(--border-dark);
             border-radius: 0.5rem;
             padding: 0.5rem 0.75rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .text-owner {
@@ -56,17 +58,20 @@
             border: none;
             transition: all 0.2s;
         }
+
         .btn-owner-mini {
             background-color: var(--red-primary);
             color: white;
         }
+
         .btn-owner-mini:hover {
             background-color: var(--red-hover);
             color: white;
         }
 
         /* حقول إدخال مصغرة */
-        .form-control-mini, .form-select-mini {
+        .form-control-mini,
+        .form-select-mini {
             background-color: var(--bg-input) !important;
             border: 1px solid var(--border-dark) !important;
             color: #ffffff !important;
@@ -75,7 +80,9 @@
             padding: 0.25rem 0.5rem;
             font-size: 0.75rem;
         }
-        .form-control-mini:focus, .form-select-mini:focus {
+
+        .form-control-mini:focus,
+        .form-select-mini:focus {
             border-color: var(--red-primary) !important;
             box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
         }
@@ -97,6 +104,7 @@
             cursor: pointer;
             width: 100%;
         }
+
         .sidebar-link-mini:hover {
             background-color: var(--border-dark);
             color: #fff;
@@ -108,11 +116,20 @@
             width: 260px !important;
         }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
 
-        input[type=range] { accent-color: var(--red-primary); height: 4px; }
-        
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        input[type=range] {
+            accent-color: var(--red-primary);
+            height: 4px;
+        }
+
         .user-row-mini {
             background: rgba(15, 23, 42, 0.5);
             border: 1px solid var(--border-dark);
@@ -121,6 +138,7 @@
             cursor: pointer;
             transition: all 0.15s;
         }
+
         .user-row-mini:hover {
             background: rgba(30, 41, 59, 0.8);
             border-color: var(--red-primary);
@@ -131,33 +149,44 @@
 <body class="d-flex flex-column flex-md-row min-vh-100 position-relative">
 
     <!-- حاوية الإشعارات المصغرة -->
-    <div id="toast-container" class="position-fixed bottom-0 end-0 p-2" style="z-index: 1090; max-width: 300px; width: 100%;"></div>
+    <div id="toast-container" class="position-fixed bottom-0 end-0 p-2"
+        style="z-index: 1090; max-width: 300px; width: 100%;"></div>
 
     <!-- القائمة الجانبية (Offcanvas) -->
     <div class="offcanvas offcanvas-start text-white" tabindex="-1" id="sidebar-menu">
         <div class="offcanvas-header border-bottom border-dark px-3 py-2">
-            <h6 class="offcanvas-title text-owner fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-crown"></i> ALPHA OWNER</h6>
-            <button type="button" class="btn-close btn-close-white btn-sm shadow-none" data-bs-dismiss="offcanvas"></button>
+            <h6 class="offcanvas-title text-owner fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-crown"></i>
+                ALPHA OWNER</h6>
+            <button type="button" class="btn-close btn-close-white btn-sm shadow-none"
+                data-bs-dismiss="offcanvas"></button>
         </div>
 
         <div class="offcanvas-body d-flex flex-column p-2.5">
-            <div class="d-flex align-items-center justify-content-between mb-2 border border-dark p-1.5 rounded-2 bg-black">
+            <div
+                class="d-flex align-items-center justify-content-between mb-2 border border-dark p-1.5 rounded-2 bg-black">
                 <span class="text-secondary" style="font-size: 0.7rem;">🌐 Lang:</span>
-                <select id="lang-select" onchange="changeLanguage(this.value)" class="form-select form-select-mini bg-transparent text-white border-0 w-auto fw-bold shadow-none py-0">
+                <select id="lang-select" onchange="changeLanguage(this.value)"
+                    class="form-select form-select-mini bg-transparent text-white border-0 w-auto fw-bold shadow-none py-0">
                     <option value="fr">Français</option>
                     <option value="ar">العربية</option>
                     <option value="en">English</option>
                 </select>
             </div>
 
-            <div class="text-secondary fw-bold text-uppercase mb-1" style="font-size: 0.65rem; letter-spacing: 1px;" id="menu-title">Menu</div>
+            <div class="text-secondary fw-bold text-uppercase mb-1" style="font-size: 0.65rem; letter-spacing: 1px;"
+                id="menu-title">Menu</div>
 
             <nav class="d-flex flex-column gap-1 flex-grow-1">
-                <button onclick="fetchAndOpenHistory('casino')" class="sidebar-link-mini"><i class="fa-solid fa-dice text-danger"></i> Casino</button>
-                <button onclick="fetchAndOpenHistory('transfert')" class="sidebar-link-mini"><i class="fa-solid fa-right-left text-success"></i> Transferts</button>
-                <button onclick="fetchAndOpenHistory('sport')" class="sidebar-link-mini"><i class="fa-solid fa-futbol text-warning"></i> Sport</button>
-                <button onclick="fetchAndOpenHistory('compte')" class="sidebar-link-mini"><i class="fa-solid fa-chart-pie text-info"></i> Stats</button>
-                <button onclick="openPasswordModal()" class="sidebar-link-mini"><i class="fa-solid fa-key text-secondary"></i> Password</button>
+                <button onclick="fetchAndOpenHistory('casino')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-dice text-danger"></i> Casino</button>
+                <button onclick="fetchAndOpenHistory('transfert')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-right-left text-success"></i> Transferts</button>
+                <button onclick="fetchAndOpenHistory('sport')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-futbol text-warning"></i> Sport</button>
+                <button onclick="fetchAndOpenHistory('compte')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-chart-pie text-info"></i> Stats</button>
+                <button onclick="openPasswordModal()" class="sidebar-link-mini"><i
+                        class="fa-solid fa-key text-secondary"></i> Password</button>
 
                 <div class="my-1 border-top border-dark"></div>
 
@@ -167,12 +196,14 @@
                 <button onclick="fetchAndOpenHistory('withdrawals')" class="sidebar-link-mini text-danger">
                     <i class="fa-solid fa-wallet"></i> Retraits en attente
                 </button>
-                <button onclick="showResettlementPanel()" class="sidebar-link-mini text-owner fw-bold" data-bs-dismiss="offcanvas">
+                <button onclick="showResettlementPanel()" class="sidebar-link-mini text-owner fw-bold"
+                    data-bs-dismiss="offcanvas">
                     <i class="fas fa-tools"></i> Correction Tickets
                 </button>
             </nav>
 
-            <button onclick="logout()" id="btn-logout" class="btn btn-sm btn-outline-danger w-100 fw-bold py-1 mt-2" style="font-size: 0.75rem;">
+            <button onclick="logout()" id="btn-logout" class="btn btn-sm btn-outline-danger w-100 fw-bold py-1 mt-2"
+                style="font-size: 0.75rem;">
                 🚪 Déconnexion
             </button>
         </div>
@@ -182,22 +213,29 @@
     <div class="flex-grow-1 d-flex flex-column position-relative w-100">
 
         <!-- الهيدر العلوي المصغر -->
-        <header class="card-mini border-bottom border-dark px-3 py-1.5 d-flex justify-content-between align-items-center sticky-top rounded-0">
+        <header
+            class="card-mini border-bottom border-dark px-3 py-1.5 d-flex justify-content-between align-items-center sticky-top rounded-0">
             <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-dark btn-sm border border-dark text-white px-2 py-1 rounded-2 shadow-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar-menu" style="font-size: 0.75rem;">
+                <button class="btn btn-dark btn-sm border border-dark text-white px-2 py-1 rounded-2 shadow-none"
+                    type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar-menu" style="font-size: 0.75rem;">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <span class="fw-bold text-owner tracking-wide d-none d-md-inline" style="font-size: 0.8rem;">ALPHA <span class="text-white fw-light">OWNER</span></span>
+                <span class="fw-bold text-owner tracking-wide d-none d-md-inline" style="font-size: 0.8rem;">ALPHA <span
+                        class="text-white fw-light">OWNER</span></span>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <button id="audio-enable-btn" onclick="enableAudio()" class="btn btn-mini btn-outline-warning py-0 px-2" style="font-size: 0.65rem;">🔊 الصوت</button>
-                <span class="badge bg-danger bg-opacity-25 text-owner border border-danger px-2 py-0.5" style="font-size: 0.65rem;" id="badge-role">Owner</span>
-                <span class="fw-bold text-white font-mono small" id="owner-username" style="font-size: 0.75rem;">fethi</span>
+                <button id="audio-enable-btn" onclick="enableAudio()" class="btn btn-mini btn-outline-warning py-0 px-2"
+                    style="font-size: 0.65rem;">🔊 الصوت</button>
+                <span class="badge bg-danger bg-opacity-25 text-owner border border-danger px-2 py-0.5"
+                    style="font-size: 0.65rem;" id="badge-role">Owner</span>
+                <span class="fw-bold text-white font-mono small" id="owner-username"
+                    style="font-size: 0.75rem;">fethi</span>
             </div>
         </header>
 
         <!-- مساحة العمل المضغوطة -->
-        <main class="flex-grow-1 overflow-y-auto p-2 no-scrollbar mx-auto w-100" style="max-width: 900px;" id="main-content">
+        <main class="flex-grow-1 overflow-y-auto p-2 no-scrollbar mx-auto w-100" style="max-width: 900px;"
+            id="main-content">
 
             <div class="d-flex flex-column gap-2" id="default-dashboard-view">
 
@@ -206,20 +244,31 @@
                     <div class="row g-1 align-items-center">
                         <div class="col-12 col-md-4">
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-black border-dark text-secondary py-0 px-2" style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
-                                <input type="text" id="ctrl-target-user" class="form-control form-control-mini text-owner fw-bold font-mono text-center py-0" placeholder="Sélectionnez..." readonly>
+                                <span class="input-group-text bg-black border-dark text-secondary py-0 px-2"
+                                    style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
+                                <input type="text" id="ctrl-target-user"
+                                    class="form-control form-control-mini text-owner fw-bold font-mono text-center py-0"
+                                    placeholder="Sélectionnez..." readonly>
                             </div>
                         </div>
                         <div class="col-12 col-md-5">
-                            <div class="d-flex align-items-center gap-2 px-2 bg-black border border-dark rounded-2 py-1">
-                                <span class="text-secondary font-mono small fw-bold" style="font-size: 0.65rem;">RTP:<span id="rtp-val-label" class="text-white ms-1">50%</span></span>
-                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50" oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'" class="form-range flex-grow-1 m-0">
-                                <button onclick="saveRtpAndBlock(0)" class="btn btn-mini btn-success py-0 px-2">حفظ</button>
-                                <button onclick="saveRtpAndBlock(1)" class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
+                            <div
+                                class="d-flex align-items-center gap-2 px-2 bg-black border border-dark rounded-2 py-1">
+                                <span class="text-secondary font-mono small fw-bold"
+                                    style="font-size: 0.65rem;">RTP:<span id="rtp-val-label"
+                                        class="text-white ms-1">50%</span></span>
+                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50"
+                                    oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'"
+                                    class="form-range flex-grow-1 m-0">
+                                <button onclick="saveRtpAndBlock(0)"
+                                    class="btn btn-mini btn-success py-0 px-2">حفظ</button>
+                                <button onclick="saveRtpAndBlock(1)"
+                                    class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
                             </div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <button onclick="deleteAccountAction()" class="btn btn-mini btn-outline-danger w-100 py-1" style="font-size: 0.7rem;">
+                            <button onclick="deleteAccountAction()" class="btn btn-mini btn-outline-danger w-100 py-1"
+                                style="font-size: 0.7rem;">
                                 <i class="fa-solid fa-trash-can"></i> حذف الحساب
                             </button>
                         </div>
@@ -229,14 +278,17 @@
                 <!-- 2. سكشن إنشاء حساب جديد (مضغوط في سطر واحد منظم) -->
                 <section class="card-mini border-start border-danger border-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👑 إنشاء حساب جديد</span>
+                        <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👑 إنشاء
+                            حساب جديد</span>
                     </div>
                     <div class="row g-1 align-items-center">
                         <div class="col-6 col-md-3">
-                            <input type="text" id="new-user-name" class="form-control form-control-mini font-mono text-center" placeholder="Username">
+                            <input type="text" id="new-user-name"
+                                class="form-control form-control-mini font-mono text-center" placeholder="Username">
                         </div>
                         <div class="col-6 col-md-3">
-                            <input type="password" id="new-user-pass" class="form-control form-control-mini font-mono text-center" placeholder="Password">
+                            <input type="password" id="new-user-pass"
+                                class="form-control form-control-mini font-mono text-center" placeholder="Password">
                         </div>
                         <div class="col-4 col-md-2">
                             <select id="new-user-role" class="form-select form-select-mini font-mono py-0.5">
@@ -247,10 +299,12 @@
                             </select>
                         </div>
                         <div class="col-4 col-md-2">
-                            <input type="text" id="new_phone" class="form-control form-control-mini font-mono text-center" placeholder="Phone">
+                            <input type="text" id="new_phone"
+                                class="form-control form-control-mini font-mono text-center" placeholder="Phone">
                         </div>
                         <div class="col-4 col-md-2">
-                            <button onclick="createNetworkUser()" class="btn btn-mini btn-owner-mini w-100 py-1" id="btn-create">Créer</button>
+                            <button onclick="createNetworkUser()" class="btn btn-mini btn-owner-mini w-100 py-1"
+                                id="btn-create">Créer</button>
                         </div>
                     </div>
                 </section>
@@ -258,34 +312,44 @@
                 <!-- 3. العمليات المالية المصغرة (Console) -->
                 <section class="card-mini">
                     <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-1 mb-1">
-                        <span class="fw-bold text-white small" id="title-table-console" style="font-size: 0.7rem;">📋 Console financière</span>
+                        <span class="fw-bold text-white small" id="title-table-console" style="font-size: 0.7rem;">📋
+                            Console financière</span>
                     </div>
 
                     <div class="row g-1 mb-1 align-items-center">
                         <div class="col-3">
-                            <input type="text" id="target-action-user" readonly placeholder="Compte" class="form-control form-control-mini text-center text-owner fw-bold font-mono py-1">
+                            <input type="text" id="target-action-user" readonly placeholder="Compte"
+                                class="form-control form-control-mini text-center text-owner fw-bold font-mono py-1">
                         </div>
                         <div class="col-3">
-                            <input type="number" id="target-action-amount" placeholder="TND" class="form-control form-control-mini text-center font-mono py-1">
+                            <input type="number" id="target-action-amount" placeholder="TND"
+                                class="form-control form-control-mini text-center font-mono py-1">
                         </div>
                         <div class="col-3">
-                            <button onclick="executeAction('charge')" id="btn-credit" class="btn btn-mini btn-success w-100 text-dark py-1">Créditer</button>
+                            <button onclick="executeAction('charge')" id="btn-credit"
+                                class="btn btn-mini btn-success w-100 text-dark py-1">Créditer</button>
                         </div>
                         <div class="col-3">
-                            <button onclick="executeAction('withdraw')" id="btn-retirer" class="btn btn-mini btn-danger w-100 py-1">Retirer</button>
+                            <button onclick="executeAction('withdraw')" id="btn-retirer"
+                                class="btn btn-mini btn-danger w-100 py-1">Retirer</button>
                         </div>
                     </div>
 
                     <div class="d-flex gap-1 pt-1 border-top border-dark align-items-center">
-                        <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة للمستخدم" class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
-                        <button onclick="changeUserPasswordFromOwner()" class="btn btn-mini btn-info text-dark fw-bold px-3 py-1" style="font-size: 0.7rem;">تغيير السر</button>
+                        <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة للمستخدم"
+                            class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
+                        <button onclick="changeUserPasswordFromOwner()"
+                            class="btn btn-mini btn-info text-dark fw-bold px-3 py-1" style="font-size: 0.7rem;">تغيير
+                            السر</button>
                     </div>
                 </section>
                 <!-- ================= جدار الأرباح الضخمة (30K+) ================= -->
                 <section class="card-mini border-start border-warning border-3 mt-2" id="huge-wins-section">
                     <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-                        <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> 🚨 Pas de gains</span>
-                        <button onclick="fetchHugeWins()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄 Mise à jour</button>
+                        <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i
+                                class="fa-solid fa-triangle-exclamation"></i> 🚨 Pas de gains</span>
+                        <button onclick="fetchHugeWins()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄 Mise à
+                            jour</button>
                     </div>
                     <div class="table-responsive">
                         <table class="w-full text-white w-100" style="font-size: 0.7rem;">
@@ -295,66 +359,180 @@
                         </table>
                     </div>
                 </section>
+            </div>
+            </section> <!-- هذا هو إغلاق جدار الأرباح الضخمة في السطر 297 -->
+
+            <!-- ================= قسم إرسال اللفات المجانية ================= -->
+            <section class="card-mini border-start border-info border-3 mt-1 mb-1">
+                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                    <span class="fw-bold text-info small" style="font-size: 0.75rem;"><i class="fa-solid fa-gift"></i>
+                        🎁 إرسال لفات مجانية (Free Spins)</span>
+                </div>
+                <div class="row g-1 align-items-center mt-1">
+                    <div class="col-6 col-md-2">
+                        <input type="text" id="fs-target-user"
+                            class="form-control form-control-mini font-mono text-center" placeholder="اللاعب" readonly>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <select id="fs-provider" class="form-select form-select-mini font-mono py-0.5">
+                            <option value="PRAGMATIC">Pragmatic</option>
+                            <option value="NETENT">NetEnt</option>
+                        </select>
+                    </div>
+                    <div class="col-5 col-md-3">
+                        <input type="text" id="fs-game-code"
+                            class="form-control form-control-mini font-mono text-center"
+                            placeholder="كود اللعبة (مثال: vs20doghouse)">
+                    </div>
+                    <div class="col-3 col-md-1">
+                        <input type="number" id="fs-spin-count"
+                            class="form-control form-control-mini font-mono text-center" placeholder="Spins" value="10">
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <input type="number" id="fs-amount" class="form-control form-control-mini font-mono text-center"
+                            placeholder="Max Win" value="10000">
+                    </div>
+                    <div class="col-12 col-md-2 mt-1 mt-md-0">
+                        <button onclick="sendFreeSpins()" id="btn-send-fs"
+                            class="btn btn-mini btn-info w-100 py-1 text-dark fw-bold">إرسال الآن</button>
+                    </div>
+                </div>
+                <!-- حقل إلغاء الجولة -->
+                <div class="row g-1 align-items-center mt-2 border-top border-dark pt-2">
+                    <div class="col-8 col-md-10">
+                        <input type="text" id="fs-cancel-tour-id" class="form-control form-control-mini font-mono"
+                            placeholder="رقم الجولة (Tour ID) لإلغائها واسترجاع الرصيد...">
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <button onclick="cancelFreeSpins()" id="btn-cancel-fs"
+                            class="btn btn-mini btn-outline-danger w-100 py-1 fw-bold">إلغاء الجولة</button>
+                    </div>
+                </div>
+            </section>
+<!-- ================= نظام العروض الآلية ================= -->
+<section class="card-mini border-start border-success border-3 mt-2 mb-2">
+    <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+        <span class="fw-bold text-success small" style="font-size: 0.75rem;"><i class="fa-solid fa-robot"></i> 🤖 نظام العروض الآلي (الشحن = لفات)</span>
+        <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="promo-active">
+            <label class="form-check-label text-white small" for="promo-active">تفعيل العرض</label>
+        </div>
+    </div>
+    <div class="row g-1 align-items-center mt-1 text-center font-mono" style="font-size: 0.7rem;">
+        <div class="col-4 col-md-2">
+            <label class="text-secondary d-block mb-1">يوم العرض</label>
+            <select id="promo-day" class="form-select form-select-mini py-0.5">
+                <option value="Monday">الإثنين</option>
+                <option value="Tuesday">الثلاثاء</option>
+                <option value="Wednesday">الأربعاء</option>
+                <option value="Thursday">الخميس</option>
+                <option value="Friday">الجمعة</option>
+                <option value="Saturday">السبت</option>
+                <option value="Sunday">الأحد</option>
+            </select>
+        </div>
+        <div class="col-4 col-md-2">
+            <label class="text-secondary d-block mb-1">الحد الأدنى للشحن</label>
+            <input type="number" id="promo-min" class="form-control form-control-mini text-center" value="50">
+        </div>
+        <div class="col-4 col-md-2">
+            <label class="text-secondary d-block mb-1">عدد اللفات</label>
+            <input type="number" id="promo-spins" class="form-control form-control-mini text-center" value="10">
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="text-secondary d-block mb-1">المزود</label>
+            <select id="promo-provider" class="form-select form-select-mini py-0.5">
+                <option value="PRAGMATIC">Pragmatic</option>
+                <option value="NETENT">NetEnt</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="text-secondary d-block mb-1">كود اللعبة</label>
+            <input type="text" id="promo-game" class="form-control form-control-mini text-center" value="vs20doghouse">
+        </div>
+        <div class="col-12 col-md-2 mt-auto">
+            <button onclick="savePromoConfig()" class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام الآلي</button>
+        </div>
+    </div>
+</section>
+            <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
+            <section class="card-mini p-0 overflow-hidden">
                 <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
                 <section class="card-mini p-0 overflow-hidden">
                     <div class="p-1.5 border-bottom border-dark bg-black">
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2" style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control form-control-mini border-dark py-1">
+                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
+                                style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="search-input" oninput="renderFilteredUsers()"
+                                placeholder="Rechercher un compte..."
+                                class="form-control form-control-mini border-dark py-1">
                         </div>
                     </div>
-                    <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1" style="max-height: 400px; overflow-y: auto;">
+                    <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
+                        style="max-height: 400px; overflow-y: auto;">
                         <!-- يتم حقن الحسابات هنا -->
                     </div>
                 </section>
-                </section>
+            </section>
+    </div>
+
+    <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
+    <div id="admin-resettlement-panel" class="d-none">
+        <button onclick="hideResettlementPanel()" class="btn btn-mini btn-outline-secondary mb-2"><i
+                class="fa-solid fa-arrow-left"></i> Retour</button>
+
+        <div class="card-mini p-3">
+            <h6 class="text-white fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-tools text-owner"></i>
+                Correction des Tickets</h6>
+            <p class="text-secondary mb-2" style="font-size: 0.65rem;">Recherchez un ticket par son ID.</p>
+
+            <div class="input-group input-group-sm mb-2">
+                <input type="text" id="ticket-search-input" class="form-control form-control-mini"
+                    placeholder="ID du Ticket">
+                <button class="btn btn-mini btn-owner-mini px-3" onclick="searchTicket()"><i
+                        class="fas fa-search"></i></button>
             </div>
 
-            <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
-            <div id="admin-resettlement-panel" class="d-none">
-                <button onclick="hideResettlementPanel()" class="btn btn-mini btn-outline-secondary mb-2"><i class="fa-solid fa-arrow-left"></i> Retour</button>
-
-                <div class="card-mini p-3">
-                    <h6 class="text-white fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-tools text-owner"></i> Correction des Tickets</h6>
-                    <p class="text-secondary mb-2" style="font-size: 0.65rem;">Recherchez un ticket par son ID.</p>
-
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" id="ticket-search-input" class="form-control form-control-mini" placeholder="ID du Ticket">
-                        <button class="btn btn-mini btn-owner-mini px-3" onclick="searchTicket()"><i class="fas fa-search"></i></button>
+            <div id="ticket-details-section" class="d-none">
+                <div class="bg-black rounded-2 p-2 border border-dark mb-2 d-flex justify-content-between flex-wrap gap-1 text-center font-mono"
+                    style="font-size: 0.65rem;">
+                    <div><span class="text-secondary d-block">ID</span><span
+                            class="text-white fw-bold">#TCK-98765</span></div>
+                    <div><span class="text-secondary d-block">Joueur</span><span
+                            class="text-white fw-bold">Karim***</span></div>
+                    <div><span class="text-secondary d-block">Mise</span><span class="text-white fw-bold">50 TND</span>
                     </div>
+                    <div><span class="text-secondary d-block">Gain</span><span class="text-success fw-bold">450
+                            TND</span></div>
+                </div>
 
-                    <div id="ticket-details-section" class="d-none">
-                        <div class="bg-black rounded-2 p-2 border border-dark mb-2 d-flex justify-content-between flex-wrap gap-1 text-center font-mono" style="font-size: 0.65rem;">
-                            <div><span class="text-secondary d-block">ID</span><span class="text-white fw-bold">#TCK-98765</span></div>
-                            <div><span class="text-secondary d-block">Joueur</span><span class="text-white fw-bold">Karim***</span></div>
-                            <div><span class="text-secondary d-block">Mise</span><span class="text-white fw-bold">50 TND</span></div>
-                            <div><span class="text-secondary d-block">Gain</span><span class="text-success fw-bold">450 TND</span></div>
+                <div class="d-flex flex-column gap-1 mb-2">
+                    <div
+                        class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center gap-2">
+                        <div>
+                            <span class="text-owner fw-bold d-block" style="font-size: 0.6rem;">Football</span>
+                            <p class="text-white fw-bold mb-0" style="font-size: 0.75rem;">Real Madrid vs Man City</p>
                         </div>
-
-                        <div class="d-flex flex-column gap-1 mb-2">
-                            <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center gap-2">
-                                <div>
-                                    <span class="text-owner fw-bold d-block" style="font-size: 0.6rem;">Football</span>
-                                    <p class="text-white fw-bold mb-0" style="font-size: 0.75rem;">Real Madrid vs Man City</p>
-                                </div>
-                                <select class="form-select form-select-mini w-auto font-mono py-0">
-                                    <option value="won" selected>Gagné ✅</option>
-                                    <option value="lost">Perdu ❌</option>
-                                    <option value="void">Annulé 🔄</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button onclick="resettleTicket()" class="btn btn-mini btn-success w-100 fw-bold py-1.5"><i class="fas fa-check-circle"></i> Soumettre</button>
-                    </div>
-
-                    <div class="mt-2 border-top border-dark pt-2">
-                        <h6 class="text-white fw-bold mb-1" style="font-size: 0.75rem;">📜 Derniers Tickets</h6>
-                        <div id="all-tickets-list" class="d-flex flex-column gap-1" style="max-height: 200px; overflow-y: auto;"></div>
+                        <select class="form-select form-select-mini w-auto font-mono py-0">
+                            <option value="won" selected>Gagné ✅</option>
+                            <option value="lost">Perdu ❌</option>
+                            <option value="void">Annulé 🔄</option>
+                        </select>
                     </div>
                 </div>
+
+                <button onclick="resettleTicket()" class="btn btn-mini btn-success w-100 fw-bold py-1.5"><i
+                        class="fas fa-check-circle"></i> Soumettre</button>
             </div>
-        </main>
+
+            <div class="mt-2 border-top border-dark pt-2">
+                <h6 class="text-white fw-bold mb-1" style="font-size: 0.75rem;">📜 Derniers Tickets</h6>
+                <div id="all-tickets-list" class="d-flex flex-column gap-1"
+                    style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+    </main>
     </div>
 
     <!-- نافذة السجلات (Modal) -->
@@ -362,8 +540,10 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content card-mini border-dark text-white shadow">
                 <div class="modal-header border-bottom border-dark py-1.5 px-3">
-                    <h6 class="modal-title fw-bold text-owner" style="font-size: 0.8rem;" id="modal-title">Historique</h6>
-                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none" data-bs-dismiss="modal"></button>
+                    <h6 class="modal-title fw-bold text-owner" style="font-size: 0.8rem;" id="modal-title">Historique
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-2.5" id="modal-dynamic-content"></div>
             </div>
@@ -376,11 +556,14 @@
             <div class="modal-content card-mini border-dark text-white shadow">
                 <div class="modal-header border-bottom border-dark py-1.5 px-3">
                     <h6 class="modal-title fw-bold" style="font-size: 0.75rem;">🔑 Modifier le mot de passe</h6>
-                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-2">
-                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe" class="form-control form-control-mini mb-2 font-mono text-center">
-                    <button onclick="submitNewPassword()" class="btn btn-mini btn-owner-mini w-100 fw-bold py-1">Mettre à jour</button>
+                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe"
+                        class="form-control form-control-mini mb-2 font-mono text-center">
+                    <button onclick="submitNewPassword()" class="btn btn-mini btn-owner-mini w-100 fw-bold py-1">Mettre
+                        à jour</button>
                 </div>
             </div>
         </div>
@@ -399,7 +582,7 @@
         }
 
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
-        
+
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/owner-login';
 
@@ -407,13 +590,13 @@
         let allTransactionsCache = [];
         let sessionData = localStorage.getItem('alpha_user');
         let user = sessionData ? JSON.parse(sessionData) : null;
-        
+
         if (!user || user.role !== 'owner') {
             localStorage.clear();
             window.location.href = '/owner-login';
         }
 
-        let secureSelectedUser = ""; 
+        let secureSelectedUser = "";
 
         function getAuthHeaders() {
             return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
@@ -943,9 +1126,9 @@
             const passwordInput = document.getElementById('new-sys-pass');
             const new_password = passwordInput.value.trim();
             const updateBtn = document.querySelector('#passwordModal button.btn-owner-mini');
-            
+
             if (!new_password || new_password.length < 6) return showNotification('6 أحرف على الأقل!', 'error');
-            
+
             if (updateBtn) { updateBtn.disabled = true; updateBtn.innerText = '⏳'; }
 
             try {
@@ -999,10 +1182,10 @@
         async function deleteAccountAction() {
             const target_username = secureSelectedUser;
             if (!target_username) return showNotification('Sélectionnez un compte!', 'error');
-            
-            if(!confirm(`Supprimer le compte: ${target_username} ?`)) return;
 
-            let headers = getAuthHeaders(); 
+            if (!confirm(`Supprimer le compte: ${target_username} ?`)) return;
+
+            let headers = getAuthHeaders();
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/delete-account`, {
                     method: 'DELETE', headers: headers, body: JSON.stringify({ admin_username: user.username, target_username: target_username })
@@ -1023,11 +1206,11 @@
             const actionBtn = action === 'charge' ? document.getElementById('btn-credit') : document.getElementById('btn-retirer');
 
             if (!target_username) return showNotification('Sélectionnez un compte!', 'error');
-            
+
             const amount = parseFloat(amountInput);
             if (isNaN(amount) || amount <= 0) return showNotification('Montant invalide!', 'error');
-            
-            if(actionBtn) { actionBtn.disabled = true; actionBtn.innerText = '⏳'; }
+
+            if (actionBtn) { actionBtn.disabled = true; actionBtn.innerText = '⏳'; }
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
@@ -1040,10 +1223,10 @@
                     document.getElementById('target-action-amount').value = '';
                     loadNetworkData();
                 } else { showNotification(data.detail || 'Erreur', 'error'); }
-            } catch (e) { 
-                showNotification('Erreur', 'error'); 
+            } catch (e) {
+                showNotification('Erreur', 'error');
             } finally {
-                if(actionBtn) { actionBtn.disabled = false; actionBtn.innerText = action === 'charge' ? 'Créditer' : 'Retirer'; }
+                if (actionBtn) { actionBtn.disabled = false; actionBtn.innerText = action === 'charge' ? 'Créditer' : 'Retirer'; }
             }
         }
 
@@ -1099,10 +1282,10 @@
 
         async function approveDeposit(ticketId, username) {
             if (isTransactionRunning) return showNotification("⏳ En cours...", "warning");
-            
+
             const amountInput = document.getElementById(`amt-${ticketId}`).value;
             if (!amountInput || amountInput <= 0) return alert("Montant invalide");
-            
+
             if (confirm(`Valider ${amountInput} TND pour ${username} ?`)) {
                 isTransactionRunning = true;
                 try {
@@ -1115,8 +1298,8 @@
                         triggerGoldRain();
                         fetchAndOpenHistory('pending');
                     } else { alert("❌ Erreur"); }
-                } catch (error) { 
-                    alert("❌ Erreur"); 
+                } catch (error) {
+                    alert("❌ Erreur");
                 } finally {
                     isTransactionRunning = false;
                 }
@@ -1209,22 +1392,22 @@
         async function fetchHugeWins() {
             const section = document.getElementById('huge-wins-section');
             const tbody = document.getElementById('huge-wins-tbody');
-            
+
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/pending-huge-wins`, { headers: getAuthHeaders() });
                 if (res.ok) {
                     const data = await res.json();
-                    
+
                     if (data.length === 0) {
                         // إظهار القسم دائماً مع رسالة تطمين
-                        section.style.display = 'block'; 
+                        section.style.display = 'block';
                         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-secondary p-2 font-mono" style="font-size: 0.75rem;">لا توجد أرباح ضخمة معلقة حالياً ✅</td></tr>';
                         return;
                     }
 
-                    section.style.display = 'block'; 
+                    section.style.display = 'block';
                     tbody.innerHTML = '';
-                    
+
                     data.forEach(tx => {
                         const amountFormatted = parseFloat(tx.amount).toLocaleString('fr-FR', { minimumFractionDigits: 2 });
                         tbody.innerHTML += `
@@ -1241,6 +1424,122 @@
                 }
             } catch (e) { console.error("Error fetching huge wins"); }
         }
+
+        async function sendFreeSpins() {
+            const username = document.getElementById('fs-target-user').value;
+            const provider = document.getElementById('fs-provider').value;
+            const gameCode = document.getElementById('fs-game-code').value;
+            const spinCount = document.getElementById('fs-spin-count').value;
+            const amount = document.getElementById('fs-amount').value;
+            const btn = document.getElementById('btn-send-fs');
+
+            if (!username) return showNotification("حدد حساب اللاعب أولاً من القائمة!", "error");
+            if (!gameCode) return showNotification("أدخل كود اللعبة الدقيق!", "error");
+
+            btn.disabled = true;
+            btn.innerText = "⏳ جاري الإرسال...";
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/grant-freespins`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        target_username: username,
+                        provider_code: provider,
+                        game_code: gameCode,
+                        spin_count: parseInt(spinCount),
+                        amount: parseFloat(amount),
+                        bet_level: 1
+                    })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // real_win هو التكلفة الحقيقية التي خصمها المزود من رصيد الوكيل الخاص بك
+                    showNotification(`✅ ${data.message} (التكلفة: ${data.real_win})`, "success");
+                    triggerGoldRain();
+                } else {
+                    showNotification(`❌ ${data.detail}`, "error");
+                }
+            } catch (e) {
+                showNotification("خطأ في الاتصال بالسيرفر", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "إرسال الآن";
+            }
+        }
+
+        async function cancelFreeSpins() {
+    const tourId = document.getElementById('fs-cancel-tour-id').value.trim();
+    if (!tourId) return showNotification("أدخل رقم الجولة (Tour ID) أولاً!", "error");
+
+    if (!confirm(`هل أنت متأكد من إلغاء الجولة ${tourId}؟ سيتم استرجاع رصيد اللفات المتبقية.`)) return;
+
+    const btn = document.getElementById('btn-cancel-fs');
+    btn.disabled = true;
+    btn.innerText = "⏳...";
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/cancel-freespins`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ tour_id: tourId })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            showNotification(`✅ ${data.message}`, "success");
+            document.getElementById('fs-cancel-tour-id').value = '';
+        } else {
+            showNotification(`❌ ${data.detail}`, "error");
+        }
+    } catch (e) {
+        showNotification("خطأ في الاتصال بالسيرفر", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "إلغاء الجولة";
+    }
+}
+
+async function fetchPromoConfig() {
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/promo`, { headers: getAuthHeaders() });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('promo-active').checked = data.is_active;
+            document.getElementById('promo-day').value = data.day_of_week;
+            document.getElementById('promo-min').value = data.min_amount;
+            document.getElementById('promo-spins').value = data.spins;
+            document.getElementById('promo-provider').value = data.provider;
+            document.getElementById('promo-game').value = data.game;
+        }
+    } catch (e) {}
+}
+
+async function savePromoConfig() {
+    const payload = {
+        is_active: document.getElementById('promo-active').checked,
+        day_of_week: document.getElementById('promo-day').value,
+        min_amount: parseFloat(document.getElementById('promo-min').value),
+        spins: parseInt(document.getElementById('promo-spins').value),
+        provider: document.getElementById('promo-provider').value,
+        game: document.getElementById('promo-game').value,
+        max_win: 10000 // قيمة افتراضية للحد الأقصى للربح
+    };
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/promo`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) showNotification("✅ تم حفظ إعدادات العرض الآلي بنجاح!", "success");
+        else showNotification("❌ حدث خطأ أثناء الحفظ", "error");
+    } catch (e) { showNotification("خطأ في الاتصال", "error"); }
+}
+
+// أضف هذا السطر مع أوامر التحميل الأولية لتحديث الواجهة فور الدخول
+document.addEventListener('DOMContentLoaded', fetchPromoConfig);
     </script>
 </body>
 
