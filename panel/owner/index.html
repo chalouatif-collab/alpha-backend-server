@@ -281,21 +281,6 @@
                         <button onclick="changeUserPasswordFromOwner()" class="btn btn-mini btn-info text-dark fw-bold px-3 py-1" style="font-size: 0.7rem;">تغيير السر</button>
                     </div>
                 </section>
-
-                <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
-                <section class="card-mini p-0 overflow-hidden">
-                    <div class="p-1.5 border-bottom border-dark bg-black">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2" style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control form-control-mini border-dark py-1">
-                        </div>
-                    </div>
-                    <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1" style="max-height: 400px; overflow-y: auto;">
-                        <!-- يتم حقن الحسابات هنا -->
-                    </div>
-                </section>
-                </section>
-
                 <!-- ================= جدار الأرباح الضخمة (30K+) ================= -->
                 <section class="card-mini border-start border-warning border-3 mt-2" id="huge-wins-section">
                     <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
@@ -310,7 +295,19 @@
                         </table>
                     </div>
                 </section>
-
+                <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
+                <section class="card-mini p-0 overflow-hidden">
+                    <div class="p-1.5 border-bottom border-dark bg-black">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2" style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control form-control-mini border-dark py-1">
+                        </div>
+                    </div>
+                    <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1" style="max-height: 400px; overflow-y: auto;">
+                        <!-- يتم حقن الحسابات هنا -->
+                    </div>
+                </section>
+                </section>
             </div>
 
             <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
