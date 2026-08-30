@@ -593,12 +593,37 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
         raise HTTPException(status_code=500, detail="حدث خطأ داخلي أثناء الموافقة")
 
 @app.get("/api/admin/get-all-tickets")
-async def get_all_tickets(current_user: str = Depends(get_admin_user)):
-    tickets_db = load_tickets_db()
-    if tickets_db is None:
-        return []
-    return sorted(tickets_db, key=lambda x: x.get('date', ''), reverse=True)
+async def get_all_tickets_api(current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    current_admin = next((u for u in db if u["username"] == current_user), None)
+    current_role = current_admin.get("role", "player")
 
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
+    tickets_db = load_tickets_db()
+    if tickets_db is None: 
+        return []
+
+    allowed_tickets = []
+    for t in tickets_db:
+        t_user = t.get("username") or t.get("user")
+        # فلترة التذاكر لتعرض فقط تذاكر شبكة المانجر
+        if t_user in allowed_users:
+            allowed_tickets.append(t)
+            
+    allowed_tickets.reverse()
+    return allowed_tickets
 # ==========================================
 # الوظائف الخلفية وقاعدة البيانات (Background & DB)
 # ==========================================
@@ -935,13 +960,44 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     return {"status": "success", "message": "Opération réussie et enregistrée"}
 
 @app.get("/api/admin/transactions-history")
-async def get_transactions_history(username: str, current_user: str = Depends(get_admin_user)):
+async def get_tx_history(username: str = None, current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    current_admin = next((u for u in db if u["username"] == current_user), None)
+    current_role = current_admin.get("role", "player")
+    
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
     db_session = SessionLocal()
-    uname = username.lower().strip()
-    txs = db_session.query(Transaction).filter((Transaction.admin_username == uname) | (Transaction.target_username == uname)).order_by(Transaction.id.desc()).all()
-    result = [{"id": t.id, "admin_username": t.admin_username, "target_username": t.target_username, "action": t.action, "amount": t.amount, "date": t.date} for t in txs]
-    db_session.close()
-    return result
+    try:
+        txs = db_session.query(Transaction).all()
+        result = []
+        for t in txs:
+            target = t.target_username or t.target
+            # التأكد من أن المعاملة تخص حساباً ضمن شجرة المانجر
+            if target in allowed_users or t.username in allowed_users:
+                result.append({
+                    "id": t.id,
+                    "action": t.action,
+                    "amount": t.amount,
+                    "target_username": target,
+                    "date": str(t.date),
+                    "image_path": t.image_path
+                })
+        result.reverse()
+        return result
+    finally:
+        db_session.close()
 
 @app.get("/api/user/transactions-history")
 async def get_user_transactions(current_user: str = Depends(get_current_user)):
