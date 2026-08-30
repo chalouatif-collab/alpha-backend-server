@@ -534,15 +534,31 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
         ticket["status"] = "approuvé"
         ticket["amount"] = real_amount
         
+        # 1. جلب اللاعب وتحديث رصيده وإيداعاته اليومية للكاش باك
+        db_users = load_db()
+        target_username = ticket.get("username") or ticket.get("player") or ""
+        target_user = next((u for u in db_users if str(u.get("username", "")).lower() == str(target_username).lower()), None)
+        
+        if target_user:
+            target_user["balance"] = float(target_user.get("balance", 0)) + real_amount
+            # 👈 السطر المطلوب وضعه هنا لتسجيل المبلغ في الكاش باك اليومي:
+            target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + real_amount
+            save_db(db_users)
+
+        # 2. حفظ التذاكر
         with open(TICKETS_FILE, "w", encoding="utf-8") as f:
             json.dump(db, f, indent=4, ensure_ascii=False)
+
         # --- بداية مشغل البونص التلقائي ---
-            promo = load_promo()
-            current_day = datetime.now().strftime("%A") # يجلب اسم اليوم بالإنجليزية
-            
-            if promo.get("is_active") and amount >= promo.get("min_amount", 50) and current_day == promo.get("day_of_week"):
+        promo = load_promo()
+        current_day = datetime.now().strftime("%A") # يجلب اسم اليوم بالإنجليزية
+        
+        if promo.get("is_active") and real_amount >= promo.get("min_amount", 50) and current_day == promo.get("day_of_week"):
+            if target_user:
                 import asyncio
-                # تجهيز طلب اللفات المجانية
+                import uuid
+                from datetime import datetime, timedelta
+                
                 expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
                 tour_id = f"auto_fs_{uuid.uuid4().hex[:8]}"
                 fs_payload = {
@@ -554,19 +570,18 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
                     "game_code": promo.get("game"),
                     "bet_level": 1,
                     "spin_count": promo.get("spins"),
-                    "amount": promo.get("max_win"),
+                    "amount": promo.get("max_win", 10000),
                     "expiration_time": expiration,
                     "tour_id": tour_id
                 }
-                # تشغيله في الخلفية دون تعطيل عملية الشحن الأساسية
                 async def send_auto_fs():
                     async with httpx.AsyncClient() as client:
                         try: await client.post(GOLD_API_URL, json=fs_payload, timeout=10.0)
                         except: pass
                 asyncio.create_task(send_auto_fs())
-            # --- نهاية مشغل البونص ---    
+        # --- نهاية مشغل البونص ---
+
         return {"status": "success", "message": f"تمت الموافقة وإضافة {real_amount} بنجاح"}
-        
     except Exception as e:
         print(f"Error approving deposit: {e}")
         raise HTTPException(status_code=500, detail="حدث خطأ داخلي أثناء الموافقة")
@@ -611,8 +626,8 @@ async def auto_settle_tickets():
 
 @app.on_event("startup")
 async def start_background_tasks():
-    # asyncio.create_task(auto_settle_tickets()) 
-    asyncio.create_task(daily_cashback_system()) 
+     asyncio.create_task(auto_settle_tickets()) 
+     asyncio.create_task(daily_cashback_system()) 
 
 def load_tickets_db():
     if not os.path.exists(TICKETS_FILE):
@@ -636,31 +651,38 @@ async def daily_cashback_system():
             now = datetime.now()
             if now.hour == 0 and now.minute < 10:
                 print("⏳ [Cashback] جاري فحص وتوزيع الكاش باك اليومي...")
-                db = load_db()
-                changes_made = False
                 
-                for u in db:
-                    current_balance = float(u.get("balance", 0.0))
-                    daily_deps = float(u.get("daily_deposits", 0.0))
+                # استخدام القفل لمنع تضارب الأرصدة أثناء لعب المستخدمين
+                async with db_lock:
+                    db = load_db()
+                    changes_made = False
                     
-                    if daily_deps > 0:
-                        if current_balance < 1.0:
-                            cashback_amount = daily_deps * 0.10
-                            u["balance"] = round(current_balance + cashback_amount, 2)
+                    for u in db:
+                        current_balance = float(u.get("balance", 0.0))
+                        daily_deps = float(u.get("daily_deposits", 0.0))
                         
-                        u["daily_deposits"] = 0
-                        changes_made = True
+                        # يمكن لاحقاً إضافة حقل daily_withdrawals لخصمه من الإيداع لمعرفة الخسارة الصافية
+                        net_loss = daily_deps - current_balance 
                         
-                if changes_made:
-                    save_db(db)
-                    print("✅ [Cashback] تم الانتهاء من التوزيع وتصفير العدادات بنجاح!")
+                        if daily_deps > 0:
+                            # نعطي كاش باك فقط إذا كان رصيده شبه معدوم وخسارته الصافية أكبر من 0
+                            if current_balance < 1.0 and net_loss > 0:
+                                cashback_amount = daily_deps * 0.10
+                                u["balance"] = round(current_balance + cashback_amount, 2)
+                            
+                            u["daily_deposits"] = 0
+                            changes_made = True
+                            
+                    if changes_made:
+                        save_db(db)
+                        print("✅ [Cashback] تم الانتهاء من التوزيع وتصفير العدادات بنجاح!")
                 
                 await asyncio.sleep(3600)
             else:
                 await asyncio.sleep(300)
         except Exception as e:
             print(f"❌ [Cashback] حدث خطأ: {e}")
-            await asyncio.sleep(300)        
+            await asyncio.sleep(300) 
 
 # ==========================================
 # النماذج (Models)
