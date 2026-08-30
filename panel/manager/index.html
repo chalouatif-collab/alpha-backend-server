@@ -200,6 +200,8 @@
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button id="audio-enable-btn" onclick="enableAudio()" class="btn btn-mini btn-outline-info py-0 px-2" style="font-size: 0.65rem;">🔊 الصوت</button>
+                <span class="badge bg-dark border border-success text-success font-mono px-2 py-1 shadow-sm" style="font-size: 0.75rem;" id="top-manager-balance">0.00 TND</span>
+                
                 <span class="badge bg-info bg-opacity-25 text-manager border border-info px-2 py-0.5" style="font-size: 0.65rem;" id="badge-role">Manager</span>
                 <span class="fw-bold text-white font-mono small" id="manager-username" style="font-size: 0.75rem;">manager</span>
             </div>
@@ -452,6 +454,14 @@
                 if (res.ok) {
                     allUsers = await res.json();
                     renderFilteredUsers();
+                    
+                    // 👈 تحديث رصيد المانجر في الهيدر العلوي
+                    const myAccount = allUsers.find(u => u.username === user.username);
+                    if (myAccount) {
+                        const bal = parseFloat(myAccount.balance || 0).toFixed(2);
+                        const topBalanceEl = document.getElementById('top-manager-balance');
+                        if (topBalanceEl) topBalanceEl.innerText = `${bal} TND`;
+                    }
                 }
             } catch (e) { console.error(e); }
         }
