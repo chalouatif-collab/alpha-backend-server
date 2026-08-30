@@ -197,7 +197,7 @@ async def get_admin_user(current_user: str = Depends(get_current_user)):
     db = load_db()
     user = next((u for u in db if u["username"] == current_user), None)
     
-    if not user or user.get("role") not in ["owner","manager", "super_admin", "admin", "shop"]:
+    if not user or user.get("role") not in ["owner","manager", "super_admin", "admin","shop"]:
         raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
     
     return current_user
@@ -863,21 +863,26 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             raise HTTPException(status_code=404, detail="Compte administrateur introuvable")
 
         current_role = admin_user.get("role", "")
-        is_master = (current_user.lower() == "system" or current_role in ["owner","manager", "super_admin", "admin"])
+        
+        # 🛡️ تحديد الصلاحية المطلقة للأونر والنظام فقط
+        is_global_admin = (current_user.lower() == "system" or current_role == "owner")
         admin = current_user.lower().strip()
 
+        # 🛡️ جدار الأمان: منع المانجر من التحكم في حسابات لم ينشئها بنفسه
         safe_creator = str(target_user.get("created_by", "")).lower().strip()
-        if not is_master and safe_creator != admin:
-            raise HTTPException(status_code=403, detail="Accès refusé. Ce joueur ne vous appartient pas.")
+        if not is_global_admin and safe_creator != admin:
+            raise HTTPException(status_code=403, detail="Accès refusé. Ce compte ne vous appartient pas.")
 
-        # 1. تحديث الأرصدة في Firebase
+        # 1. تحديث الأرصدة في Firebase مع الخصم الإجباري
         if req.action == "charge":
-            if not is_master:
+            if not is_global_admin:
                 if float(admin_user.get("balance", 0)) < amount: 
-                    raise HTTPException(status_code=400, detail="Solde insuffisant")
+                    raise HTTPException(status_code=400, detail="Solde insuffisant dans votre compte")
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) - amount, 2)
             
             target_user["balance"] = round(float(target_user.get("balance", 0)) + amount, 2)
+            
+            # تسجيل الكاش باك
             if current_user.lower() != "system":
                 target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + amount
 
@@ -887,12 +892,13 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             
             target_user["balance"] = round(float(target_user.get("balance", 0)) - amount, 2)
             
-            if not is_master:
+            # استرجاع الرصيد للمانجر عند السحب من وكلائه
+            if not is_global_admin:
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
                 
         save_db(db)
 
-    # 2. توثيق العملية في سجل SQL ليظهر في صفحة TRANSACTIONS
+    # 2. توثيق العملية في سجل SQL
     db_session = SessionLocal()
     try:
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -915,6 +921,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         db_session.close()
 
     return {"status": "success", "message": "Opération réussie et enregistrée"}
+
 @app.get("/api/admin/transactions-history")
 async def get_transactions_history(username: str, current_user: str = Depends(get_admin_user)):
     db_session = SessionLocal()
