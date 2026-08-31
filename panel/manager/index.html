@@ -795,18 +795,19 @@
             transactions.forEach(t => {
                 const amt = Math.abs(parseFloat(t.amount)).toFixed(2);
                 
-                // الشحن موجب وأخضر، السحب سالب وأحمر
-                const isCharge = (t.action === 'charge' || t.action === 'deposit_request');
+                // 👈 التعديل هنا: إضافة dépôt للشرط ليتعرف عليها كعملية شحن خضراء
+                const isCharge = (t.action === 'charge' || t.action === 'dépôt' || t.action === 'deposit_request');
+                
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
                 
                 const targetName = escapeHTML(t.target_username || t.target || 'مجهول');
+                const actionName = escapeHTML(t.action);
                 
                 html += `
                     <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center mb-1" style="font-size: 0.7rem;">
                         <div>
-                            <!-- أضفنا (t.action) هنا لنرى ماذا يخزن السيرفر بالضبط -->
-                            <div class="text-white fw-bold">👤 ${targetName} <span class="text-warning" style="font-size:0.55rem">(${t.action})</span></div>
+                            <div class="text-white fw-bold">👤 ${targetName} <span class="text-secondary" style="font-size:0.55rem">(${actionName})</span></div>
                             <div class="text-secondary font-mono" style="font-size: 0.6rem;">🕒 ${t.date || ''}</div>
                         </div>
                         <div class="text-end font-mono">
