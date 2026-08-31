@@ -370,7 +370,7 @@
                     <div class="tab-pane fade" id="marketing" role="tabpanel">
                         <div class="d-flex flex-column gap-2">
                             
-                            <!-- قسم إرسال اللفات المجانية -->
+                            <!-- قسم إرسال اللفات المجانية (اليدوي) -->
                             <section class="card-mini border-start border-info border-3">
                                 <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
                                     <span class="fw-bold text-info small" style="font-size: 0.75rem;"><i class="fa-solid fa-gift"></i> 🎁 إرسال لفات مجانية (Free Spins)</span>
@@ -385,14 +385,17 @@
                                             <option value="NETENT">NetEnt</option>
                                         </select>
                                     </div>
-                                    <div class="col-5 col-md-3">
+                                    <div class="col-6 col-md-2">
                                         <input type="text" id="fs-game-code" class="form-control form-control-mini font-mono text-center" placeholder="كود اللعبة (مثال: vs20doghouse)">
                                     </div>
                                     <div class="col-3 col-md-1">
-                                        <input type="number" id="fs-spin-count" class="form-control form-control-mini font-mono text-center" placeholder="Spins" value="10">
+                                        <input type="number" id="fs-spin-count" class="form-control form-control-mini font-mono text-center" placeholder="اللفات" value="10">
                                     </div>
-                                    <div class="col-4 col-md-2">
-                                        <input type="number" id="fs-amount" class="form-control form-control-mini font-mono text-center" placeholder="Max Win" value="10000">
+                                    <div class="col-3 col-md-1">
+                                        <input type="number" id="fs-bet" class="form-control form-control-mini font-mono text-center" placeholder="الرهان" value="0.20" step="0.10">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <input type="number" id="fs-amount" class="form-control form-control-mini font-mono text-center" placeholder="أقصى ربح" value="1000">
                                     </div>
                                     <div class="col-12 col-md-2 mt-1 mt-md-0">
                                         <button onclick="sendFreeSpins()" id="btn-send-fs" class="btn btn-mini btn-info w-100 py-1 text-dark fw-bold">إرسال الآن</button>
@@ -417,7 +420,8 @@
                                         <label class="form-check-label text-white small" for="promo-active">تفعيل العرض</label>
                                     </div>
                                 </div>
-                                <div class="row g-1 align-items-center mt-1 text-center font-mono" style="font-size: 0.7rem;">
+                                <!-- السطر الأول: الإعدادات -->
+                                <div class="row g-1 align-items-end mt-1 text-center font-mono" style="font-size: 0.7rem;">
                                     <div class="col-4 col-md-2">
                                         <label class="text-secondary d-block mb-1">يوم العرض</label>
                                         <select id="promo-day" class="form-select form-select-mini py-0.5">
@@ -431,25 +435,35 @@
                                         </select>
                                     </div>
                                     <div class="col-4 col-md-2">
-                                        <label class="text-secondary d-block mb-1">الحد الأدنى للشحن</label>
+                                        <label class="text-secondary d-block mb-1">شحن (Min)</label>
                                         <input type="number" id="promo-min" class="form-control form-control-mini text-center" value="50">
                                     </div>
                                     <div class="col-4 col-md-2">
                                         <label class="text-secondary d-block mb-1">عدد اللفات</label>
                                         <input type="number" id="promo-spins" class="form-control form-control-mini text-center" value="10">
                                     </div>
-                                    <div class="col-6 col-md-2">
+                                    <div class="col-4 col-md-2">
+                                        <label class="text-secondary d-block mb-1">الرهان</label>
+                                        <input type="number" id="promo-bet" class="form-control form-control-mini text-center" value="0.20" step="0.10">
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <label class="text-secondary d-block mb-1">أقصى ربح</label>
+                                        <input type="number" id="promo-maxwin" class="form-control form-control-mini text-center" value="1000">
+                                    </div>
+                                    <div class="col-4 col-md-2">
                                         <label class="text-secondary d-block mb-1">المزود</label>
                                         <select id="promo-provider" class="form-select form-select-mini py-0.5">
                                             <option value="PRAGMATIC">Pragmatic</option>
                                             <option value="NETENT">NetEnt</option>
                                         </select>
                                     </div>
-                                    <div class="col-6 col-md-2">
-                                        <label class="text-secondary d-block mb-1">كود اللعبة</label>
-                                        <input type="text" id="promo-game" class="form-control form-control-mini text-center" value="vs20doghouse">
+                                </div>
+                                <!-- السطر الثاني: كود اللعبة وزر الحفظ -->
+                                <div class="row g-1 align-items-center mt-2">
+                                    <div class="col-8 col-md-9">
+                                        <input type="text" id="promo-game" class="form-control form-control-mini text-center font-mono" value="vs20doghouse" placeholder="كود اللعبة (مثال: vs20doghouse)">
                                     </div>
-                                    <div class="col-12 col-md-2 mt-auto">
+                                    <div class="col-4 col-md-3">
                                         <button onclick="savePromoConfig()" class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام الآلي</button>
                                     </div>
                                 </div>
