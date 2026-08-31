@@ -793,21 +793,23 @@
             }
             let html = '';
             transactions.forEach(t => {
-                const isCharge = t.action === 'charge' || t.action === 'deposit_request';
+                const amt = Math.abs(parseFloat(t.amount)).toFixed(2);
+                
+                // القاعدة المباشرة التي طلبتها: الشحن دائماً موجب وأخضر، السحب دائماً سالب وأحمر
+                const isCharge = (t.action === 'charge' || t.action === 'deposit_request');
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
+                
                 const targetName = escapeHTML(t.target_username || t.target || 'مجهول');
-                const receiptBtn = t.image_path ?
-                    `<a href="${BACKEND_URL}/${t.image_path}" target="_blank" class="text-warning text-decoration-none ms-1" style="font-size: 0.6rem;"><i class="fa-solid fa-image"></i></a>` : '';
-
+                
                 html += `
-                    <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
+                    <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center mb-1" style="font-size: 0.7rem;">
                         <div>
                             <div class="text-white fw-bold">👤 ${targetName}</div>
-                            <div class="text-secondary font-mono" style="font-size: 0.6rem;">🕒 ${t.date || ''} ${receiptBtn}</div>
+                            <div class="text-secondary font-mono" style="font-size: 0.6rem;">🕒 ${t.date || ''}</div>
                         </div>
                         <div class="text-end font-mono">
-                            <div class="${color} fw-bold" style="font-size: 0.75rem;">${sign}${parseFloat(t.amount).toFixed(2)} TND</div>
+                            <div class="${color} fw-bold" style="font-size: 0.75rem;">${sign}${amt} TND</div>
                         </div>
                     </div>`;
             });
