@@ -377,7 +377,7 @@
 
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         const token = localStorage.getItem('token');
-        if (!token) window.location.href = '/login'; // توجيه مناسب للمانجر
+        if (!token) window.location.href = '/'; 
 
         let allUsers = [];
         let allTransactionsCache = [];
@@ -387,7 +387,7 @@
         // حماية دور المانجر
         if (!user || user.role !== 'manager') {
             localStorage.clear();
-            window.location.href = '/login';
+            window.location.href = '/';
         }
 
         let secureSelectedUser = "";
@@ -967,7 +967,7 @@
         }
 
         function openPasswordModal() { new bootstrap.Modal(document.getElementById('passwordModal')).show(); }
-        function logout() { localStorage.clear(); sessionStorage.clear(); window.location.href = '/login'; }
+        function logout() { localStorage.clear(); sessionStorage.clear(); window.location.href = '/'; }
 
         async function submitNewPassword() {
             const passwordInput = document.getElementById('new-sys-pass');
