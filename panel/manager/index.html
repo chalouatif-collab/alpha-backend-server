@@ -795,7 +795,7 @@
             transactions.forEach(t => {
                 const amt = Math.abs(parseFloat(t.amount)).toFixed(2);
                 
-                // القاعدة المباشرة التي طلبتها: الشحن دائماً موجب وأخضر، السحب دائماً سالب وأحمر
+                // الشحن (Créditer) يكون موجب وأخضر، السحب (Retirer) يكون سالب وأحمر
                 const isCharge = (t.action === 'charge' || t.action === 'deposit_request');
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
@@ -815,7 +815,6 @@
             });
             listContainer.innerHTML = html;
         }
-
         function renderCompteStatsUI(container, usersList) {
             let userOptions = `<option value="ALL">🌐 كل الموقع</option>`;
             if (usersList && usersList.length > 0) {
