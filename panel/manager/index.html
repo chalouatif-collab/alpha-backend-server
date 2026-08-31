@@ -795,7 +795,7 @@
             transactions.forEach(t => {
                 const amt = Math.abs(parseFloat(t.amount)).toFixed(2);
                 
-                // القاعدة المباشرة التي طلبتها: الشحن دائماً موجب وأخضر، السحب دائماً سالب وأحمر
+                // الشحن موجب وأخضر، السحب سالب وأحمر
                 const isCharge = (t.action === 'charge' || t.action === 'deposit_request');
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
@@ -805,7 +805,8 @@
                 html += `
                     <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center mb-1" style="font-size: 0.7rem;">
                         <div>
-                            <div class="text-white fw-bold">👤 ${targetName}</div>
+                            <!-- أضفنا (t.action) هنا لنرى ماذا يخزن السيرفر بالضبط -->
+                            <div class="text-white fw-bold">👤 ${targetName} <span class="text-warning" style="font-size:0.55rem">(${t.action})</span></div>
                             <div class="text-secondary font-mono" style="font-size: 0.6rem;">🕒 ${t.date || ''}</div>
                         </div>
                         <div class="text-end font-mono">
