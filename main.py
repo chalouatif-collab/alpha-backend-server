@@ -388,6 +388,7 @@ async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depend
     ticket["status"] = req.new_status
     save_tickets_db(tickets_db)
     save_db(db)
+    log_admin_action(current_user, "RESET_TICKET", f"Ticket ID {req.ticket_id} changed to {req.new_status}")
     
     return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}    
 
@@ -771,6 +772,7 @@ async def register_user(request: Request, req: RegisterRequest):
     
     db.append(new_user)
     save_db(db)
+    log_admin_action(req.created_by, "CREATE_USER", f"Created {uname} with role {req.role}")
     
     return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id}
     
@@ -956,6 +958,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         print(f"Error saving transaction history: {e}")
     finally:
         db_session.close()
+        log_admin_action(current_user, "BALANCE_UPDATE", f"Target: {target}, Action: {req.action}, Amount: {amount}")
 
     return {"status": "success", "message": "Opération réussie et enregistrée"}
 
@@ -1193,6 +1196,7 @@ async def configure_account(req: ConfigureAccountRequest):
         if u["username"] == req.target_username.lower().strip():
             u["rtp"] = req.rtp; u["is_blocked"] = req.is_blocked
             save_db(db)
+            log_admin_action(req.created_by, "CONFIG_ACCOUNT", f"Target: {req.target_username}, RTP: {req.rtp}, Blocked: {req.is_blocked}")
             return {"status": "success", "message": "Configuration enregistrée"}
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
@@ -2703,3 +2707,70 @@ async def get_casino_history(current_user: str = Depends(get_admin_user)):
         return result[:500] # نكتفي بآخر 500 عملية لتسريع الأداء
     finally:
         db_session.close()
+        
+        
+        # نموذج جدول التدقيق والمتابعة
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    admin_username = Column(String, index=True)
+    action_type = Column(String)
+    details = Column(String)
+    date = Column(String, default=lambda: str(datetime.now()))
+
+def log_admin_action(admin_username: str, action_type: str, details: str):
+    db_session = SessionLocal()
+    try:
+        log_entry = AuditLog(
+            admin_username=admin_username,
+            action_type=action_type,
+            details=details,
+            date=str(datetime.now())
+        )
+        db_session.add(log_entry)
+        db_session.commit()
+    except Exception as e:
+        print(f"Audit Log Error: {e}")
+    finally:
+        db_session.close()
+        
+        
+@app.get("/api/admin/audit-logs")
+async def get_audit_logs(current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    current_admin = next((u for u in db if u["username"] == current_user), None)
+    current_role = current_admin.get("role", "player")
+
+    # تحديد نطاق الشبكة المسموح برؤيته
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
+    db_session = SessionLocal()
+    try:
+        logs = db_session.query(AuditLog).order_by(AuditLog.id.desc()).all()
+        result = []
+        for l in logs:
+            # إظهار السجل فقط إذا كان صاحب الفعل ينتمي لشبكة هذا المدير
+            if l.admin_username in allowed_users:
+                result.append({
+                    "id": l.id,
+                    "admin_username": l.admin_username,
+                    "action_type": l.action_type,
+                    "details": l.details,
+                    "date": l.date
+                })
+        return result[:300] # أحدث 300 سجل
+    finally:
+        db_session.close()
+        
+        
