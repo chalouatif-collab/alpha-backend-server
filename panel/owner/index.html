@@ -247,369 +247,300 @@
         </header>
 
         <!-- مساحة العمل المضغوطة -->
-        <main class="flex-grow-1 overflow-y-auto p-2 no-scrollbar mx-auto w-100" style="max-width: 900px;"
-            id="main-content">
+        <main class="flex-grow-1 overflow-y-auto p-2 no-scrollbar mx-auto w-100" style="max-width: 900px;" id="main-content">
 
             <div class="d-flex flex-column gap-2" id="default-dashboard-view">
 
                 <!-- شريط أزرار التبويبات المتجاوب -->
-                <ul class="nav nav-pills justify-content-center gap-1 mb-1 bg-black p-1.5 rounded-3 border border-dark flex-nowrap overflow-x-auto no-scrollbar"
-                    id="ownerTabs" role="tablist">
+                <ul class="nav nav-pills justify-content-center gap-1 mb-1 bg-black p-1.5 rounded-3 border border-dark flex-nowrap overflow-x-auto no-scrollbar" id="ownerTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active btn-sm font-mono fw-bold px-3 py-1 text-nowrap" id="network-tab"
-                            data-bs-toggle="tab" data-bs-target="#network" type="button" role="tab"
-                            style="font-size: 0.75rem;">👥 الإدارة والشبكة</button>
+                        <button class="nav-link active btn-sm font-mono fw-bold px-3 py-1 text-nowrap" id="network-tab" data-bs-toggle="tab" data-bs-target="#network" type="button" role="tab" style="font-size: 0.75rem;">👥 الإدارة والشبكة</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link btn-sm font-mono fw-bold px-3 py-1 text-info text-nowrap"
-                            id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab"
-                            style="font-size: 0.75rem;">🎁 التسويق</button>
+                        <button class="nav-link btn-sm font-mono fw-bold px-3 py-1 text-info text-nowrap" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" style="font-size: 0.75rem;">🎁 التسويق</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link btn-sm font-mono fw-bold px-3 py-1 text-warning text-nowrap"
-                            id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab"
-                            style="font-size: 0.75rem;">🛡️ الأمان والتحليل</button>
+                        <button class="nav-link btn-sm font-mono fw-bold px-3 py-1 text-warning text-nowrap" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" style="font-size: 0.75rem;">🛡️ الأمان والتحليل</button>
                     </li>
                 </ul>
 
                 <!-- محتوى التبويبات -->
-                <div class="tab-content w-100" id="ownerTabsContent">
+                <div class="tab-content w-100 mt-2" id="ownerTabsContent">
 
                     <!-- ================= 1. تبويب الإدارة والشبكة ================= -->
-                    <div class="tab-pane fade show active d-flex flex-column gap-2" id="network" role="tabpanel">
+                    <div class="tab-pane fade show active" id="network" role="tabpanel">
+                        <div class="d-flex flex-column gap-2">
+                            
+                            <!-- شريط التحكم بالمستخدم المحدد -->
+                            <section class="card-mini">
+                                <div class="row g-1 align-items-center">
+                                    <div class="col-12 col-md-4">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text bg-black border-dark text-secondary py-0 px-2" style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
+                                            <input type="text" id="ctrl-target-user" class="form-control form-control-mini text-owner fw-bold font-mono text-center py-0" placeholder="Sélectionnez..." readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-5">
+                                        <div class="d-flex align-items-center gap-2 px-2 bg-black border border-dark rounded-2 py-1">
+                                            <span class="text-secondary font-mono small fw-bold" style="font-size: 0.65rem;">RTP:<span id="rtp-val-label" class="text-white ms-1">50%</span></span>
+                                            <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50" oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'" class="form-range flex-grow-1 m-0">
+                                            <button onclick="saveRtpAndBlock(0)" class="btn btn-mini btn-success py-0 px-2">حفظ</button>
+                                            <button onclick="saveRtpAndBlock(1)" class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <button onclick="deleteAccountAction()" class="btn btn-mini btn-outline-danger w-100 py-1" style="font-size: 0.7rem;">
+                                            <i class="fa-solid fa-trash-can"></i> حذف الحساب
+                                        </button>
+                                    </div>
+                                </div>
+                            </section>
 
-                        <!-- شريط التحكم بالمستخدم المحدد -->
-                        <section class="card-mini">
-                            <div class="row g-1 align-items-center">
-                                <div class="col-12 col-md-4">
+                            <!-- سكشن إنشاء حساب جديد -->
+                            <section class="card-mini border-start border-danger border-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👑 إنشاء حساب جديد</span>
+                                </div>
+                                <div class="row g-1 align-items-center">
+                                    <div class="col-6 col-md-3">
+                                        <input type="text" id="new-user-name" class="form-control form-control-mini font-mono text-center" placeholder="Username">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <input type="password" id="new-user-pass" class="form-control form-control-mini font-mono text-center" placeholder="Password">
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <select id="new-user-role" class="form-select form-select-mini font-mono py-0.5">
+                                            <option value="owner">Owner</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="super_admin">Super Admin</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="shop">Shop</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <input type="text" id="new_phone" class="form-control form-control-mini font-mono text-center" placeholder="Phone">
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <button onclick="createNetworkUser()" class="btn btn-mini btn-owner-mini w-100 py-1" id="btn-create">Créer</button>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- العمليات المالية المصغرة (Console) -->
+                            <section class="card-mini">
+                                <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-1 mb-1">
+                                    <span class="fw-bold text-white small" id="title-table-console" style="font-size: 0.7rem;">📋 Console financière</span>
+                                </div>
+                                <div class="row g-1 mb-1 align-items-center">
+                                    <div class="col-3">
+                                        <input type="text" id="target-action-user" readonly placeholder="Compte" class="form-control form-control-mini text-center text-owner fw-bold font-mono py-1">
+                                    </div>
+                                    <div class="col-3">
+                                        <input type="number" id="target-action-amount" placeholder="TND" class="form-control form-control-mini text-center font-mono py-1">
+                                    </div>
+                                    <div class="col-3">
+                                        <button onclick="executeAction('charge')" id="btn-credit" class="btn btn-mini btn-success w-100 text-dark py-1">Créditer</button>
+                                    </div>
+                                    <div class="col-3">
+                                        <button onclick="executeAction('withdraw')" id="btn-retirer" class="btn btn-mini btn-danger w-100 py-1">Retirer</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-1 pt-1 border-top border-dark align-items-center">
+                                    <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة للمستخدم" class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
+                                    <button onclick="changeUserPasswordFromOwner()" class="btn btn-mini btn-info text-dark fw-bold px-3 py-1" style="font-size: 0.7rem;">تغيير السر</button>
+                                </div>
+                            </section>
+
+                            <!-- قائمة المستخدمين (أسفل التبويب الأول دائماً) -->
+                            <section class="card-mini p-0 overflow-hidden">
+                                <div class="p-1.5 border-bottom border-dark bg-black">
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-black border-dark text-secondary py-0 px-2"
-                                            style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
-                                        <input type="text" id="ctrl-target-user"
-                                            class="form-control form-control-mini text-owner fw-bold font-mono text-center py-0"
-                                            placeholder="Sélectionnez..." readonly>
+                                        <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2" style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                        <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control form-control-mini border-dark py-1">
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-5">
-                                    <div
-                                        class="d-flex align-items-center gap-2 px-2 bg-black border border-dark rounded-2 py-1">
-                                        <span class="text-secondary font-mono small fw-bold"
-                                            style="font-size: 0.65rem;">RTP:<span id="rtp-val-label"
-                                                class="text-white ms-1">50%</span></span>
-                                        <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50"
-                                            oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'"
-                                            class="form-range flex-grow-1 m-0">
-                                        <button onclick="saveRtpAndBlock(0)"
-                                            class="btn btn-mini btn-success py-0 px-2">حفظ</button>
-                                        <button onclick="saveRtpAndBlock(1)"
-                                            class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
-                                    </div>
+                                <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1" style="max-height: 400px; overflow-y: auto;">
+                                    <!-- يتم حقن الحسابات هنا -->
                                 </div>
-                                <div class="col-12 col-md-3">
-                                    <button onclick="deleteAccountAction()"
-                                        class="btn btn-mini btn-outline-danger w-100 py-1" style="font-size: 0.7rem;">
-                                        <i class="fa-solid fa-trash-can"></i> حذف الحساب
-                                    </button>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- سكشن إنشاء حساب جديد -->
-                        <section class="card-mini border-start border-danger border-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👑
-                                    إنشاء حساب جديد</span>
-                            </div>
-                            <div class="row g-1 align-items-center">
-                                <div class="col-6 col-md-3">
-                                    <input type="text" id="new-user-name"
-                                        class="form-control form-control-mini font-mono text-center"
-                                        placeholder="Username">
-                                </div>
-                                <div class="col-6 col-md-3">
-                                    <input type="password" id="new-user-pass"
-                                        class="form-control form-control-mini font-mono text-center"
-                                        placeholder="Password">
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <select id="new-user-role" class="form-select form-select-mini font-mono py-0.5">
-                                        <option value="owner">Owner</option>
-                                        <option value="manager">Manager</option>
-                                        <option value="super_admin">Super Admin</option>
-                                        <option value="admin">Admin</option>
-                                        <option value="shop">Shop</option>
-                                    </select>
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <input type="text" id="new_phone"
-                                        class="form-control form-control-mini font-mono text-center"
-                                        placeholder="Phone">
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <button onclick="createNetworkUser()" class="btn btn-mini btn-owner-mini w-100 py-1"
-                                        id="btn-create">Créer</button>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- العمليات المالية المصغرة -->
-                        <section class="card-mini">
-                            <div
-                                class="d-flex justify-content-between align-items-center border-bottom border-dark pb-1 mb-1">
-                                <span class="fw-bold text-white small" id="title-table-console"
-                                    style="font-size: 0.7rem;">📋 Console financière</span>
-                            </div>
-                            <div class="row g-1 mb-1 align-items-center">
-                                <div class="col-3">
-                                    <input type="text" id="target-action-user" readonly placeholder="Compte"
-                                        class="form-control form-control-mini text-center text-owner fw-bold font-mono py-1">
-                                </div>
-                                <div class="col-3">
-                                    <input type="number" id="target-action-amount" placeholder="TND"
-                                        class="form-control form-control-mini text-center font-mono py-1">
-                                </div>
-                                <div class="col-3">
-                                    <button onclick="executeAction('charge')" id="btn-credit"
-                                        class="btn btn-mini btn-success w-100 text-dark py-1">Créditer</button>
-                                </div>
-                                <div class="col-3">
-                                    <button onclick="executeAction('withdraw')" id="btn-retirer"
-                                        class="btn btn-mini btn-danger w-100 py-1">Retirer</button>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-1 pt-1 border-top border-dark align-items-center">
-                                <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة للمستخدم"
-                                    class="form-control form-control-mini font-mono text-center flex-grow-1 py-1"
-                                    dir="rtl">
-                                <button onclick="changeUserPasswordFromOwner()"
-                                    class="btn btn-mini btn-info text-dark fw-bold px-3 py-1"
-                                    style="font-size: 0.7rem;">تغيير السر</button>
-                            </div>
-                        </section>
-
-                        <!-- قائمة المستخدمين (يجب أن تكون دائماً في هذا التبويب) -->
-                        <section class="card-mini p-0 overflow-hidden">
-                            <div class="p-1.5 border-bottom border-dark bg-black">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
-                                        style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                                    <input type="text" id="search-input" oninput="renderFilteredUsers()"
-                                        placeholder="Rechercher un compte..."
-                                        class="form-control form-control-mini border-dark py-1">
-                                </div>
-                            </div>
-                            <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
-                                style="max-height: 400px; overflow-y: auto;">
-                                <!-- يتم حقن الحسابات هنا -->
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </div>
 
                     <!-- ================= 2. تبويب التسويق ================= -->
-                    <div class="tab-pane fade d-flex flex-column gap-2" id="marketing" role="tabpanel">
+                    <div class="tab-pane fade" id="marketing" role="tabpanel">
+                        <div class="d-flex flex-column gap-2">
+                            
+                            <!-- قسم إرسال اللفات المجانية -->
+                            <section class="card-mini border-start border-info border-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                                    <span class="fw-bold text-info small" style="font-size: 0.75rem;"><i class="fa-solid fa-gift"></i> 🎁 إرسال لفات مجانية (Free Spins)</span>
+                                </div>
+                                <div class="row g-1 align-items-center mt-1">
+                                    <div class="col-6 col-md-2">
+                                        <input type="text" id="fs-target-user" class="form-control form-control-mini font-mono text-center" placeholder="اللاعب" readonly>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <select id="fs-provider" class="form-select form-select-mini font-mono py-0.5">
+                                            <option value="PRAGMATIC">Pragmatic</option>
+                                            <option value="NETENT">NetEnt</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-5 col-md-3">
+                                        <input type="text" id="fs-game-code" class="form-control form-control-mini font-mono text-center" placeholder="كود اللعبة (مثال: vs20doghouse)">
+                                    </div>
+                                    <div class="col-3 col-md-1">
+                                        <input type="number" id="fs-spin-count" class="form-control form-control-mini font-mono text-center" placeholder="Spins" value="10">
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <input type="number" id="fs-amount" class="form-control form-control-mini font-mono text-center" placeholder="Max Win" value="10000">
+                                    </div>
+                                    <div class="col-12 col-md-2 mt-1 mt-md-0">
+                                        <button onclick="sendFreeSpins()" id="btn-send-fs" class="btn btn-mini btn-info w-100 py-1 text-dark fw-bold">إرسال الآن</button>
+                                    </div>
+                                </div>
+                                <div class="row g-1 align-items-center mt-2 border-top border-dark pt-2">
+                                    <div class="col-8 col-md-10">
+                                        <input type="text" id="fs-cancel-tour-id" class="form-control form-control-mini font-mono" placeholder="رقم الجولة (Tour ID) لإلغائها واسترجاع الرصيد...">
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <button onclick="cancelFreeSpins()" id="btn-cancel-fs" class="btn btn-mini btn-outline-danger w-100 py-1 fw-bold">إلغاء الجولة</button>
+                                    </div>
+                                </div>
+                            </section>
 
-                        <!-- قسم إرسال اللفات المجانية -->
-                        <section class="card-mini border-start border-info border-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-                                <span class="fw-bold text-info small" style="font-size: 0.75rem;"><i
-                                        class="fa-solid fa-gift"></i> 🎁 إرسال لفات مجانية (Free Spins)</span>
-                            </div>
-                            <div class="row g-1 align-items-center mt-1">
-                                <div class="col-6 col-md-2">
-                                    <input type="text" id="fs-target-user"
-                                        class="form-control form-control-mini font-mono text-center"
-                                        placeholder="اللاعب" readonly>
+                            <!-- نظام العروض الآلية -->
+                            <section class="card-mini border-start border-success border-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                                    <span class="fw-bold text-success small" style="font-size: 0.75rem;"><i class="fa-solid fa-robot"></i> 🤖 نظام العروض الآلي (الشحن = لفات)</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" id="promo-active">
+                                        <label class="form-check-label text-white small" for="promo-active">تفعيل العرض</label>
+                                    </div>
                                 </div>
-                                <div class="col-6 col-md-2">
-                                    <select id="fs-provider" class="form-select form-select-mini font-mono py-0.5">
-                                        <option value="PRAGMATIC">Pragmatic</option>
-                                        <option value="NETENT">NetEnt</option>
-                                    </select>
+                                <div class="row g-1 align-items-center mt-1 text-center font-mono" style="font-size: 0.7rem;">
+                                    <div class="col-4 col-md-2">
+                                        <label class="text-secondary d-block mb-1">يوم العرض</label>
+                                        <select id="promo-day" class="form-select form-select-mini py-0.5">
+                                            <option value="Monday">الإثنين</option>
+                                            <option value="Tuesday">الثلاثاء</option>
+                                            <option value="Wednesday">الأربعاء</option>
+                                            <option value="Thursday">الخميس</option>
+                                            <option value="Friday">الجمعة</option>
+                                            <option value="Saturday">السبت</option>
+                                            <option value="Sunday">الأحد</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <label class="text-secondary d-block mb-1">الحد الأدنى للشحن</label>
+                                        <input type="number" id="promo-min" class="form-control form-control-mini text-center" value="50">
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <label class="text-secondary d-block mb-1">عدد اللفات</label>
+                                        <input type="number" id="promo-spins" class="form-control form-control-mini text-center" value="10">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="text-secondary d-block mb-1">المزود</label>
+                                        <select id="promo-provider" class="form-select form-select-mini py-0.5">
+                                            <option value="PRAGMATIC">Pragmatic</option>
+                                            <option value="NETENT">NetEnt</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="text-secondary d-block mb-1">كود اللعبة</label>
+                                        <input type="text" id="promo-game" class="form-control form-control-mini text-center" value="vs20doghouse">
+                                    </div>
+                                    <div class="col-12 col-md-2 mt-auto">
+                                        <button onclick="savePromoConfig()" class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام الآلي</button>
+                                    </div>
                                 </div>
-                                <div class="col-5 col-md-3">
-                                    <input type="text" id="fs-game-code"
-                                        class="form-control form-control-mini font-mono text-center"
-                                        placeholder="كود اللعبة (مثال: vs20doghouse)">
-                                </div>
-                                <div class="col-3 col-md-1">
-                                    <input type="number" id="fs-spin-count"
-                                        class="form-control form-control-mini font-mono text-center" placeholder="Spins"
-                                        value="10">
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <input type="number" id="fs-amount"
-                                        class="form-control form-control-mini font-mono text-center"
-                                        placeholder="Max Win" value="10000">
-                                </div>
-                                <div class="col-12 col-md-2 mt-1 mt-md-0">
-                                    <button onclick="sendFreeSpins()" id="btn-send-fs"
-                                        class="btn btn-mini btn-info w-100 py-1 text-dark fw-bold">إرسال الآن</button>
-                                </div>
-                            </div>
-                            <div class="row g-1 align-items-center mt-2 border-top border-dark pt-2">
-                                <div class="col-8 col-md-10">
-                                    <input type="text" id="fs-cancel-tour-id"
-                                        class="form-control form-control-mini font-mono"
-                                        placeholder="رقم الجولة (Tour ID) لإلغائها واسترجاع الرصيد...">
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <button onclick="cancelFreeSpins()" id="btn-cancel-fs"
-                                        class="btn btn-mini btn-outline-danger w-100 py-1 fw-bold">إلغاء الجولة</button>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- نظام العروض الآلية -->
-                        <section class="card-mini border-start border-success border-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-                                <span class="fw-bold text-success small" style="font-size: 0.75rem;"><i
-                                        class="fa-solid fa-robot"></i> 🤖 نظام العروض الآلي (الشحن = لفات)</span>
-                                <div class="form-check form-switch m-0">
-                                    <input class="form-check-input" type="checkbox" id="promo-active">
-                                    <label class="form-check-label text-white small" for="promo-active">تفعيل
-                                        العرض</label>
-                                </div>
-                            </div>
-                            <div class="row g-1 align-items-center mt-1 text-center font-mono"
-                                style="font-size: 0.7rem;">
-                                <div class="col-4 col-md-2">
-                                    <label class="text-secondary d-block mb-1">يوم العرض</label>
-                                    <select id="promo-day" class="form-select form-select-mini py-0.5">
-                                        <option value="Monday">الإثنين</option>
-                                        <option value="Tuesday">الثلاثاء</option>
-                                        <option value="Wednesday">الأربعاء</option>
-                                        <option value="Thursday">الخميس</option>
-                                        <option value="Friday">الجمعة</option>
-                                        <option value="Saturday">السبت</option>
-                                        <option value="Sunday">الأحد</option>
-                                    </select>
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <label class="text-secondary d-block mb-1">الحد الأدنى للشحن</label>
-                                    <input type="number" id="promo-min"
-                                        class="form-control form-control-mini text-center" value="50">
-                                </div>
-                                <div class="col-4 col-md-2">
-                                    <label class="text-secondary d-block mb-1">عدد اللفات</label>
-                                    <input type="number" id="promo-spins"
-                                        class="form-control form-control-mini text-center" value="10">
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="text-secondary d-block mb-1">المزود</label>
-                                    <select id="promo-provider" class="form-select form-select-mini py-0.5">
-                                        <option value="PRAGMATIC">Pragmatic</option>
-                                        <option value="NETENT">NetEnt</option>
-                                    </select>
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="text-secondary d-block mb-1">كود اللعبة</label>
-                                    <input type="text" id="promo-game"
-                                        class="form-control form-control-mini text-center" value="vs20doghouse">
-                                </div>
-                                <div class="col-12 col-md-2 mt-auto">
-                                    <button onclick="savePromoConfig()"
-                                        class="btn btn-mini btn-success w-100 py-1 fw-bold text-dark">حفظ النظام
-                                        الآلي</button>
-                                </div>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </div>
 
                     <!-- ================= 3. تبويب الأمان والتحليل ================= -->
-                    <div class="tab-pane fade d-flex flex-column gap-2" id="security" role="tabpanel">
+                    <div class="tab-pane fade" id="security" role="tabpanel">
+                        <div class="d-flex flex-column gap-2">
+                            
+                            <!-- جدار الأرباح الضخمة -->
+                            <section class="card-mini border-start border-warning border-3" id="huge-wins-section">
+                                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                                    <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i class="fa-solid fa-triangle-exclamation"></i> 🚨 Pas de gains</span>
+                                    <button onclick="fetchHugeWins()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄 Mise à jour</button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="w-full text-white w-100" style="font-size: 0.7rem;">
+                                        <tbody id="huge-wins-tbody" class="d-flex flex-column gap-1 mt-1">
+                                            <!-- سيتم جلب الأرباح هنا -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
 
-                        <!-- جدار الأرباح الضخمة -->
-                        <section class="card-mini border-start border-warning border-3" id="huge-wins-section">
-                            <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-                                <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i
-                                        class="fa-solid fa-triangle-exclamation"></i> 🚨 Pas de gains</span>
-                                <button onclick="fetchHugeWins()" class="btn btn-mini btn-outline-warning py-0 px-2">🔄
-                                    Mise à jour</button>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="w-full text-white w-100" style="font-size: 0.7rem;">
-                                    <tbody id="huge-wins-tbody" class="d-flex flex-column gap-1 mt-1">
-                                        <!-- سيتم جلب الأرباح هنا -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                            <!-- أداة كشف الاحتيال -->
+                            <section class="card-mini border-start border-danger border-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                                    <span class="fw-bold text-danger small" style="font-size: 0.75rem;"><i class="fa-solid fa-user-shield"></i> 🛡️ كشف الاحتيال (Anti-Fraud)</span>
+                                    <button onclick="fetchFraudData()" class="btn btn-mini btn-outline-danger py-0 px-2">🔍 فحص الشبكة</button>
+                                </div>
+                                <div id="fraud-results-container" class="text-white small p-1 font-mono" style="font-size: 0.7rem; max-height: 150px; overflow-y: auto;">
+                                    <span class="text-secondary">اضغط على زر "فحص الشبكة" لكشف الحسابات المرتبطة بنفس عنوان الـ IP أو الهاتف...</span>
+                                </div>
+                            </section>
 
-                        <!-- أداة كشف الاحتيال -->
-                        <section class="card-mini border-start border-danger border-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-                                <span class="fw-bold text-danger small" style="font-size: 0.75rem;"><i
-                                        class="fa-solid fa-user-shield"></i> 🛡️ كشف الاحتيال (Anti-Fraud)</span>
-                                <button onclick="fetchFraudData()" class="btn btn-mini btn-outline-danger py-0 px-2">🔍
-                                    فحص الشبكة</button>
-                            </div>
-                            <div id="fraud-results-container" class="text-white small p-1 font-mono"
-                                style="font-size: 0.7rem; max-height: 150px; overflow-y: auto;">
-                                <span class="text-secondary">اضغط على زر "فحص الشبكة" لكشف الحسابات المرتبطة بنفس عنوان
-                                    الـ IP أو الهاتف...</span>
-                            </div>
-                        </section>
-
-                        <!-- تحليلات الإيرادات الصافية (GGR Analytics) -->
-                        <section class="card-mini border-start border-warning border-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
-                                <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i
-                                        class="fa-solid fa-chart-line"></i> 📊 تحليلات (GGR)</span>
-                                <div class="d-flex gap-1 align-items-center">
-                                    <select id="ggr-month" class="form-select form-select-mini py-0 px-1 font-mono"
-                                        style="font-size: 0.65rem; width: 85px;">
-                                        <option value="">كل الأشهر</option>
-                                        <option value="1">جانفي (1)</option>
-                                        <option value="2">فيفري (2)</option>
-                                        <option value="3">مارس (3)</option>
-                                        <option value="4">أفريل (4)</option>
-                                        <option value="5">ماي (5)</option>
-                                        <option value="6">جوان (6)</option>
-                                        <option value="7">جويلية (7)</option>
-                                        <option value="8">أوت (8)</option>
-                                        <option value="9">سبتمبر (9)</option>
-                                        <option value="10">أكتوبر (10)</option>
-                                        <option value="11">نوفمبر (11)</option>
-                                        <option value="12">ديسمبر (12)</option>
-                                    </select>
-                                    <select id="ggr-year" class="form-select form-select-mini py-0 px-1 font-mono"
-                                        style="font-size: 0.65rem; width: 70px;">
-                                        <option value="2026">2026</option>
-                                        <option value="2025">2025</option>
-                                        <option value="2024">2024</option>
-                                    </select>
-                                    <button onclick="fetchGGRAnalytics()"
-                                        class="btn btn-mini btn-outline-warning py-0 px-2"
-                                        style="font-size: 0.65rem;">🔍 تصفية</button>
+                            <!-- تحليلات الإيرادات الصافية (GGR Analytics) -->
+                            <section class="card-mini border-start border-warning border-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1 bg-black p-1 rounded">
+                                    <span class="fw-bold text-warning small" style="font-size: 0.75rem;"><i class="fa-solid fa-chart-line"></i> 📊 تحليلات الإيرادات الصافية (GGR)</span>
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <select id="ggr-month" class="form-select form-select-mini py-0 px-1 font-mono" style="font-size: 0.65rem; width: 85px;">
+                                            <option value="">كل الأشهر</option>
+                                            <option value="1">جانفي (1)</option>
+                                            <option value="2">فيفري (2)</option>
+                                            <option value="3">مارس (3)</option>
+                                            <option value="4">أفريل (4)</option>
+                                            <option value="5">ماي (5)</option>
+                                            <option value="6">جوان (6)</option>
+                                            <option value="7">جويلية (7)</option>
+                                            <option value="8">أوت (8)</option>
+                                            <option value="9">سبتمبر (9)</option>
+                                            <option value="10">أكتوبر (10)</option>
+                                            <option value="11">نوفمبر (11)</option>
+                                            <option value="12">ديسمبر (12)</option>
+                                        </select>
+                                        <select id="ggr-year" class="form-select form-select-mini py-0 px-1 font-mono" style="font-size: 0.65rem; width: 70px;">
+                                            <option value="2026">2026</option>
+                                            <option value="2025">2025</option>
+                                            <option value="2024">2024</option>
+                                        </select>
+                                        <button onclick="fetchGGRAnalytics()" class="btn btn-mini btn-outline-warning py-0 px-2" style="font-size: 0.65rem;">🔍 تصفية</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="row g-1 text-center font-mono mt-1" style="font-size: 0.7rem;">
-                                <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                    <span class="text-secondary d-block" style="font-size: 0.60rem;">إجمالي
-                                        الرهانات</span>
-                                    <span id="ggr-bets" class="fw-bold text-white">0.00 TND</span>
+                                <div class="row g-1 text-center font-mono mt-1" style="font-size: 0.7rem;">
+                                    <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                        <span class="text-secondary d-block" style="font-size: 0.60rem;">إجمالي الرهانات</span>
+                                        <span id="ggr-bets" class="fw-bold text-white">0.00 TND</span>
+                                    </div>
+                                    <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                        <span class="text-secondary d-block" style="font-size: 0.60rem;">أرباح اللاعبين</span>
+                                        <span id="ggr-wins" class="fw-bold text-info">0.00 TND</span>
+                                    </div>
+                                    <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                        <span class="text-secondary d-block" style="font-size: 0.60rem;">الصافي (GGR)</span>
+                                        <span id="ggr-profit" class="fw-bold text-success">0.00 TND</span>
+                                    </div>
+                                    <div class="col-3 bg-dark p-1 rounded border border-secondary">
+                                        <span class="text-secondary d-block" style="font-size: 0.60rem;">نسبة العائد RTP</span>
+                                        <span id="ggr-rtp" class="fw-bold text-warning">0.0%</span>
+                                    </div>
                                 </div>
-                                <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                    <span class="text-secondary d-block" style="font-size: 0.60rem;">أرباح
-                                        اللاعبين</span>
-                                    <span id="ggr-wins" class="fw-bold text-info">0.00 TND</span>
-                                </div>
-                                <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                    <span class="text-secondary d-block" style="font-size: 0.60rem;">الصافي (GGR)</span>
-                                    <span id="ggr-profit" class="fw-bold text-success">0.00 TND</span>
-                                </div>
-                                <div class="col-3 bg-dark p-1 rounded border border-secondary">
-                                    <span class="text-secondary d-block" style="font-size: 0.60rem;">نسبة العائد
-                                        RTP</span>
-                                    <span id="ggr-rtp" class="fw-bold text-warning">0.0%</span>
-                                </div>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </div>
 
                 </div>
             </div>
-            <section>
+            
+        </main>
             <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
             <section class="card-mini p-0 overflow-hidden">
                 <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
