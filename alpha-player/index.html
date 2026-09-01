@@ -595,7 +595,6 @@
             // 2. استرجاع القسم الذي كان فيه اللاعب قبل الريفرش
             const savedSection = localStorage.getItem('active_section') || 'accueil';
             switchSection(savedSection);
-            
             // 3. تشغيل ميزات الصفحة الرئيسية
             loadGamesOfTheDay();
             startLiveJackpots();
@@ -1317,7 +1316,8 @@ function switchSection(sectionId, fromPopState = false) {
         async function openSportsbookForProvider(providerCode) {
             closeChat();
             if (!playerSession) return openLoginModal();
-            
+            localStorage.setItem('active_section', 'sport');
+            localStorage.setItem('sport_provider', providerCode || 'nexus');
             // إظهار النافذة المستقلة
             const overlay = document.getElementById('sportsbook-overlay');
             if(overlay) {
@@ -1385,6 +1385,7 @@ function switchSection(sectionId, fromPopState = false) {
 
         // دالة إغلاق الرياضة
         function closeSportsbook(fromPopState = false) {
+            localStorage.setItem('active_section', 'accueil');
             const overlay = document.getElementById('sportsbook-overlay');
             if(overlay) { 
                 overlay.classList.add('hidden'); 
