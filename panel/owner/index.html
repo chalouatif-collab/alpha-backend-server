@@ -712,11 +712,15 @@
             if (!container) return;
             const toastEl = document.createElement('div');
             const icon = type === 'success' ? '✅' : '❌';
+            
+            // 🛡️ تعقيم الرسالة قبل عرضها
+            const safeMessage = typeof message === 'string' ? escapeHTML(message) : message;
+
             toastEl.className = `toast align-items-center text-white border-0 mb-1 show shadow`;
             toastEl.innerHTML = `
                 <div class="d-flex ${type === 'success' ? 'border-success' : 'border-danger'} border-start border-3 rounded-2" style="background-color: var(--bg-card);">
                     <div class="toast-body fw-bold d-flex gap-2 align-items-center py-2" style="font-size: 0.7rem; color: white;">
-                        <span>${icon}</span> ${message}
+                        <span>${icon}</span> ${safeMessage}
                     </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto shadow-none btn-sm" data-bs-dismiss="toast"></button>
                 </div>
@@ -941,7 +945,7 @@
                                 html += `
                                 <div class="bg-black border border-dark rounded-2 p-2 d-flex flex-column flex-md-row justify-content-between gap-2" style="font-size: 0.7rem;">
                                     <div class="text-white">
-                                        <span class="text-secondary font-mono">#${t.ticket_id || t.id || ''} • 👤 <span class="text-info">${t.username || ''}</span></span><div class="mt-0.5">${matchesHtml}</div>
+                                        <span class="text-secondary font-mono">#${t.ticket_id || t.id || ''} • 👤 <span class="text-info">${escapeHTML(t.username || '')}</span></span><div class="mt-0.5">${matchesHtml}</div>
                                     </div>
                                     <div class="text-end font-mono border-top border-md-0 border-dark pt-1 pt-md-0">
                                         <div class="text-secondary" style="font-size: 0.65rem;">Cote: X${parseFloat(t.total_cote || 0).toFixed(2)} | Mise: ${parseFloat(t.mise || 0).toFixed(2)}</div>
