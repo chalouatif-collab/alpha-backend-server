@@ -515,7 +515,7 @@
             
             let html = '';
             filtered.forEach(u => {
-                const isSelected = selectedUser === u.username;
+                const isSelected = secureSelectedUser === u.username;
                 const bgClass = isSelected ? 'bg-dark border-primary' : 'bg-black border-dark';
                 
                 // 👉 استخراج كود الـ 2FA (الهاتف) و المفتاح (كلمة السر)
