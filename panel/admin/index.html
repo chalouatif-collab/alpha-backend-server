@@ -302,16 +302,11 @@
                             </div>
                         </div>
 
-                        <div class="col-12 col-md-4">
-                            <label class="text-secondary mb-0 fw-bold" style="font-size: 0.65rem;">Mot de passe:</label>
-                            <div class="input-group input-group-sm">
-                                <input type="password" id="ctrl-player-new-pass" placeholder="Nouveau pass"
-                                    class="form-control form-control-mini py-0">
-                                <button onclick="changePlayerPasswordFromAdmin()"
-                                    class="btn btn-mini btn-info text-dark fw-bold py-0 px-2"><i
-                                        class="fa-solid fa-key"></i></button>
-                            </div>
-                        </div>
+                        <div class="d-flex gap-1 pt-1 border-top border-dark align-items-center">
+                                    <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة" class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
+                                    <button onclick="changePlayerPasswordFromAdmin()" class="btn btn-mini btn-info text-dark fw-bold px-2 py-1" style="font-size: 0.7rem;">تغيير السر</button>
+                                    <button onclick="resetUser2FA()" class="btn btn-mini btn-warning text-dark fw-bold px-2 py-1" style="font-size: 0.7rem;" title="إعادة تعيين 2FA"><i class="fa-solid fa-key"></i> 2FA</button>
+                                </div>
                     </div>
                 </div>
 
@@ -552,6 +547,33 @@
                 credit: "Charge", retirer: "Withdraw", out: "Logout"
             }
         };
+
+        async function resetUser2FA() {
+            const target = secureSelectedUser;
+            if (!target) return showNotification('الرجاء تحديد حساب أولاً!', 'error');
+            
+            if (!confirm(`هل أنت متأكد من إعادة تعيين مفتاح 2FA للحساب: ${target}؟ سيتم إلغاء المفتاح القديم ولن يتمكن من الدخول به.`)) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/reset-2fa`, {
+                    method: 'POST', 
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: user.username, target_username: target })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // عرض المفتاح الجديد في نافذة Prompt ليتمكن المدير من نسخه بسهولة
+                    prompt(`تم إعادة تعيين 2FA بنجاح للحساب ${target}.\n\nانسخ هذا المفتاح وأرسله للمستخدم فوراً (لن يظهر مرة أخرى):`, data.new_secret);
+                    showNotification('تم إعادة تعيين المفتاح!', 'success');
+                } else { 
+                    showNotification(data.detail || 'Erreur', 'error'); 
+                }
+            } catch (e) { 
+                showNotification('Erreur de connexion', 'error'); 
+            }
+        }
+
 
         function changeLanguage(lang) {
             document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';

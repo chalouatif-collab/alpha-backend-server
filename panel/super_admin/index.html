@@ -724,6 +724,32 @@
             listContainer.innerHTML = html;
         }
 
+        async function resetUser2FA() {
+            const target = secureSelectedUser;
+            if (!target) return showNotification('الرجاء تحديد حساب أولاً!', 'error');
+            
+            if (!confirm(`هل أنت متأكد من إعادة تعيين مفتاح 2FA للحساب: ${target}؟ سيتم إلغاء المفتاح القديم ولن يتمكن من الدخول به.`)) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/reset-2fa`, {
+                    method: 'POST', 
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: user.username, target_username: target })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // عرض المفتاح الجديد في نافذة Prompt ليتمكن المدير من نسخه بسهولة
+                    prompt(`تم إعادة تعيين 2FA بنجاح للحساب ${target}.\n\nانسخ هذا المفتاح وأرسله للمستخدم فوراً (لن يظهر مرة أخرى):`, data.new_secret);
+                    showNotification('تم إعادة تعيين المفتاح!', 'success');
+                } else { 
+                    showNotification(data.detail || 'Erreur', 'error'); 
+                }
+            } catch (e) { 
+                showNotification('Erreur de connexion', 'error'); 
+            }
+        }
+
         async function loadSportTickets() {
             const container = document.getElementById('panel-sadmin-sport');
             container.innerHTML = '<div class="text-center p-3 text-emerald fw-bold" style="font-size: 0.7rem;">Chargement... ⏳</div>';

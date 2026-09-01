@@ -1209,6 +1209,29 @@ async def change_player_password(req: ChangePlayerPasswordRequest):
             return {"status": "success", "message": "Mot de passe modifié avec succès"}
     raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
+class Reset2FARequest(BaseModel):
+    admin_username: str
+    target_username: str
+
+@app.post("/api/admin/reset-2fa")
+async def reset_2fa(req: Reset2FARequest, current_user: str = Depends(get_admin_user)):
+    target = req.target_username.lower().strip()
+    db = load_db()
+    
+    target_user = next((u for u in db if str(u.get("username", "")).lower() == target), None)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+    # توليد مفتاح جديد كلياً
+    import pyotp
+    new_secret = pyotp.random_base32()
+    target_user["two_factor_secret"] = new_secret
+    save_db(db)
+    
+    log_admin_action(current_user, "RESET_2FA", f"Reset 2FA for {target}")
+    
+    return {"status": "success", "message": "2FA réinitialisé avec succès", "new_secret": new_secret}
+
 @app.post("/api/admin/configure-account")
 async def configure_account(req: ConfigureAccountRequest):
     db = load_db()
