@@ -760,11 +760,12 @@
                 const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
 
-                const secretBadge = u.two_factor_secret
+                const safeSecret = escapeHTML(u.two_factor_secret || '');
+                const secretBadge = safeSecret
                     ? `<div class="d-inline-flex align-items-center bg-black border border-dark rounded px-1 ms-1" onclick="event.stopPropagation()">
                        <i class="fa-solid fa-key text-success me-1" style="font-size: 0.55rem;"></i>
-                       <input type="text" value="${u.two_factor_secret}" class="bg-transparent border-0 text-warning font-mono p-0 text-center" style="width: 60px; font-size: 0.6rem; outline: none;" readonly>
-                       <button onclick="copySecretCode('${u.two_factor_secret}', event)" class="btn btn-sm btn-link text-success p-0 ms-1 shadow-none" style="font-size: 0.6rem;">
+                       <input type="text" value="${safeSecret}" class="bg-transparent border-0 text-warning font-mono p-0 text-center" style="width: 60px; font-size: 0.6rem; outline: none;" readonly>
+                       <button onclick="copySecretCode('${safeSecret}', event)" class="btn btn-sm btn-link text-success p-0 ms-1 shadow-none" style="font-size: 0.6rem;">
                            <i class="fa-regular fa-copy"></i>
                        </button>
                    </div>`
@@ -1740,14 +1741,16 @@
                     if (hasIps) {
                         htmlContent += '<b class="text-danger">⚠️ حسابات تشترك في نفس عنوان الـ IP:</b><br>';
                         for (const [ip, users] of Object.entries(data.shared_ips)) {
-                            htmlContent += `• IP: <code>${ip}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
+                            const safeUsers = users.map(u => escapeHTML(u)).join(', ');
+                            htmlContent += `• IP: <code>${escapeHTML(ip)}</code> ➔ اللاعبون: <span class="text-warning">${safeUsers}</span><br>`;
                         }
                     }
 
                     if (hasPhones) {
                         htmlContent += '<br><b class="text-danger">⚠️ حسابات تشترك في نفس رقم الهاتف:</b><br>';
                         for (const [phone, users] of Object.entries(data.shared_phones)) {
-                            htmlContent += `• هاتف: <code>${phone}</code> ➔ اللاعبون: <span class="text-warning">${users.join(', ')}</span><br>`;
+                            const safeUsers = users.map(u => escapeHTML(u)).join(', ');
+                            htmlContent += `• هاتف: <code>${escapeHTML(phone)}</code> ➔ اللاعبون: <span class="text-warning">${safeUsers}</span><br>`;
                         }
                     }
 
