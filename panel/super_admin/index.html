@@ -345,6 +345,7 @@
 
     <script>
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
+
         
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/'; 
@@ -356,6 +357,12 @@
         }
 
         let allAdmins = [];
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.toString().escapeHTML(/[&<>'"]/g,
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
 
         function getAuthHeaders() {
             return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
@@ -391,7 +398,8 @@
             toastEl.className = `toast align-items-center text-bg-dark border-0 mb-1 show shadow`;
             toastEl.setAttribute('role', 'alert'); 
             
-            const safeMessage = typeof message === 'string' ? message.replace(/</g, "&lt;").replace(/>/g, "&gt;") : message;
+            // 🛡️ استخدام الفلتر القوي بدلاً من الفلتر الضعيف
+            const safeMessage = typeof message === 'string' ? escapeHTML(message) : message;
 
             toastEl.innerHTML = `
                 <div class="d-flex ${type === 'success' ? 'border-success' : 'border-danger'} border-start border-3 rounded-2" style="background-color: var(--bg-card);">
@@ -425,8 +433,11 @@
             
             document.querySelectorAll(`[onclick*="switchSadminPanelSection('${sectionId}')"]`).forEach(btn => btn.classList.add('active-shop-btn'));
 
+            // الروابط المكتملة
             if (sectionId === 'sport') loadSportTickets();
             if (sectionId === 'transaction') loadTransactions();
+            if (sectionId === 'casino') loadCasinoHistory();
+            if (sectionId === 'transfert') loadTransferts();
         }
 
         async function loadNetworkData() {
@@ -466,15 +477,18 @@
             }
 
             adminsArray.forEach(u => {
-                const userRole = u.role ? u.role.toUpperCase() : 'ADMIN';
+                const userRole = u.role ? escapeHTML(u.role).toUpperCase() : 'ADMIN';
                 const userRtp = u.rtp !== undefined && u.rtp !== null ? u.rtp : 50;
                 const userBalance = u.balance !== undefined && u.balance !== null ? parseFloat(u.balance).toFixed(2) : "0.00";
                 const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
                 
-                const usernameClean = u.username;
-                const phoneBadge = u.phone ? `<span class="badge bg-black text-info border border-dark ms-1 px-1 py-0" style="font-size: 0.6rem;"><i class="fa-solid fa-phone"></i> ${u.phone}</span>` : '';
-                const safeSecret = u.two_factor_secret ? u.two_factor_secret.replace(/"/g, '&quot;') : '';
-                const secretBadge = u.two_factor_secret
+                // 🛡️ التعديلات الأمنية: تغليف جميع المدخلات
+                const usernameClean = escapeHTML(u.username);
+                const safePhone = escapeHTML(u.phone || '');
+                const phoneBadge = safePhone ? `<span class="badge bg-black text-info border border-dark ms-1 px-1 py-0" style="font-size: 0.6rem;"><i class="fa-solid fa-phone"></i> ${safePhone}</span>` : '';
+                
+                const safeSecret = escapeHTML(u.two_factor_secret || '');
+                const secretBadge = safeSecret
                 ? `<div class="d-inline-flex align-items-center bg-black border border-dark rounded px-1 ms-1" onclick="event.stopPropagation()">
                        <i class="fa-solid fa-key text-success me-1" style="font-size: 0.55rem;"></i>
                        <input type="text" value="${safeSecret}" class="bg-transparent border-0 text-warning font-mono p-0 text-center" style="width: 60px; font-size: 0.6rem; outline: none;" readonly>
@@ -484,8 +498,10 @@
                    </div>`
                 : ``;
                 
+                const safeId = escapeHTML(u.id || 'N/A');
+
                 listContainer.innerHTML += `
-                    <div class="user-row-mini d-flex justify-content-between align-items-center" onclick="selectForControl('${u.username}', ${userRtp})">
+                    <div class="user-row-mini d-flex justify-content-between align-items-center" onclick="selectForControl('${usernameClean}', ${userRtp})">
                         <div class="d-flex align-items-center gap-2">
                             <div class="position-relative bg-black rounded-circle d-flex justify-content-center align-items-center border border-dark" style="width: 24px; height: 24px;">
                                 <i class="fa-solid fa-user text-secondary" style="font-size: 9px;"></i>
@@ -494,7 +510,7 @@
                             <div>
                                 <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.75rem;">
                                     ${usernameClean} 
-                                    <span class="badge bg-dark border border-dark text-secondary font-mono" style="font-size: 0.6rem; padding: 1px 3px;">ID: ${u.id || 'N/A'}</span>
+                                    <span class="badge bg-dark border border-dark text-secondary font-mono" style="font-size: 0.6rem; padding: 1px 3px;">ID: ${safeId}</span>
                                     ${secretBadge} ${phoneBadge}
                                 </div>
                                 <div class="text-emerald font-mono" style="font-size: 0.6rem;">${userRole} • RTP: ${userRtp}%</div>
@@ -692,7 +708,7 @@
                 const isCharge = t.action === 'charge'; 
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
-                const targetName = (t.target_username || t.target || 'مجهول').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                const targetName = (t.target_username || t.target || 'مجهول').escapeHTML(/</g, "&lt;").escapeHTML(/>/g, "&gt;");
                 
                 html += `
                     <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
@@ -725,22 +741,24 @@
                     if (ticketsRes.ok) {
                         const tickets = await ticketsRes.json();
                         tickets.forEach(t => {
-                            let badgeColor = t.status === "gagne" ? "text-success" : (t.status === "perdu" ? "text-danger" : (t.status === "cashout" ? "text-warning" : "text-info"));
+                            // 🛡️ تنظيف جميع المتغيرات بدالة escapeHTML فقط
+                            const safeStatus = escapeHTML(t.status || "N/A");
+                            const badgeColor = safeStatus === "gagne" ? "text-success" : (safeStatus === "perdu" ? "text-danger" : (safeStatus === "cashout" ? "text-warning" : "text-info"));
                             
                             let matchesHtml = Array.isArray(t.details_list) ? 
-                                t.details_list.map(g => `• ${g.matchName.replace(/</g, "&lt;")} (<span class="text-warning">${g.outcome}</span>)`).join('<br>') : 
-                                (t.match ? t.match.replace(/</g, "&lt;") : "Match Inconnu");
+                                t.details_list.map(g => `• ${escapeHTML(g.matchName)} (<span class="text-warning">${escapeHTML(g.outcome)}</span>)`).join('<br>') : 
+                                escapeHTML(t.match || "Match Inconnu");
 
-                            let safeTarget = target.replace(/</g, "&lt;");
+                            let safeTarget = escapeHTML(target);
 
                             allTicketsHtml += `
                                 <div class="bg-black border border-dark rounded-2 p-2 d-flex flex-column gap-1" style="font-size: 0.7rem;">
                                     <div class="text-white">${matchesHtml}</div>
                                     <div class="text-end font-mono border-top border-dark pt-1">
                                         <div class="text-secondary" style="font-size: 0.6rem;">Joueur: <span class="text-white fw-bold">${safeTarget}</span></div>
-                                        <div class="text-light" style="font-size: 0.6rem;">Mise: ${parseFloat(t.mise).toFixed(2)} | Cote: X${parseFloat(t.total_cote).toFixed(2)}</div>
-                                        <div class="fw-bold ${badgeColor}" style="font-size: 0.75rem;">Gain: +${parseFloat(t.gain).toFixed(2)} TND</div>
-                                        <span class="badge border border-secondary py-0 px-1 text-uppercase ${badgeColor}" style="font-size: 0.55rem;">${t.status}</span>
+                                        <div class="text-light" style="font-size: 0.6rem;">Mise: ${parseFloat(t.mise || 0).toFixed(2)} | Cote: X${parseFloat(t.total_cote || 0).toFixed(2)}</div>
+                                        <div class="fw-bold ${badgeColor}" style="font-size: 0.75rem;">Gain: +${parseFloat(t.gain || 0).toFixed(2)} TND</div>
+                                        <span class="badge border border-secondary py-0 px-1 text-uppercase ${badgeColor}" style="font-size: 0.55rem;">${safeStatus}</span>
                                     </div>
                                 </div>`;
                         });
@@ -815,6 +833,57 @@
         setInterval(timerIncrement, 60000);
 
         document.addEventListener('contextmenu', event => event.preventDefault());
+
+        async function loadCasinoHistory() {
+            const container = document.getElementById('panel-sadmin-casino');
+            container.innerHTML = '<div class="text-center p-3 text-emerald fw-bold" style="font-size: 0.7rem;">Chargement... ⏳</div>';
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/casino-history`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const history = await res.json();
+                    if (history.length === 0) {
+                        container.innerHTML = '<div class="card-mini p-4 text-center text-secondary"><i class="fa-solid fa-ghost fs-3 mb-2"></i><br><span class="fw-bold text-uppercase" style="font-size: 0.7rem;">Aucun pari enregistré.</span></div>';
+                        return;
+                    }
+                    let html = `<div class="d-flex flex-column gap-1 overflow-y-auto" style="max-height: 380px;">`;
+                    history.forEach(t => {
+                        const isWin = t.action === 'win';
+                        const badgeColor = isWin ? 'text-success' : 'text-danger';
+                        const sign = isWin ? '+' : '-';
+                        html += `
+                        <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
+                            <div><div class="text-white fw-bold">👤 ${escapeHTML(t.username)}</div><div class="text-secondary font-mono" style="font-size: 0.6rem;">🕒 ${t.date}</div></div>
+                            <div class="text-end font-mono"><div class="${badgeColor} fw-bold" style="font-size: 0.75rem;">${sign}${parseFloat(t.amount).toFixed(2)} TND</div></div>
+                        </div>`;
+                    });
+                    container.innerHTML = html + `</div>`;
+                } else container.innerHTML = '<div class="text-center p-3 text-danger">Erreur API</div>';
+            } catch (e) { container.innerHTML = '<div class="text-center p-3 text-danger">Erreur de connexion</div>'; }
+        }
+
+        async function loadTransferts() {
+            const container = document.getElementById('panel-sadmin-transfert');
+            container.innerHTML = '<div class="text-center p-3 text-emerald fw-bold" style="font-size: 0.7rem;">Chargement... ⏳</div>';
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/get-pending-deposits`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    const tickets = await res.json();
+                    if (tickets.length === 0) {
+                        container.innerHTML = '<div class="card-mini p-4 text-center text-secondary"><i class="fa-solid fa-money-bill-transfer fs-3 mb-2"></i><br><span class="fw-bold text-uppercase" style="font-size: 0.7rem;">Aucun transfert financier trouvé.</span></div>';
+                        return;
+                    }
+                    let html = `<div class="d-flex flex-column gap-1 overflow-y-auto" style="max-height: 380px;">`;
+                    tickets.forEach(t => {
+                        html += `
+                        <div class="bg-black border border-warning rounded-2 p-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
+                            <div><div class="text-white fw-bold">👤 ${escapeHTML(t.username || t.player)}</div><div class="text-secondary font-mono" style="font-size: 0.6rem;">Code: ${escapeHTML(t.code || t.reference)}</div></div>
+                            <div class="text-warning fw-bold font-mono">En attente</div>
+                        </div>`;
+                    });
+                    container.innerHTML = html + `</div>`;
+                } else container.innerHTML = '<div class="text-center p-3 text-danger">Erreur API</div>';
+            } catch (e) { container.innerHTML = '<div class="text-center p-3 text-danger">Erreur de connexion</div>'; }
+        }
     </script>
 </body>
 </html>
