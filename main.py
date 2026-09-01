@@ -882,6 +882,7 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
         safe_users.append(safe_user)
         
     return safe_users
+
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
     target = req.target_username.lower().strip()
@@ -902,17 +903,15 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             raise HTTPException(status_code=404, detail="Compte administrateur introuvable")
 
         current_role = admin_user.get("role", "")
-        
-        # 🛡️ تحديد الصلاحية المطلقة للأونر والنظام فقط
         is_global_admin = (current_user.lower() == "system" or current_role == "owner")
         admin = current_user.lower().strip()
 
-        # 🛡️ جدار الأمان: منع المانجر من التحكم في حسابات لم ينشئها بنفسه
+        # 🛡️ جدار الأمان: منع التحكم في حسابات تابعة لآخرين
         safe_creator = str(target_user.get("created_by", "")).lower().strip()
         if not is_global_admin and safe_creator != admin:
             raise HTTPException(status_code=403, detail="Accès refusé. Ce compte ne vous appartient pas.")
 
-        # 1. تحديث الأرصدة في Firebase مع الخصم الإجباري
+        # 1. تجهيز الأرصدة في الذاكرة (بدون حفظ نهائي)
         if req.action == "charge":
             if not is_global_admin:
                 if float(admin_user.get("balance", 0)) < amount: 
@@ -921,7 +920,6 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             
             target_user["balance"] = round(float(target_user.get("balance", 0)) + amount, 2)
             
-            # تسجيل الكاش باك
             if current_user.lower() != "system":
                 target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + amount
 
@@ -931,34 +929,37 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             
             target_user["balance"] = round(float(target_user.get("balance", 0)) - amount, 2)
             
-            # استرجاع الرصيد للمانجر عند السحب من وكلائه
             if not is_global_admin:
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
-                
-        save_db(db)
 
-    # 2. توثيق العملية في سجل SQL
-    db_session = SessionLocal()
-    try:
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        record_action = "dépôt" if req.action == "charge" else "retrait"
+        # 2. توثيق العملية في سجل SQL أولاً (الجدار الواقي)
+        db_session = SessionLocal()
+        try:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            record_action = "dépôt" if req.action == "charge" else "retrait"
+            
+            new_tx = Transaction(
+                admin_username=admin,
+                target_username=target,
+                action=record_action,
+                amount=amount,
+                date=current_time,
+                tx_id=str(uuid.uuid4())
+            )
+            db_session.add(new_tx)
+            db_session.commit()
+        except Exception as e:
+            db_session.rollback()
+            print(f"Error saving transaction history: {e}")
+            # إذا فشل التوثيق في SQL، نلغي العملية بالكامل ولا نحفظ الأرصدة
+            raise HTTPException(status_code=500, detail="Erreur base de données. L'opération a été annulée de manière sécurisée.")
+        finally:
+            db_session.close()
+
+        # 3. الحفظ النهائي للأرصدة (يُنفذ فقط إذا نجح التوثيق في SQL)
+        save_db(db)
         
-        new_tx = Transaction(
-            admin_username=current_user.lower().strip(),
-            target_username=target,
-            action=record_action,
-            amount=amount,
-            date=current_time,
-            tx_id=str(uuid.uuid4())
-        )
-        db_session.add(new_tx)
-        db_session.commit()
-    except Exception as e:
-        db_session.rollback()
-        print(f"Error saving transaction history: {e}")
-    finally:
-        db_session.close()
-        log_admin_action(current_user, "BALANCE_UPDATE", f"Target: {target}, Action: {req.action}, Amount: {amount}")
+    log_admin_action(current_user, "BALANCE_UPDATE", f"Target: {target}, Action: {req.action}, Amount: {amount}")
 
     return {"status": "success", "message": "Opération réussie et enregistrée"}
 
