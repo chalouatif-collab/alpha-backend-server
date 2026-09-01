@@ -506,47 +506,72 @@
         }
 
         function renderFilteredUsers() {
-            // يبحث عن الحاوية (سواء كان اسمها manager-network-tbody أو owner-network-tbody حسب ما نسخته)
-            const tbody = document.getElementById('manager-network-tbody') || document.getElementById('owner-network-tbody');
+            const tbody = document.getElementById('manager-network-tbody');
             if (!tbody) return;
             
             const term = document.getElementById('search-input').value.toLowerCase();
             const filtered = allUsers.filter(u => u.username.toLowerCase().includes(term));
             
             let html = '';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<div class="text-center text-secondary p-2" style="font-size: 0.7rem;">لا توجد حسابات</div>`;
+                return;
+            }
+
             filtered.forEach(u => {
                 const isSelected = secureSelectedUser === u.username;
-                const bgClass = isSelected ? 'bg-dark border-primary' : 'bg-black border-dark';
-                
-                // 👉 استخراج كود الـ 2FA (الهاتف) و المفتاح (كلمة السر)
-                const phoneHtml = u.phone ? `<span class="text-info ms-2 font-mono" style="font-size: 0.65rem;"><i class="fa-solid fa-phone"></i> ${escapeHTML(u.phone)}</span>` : '';
+                const bgClass = isSelected ? 'bg-dark border-info' : 'bg-black border-dark';
+                const userRtp = u.rtp || 50;
+                const balance = parseFloat(u.balance || 0);
+
+                const usernameClean = escapeHTML(u.username || 'Inconnu');
+                const createdByClean = escapeHTML(u.created_by || 'System');
+                const userRole = u.role ? u.role.toUpperCase() : 'PLAYER';
+                const statusDot = u.is_blocked === 1 ? 'bg-danger' : 'bg-success';
+
+                // 👉 استخراج كود الـ 2FA (الدرع الأصفر) مع زر النسخ
+                const secretBadge = u.two_factor_secret
+                    ? `<div class="d-inline-flex align-items-center bg-dark border border-secondary rounded px-1 ms-1" onclick="event.stopPropagation()">
+                       <i class="fa-solid fa-shield-halved text-warning me-1" style="font-size: 0.55rem;"></i>
+                       <input type="text" value="${escapeHTML(u.two_factor_secret)}" class="bg-transparent border-0 text-white font-mono p-0 text-center" style="width: 60px; font-size: 0.6rem; outline: none;" readonly>
+                       <button onclick="copySecretCode('${escapeHTML(u.two_factor_secret)}', event)" class="btn btn-sm btn-link text-info p-0 ms-1 shadow-none" style="font-size: 0.6rem;">
+                           <i class="fa-regular fa-copy"></i>
+                       </button>
+                   </div>`
+                    : ``;
+
+                const phoneHtml = u.phone ? `<span class="badge bg-black text-info border border-dark ms-1 px-1 py-0 font-mono" style="font-size: 0.6rem;"><i class="fa-solid fa-phone"></i> ${escapeHTML(u.phone)}</span>` : '';
                 const keyText = u.password || u.key;
                 const keyHtml = keyText ? `<span class="text-success ms-2 font-mono" style="font-size: 0.65rem;"><i class="fa-solid fa-key"></i> ${escapeHTML(keyText)}</span>` : '';
 
                 html += `
-                <div class="border rounded-2 p-2 ${bgClass} cursor-pointer mb-1" onclick="selectUser('${escapeHTML(u.username)}', ${u.rtp || 50})" style="font-size: 0.75rem;">
-                    <div class="d-flex justify-content-between align-items-center">
+                <div class="user-row-mini ${bgClass} d-flex justify-content-between align-items-center mb-1" onclick="selectForControl('${usernameClean}', ${userRtp})">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="position-relative bg-black rounded-circle d-flex justify-content-center align-items-center border border-dark" style="width: 24px; height: 24px;">
+                            <i class="fa-solid fa-user text-secondary" style="font-size: 9px;"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 ${statusDot} border border-dark rounded-circle"></span>
+                        </div>
                         <div>
-                            <div class="text-white fw-bold mb-1">
-                                <i class="fa-solid fa-user text-secondary me-1"></i> ${escapeHTML(u.username)}
-                                <span class="text-secondary ms-1" style="font-size: 0.6rem;">ID: ${u.id || ''}</span>
-                                <!-- إظهار الأكواد هنا -->
-                                ${keyHtml}
-                                ${phoneHtml}
+                            <div class="text-white fw-bold mb-0 d-flex align-items-center flex-wrap gap-1" style="font-size: 0.75rem;">
+                                ${usernameClean} 
+                                <span class="badge bg-dark border border-dark text-secondary font-mono" style="font-size: 0.6rem; padding: 1px 3px;">ID: ${u.id || 'N/A'}</span>
+                                ${secretBadge} ${keyHtml} ${phoneHtml}
                             </div>
-                            <div class="font-mono" style="font-size: 0.65rem;">
-                                <span class="text-info text-uppercase">${escapeHTML(u.role)}</span>
-                                <span class="text-secondary mx-1">•</span>
-                                <span class="text-secondary">By: <span class="text-info">${escapeHTML(u.created_by || 'system')}</span></span>
-                            </div>
+                            <div class="text-info font-mono" style="font-size: 0.6rem;">${userRole} • By: ${createdByClean}</div>
                         </div>
-                        <div class="text-end">
-                            <div class="text-white fw-bold font-mono">${parseFloat(u.balance || 0).toFixed(2)} TND</div>
-                        </div>
+                    </div>
+                    <div class="text-end font-mono">
+                        <div class="text-white fw-bold" style="font-size: 0.75rem;">${balance.toFixed(2)} TND</div>
                     </div>
                 </div>`;
             });
             tbody.innerHTML = html;
+        }
+        function copySecretCode(secret, event) {
+            event.stopPropagation();
+            navigator.clipboard.writeText(secret).then(() => {
+                showNotification(`تم نسخ الكود: ${secret}`, 'success');
+            }).catch(err => { showNotification('خطأ في النسخ', 'error'); });
         }
 
         function selectForControl(username, rtp) {
