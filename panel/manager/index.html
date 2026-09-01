@@ -9,11 +9,14 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
-            --manager-primary: #0ea5e9; /* أزرق سماوي خاص بالمانجر */
+            --manager-primary: #0ea5e9;
+            /* أزرق سماوي خاص بالمانجر */
             --manager-hover: #0284c7;
             --bg-main: #020617;
             --bg-sidebar: #070d1a;
@@ -141,36 +144,48 @@
 
 <body class="d-flex flex-column flex-md-row min-vh-100 position-relative">
 
-    <div id="toast-container" class="position-fixed bottom-0 end-0 p-2" style="z-index: 1090; max-width: 300px; width: 100%;"></div>
+    <div id="toast-container" class="position-fixed bottom-0 end-0 p-2"
+        style="z-index: 1090; max-width: 300px; width: 100%;"></div>
 
     <!-- القائمة الجانبية -->
     <div class="offcanvas offcanvas-start text-white" tabindex="-1" id="sidebar-menu">
         <div class="offcanvas-header border-bottom border-dark px-3 py-2">
-            <h6 class="offcanvas-title text-manager fw-bold" style="font-size: 0.85rem;"><i class="fa-solid fa-user-tie"></i> ALPHA MANAGER</h6>
-            <button type="button" class="btn-close btn-close-white btn-sm shadow-none" data-bs-dismiss="offcanvas"></button>
+            <h6 class="offcanvas-title text-manager fw-bold" style="font-size: 0.85rem;"><i
+                    class="fa-solid fa-user-tie"></i> ALPHA MANAGER</h6>
+            <button type="button" class="btn-close btn-close-white btn-sm shadow-none"
+                data-bs-dismiss="offcanvas"></button>
         </div>
 
         <div class="offcanvas-body d-flex flex-column p-2.5">
-            <div class="d-flex align-items-center justify-content-between mb-2 border border-dark p-1.5 rounded-2 bg-black">
+            <div
+                class="d-flex align-items-center justify-content-between mb-2 border border-dark p-1.5 rounded-2 bg-black">
                 <span class="text-secondary" style="font-size: 0.7rem;">🌐 Lang:</span>
-                <select id="lang-select" onchange="changeLanguage(this.value)" class="form-select form-select-mini bg-transparent text-white border-0 w-auto fw-bold shadow-none py-0">
+                <select id="lang-select" onchange="changeLanguage(this.value)"
+                    class="form-select form-select-mini bg-transparent text-white border-0 w-auto fw-bold shadow-none py-0">
                     <option value="fr">Français</option>
                     <option value="ar">العربية</option>
                     <option value="en">English</option>
                 </select>
             </div>
 
-            <div class="text-secondary fw-bold text-uppercase mb-1" style="font-size: 0.65rem; letter-spacing: 1px;" id="menu-title">Menu</div>
+            <div class="text-secondary fw-bold text-uppercase mb-1" style="font-size: 0.65rem; letter-spacing: 1px;"
+                id="menu-title">Menu</div>
 
             <nav class="d-flex flex-column gap-1 flex-grow-1">
-                <button onclick="fetchAndOpenHistory('casino')" class="sidebar-link-mini"><i class="fa-solid fa-dice text-manager"></i> Casino</button>
-                <button onclick="fetchAndOpenHistory('transfert')" class="sidebar-link-mini"><i class="fa-solid fa-right-left text-success"></i> Transferts</button>
-                <button onclick="fetchAndOpenHistory('sport')" class="sidebar-link-mini"><i class="fa-solid fa-futbol text-warning"></i> Sport</button>
-                <button onclick="fetchAndOpenHistory('compte')" class="sidebar-link-mini"><i class="fa-solid fa-chart-pie text-info"></i> Stats</button>
-                <button onclick="openPasswordModal()" class="sidebar-link-mini"><i class="fa-solid fa-key text-secondary"></i> Password</button>
+                <button onclick="fetchAndOpenHistory('casino')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-dice text-manager"></i> Casino</button>
+                <button onclick="fetchAndOpenHistory('transfert')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-right-left text-success"></i> Transferts</button>
+                <button onclick="fetchAndOpenHistory('sport')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-futbol text-warning"></i> Sport</button>
+                <button onclick="fetchAndOpenHistory('compte')" class="sidebar-link-mini"><i
+                        class="fa-solid fa-chart-pie text-info"></i> Stats</button>
+                <button onclick="openPasswordModal()" class="sidebar-link-mini"><i
+                        class="fa-solid fa-key text-secondary"></i> Password</button>
             </nav>
 
-            <button onclick="logout()" id="btn-logout" class="btn btn-sm btn-outline-danger w-100 fw-bold py-1 mt-2" style="font-size: 0.75rem;">
+            <button onclick="logout()" id="btn-logout" class="btn btn-sm btn-outline-danger w-100 fw-bold py-1 mt-2"
+                style="font-size: 0.75rem;">
                 🚪 Déconnexion
             </button>
         </div>
@@ -179,23 +194,31 @@
     <!-- المحتوى الرئيسي -->
     <div class="flex-grow-1 d-flex flex-column position-relative w-100">
 
-        <header class="card-mini border-bottom border-dark px-3 py-1.5 d-flex justify-content-between align-items-center sticky-top rounded-0">
+        <header
+            class="card-mini border-bottom border-dark px-3 py-1.5 d-flex justify-content-between align-items-center sticky-top rounded-0">
             <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-dark btn-sm border border-dark text-white px-2 py-1 rounded-2 shadow-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar-menu" style="font-size: 0.75rem;">
+                <button class="btn btn-dark btn-sm border border-dark text-white px-2 py-1 rounded-2 shadow-none"
+                    type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar-menu" style="font-size: 0.75rem;">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <span class="fw-bold text-manager tracking-wide d-none d-md-inline" style="font-size: 0.8rem;">ALPHA <span class="text-white fw-light">MANAGER</span></span>
+                <span class="fw-bold text-manager tracking-wide d-none d-md-inline" style="font-size: 0.8rem;">ALPHA
+                    <span class="text-white fw-light">MANAGER</span></span>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <button id="audio-enable-btn" onclick="enableAudio()" class="btn btn-mini btn-outline-info py-0 px-2" style="font-size: 0.65rem;">🔊 الصوت</button>
-                <span class="badge bg-dark border border-success text-success font-mono px-2 py-1 shadow-sm" style="font-size: 0.75rem;" id="top-manager-balance">0.00 TND</span>
-                
-                <span class="badge bg-info bg-opacity-25 text-manager border border-info px-2 py-0.5" style="font-size: 0.65rem;" id="badge-role">Manager</span>
-                <span class="fw-bold text-white font-mono small" id="manager-username" style="font-size: 0.75rem;">manager</span>
+                <button id="audio-enable-btn" onclick="enableAudio()" class="btn btn-mini btn-outline-info py-0 px-2"
+                    style="font-size: 0.65rem;">🔊 الصوت</button>
+                <span class="badge bg-dark border border-success text-success font-mono px-2 py-1 shadow-sm"
+                    style="font-size: 0.75rem;" id="top-manager-balance">0.00 TND</span>
+
+                <span class="badge bg-info bg-opacity-25 text-manager border border-info px-2 py-0.5"
+                    style="font-size: 0.65rem;" id="badge-role">Manager</span>
+                <span class="fw-bold text-white font-mono small" id="manager-username"
+                    style="font-size: 0.75rem;">manager</span>
             </div>
         </header>
 
-        <main class="flex-grow-1 overflow-y-auto p-2 no-scrollbar mx-auto w-100" style="max-width: 900px;" id="main-content">
+        <main class="flex-grow-1 overflow-y-auto p-2 no-scrollbar mx-auto w-100" style="max-width: 900px;"
+            id="main-content">
 
             <div class="d-flex flex-column gap-2" id="default-dashboard-view">
 
@@ -204,16 +227,26 @@
                     <div class="row g-1 align-items-center">
                         <div class="col-12 col-md-5">
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-black border-dark text-secondary py-0 px-2" style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
-                                <input type="text" id="ctrl-target-user" class="form-control form-control-mini text-manager fw-bold font-mono text-center py-0" placeholder="Sélectionnez..." readonly>
+                                <span class="input-group-text bg-black border-dark text-secondary py-0 px-2"
+                                    style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
+                                <input type="text" id="ctrl-target-user"
+                                    class="form-control form-control-mini text-manager fw-bold font-mono text-center py-0"
+                                    placeholder="Sélectionnez..." readonly>
                             </div>
                         </div>
                         <div class="col-12 col-md-7">
-                            <div class="d-flex align-items-center gap-2 px-2 bg-black border border-dark rounded-2 py-1">
-                                <span class="text-secondary font-mono small fw-bold" style="font-size: 0.65rem;">RTP:<span id="rtp-val-label" class="text-white ms-1">50%</span></span>
-                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50" oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'" class="form-range flex-grow-1 m-0">
-                                <button onclick="saveRtpAndBlock(0)" class="btn btn-mini btn-success py-0 px-2">حفظ</button>
-                                <button onclick="saveRtpAndBlock(1)" class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
+                            <div
+                                class="d-flex align-items-center gap-2 px-2 bg-black border border-dark rounded-2 py-1">
+                                <span class="text-secondary font-mono small fw-bold"
+                                    style="font-size: 0.65rem;">RTP:<span id="rtp-val-label"
+                                        class="text-white ms-1">50%</span></span>
+                                <input type="range" id="ctrl-rtp-range" min="1" max="99" value="50"
+                                    oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'"
+                                    class="form-range flex-grow-1 m-0">
+                                <button onclick="saveRtpAndBlock(0)"
+                                    class="btn btn-mini btn-success py-0 px-2">حفظ</button>
+                                <button onclick="saveRtpAndBlock(1)"
+                                    class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
                             </div>
                         </div>
                     </div>
@@ -222,14 +255,17 @@
                 <!-- سكشن إنشاء حساب جديد (محلات ولاعبين فقط) -->
                 <section class="card-mini border-start border-info border-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👤 إنشاء حساب تشغيلي</span>
+                        <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👤 إنشاء
+                            حساب تشغيلي</span>
                     </div>
                     <div class="row g-1 align-items-center">
                         <div class="col-6 col-md-3">
-                            <input type="text" id="new-user-name" class="form-control form-control-mini font-mono text-center" placeholder="Username">
+                            <input type="text" id="new-user-name"
+                                class="form-control form-control-mini font-mono text-center" placeholder="Username">
                         </div>
                         <div class="col-6 col-md-3">
-                            <input type="password" id="new-user-pass" class="form-control form-control-mini font-mono text-center" placeholder="Password">
+                            <input type="password" id="new-user-pass"
+                                class="form-control form-control-mini font-mono text-center" placeholder="Password">
                         </div>
                         <div class="col-4 col-md-2">
                             <select id="new-user-role" class="form-select form-select-mini font-mono py-0.5">
@@ -240,10 +276,12 @@
                             </select>
                         </div>
                         <div class="col-4 col-md-2">
-                            <input type="text" id="new_phone" class="form-control form-control-mini font-mono text-center" placeholder="Phone">
+                            <input type="text" id="new_phone"
+                                class="form-control form-control-mini font-mono text-center" placeholder="Phone">
                         </div>
                         <div class="col-4 col-md-2">
-                            <button onclick="createNetworkUser()" class="btn btn-mini btn-manager-mini w-100 py-1" id="btn-create">Créer</button>
+                            <button onclick="createNetworkUser()" class="btn btn-mini btn-manager-mini w-100 py-1"
+                                id="btn-create">Créer</button>
                         </div>
                     </div>
                 </section>
@@ -251,27 +289,38 @@
                 <!-- العمليات المالية المصغرة (Console) -->
                 <section class="card-mini">
                     <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-1 mb-1">
-                        <span class="fw-bold text-white small" id="title-table-console" style="font-size: 0.7rem;">📋 Console financière</span>
+                        <span class="fw-bold text-white small" id="title-table-console" style="font-size: 0.7rem;">📋
+                            Console financière</span>
                     </div>
 
                     <div class="row g-1 mb-1 align-items-center">
                         <div class="col-3">
-                            <input type="text" id="target-action-user" readonly placeholder="Compte" class="form-control form-control-mini text-center text-manager fw-bold font-mono py-1">
+                            <input type="text" id="target-action-user" readonly placeholder="Compte"
+                                class="form-control form-control-mini text-center text-manager fw-bold font-mono py-1">
                         </div>
                         <div class="col-3">
-                            <input type="number" id="target-action-amount" placeholder="TND" class="form-control form-control-mini text-center font-mono py-1">
+                            <input type="number" id="target-action-amount" placeholder="TND"
+                                class="form-control form-control-mini text-center font-mono py-1">
                         </div>
                         <div class="col-3">
-                            <button onclick="executeAction('charge')" id="btn-credit" class="btn btn-mini btn-success w-100 text-dark py-1">Créditer</button>
+                            <button onclick="executeAction('charge')" id="btn-credit"
+                                class="btn btn-mini btn-success w-100 text-dark py-1">Créditer</button>
                         </div>
                         <div class="col-3">
-                            <button onclick="executeAction('withdraw')" id="btn-retirer" class="btn btn-mini btn-danger w-100 py-1">Retirer</button>
+                            <button onclick="executeAction('withdraw')" id="btn-retirer"
+                                class="btn btn-mini btn-danger w-100 py-1">Retirer</button>
                         </div>
                     </div>
 
                     <div class="d-flex gap-1 pt-1 border-top border-dark align-items-center">
-                        <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة للمستخدم" class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
-                        <button onclick="changeUserPasswordFromManager()" class="btn btn-mini btn-info text-dark fw-bold px-3 py-1" style="font-size: 0.7rem;">تغيير السر</button>
+                        <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة"
+                            class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
+                        <button onclick="changePlayerPasswordFromAdmin()"
+                            class="btn btn-mini btn-info text-dark fw-bold px-2 py-1" style="font-size: 0.7rem;">تغيير
+                            السر</button>
+                        <button onclick="resetUser2FA()" class="btn btn-mini btn-warning text-dark fw-bold px-2 py-1"
+                            style="font-size: 0.7rem;" title="إعادة تعيين 2FA"><i class="fa-solid fa-key"></i>
+                            2FA</button>
                     </div>
                 </section>
 
@@ -279,11 +328,15 @@
                 <section class="card-mini p-0 overflow-hidden mt-1">
                     <div class="p-1.5 border-bottom border-dark bg-black">
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2" style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="Rechercher un compte..." class="form-control form-control-mini border-dark py-1">
+                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
+                                style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="search-input" oninput="renderFilteredUsers()"
+                                placeholder="Rechercher un compte..."
+                                class="form-control form-control-mini border-dark py-1">
                         </div>
                     </div>
-                    <div id="manager-network-tbody" class="p-1.5 d-flex flex-column gap-1" style="max-height: 450px; overflow-y: auto;">
+                    <div id="manager-network-tbody" class="p-1.5 d-flex flex-column gap-1"
+                        style="max-height: 450px; overflow-y: auto;">
                         <!-- يتم حقن الحسابات هنا -->
                     </div>
                 </section>
@@ -291,27 +344,37 @@
 
             <!-- ================= واجهة تصحيح التذاكر ================= -->
             <div id="admin-resettlement-panel" class="d-none">
-                <button onclick="hideResettlementPanel()" class="btn btn-mini btn-outline-secondary mb-2"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+                <button onclick="hideResettlementPanel()" class="btn btn-mini btn-outline-secondary mb-2"><i
+                        class="fa-solid fa-arrow-left"></i> Retour</button>
 
                 <div class="card-mini p-3">
-                    <h6 class="text-white fw-bold mb-1" style="font-size: 0.8rem;"><i class="fas fa-tools text-manager"></i> Correction des Tickets</h6>
+                    <h6 class="text-white fw-bold mb-1" style="font-size: 0.8rem;"><i
+                            class="fas fa-tools text-manager"></i> Correction des Tickets</h6>
                     <p class="text-secondary mb-2" style="font-size: 0.65rem;">Recherchez un ticket par son ID.</p>
 
                     <div class="input-group input-group-sm mb-2">
-                        <input type="text" id="ticket-search-input" class="form-control form-control-mini" placeholder="ID du Ticket">
-                        <button class="btn btn-mini btn-manager-mini px-3" onclick="searchTicket()"><i class="fas fa-search"></i></button>
+                        <input type="text" id="ticket-search-input" class="form-control form-control-mini"
+                            placeholder="ID du Ticket">
+                        <button class="btn btn-mini btn-manager-mini px-3" onclick="searchTicket()"><i
+                                class="fas fa-search"></i></button>
                     </div>
 
                     <div id="ticket-details-section" class="d-none">
-                        <div class="bg-black rounded-2 p-2 border border-dark mb-2 d-flex justify-content-between flex-wrap gap-1 text-center font-mono" style="font-size: 0.65rem;">
-                            <div><span class="text-secondary d-block">ID</span><span class="text-white fw-bold">#TCK-000</span></div>
-                            <div><span class="text-secondary d-block">Joueur</span><span class="text-white fw-bold">User</span></div>
-                            <div><span class="text-secondary d-block">Mise</span><span class="text-white fw-bold">0 TND</span></div>
-                            <div><span class="text-secondary d-block">Gain</span><span class="text-success fw-bold">0 TND</span></div>
+                        <div class="bg-black rounded-2 p-2 border border-dark mb-2 d-flex justify-content-between flex-wrap gap-1 text-center font-mono"
+                            style="font-size: 0.65rem;">
+                            <div><span class="text-secondary d-block">ID</span><span
+                                    class="text-white fw-bold">#TCK-000</span></div>
+                            <div><span class="text-secondary d-block">Joueur</span><span
+                                    class="text-white fw-bold">User</span></div>
+                            <div><span class="text-secondary d-block">Mise</span><span class="text-white fw-bold">0
+                                    TND</span></div>
+                            <div><span class="text-secondary d-block">Gain</span><span class="text-success fw-bold">0
+                                    TND</span></div>
                         </div>
 
                         <div class="d-flex flex-column gap-1 mb-2">
-                            <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center gap-2">
+                            <div
+                                class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center gap-2">
                                 <div>
                                     <span class="text-manager fw-bold d-block" style="font-size: 0.6rem;">Action</span>
                                     <p class="text-white fw-bold mb-0" style="font-size: 0.75rem;">Status</p>
@@ -323,12 +386,14 @@
                                 </select>
                             </div>
                         </div>
-                        <button onclick="resettleTicket()" class="btn btn-mini btn-success w-100 fw-bold py-1.5"><i class="fas fa-check-circle"></i> Soumettre</button>
+                        <button onclick="resettleTicket()" class="btn btn-mini btn-success w-100 fw-bold py-1.5"><i
+                                class="fas fa-check-circle"></i> Soumettre</button>
                     </div>
 
                     <div class="mt-2 border-top border-dark pt-2">
                         <h6 class="text-white fw-bold mb-1" style="font-size: 0.75rem;">📜 Derniers Tickets</h6>
-                        <div id="all-tickets-list" class="d-flex flex-column gap-1" style="max-height: 200px; overflow-y: auto;"></div>
+                        <div id="all-tickets-list" class="d-flex flex-column gap-1"
+                            style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
                 </div>
             </div>
@@ -340,8 +405,10 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content card-mini border-dark text-white shadow">
                 <div class="modal-header border-bottom border-dark py-1.5 px-3">
-                    <h6 class="modal-title fw-bold text-manager" style="font-size: 0.8rem;" id="modal-title">Historique</h6>
-                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none" data-bs-dismiss="modal"></button>
+                    <h6 class="modal-title fw-bold text-manager" style="font-size: 0.8rem;" id="modal-title">Historique
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-2.5" id="modal-dynamic-content"></div>
             </div>
@@ -354,11 +421,14 @@
             <div class="modal-content card-mini border-dark text-white shadow">
                 <div class="modal-header border-bottom border-dark py-1.5 px-3">
                     <h6 class="modal-title fw-bold" style="font-size: 0.75rem;">🔑 Modifier le mot de passe</h6>
-                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white btn-sm shadow-none"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-2">
-                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe" class="form-control form-control-mini mb-2 font-mono text-center">
-                    <button onclick="submitNewPassword()" class="btn btn-mini btn-manager-mini w-100 fw-bold py-1">Mettre à jour</button>
+                    <input type="password" id="new-sys-pass" placeholder="Nouveau mot de passe"
+                        class="form-control form-control-mini mb-2 font-mono text-center">
+                    <button onclick="submitNewPassword()"
+                        class="btn btn-mini btn-manager-mini w-100 fw-bold py-1">Mettre à jour</button>
                 </div>
             </div>
         </div>
@@ -377,7 +447,7 @@
 
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         const token = localStorage.getItem('token');
-        if (!token) window.location.href = '/'; 
+        if (!token) window.location.href = '/';
 
         let allUsers = [];
         let allTransactionsCache = [];
@@ -444,7 +514,7 @@
                 if (res.ok) {
                     allUsers = await res.json();
                     renderFilteredUsers();
-                    
+
                     // 👈 تحديث رصيد المانجر في الهيدر العلوي
                     const myAccount = allUsers.find(u => u.username === user.username);
                     if (myAccount) {
@@ -508,10 +578,10 @@
         function renderFilteredUsers() {
             const tbody = document.getElementById('manager-network-tbody');
             if (!tbody) return;
-            
+
             const term = document.getElementById('search-input').value.toLowerCase();
             const filtered = allUsers.filter(u => u.username.toLowerCase().includes(term));
-            
+
             let html = '';
             if (filtered.length === 0) {
                 tbody.innerHTML = `<div class="text-center text-secondary p-2" style="font-size: 0.7rem;">لا توجد حسابات</div>`;
@@ -582,11 +652,37 @@
             document.getElementById('rtp-val-label').innerText = rtp + '%';
             showNotification(`تم تحديد: ${username}`);
         }
-        
+
+        async function resetUser2FA() {
+            const target = secureSelectedUser;
+            if (!target) return showNotification('الرجاء تحديد حساب أولاً!', 'error');
+
+            if (!confirm(`هل أنت متأكد من إعادة تعيين مفتاح 2FA للحساب: ${target}؟ سيتم إلغاء المفتاح القديم ولن يتمكن من الدخول به.`)) return;
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/reset-2fa`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ admin_username: user.username, target_username: target })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // عرض المفتاح الجديد في نافذة Prompt ليتمكن المدير من نسخه بسهولة
+                    prompt(`تم إعادة تعيين 2FA بنجاح للحساب ${target}.\n\nانسخ هذا المفتاح وأرسله للمستخدم فوراً (لن يظهر مرة أخرى):`, data.new_secret);
+                    showNotification('تم إعادة تعيين المفتاح!', 'success');
+                } else {
+                    showNotification(data.detail || 'Erreur', 'error');
+                }
+            } catch (e) {
+                showNotification('Erreur de connexion', 'error');
+            }
+        }
+
         async function saveRtpAndBlock(isBlocked) {
             if (!secureSelectedUser) return showNotification("حدد حساباً أولاً", "warning");
             const rtp = document.getElementById('ctrl-rtp-range').value;
-            
+
             try {
                 const res = await fetch(`${BACKEND_URL}/api/admin/configure-account`, {
                     method: 'POST', headers: getAuthHeaders(),
@@ -597,13 +693,13 @@
                         is_blocked: isBlocked
                     })
                 });
-                if(res.ok) {
+                if (res.ok) {
                     showNotification(isBlocked ? "تم حظر الحساب!" : "تم تحديث الإعدادات!", "success");
                     loadNetworkData();
                 } else {
                     showNotification("حدث خطأ", "error");
                 }
-            } catch(e) { showNotification("خطأ اتصال", "error"); }
+            } catch (e) { showNotification("خطأ اتصال", "error"); }
         }
 
         async function fetchAndOpenHistory(type) {
@@ -784,7 +880,7 @@
                                 const badgeColor = isWin ? 'text-success' : 'text-danger';
                                 const sign = isWin ? '+' : '-';
                                 const actionName = isWin ? 'Gain (ربح)' : 'Mise (رهان)';
-                                
+
                                 html += `
                                 <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem;">
                                     <div>
@@ -856,16 +952,16 @@
             let html = '';
             transactions.forEach(t => {
                 const amt = Math.abs(parseFloat(t.amount)).toFixed(2);
-                
+
                 // 👈 التعديل هنا: إضافة dépôt للشرط ليتعرف عليها كعملية شحن خضراء
                 const isCharge = (t.action === 'charge' || t.action === 'dépôt' || t.action === 'deposit_request');
-                
+
                 const color = isCharge ? 'text-success' : 'text-danger';
                 const sign = isCharge ? '+' : '-';
-                
+
                 const targetName = escapeHTML(t.target_username || t.target || 'مجهول');
                 const actionName = escapeHTML(t.action);
-                
+
                 html += `
                     <div class="bg-black border border-dark rounded-2 p-2 d-flex justify-content-between align-items-center mb-1" style="font-size: 0.7rem;">
                         <div>
@@ -1056,7 +1152,7 @@
                     const data = await res.json();
                     showNotification(data.detail || 'Erreur', 'error');
                 }
-            } catch (e) { showNotification('Erreur', 'error'); } 
+            } catch (e) { showNotification('Erreur', 'error'); }
             finally {
                 if (updateBtn) { updateBtn.disabled = false; updateBtn.innerText = 'Mettre à jour'; }
             }
@@ -1112,7 +1208,7 @@
                     document.getElementById('target-action-amount').value = '';
                     loadNetworkData();
                 } else { showNotification(data.detail || 'Erreur', 'error'); }
-            } catch (e) { showNotification('Erreur', 'error'); } 
+            } catch (e) { showNotification('Erreur', 'error'); }
             finally {
                 if (actionBtn) { actionBtn.disabled = false; actionBtn.innerText = action === 'charge' ? 'Créditer' : 'Retirer'; }
             }
@@ -1136,36 +1232,36 @@
 
             try {
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST', 
+                    method: 'POST',
                     headers: getAuthHeaders(),
-                    body: JSON.stringify({ 
-                        username, 
-                        password, 
-                        role, 
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        role,
                         created_by: user.username, // ربط الحساب بالمانجر الحالي
-                        phone 
+                        phone
                     })
                 });
-                
+
                 const data = await res.json();
-                
+
                 if (res.ok) {
                     showNotification('✅ تم إنشاء الحساب بنجاح!', 'success');
                     // تفريغ الحقول
-                    if (usernameInput) usernameInput.value = ''; 
-                    if (passwordInput) passwordInput.value = ''; 
+                    if (usernameInput) usernameInput.value = '';
+                    if (passwordInput) passwordInput.value = '';
                     if (phoneInput) phoneInput.value = '';
-                    
+
                     // تحديث قائمة الحسابات فوراً لظهور الحساب الجديد
                     if (typeof loadNetworkData === 'function') {
                         loadNetworkData();
                     }
-                } else { 
+                } else {
                     // إظهار سبب الرفض (مثلاً: الاسم موجود مسبقاً)
-                    showNotification(`❌ ${data.detail || 'حدث خطأ أثناء الإنشاء'}`, 'error'); 
+                    showNotification(`❌ ${data.detail || 'حدث خطأ أثناء الإنشاء'}`, 'error');
                 }
-            } catch (e) { 
-                showNotification('❌ خطأ في الاتصال بالسيرفر', 'error'); 
+            } catch (e) {
+                showNotification('❌ خطأ في الاتصال بالسيرفر', 'error');
             } finally {
                 if (btn) { btn.disabled = false; btn.innerText = 'Créer'; }
             }
@@ -1183,7 +1279,7 @@
                         audio.play().catch(e => console.log("Audio blocked"));
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
         setInterval(checkNewDeposits, 10000);
 
@@ -1212,7 +1308,7 @@
                         triggerGoldRain();
                         fetchAndOpenHistory('pending');
                     } else { alert("❌ Erreur"); }
-                } catch (error) { alert("❌ Erreur"); } 
+                } catch (error) { alert("❌ Erreur"); }
                 finally { isTransactionRunning = false; }
             }
         }
@@ -1255,7 +1351,7 @@
                         fetchAndOpenHistory('withdrawals');
                         if (isApprove) triggerGoldRain();
                     } else { showNotification("Erreur", "error"); }
-                } catch (e) { showNotification("Erreur", "error"); } 
+                } catch (e) { showNotification("Erreur", "error"); }
                 finally { isTransactionRunning = false; }
             }
         }
@@ -1276,4 +1372,5 @@
 
     </script>
 </body>
+
 </html>
