@@ -170,12 +170,13 @@ Base.metadata.create_all(bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def hash_password(password: str):
     return pwd_context.hash(password)
+
 def verify_password(plain_password, hashed_password):
     try:
         return pwd_context.verify(plain_password, hashed_password)
     except Exception:
-        # يسمح بالدخول إذا كانت الكلمة في القاعدة يدوية وغير مشفرة
-        return plain_password == hashed_password
+        # 🛡️ تم إغلاق ثغرة تخطي التشفير
+        return False
 
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -697,10 +698,27 @@ async def daily_cashback_system():
                         net_loss = daily_deps - current_balance 
                         
                         if daily_deps > 0:
-                            # نعطي كاش باك فقط إذا كان رصيده شبه معدوم وخسارته الصافية أكبر من 0
                             if current_balance < 1.0 and net_loss > 0:
                                 cashback_amount = daily_deps * 0.10
                                 u["balance"] = round(current_balance + cashback_amount, 2)
+                                
+                                # 🛡️ توثيق الكاش باك في SQL لمنع تضارب الحسابات
+                                db_session = SessionLocal()
+                                try:
+                                    new_tx = Transaction(
+                                        admin_username="SYSTEM_CASHBACK",
+                                        target_username=u["username"],
+                                        action="cashback",
+                                        amount=cashback_amount,
+                                        date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                        tx_id=f"cb_{int(time.time())}"
+                                    )
+                                    db_session.add(new_tx)
+                                    db_session.commit()
+                                except Exception:
+                                    db_session.rollback()
+                                finally:
+                                    db_session.close()
                             
                             u["daily_deposits"] = 0
                             changes_made = True
@@ -878,7 +896,7 @@ async def get_all_network_users(current_user: str = Depends(get_admin_user)):
             
         safe_user = dict(u)
         safe_user.pop("password", None)
-        # safe_user.pop("two_factor_secret", None)
+        safe_user.pop("two_factor_secret", None) # 🛡️ تم التفعيل لمنع تسريب المفتاح
         safe_users.append(safe_user)
         
     return safe_users
@@ -1098,13 +1116,14 @@ async def request_transaction(request: Request):
         file_path = ""
         file = form.get("file")
         if file and isinstance(file, UploadFile) and file.filename:
-            # 🛡️ الحارس الأمني 2: منع الملفات الخبيثة (قبول الصور فقط)
+            # 🛡️ الحارس الأمني 2: فحص الامتداد ونوع المحتوى معاً لمنع الملفات الخبيثة
             allowed_extensions = ['.png', '.jpg', '.jpeg', '.webp']
-            file_ext = os.path.splitext(file.filename)[1].lower()
-            if file_ext not in allowed_extensions:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(status_code=400, content={"detail": "Format non autorisé. Seules les images sont acceptées."})
+            allowed_mimes = ['image/png', 'image/jpeg', 'image/webp']
             
+            file_ext = os.path.splitext(file.filename)[1].lower()
+            if file_ext not in allowed_extensions or file.content_type not in allowed_mimes:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=400, content={"detail": "Format non autorisé ou fichier corrompu. Seules les images sont acceptées."})
             os.makedirs("uploads", exist_ok=True)
             safe_filename = f"{uuid.uuid4().hex}{file_ext}"
             file_path = os.path.join("uploads", safe_filename)
@@ -1614,7 +1633,10 @@ async def get_shop_withdraw_requests(username: str, current_user: str = Depends(
     ]
     all_my_reqs.reverse()
     return all_my_reqs
-async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str = Depends(get_current_user)):
+
+
+@app.post("/api/admin/handle-shop-withdrawal") # 🛡️ المسار يجب أن يكون تحت /api/admin/
+async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str = Depends(get_admin_user)): # 🛡️ استخدام get_admin_user
     db = load_db()
     if isinstance(db, list):
         raise HTTPException(status_code=500, detail="Database format is outdated")
@@ -1639,6 +1661,7 @@ async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str
         
     save_db(db)
     return {"status": "success", "message": "Traité avec succès"}
+
 
 @app.get("/api/admin/my-withdrawal-requests")
 async def get_my_withdrawal_requests(username: str):
