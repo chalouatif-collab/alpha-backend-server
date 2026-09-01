@@ -198,7 +198,7 @@
                         class="fa-solid fa-chart-pie text-info"></i> Stats</button>
                 <button onclick="openPasswordModal()" class="sidebar-link-mini"><i
                         class="fa-solid fa-key text-secondary"></i> Password</button>
-                <button onclick="fetchAndOpenHistory('audit-logs')" class="sidebar-link-mini"><i
+                <button onclick="fetchAndOpenHistory('audit')" class="sidebar-link-mini"><i
                         class="fa-solid fa-file-alt text-muted"></i> Audit Logs</button>
 
                 <div class="my-1 border-top border-dark"></div>
@@ -555,25 +555,6 @@
             </div>
             
         </main>
-            <!-- 4. قائمة المستخدمين المصغرة والمنظمة --> <!-- هذا هو السطر 298 القديم -->
-            <section class="card-mini p-0 overflow-hidden">
-                <!-- 4. قائمة المستخدمين المصغرة والمنظمة -->
-                <section class="card-mini p-0 overflow-hidden">
-                    <div class="p-1.5 border-bottom border-dark bg-black">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-transparent border-0 text-secondary py-0 px-2"
-                                style="font-size: 0.7rem;"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" id="search-input" oninput="renderFilteredUsers()"
-                                placeholder="Rechercher un compte..."
-                                class="form-control form-control-mini border-dark py-1">
-                        </div>
-                    </div>
-                    <div id="owner-network-tbody" class="p-1.5 d-flex flex-column gap-1"
-                        style="max-height: 400px; overflow-y: auto;">
-                        <!-- يتم حقن الحسابات هنا -->
-                    </div>
-                </section>
-            </section>
     </div>
 
     <!-- ================= واجهة تصحيح التذاكر (مضغوطة) ================= -->
@@ -1329,6 +1310,37 @@
                     } else { showNotification('Erreur', 'error'); }
                 } catch (e) { showNotification('Erreur', 'error'); }
             }
+            async function saveRtpAndBlock(blockStatus) {
+            const target_username = secureSelectedUser;
+            let rawRtp = parseInt(document.getElementById('ctrl-rtp-range').value);
+            
+            if (isNaN(rawRtp)) rawRtp = 50;
+            const rtp = Math.max(1, Math.min(99, rawRtp));
+
+            if (!target_username) return showNotification('الرجاء تحديد حساب أولاً!', 'error');
+            
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/configure-account`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ 
+                        admin_username: user.username, 
+                        target_username, 
+                        rtp, 
+                        is_blocked: blockStatus 
+                    })
+                });
+                if (res.ok) {
+                    showNotification(blockStatus === 1 ? 'تم حظر الحساب!' : 'تم حفظ الإعدادات!');
+                    loadNetworkData();
+                } else {
+                    const data = await res.json();
+                    showNotification(data.detail || 'خطأ', 'error');
+                }
+            } catch (e) {
+                showNotification('خطأ في الاتصال', 'error');
+            }
+        }
 
             function triggerGoldRain() {
                 const duration = 2 * 1000;

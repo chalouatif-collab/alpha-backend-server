@@ -741,24 +741,22 @@
                     if (ticketsRes.ok) {
                         const tickets = await ticketsRes.json();
                         tickets.forEach(t => {
-                            // 🛡️ تنظيف جميع المتغيرات بدالة escapeHTML فقط
-                            const safeStatus = escapeHTML(t.status || "N/A");
-                            const badgeColor = safeStatus === "gagne" ? "text-success" : (safeStatus === "perdu" ? "text-danger" : (safeStatus === "cashout" ? "text-warning" : "text-info"));
+                            let badgeColor = t.status === "gagne" ? "text-success" : (t.status === "perdu" ? "text-danger" : (t.status === "cashout" ? "text-warning" : "text-info"));
                             
                             let matchesHtml = Array.isArray(t.details_list) ? 
-                                t.details_list.map(g => `• ${escapeHTML(g.matchName)} (<span class="text-warning">${escapeHTML(g.outcome)}</span>)`).join('<br>') : 
-                                escapeHTML(t.match || "Match Inconnu");
+                                t.details_list.map(g => `• ${g.matchName.escapeHTML(/</g, "&lt;")} (<span class="text-warning">${g.outcome}</span>)`).join('<br>') : 
+                                (t.match ? t.match.escapeHTML(/</g, "&lt;") : "Match Inconnu");
 
-                            let safeTarget = escapeHTML(target);
+                            let safeTarget = target.escapeHTML(/</g, "&lt;");
 
                             allTicketsHtml += `
                                 <div class="bg-black border border-dark rounded-2 p-2 d-flex flex-column gap-1" style="font-size: 0.7rem;">
                                     <div class="text-white">${matchesHtml}</div>
                                     <div class="text-end font-mono border-top border-dark pt-1">
                                         <div class="text-secondary" style="font-size: 0.6rem;">Joueur: <span class="text-white fw-bold">${safeTarget}</span></div>
-                                        <div class="text-light" style="font-size: 0.6rem;">Mise: ${parseFloat(t.mise || 0).toFixed(2)} | Cote: X${parseFloat(t.total_cote || 0).toFixed(2)}</div>
-                                        <div class="fw-bold ${badgeColor}" style="font-size: 0.75rem;">Gain: +${parseFloat(t.gain || 0).toFixed(2)} TND</div>
-                                        <span class="badge border border-secondary py-0 px-1 text-uppercase ${badgeColor}" style="font-size: 0.55rem;">${safeStatus}</span>
+                                        <div class="text-light" style="font-size: 0.6rem;">Mise: ${parseFloat(t.mise).toFixed(2)} | Cote: X${parseFloat(t.total_cote).toFixed(2)}</div>
+                                        <div class="fw-bold ${badgeColor}" style="font-size: 0.75rem;">Gain: +${parseFloat(t.gain).toFixed(2)} TND</div>
+                                        <span class="badge border border-secondary py-0 px-1 text-uppercase ${badgeColor}" style="font-size: 0.55rem;">${t.status}</span>
                                     </div>
                                 </div>`;
                         });
