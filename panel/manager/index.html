@@ -506,10 +506,47 @@
         }
 
         function renderFilteredUsers() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            let filtered = allUsers.filter(u => (u.username || '').toLowerCase().includes(searchTerm));
-            filtered.sort((a, b) => parseFloat(b.balance || 0) - parseFloat(a.balance || 0));
-            renderUsers(filtered);
+            // يبحث عن الحاوية (سواء كان اسمها manager-network-tbody أو owner-network-tbody حسب ما نسخته)
+            const tbody = document.getElementById('manager-network-tbody') || document.getElementById('owner-network-tbody');
+            if (!tbody) return;
+            
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allUsers.filter(u => u.username.toLowerCase().includes(term));
+            
+            let html = '';
+            filtered.forEach(u => {
+                const isSelected = selectedUser === u.username;
+                const bgClass = isSelected ? 'bg-dark border-primary' : 'bg-black border-dark';
+                
+                // 👉 استخراج كود الـ 2FA (الهاتف) و المفتاح (كلمة السر)
+                const phoneHtml = u.phone ? `<span class="text-info ms-2 font-mono" style="font-size: 0.65rem;"><i class="fa-solid fa-phone"></i> ${escapeHTML(u.phone)}</span>` : '';
+                const keyText = u.password || u.key;
+                const keyHtml = keyText ? `<span class="text-success ms-2 font-mono" style="font-size: 0.65rem;"><i class="fa-solid fa-key"></i> ${escapeHTML(keyText)}</span>` : '';
+
+                html += `
+                <div class="border rounded-2 p-2 ${bgClass} cursor-pointer mb-1" onclick="selectUser('${escapeHTML(u.username)}', ${u.rtp || 50})" style="font-size: 0.75rem;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-white fw-bold mb-1">
+                                <i class="fa-solid fa-user text-secondary me-1"></i> ${escapeHTML(u.username)}
+                                <span class="text-secondary ms-1" style="font-size: 0.6rem;">ID: ${u.id || ''}</span>
+                                <!-- إظهار الأكواد هنا -->
+                                ${keyHtml}
+                                ${phoneHtml}
+                            </div>
+                            <div class="font-mono" style="font-size: 0.65rem;">
+                                <span class="text-info text-uppercase">${escapeHTML(u.role)}</span>
+                                <span class="text-secondary mx-1">•</span>
+                                <span class="text-secondary">By: <span class="text-info">${escapeHTML(u.created_by || 'system')}</span></span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-white fw-bold font-mono">${parseFloat(u.balance || 0).toFixed(2)} TND</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            tbody.innerHTML = html;
         }
 
         function selectForControl(username, rtp) {
