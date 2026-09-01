@@ -1097,25 +1097,53 @@
             const usernameInput = document.getElementById('new-user-name');
             const passwordInput = document.getElementById('new-user-pass');
             const roleSelect = document.getElementById('new-user-role');
-            const phoneInput = document.getElementById('new_phone');
-            const username = usernameInput.value.trim().toLowerCase();
-            const password = passwordInput.value;
+            const phoneInput = document.getElementById('new_phone'); // إذا كان موجوداً
+
+            const username = usernameInput ? usernameInput.value.trim().toLowerCase() : '';
+            const password = passwordInput ? passwordInput.value : '';
             const role = roleSelect ? roleSelect.value : 'player';
             const phone = phoneInput ? phoneInput.value.trim() : '';
 
-            if (!username || !password) return showNotification('Remplir les champs!', 'error');
+            if (!username || !password) return showNotification('الرجاء تعبئة اسم المستخدم وكلمة السر!', 'error');
+
+            const btn = document.getElementById('btn-create');
+            if (btn) { btn.disabled = true; btn.innerText = '⏳'; }
+
             try {
                 const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST', headers: getAuthHeaders(),
-                    body: JSON.stringify({ username, password, role, created_by: user.username, phone })
+                    method: 'POST', 
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ 
+                        username, 
+                        password, 
+                        role, 
+                        created_by: user.username, // ربط الحساب بالمانجر الحالي
+                        phone 
+                    })
                 });
+                
                 const data = await res.json();
+                
                 if (res.ok) {
-                    showNotification('Compte créé!', 'success');
-                    usernameInput.value = ''; passwordInput.value = ''; if (phoneInput) phoneInput.value = '';
-                    loadNetworkData();
-                } else { showNotification(data.detail || 'Erreur', 'error'); }
-            } catch (e) { showNotification('Erreur', 'error'); }
+                    showNotification('✅ تم إنشاء الحساب بنجاح!', 'success');
+                    // تفريغ الحقول
+                    if (usernameInput) usernameInput.value = ''; 
+                    if (passwordInput) passwordInput.value = ''; 
+                    if (phoneInput) phoneInput.value = '';
+                    
+                    // تحديث قائمة الحسابات فوراً لظهور الحساب الجديد
+                    if (typeof loadNetworkData === 'function') {
+                        loadNetworkData();
+                    }
+                } else { 
+                    // إظهار سبب الرفض (مثلاً: الاسم موجود مسبقاً)
+                    showNotification(`❌ ${data.detail || 'حدث خطأ أثناء الإنشاء'}`, 'error'); 
+                }
+            } catch (e) { 
+                showNotification('❌ خطأ في الاتصال بالسيرفر', 'error'); 
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerText = 'Créer'; }
+            }
         }
 
         async function checkNewDeposits() {
