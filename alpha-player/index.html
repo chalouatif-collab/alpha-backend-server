@@ -570,6 +570,16 @@
 
     <!-- ================= JAVASCRIPT (محرك الألفابت الشامل) ================= -->
     <script>
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.toString().replace(/[&<>'"]/g,
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        function openBonusModal() {
+            showNotification("Aucun bonus disponible pour le moment.", "error");
+        }
         
         const BACKEND_URL = "https://alpha-backend-server.onrender.com";
         let playerSession = null;
@@ -721,6 +731,10 @@ function switchSection(sectionId, fromPopState = false) {
             const nameDisplay = document.getElementById('player-name-display');
             if(nameDisplay) nameDisplay.innerText = playerSession.username;
             
+            // تحديث اسم اللاعب في الشريط الجانبي
+            const sidebarName = document.getElementById('sidebar-username');
+            if(sidebarName) sidebarName.innerText = playerSession.username;
+            
             refreshBalance();
             setInterval(refreshBalance, 5000);
         }
@@ -830,7 +844,7 @@ function switchSection(sectionId, fromPopState = false) {
             const gamesToDisplay = window.currentProviderGames.slice(0, currentDisplayLimit);
 
             container.innerHTML = gamesToDisplay.map(g => {
-                const title = String(g.game_name || g.name || "Game");
+                const title = escapeHTML(String(g.game_name || g.name || "Game"));
                 const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}`;
                 const code = g.game_code || g.id;
                 
@@ -1004,7 +1018,7 @@ function switchSection(sectionId, fromPopState = false) {
 
                 if(finalGames.length > 0 && grid) {
                     grid.innerHTML = finalGames.map(g => {
-                        const title = String(g.game_name || g.name || "Game");
+                        const title = escapeHTML(String(g.game_name || g.name || "Game"));
                         const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}`;
                         const code = g.game_code || g.id;
                         const pCode = g.provider; // المزود الخاص بهذه اللعبة تحديداً
@@ -1107,13 +1121,15 @@ function switchSection(sectionId, fromPopState = false) {
                     body: JSON.stringify({ provider_code: 'PP_LIVE_PRO' })
                 });
                 const data = await res.json();
-                if (grid) grid.innerHTML = (data.games || []).map(g => `
+                if (grid) grid.innerHTML = (data.games || []).map(g => {
+                    const safeName = escapeHTML(g.game_name || g.name || "Live Game");
+                    return `
                     <div onclick="playCasinoGame('PP_LIVE_PRO', '${g.game_code || g.id}')" class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer hover:border-red-500 transition-all relative">
                         <div class="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 z-10 animate-pulse rounded-bl">LIVE</div>
                         <img src="${g.banner || g.image || 'https://placehold.co/400x400/180A2B/FFF'}" class="w-full aspect-square object-cover">
-                        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${g.game_name || g.name}</div>
+                        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
                     </div>
-                `).join('');
+                `}).join('');
             } catch (e) { }
         }
 
@@ -1127,6 +1143,7 @@ function switchSection(sectionId, fromPopState = false) {
                 
                 if(grid) grid.innerHTML = games.map(g => {
                     const uuid = g.uuid || g.game_uuid || g.id || g.game_code; 
+                    const safeName = escapeHTML(g.game_name || g.name || "Virtual Game");
                     return `
                     <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer hover:border-blue-500 transition-all shadow-lg group">
                         <div class="relative w-full aspect-square overflow-hidden bg-black/50">
@@ -1135,7 +1152,7 @@ function switchSection(sectionId, fromPopState = false) {
                                 <span class="bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
                             </div>
                         </div>
-                        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${g.game_name || g.name}</div>
+                        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
                     </div>
                 `}).join('');
             } catch(e) {
@@ -1210,12 +1227,11 @@ function switchSection(sectionId, fromPopState = false) {
             const fileInput = document.getElementById(method + '-file');
             const labelSpan = fileInput.previousElementSibling.querySelector('span');
             if (fileInput.files && fileInput.files.length > 0) {
-                labelSpan.innerHTML = "✅ " + fileInput.files[0].name;
+                labelSpan.innerText = "✅ " + fileInput.files[0].name; // استخدام innerText بدلاً من innerHTML
                 labelSpan.classList.add("text-emerald", "font-bold");
                 labelSpan.classList.remove("text-gray-300");
             }
         }
-
         function getBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader(); reader.readAsDataURL(file);
@@ -1693,10 +1709,10 @@ function openHistoryModal() {
                     
                     return `
                         <tr class="hover:bg-[#1a1e29] transition-colors border-l-2 border-[#212631]">
-                            <td class="p-3 text-gray-400 text-[10px]">${tx.date}</td>
-                            <td class="p-3 font-bold ${typeColor}">${tx.type}</td>
-                            <td class="p-3 text-white text-xs">${tx.method}</td>
-                            <td class="p-3 text-center font-black">${sign}${tx.amount.toFixed(2)} TND</td>
+                            <td class="p-3 text-gray-400 text-[10px]">${escapeHTML(tx.date)}</td>
+                            <td class="p-3 font-bold ${typeColor}">${escapeHTML(tx.type)}</td>
+                            <td class="p-3 text-white text-xs">${escapeHTML(tx.method)}</td>
+                            <td class="p-3 text-center font-black">${sign}${parseFloat(tx.amount).toFixed(2)} TND</td>
                             <td class="p-3 text-right">${statusHtml}</td>
                         </tr>
                     `;
@@ -1753,12 +1769,12 @@ function openHistoryModal() {
                 // جلب اسم اللاعب
                 const playerName = (typeof playerSession !== 'undefined' && playerSession && playerSession.username) ? playerSession.username : "Moi";
                 
-                // إنشاء عنصر الرسالة الجديد بطريقة احترافية لا تسبب أي أخطاء
-                const msgDiv = document.createElement('div');
-                msgDiv.className = "flex flex-col mt-4 transform transition-all duration-300 translate-y-4 opacity-0";
+                const safePlayerName = escapeHTML(playerName);
+                const safeMessage = escapeHTML(message);
+                
                 msgDiv.innerHTML = `
-                    <span class="text-emerald-400 font-bold text-[11px] mb-1">${playerName}</span>
-                    <span class="text-gray-300 bg-[#161922] border border-emerald-500/30 p-2.5 rounded-xl rounded-tr-none text-xs break-words shadow-md">${message}</span>
+                    <span class="text-emerald-400 font-bold text-[11px] mb-1">${safePlayerName}</span>
+                    <span class="text-gray-300 bg-[#161922] border border-emerald-500/30 p-2.5 rounded-xl rounded-tr-none text-xs break-words shadow-md">${safeMessage}</span>
                 `;
                 
                 // إضافة الرسالة للشات
