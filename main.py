@@ -54,7 +54,7 @@ PROVIDER_ENDPOINT = os.getenv("PROVIDER_ENDPOINT", "https://api.nexusggr.eu")
 # ==========================================
 EURO_APP_KEY = os.getenv("EURO_APP_KEY", "")
 EURO_API_KEY = os.getenv("EURO_API_KEY", "")
-EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.staging.betkraft.co.uk")
+EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk/")
 
 from dotenv import load_dotenv
 import os
@@ -2820,6 +2820,7 @@ async def get_audit_logs(current_user: str = Depends(get_admin_user)):
     finally:
         db_session.close()
         
+
 import random
 from datetime import datetime, timedelta
 
@@ -2918,3 +2919,6 @@ async def broadcast_jackpots():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(broadcast_jackpots())
+
+        
+
