@@ -325,6 +325,16 @@
 
         </div>
 
+        <!-- PANE: SPORT (NEXUS INTEGRATION) -->
+        <div id="pane-sport" class="player-view-section hidden w-full h-[85vh] min-h-[800px] relative rounded-2xl overflow-hidden border border-[#212631]">
+            <div id="sport-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-[#161922] z-[5] hidden">
+                <i class="fas fa-futbol text-4xl text-emerald animate-bounce mb-3"></i>
+                <span class="text-emerald font-bold tracking-widest text-xs">CHARGEMENT DU SPORT...</span>
+            </div>
+            <!-- دمج الـ Iframe داخل الصفحة بشكل أصيل بدون حواف -->
+            <iframe id="sportsbook-iframe" class="w-full h-full border-0 relative z-10 hidden rounded-2xl" allowfullscreen></iframe>
+        </div>
+
        
        
     </main>
@@ -539,20 +549,6 @@
                 <button onclick="closePolicyModal()" class="bg-emerald text-black font-bold text-xs uppercase px-6 py-2.5 rounded-xl hover:bg-emerald-600 transition">J'ai compris</button>
             </div>
         </div>
-    </div>
-<!-- ⚽ Sportsbook Overlay -->
-    <div id="sportsbook-overlay" class="fixed inset-0 z-[300] bg-[#0f1117] hidden flex-col">
-        <!-- تركنا الشريط العلوي لاسم الرياضة فقط، وحذفنا زر الإغلاق -->
-        <div class="h-10 bg-[#12151d] flex justify-center items-center px-4 shrink-0 shadow-md z-20">
-            <span class="text-emerald font-bold text-xs"><i class="fas fa-futbol"></i> Sportsbook</span>
-        </div>
-        
-        <div id="sport-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-[#0f1117] z-[5] hidden">
-            <i class="fas fa-futbol text-4xl text-emerald animate-bounce mb-3"></i>
-            <span class="text-emerald font-bold tracking-widest text-xs">CHARGEMENT DU SPORT...</span>
-        </div>
-        <iframe id="sportsbook-iframe" class="w-full h-full flex-grow border-0 relative z-10 hidden"></iframe>
-        <div id="bettech" class="w-full h-full flex-grow relative z-10 hidden bg-[#0f1117]"></div>
     </div>
 
     <!-- 🎰 Casino Iframe Container -->
@@ -1311,34 +1307,26 @@ function switchSection(sectionId, fromPopState = false) {
             }
         }
 
-        // ================= 4. الرياضة (نافذة مستقلة بكامل الشاشة) =================
-        
         async function openSportsbookForProvider(providerCode) {
             closeChat();
             if (!playerSession) return openLoginModal();
+            
+            // 🌟 حفظ الحالة لتجنب الخروج عند الريفرش
             localStorage.setItem('active_section', 'sport');
             localStorage.setItem('sport_provider', providerCode || 'nexus');
-            // إظهار النافذة المستقلة
-            const overlay = document.getElementById('sportsbook-overlay');
-            if(overlay) {
-                overlay.classList.remove('hidden');
-                overlay.classList.add('flex');
-            }
             
-            // دعم زر الرجوع في الهاتف
-            history.pushState({ modalOpen: true, type: 'sport' }, "", "");
+            // فتح صفحة الرياضة داخل الموقع
+            switchSection('sport');
 
             if (!providerCode || providerCode === 'nexus' || providerCode === 'SABA') {
                 providerCode = 'SPORTSBOOK'; 
             }
 
             const iframe = document.getElementById('sportsbook-iframe');
-            const bettechContainer = document.getElementById('bettech');
             const loader = document.getElementById('sport-loader'); 
             
             if(loader) loader.classList.remove('hidden');
             if(iframe) { iframe.classList.add('hidden'); iframe.src = ''; }
-            if(bettechContainer) { bettechContainer.classList.add('hidden'); bettechContainer.innerHTML = ''; }
 
             try {
                 const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
@@ -1354,74 +1342,21 @@ function switchSection(sectionId, fromPopState = false) {
 
                 if (data.launch_url) {
                     if(loader) loader.classList.add('hidden');
-                    
-                    if (providerCode.toLowerCase() === 'smpl') {
-                        if(bettechContainer) bettechContainer.classList.remove('hidden');
-                        const htmlRes = await fetch(data.launch_url);
-                        bettechContainer.innerHTML = await htmlRes.text();
-                        Array.from(bettechContainer.querySelectorAll("script")).forEach(oldScript => {
-                            const newScript = document.createElement("script");
-                            Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                            oldScript.parentNode.replaceChild(newScript, oldScript);
-                        });
-                    } else {
-                        if(iframe) { 
-                            iframe.classList.remove('hidden'); 
-                            iframe.src = data.launch_url; 
-                        }
+                    if(iframe) { 
+                        iframe.classList.remove('hidden'); 
+                        iframe.src = data.launch_url; 
                     }
                 } else {
                     if(loader) loader.classList.add('hidden');
                     showNotification(data.error || "Sportsbook non disponible", "error");
-                    closeSportsbook();
+                    switchSection('accueil');
                 }
             } catch (error) { 
                 if(loader) loader.classList.add('hidden'); 
                 showNotification("Erreur de connexion", "error"); 
-                closeSportsbook();
+                switchSection('accueil');
             }
         }
-
-        // دالة إغلاق الرياضة
-        function closeSportsbook(fromPopState = false) {
-            localStorage.setItem('active_section', 'accueil');
-            const overlay = document.getElementById('sportsbook-overlay');
-            if(overlay) { 
-                overlay.classList.add('hidden'); 
-                overlay.classList.remove('flex'); 
-            }
-            const iframe = document.getElementById('sportsbook-iframe');
-            if(iframe) iframe.src = '';
-            
-            const bettechContainer = document.getElementById('bettech');
-            if(bettechContainer) bettechContainer.innerHTML = '';
-
-            if (typeof refreshBalance === 'function') refreshBalance();
-            
-            // تلوين زر الرئيسية
-            if(typeof setActiveMenuBtn === 'function') setActiveMenuBtn('btn-nav-accueil');
-            
-            if (!fromPopState && history.state && history.state.modalOpen) {
-                history.back();
-            }
-        }
-
-        // مراقب زر الرجوع في الهاتف
-        window.addEventListener('popstate', (event) => {
-            const sportOverlay = document.getElementById('sportsbook-overlay');
-            if (sportOverlay && !sportOverlay.classList.contains('hidden')) {
-                closeSportsbook(true);
-                return;
-            }
-            
-            const casinoContainer = document.getElementById('casino-iframe-container');
-            if(casinoContainer && !casinoContainer.classList.contains('hidden')) {
-                closeCasinoGame(true);
-                return;
-            }
-        });
-
       // ================= شريط الفائزين المتحرك =================
         function generateLiveWinnersTicker() {
             const track = document.getElementById('winners-ticker-track');
