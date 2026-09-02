@@ -2820,4 +2820,101 @@ async def get_audit_logs(current_user: str = Depends(get_admin_user)):
     finally:
         db_session.close()
         
+import random
+from datetime import datetime, timedelta
+
+# إعدادات الجواكيب
+JACKPOTS_CONFIG = {
+    "mini":  {"max": 120, "days": 1, "share": 0.40},
+    "minor": {"max": 200, "days": 7, "share": 0.30},
+    "major": {"max": 500, "days": 15, "share": 0.20},
+    "grand": {"max": 1200, "days": 30, "share": 0.10},
+}
+
+# حالة الجاكبوت في قاعدة البيانات (تُحفظ في Redis أو PostgreSQL)
+jackpots_state = {
+    "mini":  {"current_amount": 10.0, "drop_threshold": random.uniform(50, 120), "deadline": datetime.now() + timedelta(days=1)},
+    "minor": {"current_amount": 20.0, "drop_threshold": random.uniform(80, 200), "deadline": datetime.now() + timedelta(days=7)},
+    "major": {"current_amount": 50.0, "drop_threshold": random.uniform(200, 500), "deadline": datetime.now() + timedelta(days=15)},
+    "grand": {"current_amount": 100.0, "drop_threshold": random.uniform(500, 1200), "deadline": datetime.now() + timedelta(days=30)},
+}
+
+def process_loss_and_check_jackpot(player_id: str, loss_amount: float):
+    # نأخذ 2% من خسارة اللاعب كتمويل للجاكبوت
+    jackpot_funding = loss_amount * 0.02 
+    winners = []
+
+    for level, config in JACKPOTS_CONFIG.items():
+        state = jackpots_state[level]
         
+        # إضافة التمويل للجاكبوت بدون تجاوز الحد الأقصى
+        added_amount = jackpot_funding * config["share"]
+        if state["current_amount"] + added_amount <= config["max"]:
+            state["current_amount"] += added_amount
+            
+        # التحقق من شروط السقوط (تخطي المبلغ السري أو انتهاء الوقت)
+        if state["current_amount"] >= state["drop_threshold"] or datetime.now() >= state["deadline"]:
+            winners.append({"level": level, "amount": state["current_amount"]})
+            
+            # إعادة تعيين الجاكبوت لدورة جديدة
+            state["current_amount"] = config["max"] * 0.1 # البدء بـ 10% كقيمة تشجيعية
+            state["drop_threshold"] = random.uniform(state["current_amount"] * 2, config["max"])
+            state["deadline"] = datetime.now() + timedelta(days=config["days"])
+            
+    return winners # إذا كانت القائمة غير فارغة، أضف الرصيد للاعب وأرسل إشعار WebSockets   
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import asyncio
+import json
+
+app = FastAPI()
+
+# 🛡️ مدير اتصالات WebSockets
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except:
+                pass
+
+jackpot_manager = ConnectionManager()
+
+# 🌐 مسار الـ WebSocket الخاص بالجاكبوت
+@app.websocket("/ws/jackpot")
+async def websocket_jackpot(websocket: WebSocket):
+    await jackpot_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text() # إبقاء الاتصال مفتوحاً
+    except WebSocketDisconnect:
+        jackpot_manager.disconnect(websocket)
+
+# 🔄 مهمة خلفية تبث أرقام الجاكبوت الحقيقية باستمرار
+async def broadcast_jackpots():
+    while True:
+        # هنا يتم جلب الأرصدة الحقيقية من المتغير jackpots_state الذي صنعناه سابقاً
+        live_data = {
+            "mini": jackpots_state["mini"]["current_amount"],
+            "minor": jackpots_state["minor"]["current_amount"],
+            "major": jackpots_state["major"]["current_amount"],
+            "grand": jackpots_state["grand"]["current_amount"]
+        }
+        await jackpot_manager.broadcast(json.dumps(live_data))
+        await asyncio.sleep(2) # بث التحديث كل ثانيتين للواجهة
+
+# تشغيل البث تلقائياً عند إقلاع السيرفر
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(broadcast_jackpots())
