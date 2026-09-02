@@ -31,6 +31,7 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 import uuid
+import random
 PROCESSED_TRANSACTIONS = set()
 from pydantic import BaseModel
 
@@ -2821,8 +2822,8 @@ async def get_audit_logs(current_user: str = Depends(get_admin_user)):
         db_session.close()
         
 
-import random
-from datetime import datetime, timedelta
+
+
 
 # إعدادات الجواكيب
 JACKPOTS_CONFIG = {
