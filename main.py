@@ -2293,14 +2293,15 @@ async def get_virtual_games():
         if response.status_code == 200 and data.get("status_code") == 200:
             games_list = data.get("data", {}).get("data", [])
             
-            # === التعديل السحري لربط الصور بالواجهة ===
             for game in games_list:
-                        # 🛡️ سحب الصورة سواء كان اسمها logo (كما في الوثيقة) أو thumbnail
-                        image_url = game.get("logo") or game.get("thumbnail") or ""
-                        if image_url:
-                            game["image"] = image_url
-                            game["img"] = image_url
-                    # ==========================================
+                image_url = game.get("logo") or game.get("thumbnail") or ""
+                if image_url:
+                    game["image"] = image_url
+                    game["img"] = image_url
+                
+                # 💡 السطر السحري: توحيد اسم المعرف لكي يقرأه الفرونت إند بشكل صحيح
+                game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
+                    
             return {"status": "success", "games": games_list}
         else:
             return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
@@ -2311,11 +2312,13 @@ async def get_virtual_games():
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        # 💡 الإصلاح 1: قراءة المعرف سواء أرسلته الواجهة باسم game_code أو game_uuid
-        game_uuid = data.get("game_uuid") or data.get("game_code") or "lobby"
+        game_uuid = str(data.get("game_uuid") or data.get("game_code") or "lobby")
+        if game_uuid == "undefined":
+            game_uuid = "lobby"
+            
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
-
+        
         # ==========================================
         # 🛡️ Extract player balance from database
         # ==========================================
