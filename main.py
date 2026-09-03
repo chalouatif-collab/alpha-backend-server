@@ -2864,7 +2864,10 @@ def process_loss_and_check_jackpot(player_id: str, loss_amount: float):
             state["drop_threshold"] = random.uniform(state["current_amount"] * 2, config["max"])
             state["deadline"] = datetime.now() + timedelta(days=config["days"])
             
+
     return winners
+  
+
 
 # 🛡️ مدير اتصالات WebSockets
 class ConnectionManager:
