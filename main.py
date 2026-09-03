@@ -2308,20 +2308,25 @@ async def get_virtual_games():
 
     except Exception as e:
         return {"status": "error", "error": str(e)}
+    
+    
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
+        # 🔍 طباعة النص الحرفي القادم من المتصفح لمعرفة ما يتم إرساله فعلياً
+        print(f"🚨 EXACT DATA RECEIVED FROM FRONTEND: {data}")
         
-        # استخراج المعرف الأساسي المطابق للتوثيق
-        game_uuid = str(data.get("game_uuid") or data.get("game_code") or "")
+        game_uuid = str(data.get("game_uuid") or data.get("game_code") or data.get("id") or "")
+        print(f"🎯 EXTRACTED game_uuid: '{game_uuid}'")
+        
         if not game_uuid or game_uuid == "undefined":
-            return {"error": "Game UUID is missing or invalid"}
+            return {"error": "Game UUID is missing or invalid from frontend"}
             
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
-        # 🛡️ استحبابه رصيد اللاعب من قاعدة البيانات
+        # 🛡️ استخراج رصيد اللاعب من قاعدة البيانات
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
@@ -2331,7 +2336,6 @@ async def launch_eurovirtuals(request: Request):
                 
             current_balance = float(target_user.get("balance", 0.0))
 
-        # 📋 Payload مطابق تماماً لتوثيق الـ API الرسمي
         payload = {
             "player_id": user_code,
             "player_name": user_code,
@@ -2365,6 +2369,8 @@ async def launch_eurovirtuals(request: Request):
                 response_data = response.json()
             except Exception:
                 return {"error": "Invalid JSON from provider", "details": response.text}
+
+            print(f"🌐 PROVIDER FINAL RESPONSE: {response_data}")
 
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
