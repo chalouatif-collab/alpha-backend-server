@@ -920,7 +920,7 @@
                                 const wId = w.id || w.ticket_id || w.tx_id || index;
                                 const username = escapeHTML(w.username || w.target_username || w.player || "Inconnu");
                                 const amount = parseFloat(w.amount || 0).toFixed(2);
-                                const details = escapeHTML((w.tx_id || "").split('-').slice(2).join('-') || "Détails non spécifiés");
+                                const details = escapeHTML(w.tx_id || "Détails non spécifiés");
                                 html += `
                                 <div class="bg-black border border-danger rounded-2 p-2">
                                     <div class="d-flex justify-content-between align-items-center mb-1">

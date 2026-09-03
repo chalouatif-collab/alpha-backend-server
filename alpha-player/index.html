@@ -1488,36 +1488,51 @@ async function loadGamesOfTheDay() {
                 }
 
                 async function submitWithdraw(method) {
-                    if (!playerSession) return;
-                    let amountInput, accountInfo;
-                    if (method === 'mandat') {
-                        amountInput = document.getElementById('mandat-amount');
-                        accountInfo = `Mandat: ${document.getElementById('mandat-nom').value}, Tel: ${document.getElementById('mandat-phone').value}`;
-                    } else if (method === 'd17') {
-                        amountInput = document.getElementById('d17-amount');
-                        accountInfo = `D17: ${document.getElementById('d17-nom').value}, Tel: ${document.getElementById('d17-phone').value}`;
-                    }
+            if (!playerSession) return;
+            let amountInput, accountInfo;
+            
+            // تجهيز معلومات الدفع (الاسم ورقم الهاتف)
+            if (method === 'mandat') {
+                amountInput = document.getElementById('mandat-amount');
+                accountInfo = `Mandat: ${document.getElementById('mandat-nom').value} | Tel: ${document.getElementById('mandat-phone').value}`;
+            } else if (method === 'd17') {
+                amountInput = document.getElementById('d17-amount');
+                accountInfo = `D17: ${document.getElementById('d17-nom').value} | Tel: ${document.getElementById('d17-phone').value}`;
+            }
 
-                    const amount = parseFloat(amountInput.value);
-                    if (isNaN(amount) || amount <= 0) return showNotification("Montant invalide", "error");
-                    if (amount > parseFloat(playerSession.balance || 0)) return showNotification("Solde insuffisant!", "error");
+            const amount = parseFloat(amountInput.value);
+            if (isNaN(amount) || amount <= 0) return showNotification("Montant invalide", "error");
+            if (amount > parseFloat(playerSession.balance || 0)) return showNotification("Solde insuffisant!", "error");
 
-                    try {
-                        const response = await fetch(`${BACKEND_URL}/api/admin/request-transaction`, {
-                            method: 'POST', headers: getAuthHeaders(),
-                            body: new URLSearchParams({
-                                target_username: playerSession.username, action: 'withdraw_request',
-                                amount: amount, tx_id: `WITHDRAW-${Date.now()}`
-                            })
-                        });
-                        if (response.ok) {
-                            showNotification("Demande envoyée ! 💸");
-                            toggleCashier();
-                            document.querySelectorAll('.withdraw-form input').forEach(input => input.value = '');
-                            refreshBalance();
-                        } else showNotification("Erreur", "error");
-                    } catch (error) { showNotification("Erreur", "error"); }
+            try {
+                // استخدام FormData ليتوافق مع الباك إند الجديد
+                const formData = new FormData();
+                formData.append("target_username", playerSession.username);
+                formData.append("action", "withdraw_request");
+                formData.append("amount", amount);
+                // إرسال معلومات الحساب (الهاتف والاسم) داخل حقل tx_id ليراها الأونر
+                formData.append("tx_id", accountInfo);
+
+                const response = await fetch(`${BACKEND_URL}/api/admin/request-transaction`, {
+                    method: 'POST', 
+                    // نضع التوكن فقط بدون فرض Content-Type
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showNotification("Demande envoyée ! 💸");
+                    toggleCashier();
+                    document.querySelectorAll('.withdraw-form input').forEach(input => input.value = '');
+                    refreshBalance();
+                } else {
+                    const err = await response.json();
+                    showNotification(err.detail || "Erreur", "error");
                 }
+            } catch (error) { 
+                showNotification("Erreur réseau", "error"); 
+            }
+        }
                 // ================= دالة تلوين الأزرار العلوية بذكاء =================
                 function setActiveMenuBtn(activeBtnId) {
                     // 1. إعادة كل الأزرار للحالة الرمادية
