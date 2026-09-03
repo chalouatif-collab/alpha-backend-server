@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Form, Header, Body, Query
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Form, Header, Body, Query,WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordBearer
 import requests
 from pydantic import BaseModel
@@ -31,7 +31,6 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 import uuid
-import random
 PROCESSED_TRANSACTIONS = set()
 from pydantic import BaseModel
 
@@ -2822,8 +2821,8 @@ async def get_audit_logs(current_user: str = Depends(get_admin_user)):
         db_session.close()
         
 
-
-
+import random
+from datetime import datetime, timedelta
 
 # إعدادات الجواكيب
 JACKPOTS_CONFIG = {
@@ -2864,12 +2863,6 @@ def process_loss_and_check_jackpot(player_id: str, loss_amount: float):
             state["deadline"] = datetime.now() + timedelta(days=config["days"])
             
     return winners # إذا كانت القائمة غير فارغة، أضف الرصيد للاعب وأرسل إشعار WebSockets   
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-import asyncio
-import json
-
-app = FastAPI()
 
 # 🛡️ مدير اتصالات WebSockets
 class ConnectionManager:
