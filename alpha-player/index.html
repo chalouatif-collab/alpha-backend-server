@@ -245,70 +245,88 @@
                     </button>
 
                 </div>
-                <!-- 🌟 شريط الجاكبوت المباشر بالنار المشتعلة (Live Burning Jackpots) -->
+                <!-- 🌟 شريط الجاكبوت المباشر بالنار الحقيقية -->
                 <style>
-                    /* تأثير نيران برتقالية وحمراء */
-                    @keyframes fire-flicker-orange {
-                        0%, 100% { box-shadow: 0 0 15px #ea580c, inset 0 -15px 30px #c2410c; border-color: #ea580c; }
-                        50% { box-shadow: 0 0 30px #f97316, inset 0 -35px 50px #ea580c; border-color: #fdba74; }
-                    }
-                    /* نيران زرقاء (للفخامة) */
-                    @keyframes fire-flicker-blue {
-                        0%, 100% { box-shadow: 0 0 15px #2563eb, inset 0 -15px 30px #1d4ed8; border-color: #2563eb; }
-                        50% { box-shadow: 0 0 30px #3b82f6, inset 0 -35px 50px #2563eb; border-color: #93c5fd; }
-                    }
-                    /* نيران ذهبية ساطعة */
-                    @keyframes fire-flicker-yellow {
-                        0%, 100% { box-shadow: 0 0 20px #ca8a04, inset 0 -20px 40px #a16207; border-color: #ca8a04; }
-                        50% { box-shadow: 0 0 40px #eab308, inset 0 -45px 60px #ca8a04; border-color: #fef08a; }
-                    }
-                    /* نيران خضراء مشعة (الجراند) */
-                    @keyframes fire-flicker-green {
-                        0%, 100% { box-shadow: 0 0 25px #059669, inset 0 -25px 50px #047857; border-color: #059669; }
-                        50% { box-shadow: 0 0 50px #10b981, inset 0 -55px 75px #059669; border-color: #6ee7b7; }
+                    /* طبقة النار الواقعية */
+                    .real-fire-overlay {
+                        position: absolute;
+                        bottom: -15px;
+                        left: 0;
+                        width: 100%;
+                        height: 120%;
+                        /* صورة نار حقيقية بخلفية سوداء */
+                        background-image: url('https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWc1b3Nsa2Nua3Z2Z3Jxa2x6d3JtbWFmZXV4dmtxcWRmNGhsa3YwayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lopx9eUi34rbq/giphy.gif');
+                        background-size: cover;
+                        background-position: bottom;
+                        /* هذه الخاصية السحرية تخفي الخلفية السوداء وتدمج النار المتوهجة فقط */
+                        mix-blend-mode: color-dodge; 
+                        pointer-events: none;
+                        z-index: 0;
                     }
                     
-                    /* حركة سراب الحرارة للنصوص (Heat Distortion) */
-                    @keyframes text-heat {
-                        0% { transform: translateY(0px); }
-                        100% { transform: translateY(-1px) scale(1.02); }
+                    /* تلوين النار حسب كل جاكبوت باستخدام فلاتر CSS */
+                    .fire-mini { filter: hue-rotate(0deg) saturate(2); opacity: 0.8; }
+                    .fire-minor { filter: hue-rotate(200deg) saturate(3) brightness(1.2); opacity: 0.7; }
+                    .fire-major { filter: hue-rotate(45deg) saturate(2) brightness(1.1); opacity: 0.9; }
+                    .fire-grand { filter: hue-rotate(120deg) saturate(3) brightness(1.2); opacity: 1; }
+                    
+                    /* إعدادات المربعات المشتعلة */
+                    .jackpot-card {
+                        background-color: #0a0c10;
+                        border: 2px solid;
+                        border-radius: 0.75rem;
+                        padding: 0.75rem;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        position: relative;
+                        overflow: hidden;
+                        transition: transform 0.3s ease;
                     }
-
-                    .burn-mini { animation: fire-flicker-orange 0.9s infinite alternate ease-in-out; }
-                    .burn-minor { animation: fire-flicker-blue 1.1s infinite alternate ease-in-out; }
-                    .burn-major { animation: fire-flicker-yellow 0.8s infinite alternate ease-in-out; }
-                    .burn-grand { animation: fire-flicker-green 0.7s infinite alternate ease-in-out; }
-                    .heat-text { animation: text-heat 0.1s infinite alternate; }
+                    .jackpot-card:hover {
+                        transform: translateY(-3px) scale(1.02);
+                    }
+                    
+                    /* رفع النص فوق النار مع ظل أسود عميق للقراءة */
+                    .jackpot-text {
+                        position: relative;
+                        z-index: 10; 
+                        text-shadow: 0 3px 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,0.8);
+                    }
                 </style>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full relative z-10 mb-6 mt-2">
                     
                     <!-- MINI -->
-                    <div class="burn-mini bg-[#0a0c10] border-2 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden transition-all">
-                        <span class="text-orange-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire text-orange-500 animate-pulse"></i> MINI</span>
-                        <span id="jackpot-mini" class="heat-text text-white font-extrabold text-sm md:text-base drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] relative z-10">1,245.50 TND</span>
+                    <div class="jackpot-card border-orange-600 shadow-[0_0_15px_#ea580c]">
+                        <div class="real-fire-overlay fire-mini"></div>
+                        <span class="jackpot-text text-orange-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire text-orange-500"></i> MINI</span>
+                        <span id="jackpot-mini" class="jackpot-text text-white font-extrabold text-sm md:text-base">1,245.50 TND</span>
                     </div>
 
                     <!-- MINOR -->
-                    <div class="burn-minor bg-[#0a0c10] border-2 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden transition-all">
-                        <span class="text-blue-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire text-blue-500 animate-pulse"></i> MINOR</span>
-                        <span id="jackpot-minor" class="heat-text text-white font-extrabold text-sm md:text-base drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] relative z-10">4,890.20 TND</span>
+                    <div class="jackpot-card border-blue-600 shadow-[0_0_15px_#2563eb]">
+                        <div class="real-fire-overlay fire-minor"></div>
+                        <span class="jackpot-text text-blue-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire text-blue-500"></i> MINOR</span>
+                        <span id="jackpot-minor" class="jackpot-text text-white font-extrabold text-sm md:text-base">4,890.20 TND</span>
                     </div>
 
                     <!-- MAJOR -->
-                    <div class="burn-major bg-[#0a0c10] border-2 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden transition-all">
-                        <span class="text-yellow-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire-alt text-yellow-500 animate-pulse text-lg"></i> MAJOR</span>
-                        <span id="jackpot-major" class="heat-text text-white font-extrabold text-base md:text-lg drop-shadow-[0_0_12px_rgba(234,179,8,1)] relative z-10">15,420.75 TND</span>
+                    <div class="jackpot-card border-yellow-500 shadow-[0_0_20px_#eab308]">
+                        <div class="real-fire-overlay fire-major"></div>
+                        <span class="jackpot-text text-yellow-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire-alt text-yellow-500 text-lg animate-pulse"></i> MAJOR</span>
+                        <span id="jackpot-major" class="jackpot-text text-white font-extrabold text-base md:text-lg">15,420.75 TND</span>
                     </div>
 
                     <!-- GRAND -->
-                    <div class="burn-grand bg-[#0a0c10] border-2 rounded-xl p-3 flex flex-col items-center justify-center relative overflow-hidden transition-all transform hover:scale-105">
-                        <span class="text-emerald-300 font-black text-[11px] md:text-xs tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire-alt text-emerald-400 animate-pulse text-xl"></i> GRAND</span>
-                        <span id="jackpot-grand" class="heat-text text-white font-black text-lg md:text-xl drop-shadow-[0_0_15px_rgba(16,185,129,1)] relative z-10 tracking-wide">124,567.80 TND</span>
+                    <div class="jackpot-card border-emerald-500 shadow-[0_0_25px_#10b981]">
+                        <div class="real-fire-overlay fire-grand"></div>
+                        <span class="jackpot-text text-emerald-300 font-black text-[11px] md:text-xs tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire-alt text-emerald-400 text-xl animate-pulse"></i> GRAND</span>
+                        <span id="jackpot-grand" class="jackpot-text text-white font-black text-lg md:text-xl">124,567.80 TND</span>
                     </div>
                     
                 </div>
-
                 <!-- البانر الرئيسي (Bonus) -->
                 <div
                     class="bg-panel rounded-2xl p-6 relative overflow-hidden flex items-center justify-between border border-emerald/30">
