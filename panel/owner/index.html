@@ -1610,7 +1610,7 @@
             showNotification('Audio activé!', 'success');
         }
 
-        async function approveDeposit(ticketId, username) {
+async function approveDeposit(ticketId, username) {
             if (isTransactionRunning) return showNotification("⏳ En cours...", "warning");
 
             const amountInput = document.getElementById(`amt-${ticketId}`).value;
@@ -1623,11 +1623,11 @@
                     // 1. إضافة الرصيد الفعلي في حساب اللاعب
                     const chargeRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
                         method: 'POST', headers: getAuthHeaders(),
-                        body: JSON.stringify({
-                            admin_username: user.username,
-                            target_username: username,
-                            action: 'charge',
-                            amount: amount
+                        body: JSON.stringify({ 
+                            admin_username: user.username, 
+                            target_username: username, 
+                            action: 'charge', 
+                            amount: amount 
                         })
                     });
 
@@ -1635,10 +1635,21 @@
                         // 2. إزالة الطلب من طابور المعلقين
                         await fetch(`${BACKEND_URL}/api/admin/handle-request`, {
                             method: 'POST', headers: getAuthHeaders(),
-                            body: JSON.stringify({
-                                transaction_id: parseInt(ticketId),
-                                decision: 'reject',
-                                admin_username: user.username
+                            body: JSON.stringify({ 
+                                transaction_id: parseInt(ticketId), 
+                                decision: 'reject', 
+                                admin_username: user.username 
+                            })
+                        });
+
+                        // 3. 🔔 إرسال الإشعار الآلي للاعب بالشحن (بالفرنسية)
+                        await fetch(`${BACKEND_URL}/api/admin/send-notification`, {
+                            method: 'POST', headers: getAuthHeaders(),
+                            body: JSON.stringify({ 
+                                target_user: username, 
+                                title: "Dépôt Approuvé ✅", 
+                                message: `Votre demande de dépôt de ${amount} TND a été approuvée avec succès.`, 
+                                icon: "fa-wallet" 
                             })
                         });
 
@@ -1647,7 +1658,7 @@
                         fetchAndOpenHistory('pending');
                     } else {
                         const err = await chargeRes.json();
-                        alert(`❌ Erreur: ${err.detail || "Erreur"}`);
+                        alert(`❌ Erreur: ${err.detail || "Erreur"}`); 
                     }
                 } catch (error) {
                     alert("❌ Erreur réseau");
@@ -1657,6 +1668,59 @@
             }
         }
 
+        async function processWithdrawal(reqId, username, amount, actionType) {
+            if (isTransactionRunning) return showNotification("⏳ En cours...", "warning");
+
+            const isApprove = actionType === 'approve';
+            const confirmMsg = isApprove ? `Valider le retrait de ${amount} TND ?` : `Rejeter le retrait ?`;
+
+            if (confirm(confirmMsg)) {
+                isTransactionRunning = true;
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/admin/process-withdrawal`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ request_id: reqId, action: actionType })
+                    });
+
+                    if (res.ok) {
+                        showNotification(isApprove ? "✅ Validé !" : "❌ Rejeté !");
+                        
+                        // 🔔 إرسال الإشعار الآلي للاعب بالسحب (بالفرنسية)
+                        if (isApprove) {
+                            await fetch(`${BACKEND_URL}/api/admin/send-notification`, {
+                                method: 'POST', headers: getAuthHeaders(),
+                                body: JSON.stringify({ 
+                                    target_user: username, 
+                                    title: "Retrait Approuvé 💸", 
+                                    message: `Votre demande de retrait de ${amount} TND a été approuvée et vous parviendra sous 24 heures.`, 
+                                    icon: "fa-money-bill-wave" 
+                                })
+                            });
+                            triggerGoldRain();
+                        } else {
+                            await fetch(`${BACKEND_URL}/api/admin/send-notification`, {
+                                method: 'POST', headers: getAuthHeaders(),
+                                body: JSON.stringify({ 
+                                    target_user: username, 
+                                    title: "Retrait Refusé ❌", 
+                                    message: `Votre demande de retrait de ${amount} TND a été refusée. Veuillez contacter le support.`, 
+                                    icon: "fa-exclamation-circle" 
+                                })
+                            });
+                        }
+
+                        fetchAndOpenHistory('withdrawals');
+                    } else {
+                        showNotification("Erreur", "error");
+                    }
+                } catch (e) {
+                    showNotification("Erreur", "error");
+                } finally {
+                    isTransactionRunning = false;
+                }
+            }
+        }
         async function rejectDeposit(ticketId) {
             if (!confirm("Refuser ce dépôt ?")) return;
 
