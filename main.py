@@ -2967,6 +2967,10 @@ async def get_user_notifications(current_user: str = Depends(get_current_user)):
     unread_count = 0
     
     for n in notifs:
+        # 🛡️ تخطي الإشعار إذا قام هذا اللاعب بحذفه مسبقاً
+        if current_user.lower() in n.get("deleted_by", []):
+            continue
+            
         if n.get("target") == "all" or n.get("target") == current_user.lower():
             is_read = current_user.lower() in n.get("read_by", [])
             if not is_read:
@@ -2988,5 +2992,29 @@ async def mark_notif_read(req: MarkReadModel, current_user: str = Depends(get_cu
             if current_user.lower() not in n.get("read_by", []):
                 n.setdefault("read_by", []).append(current_user.lower())
             break
+    save_db(db)
+    return {"status": "success"}
+
+class DeleteNotifModel(BaseModel):
+    notif_id: str
+
+@app.post("/api/user/delete-notification")
+async def delete_notification(req: DeleteNotifModel, current_user: str = Depends(get_current_user)):
+    db = load_db()
+    notifs = db.full_data.get("notifications", [])
+    
+    for n in notifs:
+        # إذا طلب مسح الكل
+        if req.notif_id == "all":
+            if n.get("target") in ["all", current_user.lower()]:
+                if current_user.lower() not in n.get("deleted_by", []):
+                    n.setdefault("deleted_by", []).append(current_user.lower())
+        # إذا طلب مسح إشعار محدد
+        else:
+            if n["id"] == req.notif_id:
+                if current_user.lower() not in n.get("deleted_by", []):
+                    n.setdefault("deleted_by", []).append(current_user.lower())
+                break
+                
     save_db(db)
     return {"status": "success"}

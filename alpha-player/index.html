@@ -88,7 +88,7 @@
                 <div id="notifications-panel"
                     class="absolute top-16 right-4 w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
                     <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
-                        <h3 class="text-white font-bold text-sm">الإشعارات 🔔</h3>
+                        <h3 class="text-white font-bold text-sm">Notifications🔔</h3>
                     </div>
                     <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
                         <!-- الإشعارات ستظهر هنا -->
@@ -2094,20 +2094,37 @@ async function fetchNotifications() {
 
         const list = document.getElementById('notifs-list');
         if (data.notifications.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">لا توجد إشعارات</div>';
+            list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
             return;
         }
 
-        list.innerHTML = data.notifications.map(n => `
-            <div onclick="markAsRead('${n.id}')" class="p-2 rounded-xl border ${n.is_read ? 'bg-[#0f1117] border-transparent' : 'bg-[#1a1e29] border-emerald/30'} cursor-pointer hover:bg-gray-800 transition">
-                <div class="flex items-center gap-2 mb-1">
-                    <i class="fas ${n.icon} text-emerald"></i>
-                    <strong class="text-white text-xs">${n.title}</strong>
+        let html = data.notifications.map(n => `
+            <div class="relative p-2 rounded-xl border ${n.is_read ? 'bg-[#0f1117] border-transparent' : 'bg-[#1a1e29] border-emerald/30'} hover:bg-gray-800 transition">
+                <div class="flex justify-between items-start mb-1">
+                    <div class="flex items-center gap-2 cursor-pointer w-full" onclick="markAsRead('${n.id}')">
+                        <i class="fas ${n.icon} text-emerald"></i>
+                        <strong class="text-white text-xs">${n.title}</strong>
+                    </div>
+                    <!-- زر مسح هذا الإشعار تحديداً -->
+                    <button onclick="deleteNotification('${n.id}')" class="text-gray-500 hover:text-red-500 transition px-1">
+                        <i class="fas fa-times text-[12px]"></i>
+                    </button>
                 </div>
-                <p class="text-gray-400 text-[10px]">${n.message}</p>
+                <p class="text-gray-400 text-[10px] cursor-pointer" onclick="markAsRead('${n.id}')">${n.message}</p>
                 <span class="text-gray-600 text-[9px] block mt-1">${n.date}</span>
             </div>
         `).join('');
+        
+        // إضافة زر "مسح الكل" أسفل الإشعارات
+        html += `
+            <div class="mt-2 pt-2 border-t border-[#212631]">
+                <button onclick="deleteNotification('all')" class="w-full text-xs text-red-400 hover:text-red-500 font-bold py-1.5 bg-red-500/10 rounded-lg transition">
+                    <i class="fas fa-trash-alt"></i> Effacer tout
+                </button>
+            </div>
+        `;
+        
+        list.innerHTML = html;
     } catch (e) {}
 }
 
@@ -2119,9 +2136,25 @@ async function markAsRead(id) {
     fetchNotifications();
 }
 
-// تحديث الإشعارات كل 15 ثانية
-setInterval(fetchNotifications, 15000);
+async function deleteNotification(id) {
+    // إذا كان يمسح الكل، نطلب التأكيد لتجنب المسح بالخطأ
+    if (id === 'all' && !confirm("Voulez-vous vraiment supprimer toutes les notifications ?")) return;
+    
+    try {
+        await fetch(`${BACKEND_URL}/api/user/delete-notification`, {
+            method: 'POST', 
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ notif_id: id })
+        });
+        // تحديث القائمة فوراً بعد المسح
+        fetchNotifications();
+    } catch(e) {
+        showNotification("Erreur de connexion", "error");
+    }
+}
 
+// تحديث الإشعارات كل 15 ثانية
+setInterval(fetchNotifications, 10000);
     </script>
     <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
     <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"
