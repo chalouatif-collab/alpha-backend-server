@@ -130,6 +130,25 @@
                 onclick="setActiveMenuBtn('btn-nav-aviator'); playCasinoGame('SPRIBE', 'aviator')"
                 class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center gap-2 flex-shrink-0 transition-all"><i
                     class="fas fa-plane text-red-500"></i> Aviator</button>
+                    <!-- 🚀 Mini Jeux -->
+            <button id="btn-nav-mini-jeux" onclick="setActiveMenuBtn('btn-nav-mini-jeux'); loadMiniJeux();" class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center gap-2 flex-shrink-0 transition-all">
+                <i class="fas fa-rocket text-purple-400"></i> Mini Jeux
+            </button>
+
+            <!-- 🎮 E-Sports -->
+            <button id="btn-nav-esports" onclick="setActiveMenuBtn('btn-nav-esports'); openSportsbookForProvider('nexus'); showNotification('E-Sports filtré', 'success');" class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center gap-2 flex-shrink-0 transition-all">
+                <i class="fas fa-headset text-orange-500"></i> E-Sports
+            </button>
+
+            <!-- 📺 Jeux TV -->
+            <button id="btn-nav-tvbet" onclick="setActiveMenuBtn('btn-nav-tvbet'); loadTVGames();" class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center gap-2 flex-shrink-0 transition-all">
+                <i class="fas fa-tv text-blue-400"></i> Jeux TV
+            </button>
+
+            <!-- 📊 Résultats -->
+            <button id="btn-nav-resultats" onclick="setActiveMenuBtn('btn-nav-resultats'); openResultsModal();" class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center gap-2 flex-shrink-0 transition-all">
+                <i class="fas fa-chart-bar text-emerald"></i> Résultats
+            </button>
         </div>
     </div>
 
@@ -245,34 +264,35 @@
                     </button>
 
                 </div>
-                <!-- 🌟 شريط الجاكبوت المباشر بالنار الحقيقية -->
+                <!-- 🌟 شريط الجاكبوت المباشر (Pure CSS Energy Fire) -->
                 <style>
-                    /* طبقة النار الواقعية */
-                    .real-fire-overlay {
-                        position: absolute;
-                        bottom: -15px;
-                        left: 0;
-                        width: 100%;
-                        height: 120%;
-                        /* صورة نار حقيقية بخلفية سوداء */
-                        background-image: url('https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWc1b3Nsa2Nua3Z2Z3Jxa2x6d3JtbWFmZXV4dmtxcWRmNGhsa3YwayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Lopx9eUi34rbq/giphy.gif');
-                        background-size: cover;
-                        background-position: bottom;
-                        /* هذه الخاصية السحرية تخفي الخلفية السوداء وتدمج النار المتوهجة فقط */
-                        mix-blend-mode: color-dodge; 
-                        pointer-events: none;
-                        z-index: 0;
+                    /* محرك النيران والنبض باستخدام CSS فقط */
+                    @keyframes pure-fire-mini {
+                        0%, 100% { box-shadow: 0 0 10px rgba(234,88,12,0.4), inset 0 -15px 30px rgba(234,88,12,0.3); border-color: #ea580c; }
+                        50% { box-shadow: 0 0 25px rgba(249,115,22,0.7), inset 0 -35px 50px rgba(234,88,12,0.6); border-color: #fdba74; }
                     }
-                    
-                    /* تلوين النار حسب كل جاكبوت باستخدام فلاتر CSS */
-                    .fire-mini { filter: hue-rotate(0deg) saturate(2); opacity: 0.8; }
-                    .fire-minor { filter: hue-rotate(200deg) saturate(3) brightness(1.2); opacity: 0.7; }
-                    .fire-major { filter: hue-rotate(45deg) saturate(2) brightness(1.1); opacity: 0.9; }
-                    .fire-grand { filter: hue-rotate(120deg) saturate(3) brightness(1.2); opacity: 1; }
-                    
-                    /* إعدادات المربعات المشتعلة */
-                    .jackpot-card {
-                        background-color: #0a0c10;
+                    @keyframes pure-fire-minor {
+                        0%, 100% { box-shadow: 0 0 10px rgba(37,99,235,0.4), inset 0 -15px 30px rgba(37,99,235,0.3); border-color: #2563eb; }
+                        50% { box-shadow: 0 0 25px rgba(59,130,246,0.7), inset 0 -35px 50px rgba(37,99,235,0.6); border-color: #93c5fd; }
+                    }
+                    @keyframes pure-fire-major {
+                        0%, 100% { box-shadow: 0 0 15px rgba(202,138,4,0.4), inset 0 -20px 40px rgba(202,138,4,0.3); border-color: #ca8a04; }
+                        50% { box-shadow: 0 0 35px rgba(234,179,8,0.7), inset 0 -45px 60px rgba(202,138,4,0.6); border-color: #fef08a; }
+                    }
+                    @keyframes pure-fire-grand {
+                        0%, 100% { box-shadow: 0 0 20px rgba(5,150,105,0.5), inset 0 -25px 50px rgba(5,150,105,0.4); border-color: #059669; }
+                        50% { box-shadow: 0 0 45px rgba(16,185,129,0.8), inset 0 -55px 75px rgba(5,150,105,0.7); border-color: #6ee7b7; }
+                    }
+
+                    /* حركة سراب الحرارة للنصوص */
+                    @keyframes heat-wave {
+                        0% { transform: translateY(0) scale(1); }
+                        100% { transform: translateY(-1px) scale(1.01); }
+                    }
+
+                    /* إعدادات بطاقات الجاكبوت */
+                    .pure-jackpot-card {
+                        background: linear-gradient(180deg, #0f1117 0%, #0a0c10 100%);
                         border: 2px solid;
                         border-radius: 0.75rem;
                         padding: 0.75rem;
@@ -284,46 +304,46 @@
                         overflow: hidden;
                         transition: transform 0.3s ease;
                     }
-                    .jackpot-card:hover {
-                        transform: translateY(-3px) scale(1.02);
+                    .pure-jackpot-card:hover {
+                        transform: translateY(-4px) scale(1.03);
                     }
-                    
-                    /* رفع النص فوق النار مع ظل أسود عميق للقراءة */
-                    .jackpot-text {
-                        position: relative;
-                        z-index: 10; 
-                        text-shadow: 0 3px 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,0.8);
-                    }
+
+                    /* ربط الأنيميشن بالبطاقات */
+                    .anim-mini { animation: pure-fire-mini 1s infinite alternate ease-in-out; }
+                    .anim-minor { animation: pure-fire-minor 1.2s infinite alternate ease-in-out; }
+                    .anim-major { animation: pure-fire-major 0.9s infinite alternate ease-in-out; }
+                    .anim-grand { animation: pure-fire-grand 0.7s infinite alternate ease-in-out; }
+                    .text-heat { animation: heat-wave 0.15s infinite alternate linear; }
                 </style>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full relative z-10 mb-6 mt-2">
                     
                     <!-- MINI -->
-                    <div class="jackpot-card border-orange-600 shadow-[0_0_15px_#ea580c]">
-                        <div class="real-fire-overlay fire-mini"></div>
-                        <span class="jackpot-text text-orange-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire text-orange-500"></i> MINI</span>
-                        <span id="jackpot-mini" class="jackpot-text text-white font-extrabold text-sm md:text-base">1,245.50 TND</span>
+                    <div class="pure-jackpot-card anim-mini">
+                        <div class="absolute inset-0 bg-gradient-to-t from-orange-600/20 to-transparent"></div>
+                        <span class="text-orange-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i class="fas fa-fire text-orange-500"></i> MINI</span>
+                        <span id="jackpot-mini" class="text-heat text-white font-extrabold text-sm md:text-base drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] relative z-10">0.00 TND</span>
                     </div>
 
                     <!-- MINOR -->
-                    <div class="jackpot-card border-blue-600 shadow-[0_0_15px_#2563eb]">
-                        <div class="real-fire-overlay fire-minor"></div>
-                        <span class="jackpot-text text-blue-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire text-blue-500"></i> MINOR</span>
-                        <span id="jackpot-minor" class="jackpot-text text-white font-extrabold text-sm md:text-base">4,890.20 TND</span>
+                    <div class="pure-jackpot-card anim-minor">
+                        <div class="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent"></div>
+                        <span class="text-blue-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i class="fas fa-fire text-blue-500"></i> MINOR</span>
+                        <span id="jackpot-minor" class="text-heat text-white font-extrabold text-sm md:text-base drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] relative z-10">0.00 TND</span>
                     </div>
 
                     <!-- MAJOR -->
-                    <div class="jackpot-card border-yellow-500 shadow-[0_0_20px_#eab308]">
-                        <div class="real-fire-overlay fire-major"></div>
-                        <span class="jackpot-text text-yellow-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire-alt text-yellow-500 text-lg animate-pulse"></i> MAJOR</span>
-                        <span id="jackpot-major" class="jackpot-text text-white font-extrabold text-base md:text-lg">15,420.75 TND</span>
+                    <div class="pure-jackpot-card anim-major">
+                        <div class="absolute inset-0 bg-gradient-to-t from-yellow-600/20 to-transparent"></div>
+                        <span class="text-yellow-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i class="fas fa-fire-alt text-yellow-500 text-lg"></i> MAJOR</span>
+                        <span id="jackpot-major" class="text-heat text-white font-extrabold text-base md:text-lg drop-shadow-[0_0_12px_rgba(234,179,8,1)] relative z-10">0.00 TND</span>
                     </div>
 
                     <!-- GRAND -->
-                    <div class="jackpot-card border-emerald-500 shadow-[0_0_25px_#10b981]">
-                        <div class="real-fire-overlay fire-grand"></div>
-                        <span class="jackpot-text text-emerald-300 font-black text-[11px] md:text-xs tracking-widest mb-1 flex items-center gap-1.5"><i class="fas fa-fire-alt text-emerald-400 text-xl animate-pulse"></i> GRAND</span>
-                        <span id="jackpot-grand" class="jackpot-text text-white font-black text-lg md:text-xl">124,567.80 TND</span>
+                    <div class="pure-jackpot-card anim-grand transform scale-105">
+                        <div class="absolute inset-0 bg-gradient-to-t from-emerald-600/20 to-transparent"></div>
+                        <span class="text-emerald-300 font-black text-[11px] md:text-xs tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i class="fas fa-fire-alt text-emerald-400 text-xl"></i> GRAND</span>
+                        <span id="jackpot-grand" class="text-heat text-white font-black text-lg md:text-xl drop-shadow-[0_0_15px_rgba(16,185,129,1)] relative z-10 tracking-wide">0.00 TND</span>
                     </div>
                     
                 </div>
@@ -1091,6 +1111,63 @@
                     }
                 }
 
+
+// ================= ربط الأزرار الجديدة =================
+        
+        // 1. تشغيل الـ Mini Jeux (يجلب ألعاب Spribe أو ألعاب الكراش فوراً)
+        async function loadMiniJeux() {
+            switchSection('casino');
+            const grid = document.getElementById('games-grid');
+            const label = document.getElementById('current-provider-label');
+            if(label) label.innerText = "Mini Jeux";
+            if(grid) grid.innerHTML = '<div class="col-span-full text-purple-400 text-center py-10 animate-pulse text-lg font-bold">Chargement des mini jeux... 🚀</div>';
+            
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: "SPRIBE" }) 
+                });
+                const data = await res.json();
+                window.currentProviderGames = data.games || data.data || [];
+                currentActiveProviderCode = "SPRIBE";
+                renderCasinoGrid();
+            } catch(e) {
+                if(grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de chargement</div>';
+            }
+        }
+
+        // 2. تشغيل الـ Jeux TV (يجلب مزود ألعاب التلفاز المباشرة)
+        async function loadTVGames() {
+            switchSection('casino');
+            const grid = document.getElementById('games-grid');
+            const label = document.getElementById('current-provider-label');
+            if(label) label.innerText = "Jeux TV";
+            if(grid) grid.innerHTML = '<div class="col-span-full text-blue-400 text-center py-10 animate-pulse text-lg font-bold">Chargement Jeux TV... 📺</div>';
+            
+            try {
+                // يفترض وجود مزود TVBET أو BetGames في الـ API الخاص بك
+                const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider_code: "TVBET" }) 
+                });
+                const data = await res.json();
+                window.currentProviderGames = data.games || data.data || [];
+                currentActiveProviderCode = "TVBET";
+                renderCasinoGrid();
+            } catch(e) {
+                if(grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Fournisseur non disponible</div>';
+            }
+        }
+
+        // 3. نافذة النتائج (مجهزة للربط مع API أو Iframe رياضي)
+        function openResultsModal() {
+            showNotification("L'intégration du widget de résultats est en cours.", "info");
+            // هنا يمكنك لاحقاً فتح نافذة Iframe تحتوي على موقع Livescore أو خدمة النتائج الخاصة بمزود الرياضة لديك
+        }
+
+
                 // ================= محرك ألعاب اليوم (نسخة محصنة ومضمونة 100%) =================
 async function loadGamesOfTheDay() {
     const grid = document.getElementById('games-of-the-day-grid');
@@ -1269,6 +1346,7 @@ async function loadGamesOfTheDay() {
                 }
 
                 async function launchSpecificVirtualGame(uuid) {
+                    console.log("🖱️ Clicked game with UUID:", uuid);
                     closeChat();
                     if (!playerSession) return openLoginModal();
 
@@ -1277,7 +1355,6 @@ async function loadGamesOfTheDay() {
 
                     const container = document.getElementById('casino-iframe-container');
                     const iframe = document.getElementById('casino-iframe');
-                    // ... (باقي الكود كما هو) ...
                     if (container) { container.classList.remove('hidden'); container.classList.add('flex'); }
                     if (iframe) iframe.src = '';
                     try {
@@ -1333,11 +1410,23 @@ async function loadGamesOfTheDay() {
 
                 function updateFileName(method) {
                     const fileInput = document.getElementById(method + '-file');
-                    const labelSpan = fileInput.previousElementSibling.querySelector('span');
+                    // تم إصلاح الخطأ البرمجي هنا (استهداف العنصر الصحيح مباشرة)
+                    const labelSpan = fileInput.previousElementSibling; 
+
                     if (fileInput.files && fileInput.files.length > 0) {
-                        labelSpan.innerText = "✅ " + fileInput.files[0].name; // استخدام innerText بدلاً من innerHTML
-                        labelSpan.classList.add("text-emerald", "font-bold");
-                        labelSpan.classList.remove("text-gray-300");
+                        const file = fileInput.files[0];
+                        
+                        // قراءة الصورة المرفوعة وعرضها كمعاينة حية للمستخدم
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            labelSpan.innerHTML = `
+                                <div class="flex flex-col items-center gap-2 animate-fade-in">
+                                    <img src="${e.target.result}" class="h-16 w-auto rounded-lg shadow-md border border-emerald/50 object-cover">
+                                    <span class="text-emerald font-bold text-[10px] truncate w-full px-2 text-center">✅ ${file.name}</span>
+                                </div>
+                            `;
+                        };
+                        reader.readAsDataURL(file);
                     }
                 }
                 function getBase64(file) {
@@ -1349,26 +1438,49 @@ async function loadGamesOfTheDay() {
                 }
 
                 async function submitDeposit(method) {
-                    if (!playerSession) return;
-                    const codeInput = document.getElementById(method + "-code");
-                    const fileInput = document.getElementById(method + "-file");
-                    let pinCode = codeInput ? codeInput.value : "";
-                    if (!pinCode && (!fileInput || fileInput.files.length === 0)) return showNotification("Données manquantes", "error");
+    if (!playerSession) return;
+    const codeInput = document.getElementById(method + "-code");
+    const fileInput = document.getElementById(method + "-file");
+    let pinCode = codeInput ? codeInput.value : "";
+    
+    if (!pinCode && (!fileInput || fileInput.files.length === 0)) {
+        return showNotification("Données manquantes", "error");
+    }
 
-                    try {
-                        let receiptBase64 = null;
-                        if (fileInput && fileInput.files.length > 0) receiptBase64 = await getBase64(fileInput.files[0]);
-                        const response = await fetch(`${BACKEND_URL}/api/deposit`, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ player: playerSession.username, method: method.toUpperCase(), amount: 0, code: pinCode, receipt_image: receiptBase64 })
-                        });
-                        if (response.ok) {
-                            showNotification("Demande envoyée ! ⏳");
-                            toggleCashier();
-                            if (codeInput) codeInput.value = "";
-                        } else showNotification("Erreur", "error");
-                    } catch (error) { showNotification("Erreur réseau", "error"); }
-                }
+    try {
+        // استخدام FormData لدعم رفع الصور والنصوص معاً إلى مسار SQL الموحد
+        const formData = new FormData();
+        formData.append("target_username", playerSession.username);
+        formData.append("action", "deposit_request");
+        formData.append("amount", 1); // قيمة مؤقتة لتخطي شرط (المبلغ > 0) في الباك إند، المالك سيحدد المبلغ الحقيقي لاحقاً
+        
+        // دمج نوع الطريقة مع الكود (أو كلمة FILE إذا كان صورة فقط) في حقل tx_id
+        const details = pinCode ? `${method.toUpperCase()}-${pinCode}` : `${method.toUpperCase()}-FILE`;
+        formData.append("tx_id", details);
+
+        if (fileInput && fileInput.files.length > 0) {
+            formData.append("file", fileInput.files[0]);
+        }
+
+        const response = await fetch(`${BACKEND_URL}/api/admin/request-transaction`, {
+            method: 'POST',
+            // لا نستخدم getAuthHeaders() هنا لأن FormData يحتاج أن يحدد المتصفح الـ Content-Type بنفسه
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+        });
+
+        if (response.ok) {
+            showNotification("Demande envoyée ! ⏳");
+            toggleCashier();
+            if (codeInput) codeInput.value = "";
+        } else {
+            const err = await response.json();
+            showNotification(err.detail || "Erreur", "error");
+        }
+    } catch (error) { 
+        showNotification("Erreur réseau", "error"); 
+    }
+}
 
                 function showWithdrawForm(formId) {
                     document.querySelectorAll('.withdraw-form').forEach(f => f.classList.add('hidden'));

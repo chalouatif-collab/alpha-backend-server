@@ -1485,51 +1485,77 @@
                 showNotification('Audio activé!', 'success');
             }
 
-            async function approveDeposit(ticketId, username) {
-                if (isTransactionRunning) return showNotification("⏳ En cours...", "warning");
+           async function approveDeposit(ticketId, username) {
+            if (isTransactionRunning) return showNotification("⏳ En cours...", "warning");
 
-                const amountInput = document.getElementById(`amt-${ticketId}`).value;
-                if (!amountInput || amountInput <= 0) return alert("Montant invalide");
+            const amountInput = document.getElementById(`amt-${ticketId}`).value;
+            const amount = parseFloat(amountInput);
+            if (isNaN(amount) || amount <= 0) return alert("Montant invalide");
 
-                if (confirm(`Valider ${amountInput} TND pour ${username} ?`)) {
-                    isTransactionRunning = true;
-                    try {
-                        const res = await fetch(`${BACKEND_URL}/api/admin/approve-deposit`, {
-                            method: 'POST', headers: getAuthHeaders(),
-                            body: JSON.stringify({ ticket_id: ticketId, amount: parseFloat(amountInput) })
-                        });
-                        if (res.ok) {
-                            alert("✅ Approuvé !");
-                            triggerGoldRain();
-                            fetchAndOpenHistory('pending');
-                        } else { alert("❌ Erreur"); }
-                    } catch (error) {
-                        alert("❌ Erreur");
-                    } finally {
-                        isTransactionRunning = false;
-                    }
-                }
-            }
-
-            async function rejectDeposit(ticketId) {
-                if (!confirm("Refuser ce dépôt ?")) return;
-
+            if (confirm(`Valider ${amount} TND pour ${username} ?`)) {
+                isTransactionRunning = true;
                 try {
-                    const response = await fetch(`${BACKEND_URL}/api/admin/resettle-ticket`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ticket_id: ticketId, new_status: "refusé" })
+                    // 1. إضافة الرصيد الفعلي في حساب اللاعب
+                    const chargeRes = await fetch(`${BACKEND_URL}/api/admin/update-balance`, {
+                        method: 'POST', headers: getAuthHeaders(),
+                        body: JSON.stringify({ 
+                            admin_username: user.username, 
+                            target_username: username, 
+                            action: 'charge', 
+                            amount: amount 
+                        })
                     });
 
-                    if (response.ok) {
+                    if (chargeRes.ok) {
+                        // 2. إزالة الطلب من طابور المعلقين
+                        await fetch(`${BACKEND_URL}/api/admin/handle-request`, {
+                            method: 'POST', headers: getAuthHeaders(),
+                            body: JSON.stringify({ 
+                                transaction_id: parseInt(ticketId), 
+                                decision: 'reject', 
+                                admin_username: user.username 
+                            })
+                        });
+
+                        alert("✅ Approuvé et crédité avec succès !");
+                        triggerGoldRain();
                         fetchAndOpenHistory('pending');
                     } else {
-                        alert("❌ Erreur");
+                        const err = await chargeRes.json();
+                        alert(`❌ Erreur: ${err.detail || "Erreur"}`); 
                     }
                 } catch (error) {
-                    alert("❌ Erreur");
+                    alert("❌ Erreur réseau");
+                } finally {
+                    isTransactionRunning = false;
                 }
             }
+        }
+
+        async function rejectDeposit(ticketId) {
+            if (!confirm("Refuser ce dépôt ?")) return;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/admin/handle-request`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ 
+                        transaction_id: parseInt(ticketId), 
+                        decision: 'reject',
+                        admin_username: user.username 
+                    })
+                });
+
+                if (response.ok) {
+                    fetchAndOpenHistory('pending');
+                    showNotification("❌ Demande rejetée");
+                } else {
+                    alert("❌ Erreur");
+                }
+            } catch (error) {
+                alert("❌ Erreur réseau");
+            }
+        }
 
             function copySecretCode(secret, event) {
                 event.stopPropagation();

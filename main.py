@@ -436,12 +436,10 @@ async def get_pending_withdrawals(current_user: str = Depends(get_admin_user)):
     """جلب جميع طلبات السحب المعلقة (القديمة والجديدة)"""
     db_session = SessionLocal()
     try:
-        # استخدمنا like لكي نصطاد الطلبات حتى لو كان معها تفاصيل مدمجة
         txs = db_session.query(Transaction).filter(
-            Transaction.admin_username == "PENDING",
-            Transaction.action.like("withdraw_request%")
-        ).order_by(Transaction.id.desc()).all()
-        
+    Transaction.admin_username == "PENDING",
+    Transaction.action.ilike("%withdraw%") # 👈 اجعله مرناً هكذا
+).order_by(Transaction.id.desc()).all()
         result = []
         for t in txs:
             # استخراج التفاصيل بأمان تام لعرضها للأونر
@@ -513,17 +511,34 @@ async def process_withdrawal(request: Request):
 
 @app.get("/api/admin/get-pending-deposits")
 async def get_pending_deposits(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
     try:
-        db = load_tickets_db()
-        pending_deposits = [
-            t for t in db 
-            if t.get("type") == "deposit" and t.get("status") == "pending"
-        ]
-        return pending_deposits
-    except Exception as e:
-        print(f"Error fetching pending deposits: {e}")
-        raise HTTPException(status_code=500, detail="خطأ في السيرفر أثناء جلب الطلبات")
+        # جلب طلبات الشحن من قاعدة بيانات SQL
+        sql_deposits = db_session.query(Transaction).filter(
+            Transaction.admin_username == "PENDING",
+            Transaction.action == "deposit_request"
+        ).order_by(Transaction.id.desc()).all()
+        
+        result = []
+        for t in sql_deposits:
+            # استخراج اسم الطريقة والكود من حقل tx_id
+            tx_parts = str(t.tx_id).split('-') if t.tx_id else ["N/A", "N/A"]
+            method_name = tx_parts[0]
+            code_val = tx_parts[1] if len(tx_parts) > 1 else "N/A"
 
+            result.append({
+                "ticket_id": t.id,
+                "username": t.target_username,
+                "method": method_name, 
+                "amount": float(t.amount or 0),
+                "code": code_val if code_val != "FILE" else "مرفق صورة",
+                "receipt_image": t.image_path,
+                "status": "pending",
+                "date": str(t.date)
+            })
+        return result
+    finally:
+        db_session.close()
 class ApproveDepositRequest(BaseModel):
     ticket_id: str
     amount: float
