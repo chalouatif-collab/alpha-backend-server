@@ -2312,20 +2312,16 @@ async def get_virtual_games():
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        # طباعة البيانات الواردة في سجلات سيرفر رندر لتتبع المشكلة بدقة
-        print(f"🔍 DEBUG Incoming Launch Data: {data}")
         
-        raw_uuid = data.get("game_uuid") or data.get("game_code") or data.get("id")
-        if not raw_uuid or raw_uuid == "undefined":
-            raw_uuid = "lobby"
-        game_uuid = str(raw_uuid)
-        
-        print(f"🚀 DEBUG Resolved game_uuid to send: {game_uuid}")
-        
+        # استخراج المعرف الأساسي المطابق للتوثيق
+        game_uuid = str(data.get("game_uuid") or data.get("game_code") or "")
+        if not game_uuid or game_uuid == "undefined":
+            return {"error": "Game UUID is missing or invalid"}
+            
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
-        # 🛡️ Extract player balance from database
+        # 🛡️ استحبابه رصيد اللاعب من قاعدة البيانات
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
@@ -2335,26 +2331,24 @@ async def launch_eurovirtuals(request: Request):
                 
             current_balance = float(target_user.get("balance", 0.0))
 
+        # 📋 Payload مطابق تماماً لتوثيق الـ API الرسمي
         payload = {
             "player_id": user_code,
             "player_name": user_code,
             "player_token": f"tok_{user_code}",
             "currency": "TND",
             "demo": 0,
-            # 💡 إرسال كافة الاحتمالات للمزود لضمان توافق الأسماء بغض النظر عن متطلبات الـ API لديهم
             "game_uuid": game_uuid,
-            "game_code": game_uuid,
-            "game_id": game_uuid,
             "balance": current_balance,
             "country": "TN",
             "language": "fr",
-            "device": "desktop",
-            "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals" 
+            "device": "desktop"
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
 
         headers = {
+            "Accept": "application/json",
             "x-api-key": EURO_API_KEY,
             "x-signature-key": signature,
             "x-timestamp": timestamp,
@@ -2370,9 +2364,7 @@ async def launch_eurovirtuals(request: Request):
             try:
                 response_data = response.json()
             except Exception:
-                return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
-
-            print(f"🌐 DEBUG Provider Response: {response_data}")
+                return {"error": "Invalid JSON from provider", "details": response.text}
 
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
@@ -2381,12 +2373,11 @@ async def launch_eurovirtuals(request: Request):
                 return {"launch_url": game_url}
             else:
                 return {
-                    "error": response_data.get("status_description", "المزود رفض الطلب"), 
+                    "error": response_data.get("status_description", "Provider rejected launch"), 
                     "details": response_data
                 }
 
     except Exception as e:
-        print(f"❌ ERROR in launch_eurovirtuals: {str(e)}")
         return {"error": str(e)}
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook(request: Request):
