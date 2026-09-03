@@ -2312,16 +2312,20 @@ async def get_virtual_games():
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        game_uuid = str(data.get("game_uuid") or data.get("game_code") or "lobby")
-        if game_uuid == "undefined":
-            game_uuid = "lobby"
-            
+        # طباعة البيانات الواردة في سجلات سيرفر رندر لتتبع المشكلة بدقة
+        print(f"🔍 DEBUG Incoming Launch Data: {data}")
+        
+        raw_uuid = data.get("game_uuid") or data.get("game_code") or data.get("id")
+        if not raw_uuid or raw_uuid == "undefined":
+            raw_uuid = "lobby"
+        game_uuid = str(raw_uuid)
+        
+        print(f"🚀 DEBUG Resolved game_uuid to send: {game_uuid}")
+        
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
-        
-        # ==========================================
+
         # 🛡️ Extract player balance from database
-        # ==========================================
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
@@ -2365,10 +2369,11 @@ async def launch_eurovirtuals(request: Request):
             except Exception:
                 return {"error": "المزود لم يرسل رد JSON صالح", "details": response.text}
 
+            print(f"🌐 DEBUG Provider Response: {response_data}")
+
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
                 if game_url and game_url.startswith("/"):
-                    # 💡 الإصلاح 2: الاعتماد على رابط الإنتاج الديناميكي بدل الرابط التجريبي الثابت
                     game_url = f"{base_url_clean}{game_url}"
                 return {"launch_url": game_url}
             else:
@@ -2378,9 +2383,8 @@ async def launch_eurovirtuals(request: Request):
                 }
 
     except Exception as e:
+        print(f"❌ ERROR in launch_eurovirtuals: {str(e)}")
         return {"error": str(e)}
-           
-
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook(request: Request):
     try:
