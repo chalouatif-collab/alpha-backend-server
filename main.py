@@ -2341,7 +2341,10 @@ async def launch_eurovirtuals(request: Request):
             "player_token": f"tok_{user_code}",
             "currency": "TND",
             "demo": 0,
+            # 💡 إرسال كافة الاحتمالات للمزود لضمان توافق الأسماء بغض النظر عن متطلبات الـ API لديهم
             "game_uuid": game_uuid,
+            "game_code": game_uuid,
+            "game_id": game_uuid,
             "balance": current_balance,
             "country": "TN",
             "language": "fr",
