@@ -2933,3 +2933,60 @@ async def broadcast_jackpots():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(broadcast_jackpots())
+    
+class NotificationModel(BaseModel):
+    target_user: str  # اكتب 'all' لإرسالها للجميع، أو اسم المستخدم لشخص محدد
+    title: str
+    message: str
+    icon: str = "fa-bell" # fa-gift, fa-wallet, fa-trophy
+
+@app.post("/api/admin/send-notification")
+async def send_notification(req: NotificationModel, current_user: str = Depends(get_admin_user)):
+    db = load_db()
+    if "notifications" not in db.full_data:
+        db.full_data["notifications"] = []
+    
+    new_notif = {
+        "id": str(uuid.uuid4())[:8],
+        "target": req.target_user.lower().strip(),
+        "title": req.title,
+        "message": req.message,
+        "icon": req.icon,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "read_by": []
+    }
+    db.full_data["notifications"].append(new_notif)
+    save_db(db)
+    return {"status": "success", "message": "تم إرسال الإشعار بنجاح"}
+
+@app.get("/api/user/notifications")
+async def get_user_notifications(current_user: str = Depends(get_current_user)):
+    db = load_db()
+    notifs = db.full_data.get("notifications", [])
+    user_notifs = []
+    unread_count = 0
+    
+    for n in notifs:
+        if n.get("target") == "all" or n.get("target") == current_user.lower():
+            is_read = current_user.lower() in n.get("read_by", [])
+            if not is_read:
+                unread_count += 1
+            user_notifs.append({**n, "is_read": is_read})
+            
+    # إرجاع آخر 15 إشعار من الأحدث للأقدم
+    return {"unread": unread_count, "notifications": user_notifs[::-1][:15]}
+
+class MarkReadModel(BaseModel):
+    notif_id: str
+
+@app.post("/api/user/read-notification")
+async def mark_notif_read(req: MarkReadModel, current_user: str = Depends(get_current_user)):
+    db = load_db()
+    notifs = db.full_data.get("notifications", [])
+    for n in notifs:
+        if n["id"] == req.notif_id:
+            if current_user.lower() not in n.get("read_by", []):
+                n.setdefault("read_by", []).append(current_user.lower())
+            break
+    save_db(db)
+    return {"status": "success"}
