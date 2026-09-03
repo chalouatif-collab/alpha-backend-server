@@ -2287,6 +2287,7 @@ async def get_virtual_games():
         try:
             response = requests.get(games_endpoint, headers=headers, timeout=20)
             data = response.json()
+            print(f"🎮 RAW GAMES FROM PROVIDER: {data}")
         except Exception:
             return {"status": "error", "error": "Invalid JSON response", "details": response.text}
         
