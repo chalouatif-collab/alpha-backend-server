@@ -2307,13 +2307,12 @@ async def get_virtual_games():
 
     except Exception as e:
         return {"status": "error", "error": str(e)}
-# 4. دالة تشغيل الألعاب
-# 4. دالة تشغيل الألعاب
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        game_uuid = data.get("game_uuid", "lobby")
+        # 💡 الإصلاح 1: قراءة المعرف سواء أرسلته الواجهة باسم game_code أو game_uuid
+        game_uuid = data.get("game_uuid") or data.get("game_code") or "lobby"
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
@@ -2340,11 +2339,9 @@ async def launch_eurovirtuals(request: Request):
             "country": "TN",
             "language": "fr",
             "device": "desktop",
-            # 👈 إرجاع رابط الكول باك لكي يعرف المزود أين يرسل الرهانات
             "callback_url": "https://alpha-backend-server.onrender.com/api/eurovirtuals" 
         }
 
-        # Double check if hash_create needs the timestamp or headers included
         signature = hash_create(payload, EURO_APP_KEY)
 
         headers = {
@@ -2359,8 +2356,6 @@ async def launch_eurovirtuals(request: Request):
         
         async with httpx.AsyncClient() as client:
             response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
-            print("🔍 LAUNCH STATUS:", response.status_code)
-            print("🔍 LAUNCH RESPONSE TEXT:", response.text)
             
             try:
                 response_data = response.json()
@@ -2370,9 +2365,8 @@ async def launch_eurovirtuals(request: Request):
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
                 if game_url and game_url.startswith("/"):
-                    # Dynamic domain extraction fallback
-                    provider_domain = "https://staging.betkraft.co.uk"
-                    game_url = f"{provider_domain}{game_url}"
+                    # 💡 الإصلاح 2: الاعتماد على رابط الإنتاج الديناميكي بدل الرابط التجريبي الثابت
+                    game_url = f"{base_url_clean}{game_url}"
                 return {"launch_url": game_url}
             else:
                 return {
@@ -2382,7 +2376,6 @@ async def launch_eurovirtuals(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-
            
 
 @app.post("/api/provider/launch-sportsbook")
