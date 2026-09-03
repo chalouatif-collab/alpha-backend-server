@@ -31,6 +31,8 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
 import uuid
+
+
 PROCESSED_TRANSACTIONS = set()
 from pydantic import BaseModel
 
@@ -2832,7 +2834,7 @@ JACKPOTS_CONFIG = {
     "grand": {"max": 1200, "days": 30, "share": 0.10},
 }
 
-# حالة الجاكبوت في قاعدة البيانات (تُحفظ في Redis أو PostgreSQL)
+# حالة الجاكبوت في قاعدة البيانات
 jackpots_state = {
     "mini":  {"current_amount": 10.0, "drop_threshold": random.uniform(50, 120), "deadline": datetime.now() + timedelta(days=1)},
     "minor": {"current_amount": 20.0, "drop_threshold": random.uniform(80, 200), "deadline": datetime.now() + timedelta(days=7)},
@@ -2858,11 +2860,11 @@ def process_loss_and_check_jackpot(player_id: str, loss_amount: float):
             winners.append({"level": level, "amount": state["current_amount"]})
             
             # إعادة تعيين الجاكبوت لدورة جديدة
-            state["current_amount"] = config["max"] * 0.1 # البدء بـ 10% كقيمة تشجيعية
+            state["current_amount"] = config["max"] * 0.1 
             state["drop_threshold"] = random.uniform(state["current_amount"] * 2, config["max"])
             state["deadline"] = datetime.now() + timedelta(days=config["days"])
             
-    return winners # إذا كانت القائمة غير فارغة، أضف الرصيد للاعب وأرسل إشعار WebSockets   
+    return winners
 
 # 🛡️ مدير اتصالات WebSockets
 class ConnectionManager:
@@ -2899,7 +2901,6 @@ async def websocket_jackpot(websocket: WebSocket):
 # 🔄 مهمة خلفية تبث أرقام الجاكبوت الحقيقية باستمرار
 async def broadcast_jackpots():
     while True:
-        # هنا يتم جلب الأرصدة الحقيقية من المتغير jackpots_state الذي صنعناه سابقاً
         live_data = {
             "mini": jackpots_state["mini"]["current_amount"],
             "minor": jackpots_state["minor"]["current_amount"],
@@ -2913,6 +2914,3 @@ async def broadcast_jackpots():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(broadcast_jackpots())
-
-        
-
