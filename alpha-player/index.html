@@ -65,56 +65,47 @@
                             class="text-emerald">216</span></span>
                 </div>
             </div>
-
-            <!-- أزرار الدخول أو رصيد اللاعب -->
+<!-- أزرار الدخول أو رصيد اللاعب -->
             <div class="flex items-center gap-2 md:gap-3">
 
                 <!-- أزرار تسجيل الدخول -->
                 <div id="auth-buttons-container" class="flex items-center gap-2">
-                    <button onclick="openLoginModal()"
-                        class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2">Connexion</button>
-                    <button onclick="openRegisterModal()"
-                        class="bg-emerald text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl transition shadow-md">S'inscrire</button>
-                </div>
-                <!-- أيقونة الجرس (أضفها داخل الهيدر العلوي بجانب الرصيد) -->
-                <div class="relative cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-[#1a1d24] border border-gray-700 hover:bg-gray-800 transition mr-2"
-                    onclick="toggleNotificationsPanel()">
-                    <i class="fas fa-bell text-gray-400"></i>
-                    <span id="notif-badge"
-                        class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold px-1.5 rounded-full hidden">0</span>
+                    <button onclick="openLoginModal()" class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2">Connexion</button>
+                    <button onclick="openRegisterModal()" class="bg-emerald text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition shadow-md">S'inscrire</button>
                 </div>
 
-                <!-- النافذة المنسدلة للإشعارات (أضفها أسفل الهيدر مباشرة) -->
-                <div id="notifications-panel"
-                    class="absolute top-16 right-4 w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
+                <!-- 1️⃣ بروفايل الرصيد (واضح وأبيض على الهاتف، ومخفي للسرية على الكمبيوتر) -->
+                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0" onclick="toggleProfileSidebar()">
+                    <!-- أيقونة المحفظة -->
+                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] text-emerald-500 md:text-emerald-600 flex items-center justify-center text-[10px] md:text-xs border border-emerald-500/30 md:border-[#212631] group-hover:border-emerald-500 transition shrink-0 shadow-sm md:shadow-none">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <!-- الرصيد (opacity-100 للهاتف، و md:opacity-50 للكمبيوتر) -->
+                    <div class="text-right opacity-100 md:opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                        <!-- text-white للهاتف، و md:text-gray-300 للكمبيوتر -->
+                        <div class="font-mono text-white md:text-gray-300 text-[11px] md:text-xs leading-none font-bold">
+                            <span id="player-balance-val" class="tracking-tight">0.00</span> <span class="text-emerald-400 md:text-emerald-500 text-[8px] md:text-[9px]">TND</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
+                <div id="top-notification-bell" class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1" onclick="toggleNotificationsPanel()">
+                    <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
+                    <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
+                </div>
+
+                <!-- النافذة المنسدلة للإشعارات -->
+                <div id="notifications-panel" class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
                     <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
-                        <h3 class="text-white font-bold text-sm">Notifications🔔</h3>
+                        <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
                     </div>
                     <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
                         <!-- الإشعارات ستظهر هنا -->
                     </div>
                 </div>
 
-                <!-- بروفايل اللاعب (الزر الجديد الذي يفتح الشريط الجانبي) -->
-                <div id="top-user-profile"
-                    class="hidden items-center gap-2 cursor-pointer hover:opacity-80 transition bg-[#1a1d24] p-1 pr-3 md:p-1.5 md:pr-4 rounded-full border border-gray-700 shadow-sm"
-                    onclick="toggleProfileSidebar()">
-                    <!-- أيقونة اللاعب -->
-                    <div
-                        class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-sm border border-emerald-500/30">
-                        <i class="fas fa-user-astronaut"></i>
-                    </div>
-                    <!-- الرصيد والاسم -->
-                    <div class="text-right">
-                        <div class="text-[9px] text-gray-400 font-bold uppercase tracking-wider"
-                            id="player-name-display">User</div>
-                        <div class="font-extrabold text-emerald-400 text-xs md:text-sm leading-tight"><span
-                                id="player-balance-val">0.00</span> TND</div>
-                    </div>
-                    <i class="fas fa-chevron-down text-gray-500 text-xs ml-1 hidden md:block"></i>
-                </div>
             </div>
-        </div>
     </header>
 
     <!-- 2. شريط التصنيفات السريع الذكي -->
@@ -398,67 +389,45 @@
                     }
                 </style>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full relative z-10 mb-6 mt-2">
-
+                <div class="grid grid-cols-4 gap-1.5 md:gap-4 w-full relative z-10 mb-4 mt-2">
+                    
                     <!-- MINI -->
-                    <div class="pure-jackpot-card anim-mini">
+                    <div class="pure-jackpot-card anim-mini !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-orange-600/20 to-transparent"></div>
-                        <span
-                            class="text-orange-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i
-                                class="fas fa-fire text-orange-500"></i> MINI</span>
-                        <span id="jackpot-mini"
-                            class="text-heat text-white font-extrabold text-sm md:text-base drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] relative z-10">0.00
-                            TND</span>
+                        <span class="text-orange-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire text-orange-500 text-[8px] md:text-sm"></i> MINI</span>
+                        <span id="jackpot-mini" class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-base drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] relative z-10 whitespace-nowrap">0.00 TND</span>
                     </div>
 
                     <!-- MINOR -->
-                    <div class="pure-jackpot-card anim-minor">
+                    <div class="pure-jackpot-card anim-minor !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent"></div>
-                        <span
-                            class="text-blue-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i
-                                class="fas fa-fire text-blue-500"></i> MINOR</span>
-                        <span id="jackpot-minor"
-                            class="text-heat text-white font-extrabold text-sm md:text-base drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] relative z-10">0.00
-                            TND</span>
+                        <span class="text-blue-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire text-blue-500 text-[8px] md:text-sm"></i> MINOR</span>
+                        <span id="jackpot-minor" class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-base drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] relative z-10 whitespace-nowrap">0.00 TND</span>
                     </div>
 
                     <!-- MAJOR -->
-                    <div class="pure-jackpot-card anim-major">
+                    <div class="pure-jackpot-card anim-major !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-yellow-600/20 to-transparent"></div>
-                        <span
-                            class="text-yellow-300 font-black text-[10px] tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i
-                                class="fas fa-fire-alt text-yellow-500 text-lg"></i> MAJOR</span>
-                        <span id="jackpot-major"
-                            class="text-heat text-white font-extrabold text-base md:text-lg drop-shadow-[0_0_12px_rgba(234,179,8,1)] relative z-10">0.00
-                            TND</span>
+                        <span class="text-yellow-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire-alt text-yellow-500 text-[8px] md:text-lg"></i> MAJOR</span>
+                        <span id="jackpot-major" class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-lg drop-shadow-[0_0_12px_rgba(234,179,8,1)] relative z-10 whitespace-nowrap">0.00 TND</span>
                     </div>
 
                     <!-- GRAND -->
-                    <div class="pure-jackpot-card anim-grand transform scale-105">
+                    <div class="pure-jackpot-card anim-grand transform md:scale-105 !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-emerald-600/20 to-transparent"></div>
-                        <span
-                            class="text-emerald-300 font-black text-[11px] md:text-xs tracking-widest mb-1 flex items-center gap-1.5 relative z-10"><i
-                                class="fas fa-fire-alt text-emerald-400 text-xl"></i> GRAND</span>
-                        <span id="jackpot-grand"
-                            class="text-heat text-white font-black text-lg md:text-xl drop-shadow-[0_0_15px_rgba(16,185,129,1)] relative z-10 tracking-wide">0.00
-                            TND</span>
+                        <span class="text-emerald-300 font-black text-[7px] md:text-[11px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire-alt text-emerald-400 text-[9px] md:text-xl"></i> GRAND</span>
+                        <span id="jackpot-grand" class="text-heat text-white font-black text-[8px] sm:text-[10px] md:text-xl drop-shadow-[0_0_15px_rgba(16,185,129,1)] relative z-10 tracking-wide whitespace-nowrap">0.00 TND</span>
                     </div>
-
+                    
                 </div>
-                <!-- البانر الرئيسي (Bonus) -->
-                <div
-                    class="bg-panel rounded-2xl p-6 relative overflow-hidden flex items-center justify-between border border-emerald/30">
-                    <div class="relative z-10 max-w-md">
-                        <span
-                            class="bg-emerald/10 text-emerald text-[10px] font-black uppercase px-2.5 py-1 rounded-md mb-3 inline-block">Mega
-                            Bonus</span>
-                        <h2 class="text-3xl font-bold text-white mb-2">100% de Bonus Bienvenue</h2>
-                        <p class="text-xs text-gray-400 mb-4">Jouez sur vos sports et slots préférés.</p>
-                        <button onclick="openRegisterModal()"
-                            class="bg-emerald text-black font-bold text-xs uppercase px-5 py-2.5 rounded-xl hover:bg-emerald-600 mt-2 transition">Réclamer</button>
-                    </div>
-                    <i class="fas fa-gift text-7xl text-emerald/20 hidden md:block"></i>
-                </div>
+                <!-- ============================================== -->
+<!-- ============================================== -->
+<!-- قسم أبرز المزودين (يُعبأ تلقائياً عبر API) -->
+<!-- ============================================== -->
+<div id="dynamic-featured-providers" class="flex flex-col gap-6 mb-8 w-full mt-4">
+    <!-- الجافاسكريبت سيضع ألعاب Pragmatic و Amatic و Hacksaw هنا مع صورهم الأصلية -->
+</div>
+<!-- ============================================== --><!-- ============================================== -->
 
                 <!-- اختيار اليوم (الألعاب المتغيرة) -->
                 <div>
@@ -863,6 +832,7 @@
             switchSection(savedSection);
             // 3. تشغيل ميزات الصفحة الرئيسية
             loadGamesOfTheDay();
+            loadFeaturedProvidersBlocks();
             startLiveJackpots();
 
             // 🌟 4. السحر هنا: تشغيل محرك شريط الفائزين! 🌟
@@ -971,18 +941,25 @@
             closeLoginModal();
             const authBtns = document.getElementById('auth-buttons-container');
             if (authBtns) authBtns.classList.add('hidden');
+            
             const userProfile = document.getElementById('top-user-profile');
             if (userProfile) { userProfile.classList.remove('hidden'); userProfile.classList.add('flex'); }
+
+            // 🔔 إظهار جرس الإشعارات
+            const notifBell = document.getElementById('top-notification-bell');
+            if (notifBell) { notifBell.classList.remove('hidden'); notifBell.classList.add('flex'); }
 
             const nameDisplay = document.getElementById('player-name-display');
             if (nameDisplay) nameDisplay.innerText = playerSession.username;
 
-            // تحديث اسم اللاعب في الشريط الجانبي
             const sidebarName = document.getElementById('sidebar-username');
             if (sidebarName) sidebarName.innerText = playerSession.username;
 
             refreshBalance();
             setInterval(refreshBalance, 5000);
+            
+            // جلب الإشعارات مباشرة عند الدخول
+            if(typeof fetchNotifications === 'function') fetchNotifications();
         }
 
         function logoutPlayer() {
@@ -991,7 +968,7 @@
             location.reload();
         }
 
-        async function refreshBalance() {
+       async function refreshBalance() {
             if (!playerSession) return;
             try {
                 const res = await fetch(`${BACKEND_URL}/gold_api`, {
@@ -1001,8 +978,19 @@
                 const data = await res.json();
                 if (data.user_balance !== undefined) {
                     playerSession.balance = data.user_balance;
+                    const formattedBalance = parseFloat(data.user_balance).toFixed(2);
+                    
+                    // 1. تحديث الرصيد في الشريط العلوي المخفي
                     const balDisplay = document.getElementById('player-balance-val');
-                    if (balDisplay) balDisplay.innerText = parseFloat(data.user_balance).toFixed(2);
+                    if (balDisplay) balDisplay.innerText = formattedBalance;
+
+                    // 2. تحديث الرصيد في القائمة الجانبية (Sidebar)
+                    const sidebarBalDisplay = document.getElementById('sidebar-balance');
+                    if (sidebarBalDisplay) sidebarBalDisplay.innerText = formattedBalance + ' TND';
+
+                    // 3. تحديث الرصيد في نافذة السحب (Cashier)
+                    const modalBalDisplay = document.getElementById('modal-balance');
+                    if (modalBalDisplay) modalBalDisplay.innerText = formattedBalance;
                 }
             } catch (e) { }
         }
@@ -1072,6 +1060,7 @@
 
                 const data = await res.json();
                 window.currentProviderGames = data.games || data.data || [];
+                renderFeaturedProviders(window.currentProviderGames);
                 renderCasinoGrid();
             } catch (e) {
                 if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion</div>';
@@ -1132,7 +1121,7 @@
                 sentinel.remove();
             }
         }
-
+// ================= 
         function toggleProviderDropdown() {
             const dropdown = document.getElementById('provider-dropdown');
             if (dropdown) {
@@ -1140,7 +1129,7 @@
                 dropdown.classList.toggle('flex');
             }
         }
-
+// ================= البحث عن المزودين والألعاب =================
         function filterProviders() {
             const input = document.getElementById('provider-search-input');
             const list = document.getElementById('provider-dropdown-list');
@@ -1155,7 +1144,7 @@
                 `<button onclick="loadProviderGames('${p.code}', '${p.name}'); toggleProviderDropdown();" class="text-left px-4 py-3 text-xs font-bold text-gray-300 hover:text-emerald hover:bg-[#212631] rounded-xl transition-all border border-transparent hover:border-[#2e3648]">${p.name}</button>`
             ).join('');
         }
-
+// ================ البحث عن الألعاب =================
         function filterGames() {
             const input = document.getElementById('game-search-input');
             if (!input || !window.currentProviderGames) return;
@@ -1303,6 +1292,7 @@
                 }
 
                 mixedGames = mixedGames.sort(() => 0.5 - Math.random());
+                renderFeaturedProviders(mixedGames);
 
                 if (mixedGames.length > 0) {
                     grid.innerHTML = mixedGames.map(g => {
@@ -1334,7 +1324,7 @@
                 grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-5 font-bold">Erreur de chargement</div>';
             }
         }
-
+// ================= تشغيل الألعاب =================
         async function playCasinoGame(providerCode, gameCode) {
             closeChat();
             if (!playerSession) return openLoginModal();
@@ -1382,7 +1372,7 @@
 
         window.playSMPLGame = playCasinoGame;
         window.playNexusGame = playCasinoGame;
-
+// ================= إغلاق نافذة اللعبة =================
         function closeCasinoGame(fromPopState = false) {
             const container = document.getElementById('casino-iframe-container');
             if (container) {
@@ -2155,6 +2145,77 @@ async function deleteNotification(id) {
 
 // تحديث الإشعارات كل 15 ثانية
 setInterval(fetchNotifications, 10000);
+
+async function loadFeaturedProvidersBlocks() {
+    const container = document.getElementById('dynamic-featured-providers');
+    if (!container) return;
+
+    // إذا كانت الألعاب موجودة بالفعل، لا تقم بإعادة تحميلها لتسريع الموقع ومنع اختفائها
+    if (container.innerHTML.trim() !== '') return;
+
+    const featured = [
+        { name: "Pragmatic Play", code: "PRAGMATIC", color: "bg-emerald-500", hover: "hover:border-emerald-500" },
+        { name: "Amatic", code: "AMATIC", color: "bg-blue-500", hover: "hover:border-blue-500" },
+        { name: "Hacksaw", code: "HACKSAW", color: "bg-purple-500", hover: "hover:border-purple-500" }
+    ];
+
+    let html = '';
+
+    for (let provider of featured) {
+        try {
+            // جلب ألعاب المزود من السيرفر مباشرة
+            const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider_code: provider.code })
+            });
+            const data = await res.json();
+            let games = data.games || data.data || [];
+            
+            // أخذ أول 3 ألعاب فقط
+            games = games.slice(0, 3);
+
+            if (games.length > 0) {
+                html += `
+                <div>
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <h3 class="text-white font-extrabold text-xs md:text-sm uppercase flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full ${provider.color}"></span> ${provider.name}
+                        </h3>
+                        <button onclick="loadProviderGames('${provider.code}'); switchSection('casino');" class="text-[10px] md:text-xs font-bold text-gray-400 hover:text-white transition bg-[#161922] px-3 py-1 rounded-full border border-[#212631]">
+                            Voir plus <i class="fas fa-chevron-right ml-1 text-[8px]"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 md:gap-4">
+                `;
+
+                games.forEach(game => {
+                    const gameName = escapeHTML(String(game.game_name || game.name || "Game"));
+                    const imageUrl = game.banner || game.image || game.thumb || `https://placehold.co/400x300/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}`;
+                    const gameCode = game.game_code || game.id;
+
+                    html += `
+                        <div class="relative group rounded-lg md:rounded-xl overflow-hidden cursor-pointer border border-[#212631] ${provider.hover} transition aspect-[4/3] shadow-lg" onclick="playCasinoGame('${provider.code}', '${gameCode}')">
+                            <img src="${imageUrl}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500" loading="lazy" alt="${gameName}">
+                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur-sm">
+                                <i class="fas fa-play text-white text-xl md:text-3xl drop-shadow-lg"></i>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                </div>
+                `;
+            }
+        } catch (e) {
+            console.error("Erreur chargement provider", e);
+        }
+    }
+
+    container.innerHTML = html;
+}
     </script>
     <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
     <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"
