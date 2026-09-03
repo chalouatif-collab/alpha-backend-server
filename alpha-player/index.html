@@ -1037,7 +1037,7 @@
             }
         }
 
-        async function loadProviderGames(providerCode, providerName = null) {
+       async function loadProviderGames(providerCode, providerName = null) {
             currentActiveProviderCode = providerCode;
             currentDisplayLimit = 50;
 
@@ -1058,15 +1058,30 @@
                     body: JSON.stringify({ provider_code: providerCode })
                 });
 
+                if (!res.ok) throw new Error("HTTP Status: " + res.status);
+                
                 const data = await res.json();
-                window.currentProviderGames = data.games || data.data || [];
-                renderFeaturedProviders(window.currentProviderGames);
+                
+                let gamesList = [];
+                if (data.status === 1 && data.games) {
+                    gamesList = data.games;
+                } else if (data.data) {
+                    gamesList = data.data;
+                } else if (Array.isArray(data)) {
+                    gamesList = data;
+                } else {
+                    throw new Error("Format de données inattendu du serveur");
+                }
+
+                // 💡 السر هنا: عكس المصفوفة لتظهر الألعاب المضافة حديثاً في أعلى الصفحة
+                window.currentProviderGames = gamesList.reverse();
+
                 renderCasinoGrid();
             } catch (e) {
-                if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion</div>';
+                console.error("=== خطأ جلب الألعاب ===", e);
+                if (grid) grid.innerHTML = `<div class="col-span-full text-red-500 text-center py-10 font-bold">Erreur de connexion<br><span class="text-xs text-gray-500 font-mono mt-2 block">${e.message}</span></div>`;
             }
         }
-
         function renderCasinoGrid() {
             const container = document.getElementById('games-grid');
             if (!container) return;
@@ -1262,7 +1277,6 @@
         }
 
 
-        // ================= محرك ألعاب اليوم (نسخة محصنة ومضمونة 100%) =================
         async function loadGamesOfTheDay() {
             const grid = document.getElementById('games-of-the-day-grid');
             if (!grid) return;
@@ -1283,16 +1297,23 @@
 
                         if (res.ok) {
                             const data = await res.json();
-                            let games = data.games || data.data || [];
-                            games.slice(0, 4).forEach(g => mixedGames.push({ ...g, provider: pCode }));
+                            
+                            // قراءة البيانات بذكاء لتعمل مع الـ API الخاص بك
+                            let games = [];
+                            if (data.status === 1 && data.games) games = data.games;
+                            else if (data.data) games = data.data;
+                            else if (Array.isArray(data)) games = data;
+
+                            if (games && games.length > 0) {
+                                games.slice(0, 4).forEach(g => mixedGames.push({ ...g, provider: pCode }));
+                            }
                         }
                     } catch (err) {
-                        console.warn(`Impossible de charger le fournisseur: ${pCode}`);
+                        console.warn(`Impossible de charger le fournisseur: ${pCode}`, err);
                     }
                 }
 
                 mixedGames = mixedGames.sort(() => 0.5 - Math.random());
-                renderFeaturedProviders(mixedGames);
 
                 if (mixedGames.length > 0) {
                     grid.innerHTML = mixedGames.map(g => {
@@ -1321,8 +1342,10 @@
                     grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-5 font-bold">Aucun jeu disponible pour le moment.</div>';
                 }
             } catch (e) {
-                grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-5 font-bold">Erreur de chargement</div>';
+                console.error("=== خطأ ألعاب اليوم ===", e);
+                grid.innerHTML = `<div class="col-span-full text-red-500 text-center py-5 font-bold">Erreur de chargement<br><span class="text-xs text-gray-500 font-mono mt-2 block">${e.message}</span></div>`;
             }
+            loadFeaturedProvidersBlocks();
         }
 // ================= تشغيل الألعاب =================
         async function playCasinoGame(providerCode, gameCode) {
@@ -2150,8 +2173,11 @@ async function loadFeaturedProvidersBlocks() {
     const container = document.getElementById('dynamic-featured-providers');
     if (!container) return;
 
-    // إذا كانت الألعاب موجودة بالفعل، لا تقم بإعادة تحميلها لتسريع الموقع ومنع اختفائها
-    if (container.innerHTML.trim() !== '') return;
+    // 🛡️ قفل الأمان لمنع التكرار: إذا تم تحميل القسم مسبقاً، توقف فوراً
+    if (container.dataset.loaded === 'true') return;
+    container.dataset.loaded = 'true';
+    
+    container.innerHTML = '';
 
     const featured = [
         { name: "Pragmatic Play", code: "PRAGMATIC", color: "bg-emerald-500", hover: "hover:border-emerald-500" },
@@ -2159,62 +2185,76 @@ async function loadFeaturedProvidersBlocks() {
         { name: "Hacksaw", code: "HACKSAW", color: "bg-purple-500", hover: "hover:border-purple-500" }
     ];
 
-    let html = '';
+    let finalHtml = ''; // تجميع الكود هنا لمنع ظهوره متكرراً أو متقطعاً
 
     for (let provider of featured) {
         try {
-            // جلب ألعاب المزود من السيرفر مباشرة
             const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ provider_code: provider.code })
             });
-            const data = await res.json();
-            let games = data.games || data.data || [];
             
-            // أخذ أول 3 ألعاب فقط
-            games = games.slice(0, 3);
+            if (res.ok) {
+                const data = await res.json();
+                
+                let games = [];
+                if (data.status === 1 && data.games) games = data.games;
+                else if (data.data) games = data.data;
+                else if (Array.isArray(data)) games = data;
+                
+                // 💡 سحب 6 ألعاب بدلاً من 3 لتعبئة السطر وتصغير حجم البطاقات
+                games = games.slice(0, 6);
 
-            if (games.length > 0) {
-                html += `
-                <div>
-                    <div class="flex justify-between items-center mb-3 px-1">
-                        <h3 class="text-white font-extrabold text-xs md:text-sm uppercase flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full ${provider.color}"></span> ${provider.name}
-                        </h3>
-                        <button onclick="loadProviderGames('${provider.code}'); switchSection('casino');" class="text-[10px] md:text-xs font-bold text-gray-400 hover:text-white transition bg-[#161922] px-3 py-1 rounded-full border border-[#212631]">
-                            Voir plus <i class="fas fa-chevron-right ml-1 text-[8px]"></i>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2 md:gap-4">
-                `;
-
-                games.forEach(game => {
-                    const gameName = escapeHTML(String(game.game_name || game.name || "Game"));
-                    const imageUrl = game.banner || game.image || game.thumb || `https://placehold.co/400x300/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}`;
-                    const gameCode = game.game_code || game.id;
-
-                    html += `
-                        <div class="relative group rounded-lg md:rounded-xl overflow-hidden cursor-pointer border border-[#212631] ${provider.hover} transition aspect-[4/3] shadow-lg" onclick="playCasinoGame('${provider.code}', '${gameCode}')">
-                            <img src="${imageUrl}" class="w-full h-full object-cover group-hover:scale-110 transition duration-500" loading="lazy" alt="${gameName}">
-                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur-sm">
-                                <i class="fas fa-play text-white text-xl md:text-3xl drop-shadow-lg"></i>
-                            </div>
+                if (games.length > 0) {
+                    let providerHtml = `
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-3 px-1">
+                            <h3 class="text-white font-extrabold text-xs md:text-sm uppercase flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full ${provider.color}"></span> ${provider.name}
+                            </h3>
+                            <button onclick="loadProviderGames('${provider.code}'); switchSection('casino');" class="text-[10px] md:text-xs font-bold text-gray-400 hover:text-white transition bg-[#161922] px-3 py-1 rounded-full border border-[#212631]">
+                                Voir plus <i class="fas fa-chevron-right ml-1 text-[8px]"></i>
+                            </button>
                         </div>
+                        <!-- 💡 تصغير المربعات: 6 أعمدة للكمبيوتر، 4 للتابلت، 3 للهاتف -->
+                        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
                     `;
-                });
 
-                html += `
+                    games.forEach(game => {
+                        const gameName = escapeHTML(String(game.game_name || game.name || "Game"));
+                        const imageUrl = game.banner || game.image || game.thumb || `https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}`;
+                        const gameCode = game.game_code || game.id;
+
+                        // 💡 استخدام نفس تصميم البطاقات الأنيق والمصغر (صورة مربعة + اسم في الأسفل)
+                        providerHtml += `
+                            <div class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer ${provider.hover} transition-all flex flex-col group shadow-lg" onclick="playCasinoGame('${provider.code}', '${gameCode}')">
+                                <div class="relative w-full aspect-square overflow-hidden bg-[#161922]">
+                                    <img src="${imageUrl}" alt="${gameName}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.onerror=null; this.src='https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}';">
+                                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 z-10">
+                                        <span class="bg-emerald text-black text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
+                                    </div>
+                                </div>
+                                <div class="p-2 text-[10px] text-white font-bold truncate text-center">${gameName}</div>
+                            </div>
+                        `;
+                    });
+
+                    providerHtml += `
+                        </div>
                     </div>
-                </div>
-                `;
+                    `;
+                    
+                    finalHtml += providerHtml;
+                }
             }
         } catch (e) {
-            console.error("Erreur chargement provider", e);
+            console.error("Erreur chargement provider: " + provider.code, e);
         }
     }
-
-    container.innerHTML = html;
+    
+    // طباعة كل الأقسام دفعة واحدة
+    container.innerHTML = finalHtml;
 }
     </script>
     <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
