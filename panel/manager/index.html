@@ -16,7 +16,7 @@
     <style>
         :root {
             --manager-primary: #0ea5e9;
-            /* أزرق سماوي خاص بالمانجر */
+               
             --manager-hover: #0284c7;
             --bg-main: #020617;
             --bg-sidebar: #070d1a;
@@ -147,7 +147,7 @@
     <div id="toast-container" class="position-fixed bottom-0 end-0 p-2"
         style="z-index: 1090; max-width: 300px; width: 100%;"></div>
 
-    <!-- القائمة الجانبية -->
+       
     <div class="offcanvas offcanvas-start text-white" tabindex="-1" id="sidebar-menu">
         <div class="offcanvas-header border-bottom border-dark px-3 py-2">
             <h6 class="offcanvas-title text-manager fw-bold" style="font-size: 0.85rem;"><i
@@ -191,7 +191,7 @@
         </div>
     </div>
 
-    <!-- المحتوى الرئيسي -->
+       
     <div class="flex-grow-1 d-flex flex-column position-relative w-100">
 
         <header
@@ -206,7 +206,7 @@
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button id="audio-enable-btn" onclick="enableAudio()" class="btn btn-mini btn-outline-info py-0 px-2"
-                    style="font-size: 0.65rem;">🔊 الصوت</button>
+                    style="font-size: 0.65rem;"> </button>
                 <span class="badge bg-dark border border-success text-success font-mono px-2 py-1 shadow-sm"
                     style="font-size: 0.75rem;" id="top-manager-balance">0.00 TND</span>
 
@@ -222,13 +222,13 @@
 
             <div class="d-flex flex-column gap-2" id="default-dashboard-view">
 
-                <!-- شريط التحكم بالمستخدم المحدد -->
+                <!--     -->
                 <section class="card-mini">
                     <div class="row g-1 align-items-center">
                         <div class="col-12 col-md-5">
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text bg-black border-dark text-secondary py-0 px-2"
-                                    style="font-size: 0.65rem;" id="lbl-selected-user">المحدد:</span>
+                                    style="font-size: 0.65rem;" id="lbl-selected-user">Compte:</span>
                                 <input type="text" id="ctrl-target-user"
                                     class="form-control form-control-mini text-manager fw-bold font-mono text-center py-0"
                                     placeholder="Sélectionnez..." readonly>
@@ -244,9 +244,9 @@
                                     oninput="document.getElementById('rtp-val-label').innerText = this.value + '%'"
                                     class="form-range flex-grow-1 m-0">
                                 <button onclick="saveRtpAndBlock(0)"
-                                    class="btn btn-mini btn-success py-0 px-2">حفظ</button>
+                                    class="btn btn-mini btn-success py-0 px-2">sauvegarder</button>
                                 <button onclick="saveRtpAndBlock(1)"
-                                    class="btn btn-mini btn-warning text-dark py-0 px-2">حظر</button>
+                                    class="btn btn-mini btn-warning text-dark py-0 px-2">Ban</button>
                             </div>
                         </div>
                     </div>
@@ -255,8 +255,8 @@
                 <!-- سكشن إنشاء حساب جديد (محلات ولاعبين فقط) -->
                 <section class="card-mini border-start border-info border-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👤 إنشاء
-                            حساب تشغيلي</span>
+                        <span class="fw-bold text-white" style="font-size: 0.75rem;" id="title-create-user">👤 Cré 
+                            un compte </span>
                     </div>
                     <div class="row g-1 align-items-center">
                         <div class="col-6 col-md-3">
@@ -271,8 +271,8 @@
                             <select id="new-user-role" class="form-select form-select-mini font-mono py-0.5">
                                 <option value="super_admin">Super Admin</option>
                                 <option value="admin">Admin</option>
-                                <option value="shop">Shop (محل)</option>
-                                <option value="player">Player (لاعب)</option>
+                                <option value="shop">Shop </option>
+                                <option value="player">Player </option>
                             </select>
                         </div>
                         <div class="col-4 col-md-2">
@@ -290,7 +290,7 @@
                 <section class="card-mini">
                     <div class="d-flex justify-content-between align-items-center border-bottom border-dark pb-1 mb-1">
                         <span class="fw-bold text-white small" id="title-table-console" style="font-size: 0.7rem;">📋
-                            Console financière</span>
+                             Dépôt&Retrait</span>
                     </div>
 
                     <div class="row g-1 mb-1 align-items-center">
@@ -316,10 +316,10 @@
                         <input type="password" id="ctrl-user-new-pass" placeholder="كلمة سر جديدة"
                             class="form-control form-control-mini font-mono text-center flex-grow-1 py-1" dir="rtl">
                         <button onclick="changePlayerPasswordFromAdmin()"
-                            class="btn btn-mini btn-info text-dark fw-bold px-2 py-1" style="font-size: 0.7rem;">تغيير
-                            السر</button>
+                            class="btn btn-mini btn-info text-dark fw-bold px-2 py-1" style="font-size: 0.7rem;">Change mot de passe 
+                            </button>
                         <button onclick="resetUser2FA()" class="btn btn-mini btn-warning text-dark fw-bold px-2 py-1"
-                            style="font-size: 0.7rem;" title="إعادة تعيين 2FA"><i class="fa-solid fa-key"></i>
+                            style="font-size: 0.7rem;" title="Créer 2FA"><i class="fa-solid fa-key"></i>
                             2FA</button>
                     </div>
                 </section>
