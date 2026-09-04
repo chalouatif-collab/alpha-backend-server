@@ -2303,6 +2303,7 @@ async def get_virtual_games():
         games_endpoint = f"{base_url_clean}/v1/games"
         print(f"🔗 CONNECTING TO URL: {games_endpoint}")
         print(f"🔑 USING API KEY: {EURO_API_KEY[:10]}...")
+        print(f"🎮 FIRST GAME UUID FROM PROD: {games_list[0].get('uuid') or games_list[0].get('game_uuid')}")
         
         try:
             response = requests.get(games_endpoint, headers=headers, timeout=20)
