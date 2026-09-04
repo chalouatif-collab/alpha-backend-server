@@ -1897,9 +1897,9 @@ async def eurovirtuals_bet(request: Request):
         if sec_err: return JSONResponse(content=sec_err, status_code=200)
         bet_data = payload.get("data", [{}])[0]
         # دعم الكازينو والرياضة معاً
-        player_id = str(bet_data.get("player_id") or bet_data.get("user_code") or "").strip()
-        currency = str(bet_data.get("currency") or "TND").strip()
-        transaction_id = str(bet_data.get("transaction_id") or bet_data.get("txn_id") or "").strip()
+        player_id = str(payload.get("player_id") or payload.get("user_code") or "").strip()
+        currency = str(payload.get("currency") or "TND").strip()
+        transaction_id = str(payload.get("transaction_id") or payload.get("txn_id") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
         # 🛑 الدرع الآمن للسبين: يمتص الفراغات و null ويحولها إلى 0.0
@@ -1911,8 +1911,7 @@ async def eurovirtuals_bet(request: Request):
             except:
                 return 0.0
 
-        amount = safe_float(bet_data.get("amount") or bet_data.get("bet_amount"))
-
+        amount = safe_float(payload.get("amount") or payload.get("bet_amount"))
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower()), None)
