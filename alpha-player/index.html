@@ -49,13 +49,13 @@
 </head>
 
 <body class="antialiased text-sm flex flex-col min-h-screen">
-
-    <!-- 1. الشريط العلوي (الرصيد وتسجيل الدخول - متجاوب وأنيق للهاتف) -->
+<!-- 1. الشريط العلوي (الرصيد وتسجيل الدخول - متجاوب وأنيق للهاتف) -->
     <header class="bg-[#161922] border-b border-[#212631] sticky top-0 z-50">
         <div class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3">
 
-            <div class="flex items-center gap-2 md:gap-6">
-                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer" onclick="switchSection('accueil')">
+            <!-- القسم الأيسر: الشعار + شريط البحث المصغر والذكي -->
+            <div class="flex items-center gap-4 md:gap-6">
+                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0" onclick="switchSection('accueil')">
                     <!-- تصغير الشعار في الهاتف -->
                     <div
                         class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
@@ -64,39 +64,62 @@
                     <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span
                             class="text-emerald">216</span></span>
                 </div>
+
+                <!-- 🔍 شريط البحث المصغر بجانب الشعار مع القائمة المنسدلة -->
+                <div class="relative hidden sm:block">
+                    <input type="text" id="header-search-input" oninput="handleLiveSearch(this.value)" 
+                        placeholder="Rechercher un jeu..." 
+                        class="bg-[#12151d] border border-[#212631] text-white text-xs px-3 py-1.5 pl-8 rounded-lg focus:outline-none focus:border-emerald-500 w-36 md:w-52 transition">
+                    <i class="fas fa-search absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
+                    
+                    <!-- القائمة المنسدلة لنتائج البحث الفورية -->
+                    <div id="search-dropdown" class="absolute left-0 right-0 mt-1 bg-[#12151d] border border-[#212631] rounded-lg shadow-2xl max-h-60 overflow-y-auto hidden z-[100]"></div>
+                </div>
             </div>
-<!-- أزرار الدخول أو رصيد اللاعب -->
+
+            <!-- أزرار الدخول أو رصيد اللاعب -->
             <div class="flex items-center gap-2 md:gap-3">
 
                 <!-- أزرار تسجيل الدخول -->
                 <div id="auth-buttons-container" class="flex items-center gap-2">
-                    <button onclick="openLoginModal()" class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2">Connexion</button>
-                    <button onclick="openRegisterModal()" class="bg-emerald text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition shadow-md">S'inscrire</button>
+                    <button onclick="openLoginModal()"
+                        class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2">Connexion</button>
+                    <button onclick="openRegisterModal()"
+                        class="bg-emerald text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition shadow-md">S'inscrire</button>
                 </div>
 
                 <!-- 1️⃣ بروفايل الرصيد (واضح وأبيض على الهاتف، ومخفي للسرية على الكمبيوتر) -->
-                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0" onclick="toggleProfileSidebar()">
+                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0"
+                    onclick="toggleProfileSidebar()">
                     <!-- أيقونة المحفظة -->
-                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] text-emerald-500 md:text-emerald-600 flex items-center justify-center text-[10px] md:text-xs border border-emerald-500/30 md:border-[#212631] group-hover:border-emerald-500 transition shrink-0 shadow-sm md:shadow-none">
+                    <div
+                        class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] text-emerald-500 md:text-emerald-600 flex items-center justify-center text-[10px] md:text-xs border border-emerald-500/30 md:border-[#212631] group-hover:border-emerald-500 transition shrink-0 shadow-sm md:shadow-none">
                         <i class="fas fa-wallet"></i>
                     </div>
                     <!-- الرصيد (opacity-100 للهاتف، و md:opacity-50 للكمبيوتر) -->
-                    <div class="text-right opacity-100 md:opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                    <div
+                        class="text-right opacity-100 md:opacity-50 group-hover:opacity-100 transition-opacity duration-300">
                         <!-- text-white للهاتف، و md:text-gray-300 للكمبيوتر -->
-                        <div class="font-mono text-white md:text-gray-300 text-[11px] md:text-xs leading-none font-bold">
-                            <span id="player-balance-val" class="tracking-tight">0.00</span> <span class="text-emerald-400 md:text-emerald-500 text-[8px] md:text-[9px]">TND</span>
+                        <div
+                            class="font-mono text-white md:text-gray-300 text-[11px] md:text-xs leading-none font-bold">
+                            <span id="player-balance-val" class="tracking-tight">0.00</span> <span
+                                class="text-emerald-400 md:text-emerald-500 text-[8px] md:text-[9px]">TND</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
-                <div id="top-notification-bell" class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1" onclick="toggleNotificationsPanel()">
+                <div id="top-notification-bell"
+                    class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1"
+                    onclick="toggleNotificationsPanel()">
                     <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
-                    <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
+                    <span id="notif-badge"
+                        class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
                 </div>
 
                 <!-- النافذة المنسدلة للإشعارات -->
-                <div id="notifications-panel" class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
+                <div id="notifications-panel"
+                    class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
                     <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
                         <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
                     </div>
@@ -106,6 +129,7 @@
                 </div>
 
             </div>
+        </div>
     </header>
 
     <!-- 2. شريط التصنيفات السريع الذكي -->
@@ -165,6 +189,26 @@
             </button>
         </div>
     </div>
+    <!-- 🌟 شريط الفائزين المباشر (من الحافة للحافة) -->
+<div class="w-full bg-[#12151d] border-b border-[#212631] py-1.5 overflow-hidden relative flex items-center">
+    
+    <!-- علامة Live الثابتة مع تدرج لوني لإخفاء خروج الكروت -->
+    <div class="absolute left-0 top-0 bottom-0 z-20 bg-gradient-to-r from-[#12151d] via-[#12151d] to-transparent w-24 flex items-center pl-4 pointer-events-none">
+        <div class="bg-red-500/20 border border-red-500 rounded px-2 py-0.5 flex items-center gap-1.5 shadow-sm">
+            <div class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></div>
+            <span class="text-red-500 text-[8px] font-black uppercase tracking-wider">Live</span>
+        </div>
+    </div>
+    <!-- مسار التيكر المتحرك -->
+    <div class="flex-grow w-full overflow-hidden flex items-center h-7 pl-24">
+        <div id="winners-ticker-track" class="flex gap-4 items-center cursor-pointer marquee-edge-to-edge whitespace-nowrap">
+            <!-- سيتم تعبئتها أوتوماتيكياً بالجافاسكريبت -->
+        </div>
+    </div>
+    
+    <!-- تدرج لوني على اليمين لإخفاء دخول الكروت بنعومة -->
+    <div class="absolute right-0 top-0 bottom-0 z-20 bg-gradient-to-l from-[#12151d] to-transparent w-16 pointer-events-none"></div>
+</div>
 
     <main class="max-w-[1700px] mx-auto px-4 py-6 w-full flex-grow flex flex-col xl:flex-row gap-6">
 
@@ -199,46 +243,28 @@
         <!-- CENTER: Dynamic Content Area (Panes) -->
         <div class="w-full xl:w-[55%] space-y-6">
             <style>
-                /* محرك حركة شريط الفائزين */
-                @keyframes scroll-ticker {
-                    0% {
-                        transform: translateX(0);
-                    }
+                @keyframes slide-edge-to-edge {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        /* يتم إزاحة نصف المحتوى المكرر لضمان دوران غير منقطع */
+        transform: translateX(calc(-50% - 1rem)); 
+    }
+}
 
-                    100% {
-                        transform: translateX(-50%);
-                    }
-                }
+.marquee-edge-to-edge {
+    width: max-content;
+    animation: slide-edge-to-edge 35s linear infinite;
+}
 
-                .ticker-move {
-                    animation: scroll-ticker 25s linear infinite;
-                }
-
-                .ticker-move:hover {
-                    animation-play-state: paused;
-                    /* يتوقف الشريط عند وضع الفأرة عليه */
-                }
+.marquee-edge-to-edge:hover {
+    animation-play-state: paused;
+}
             </style>
             <!-- PANE: ACCUEIL (الصفحة الرئيسية المتكاملة) -->
             <div id="pane-accueil" class="player-view-section block space-y-6 w-full">
 
-                <!-- 🌟 1. شريط الفائزين المباشر (Live Winners Ticker) -->
-                <div class="relative w-full mx-auto mb-2 overflow-hidden">
-                    <div
-                        class="bg-[#161922]/80 backdrop-blur-xl border border-emerald/30 rounded-2xl p-2 flex items-center shadow-lg relative overflow-hidden w-full">
-                        <div
-                            class="bg-red-500/20 border border-red-500 rounded-lg px-2.5 py-1 flex items-center gap-1.5 z-20 shrink-0">
-                            <div class="w-2 h-2 rounded-full bg-red-500 animate-ping"></div>
-                            <span class="text-red-500 text-[9px] font-black uppercase tracking-wider">Live</span>
-                        </div>
-                        <div class="endless-ticker-container flex-grow h-6 ml-2 w-full overflow-hidden relative">
-                            <div id="winners-ticker-track" class="flex gap-4 items-center cursor-pointer ticker-move"
-                                style="width: max-content;">
-                                <!-- سيتم تعبئتها أوتوماتيكياً بالجافاسكريبت -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <!-- 🌟 2. شريط شعارات المزودين السريع (مصغرة وفي سطر واحد) -->
                 <div class="flex overflow-x-auto flex-nowrap gap-2 py-2 hide-scroll w-full">
 
@@ -278,6 +304,7 @@
                     </button>
 
                 </div>
+                
                 <!-- 🌟 شريط الجاكبوت المباشر (Pure CSS Energy Fire) -->
                 <style>
                     /* محرك النيران والنبض باستخدام CSS فقط */
@@ -390,44 +417,114 @@
                 </style>
 
                 <div class="grid grid-cols-4 gap-1.5 md:gap-4 w-full relative z-10 mb-4 mt-2">
-                    
+
                     <!-- MINI -->
-                    <div class="pure-jackpot-card anim-mini !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
+                    <div
+                        class="pure-jackpot-card anim-mini !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-orange-600/20 to-transparent"></div>
-                        <span class="text-orange-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire text-orange-500 text-[8px] md:text-sm"></i> MINI</span>
-                        <span id="jackpot-mini" class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-base drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] relative z-10 whitespace-nowrap">0.00 TND</span>
+                        <span
+                            class="text-orange-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i
+                                class="fas fa-fire text-orange-500 text-[8px] md:text-sm"></i> MINI</span>
+                        <span id="jackpot-mini"
+                            class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-base drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] relative z-10 whitespace-nowrap">0.00
+                            TND</span>
                     </div>
 
                     <!-- MINOR -->
-                    <div class="pure-jackpot-card anim-minor !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
+                    <div
+                        class="pure-jackpot-card anim-minor !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent"></div>
-                        <span class="text-blue-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire text-blue-500 text-[8px] md:text-sm"></i> MINOR</span>
-                        <span id="jackpot-minor" class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-base drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] relative z-10 whitespace-nowrap">0.00 TND</span>
+                        <span
+                            class="text-blue-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i
+                                class="fas fa-fire text-blue-500 text-[8px] md:text-sm"></i> MINOR</span>
+                        <span id="jackpot-minor"
+                            class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-base drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] relative z-10 whitespace-nowrap">0.00
+                            TND</span>
                     </div>
 
                     <!-- MAJOR -->
-                    <div class="pure-jackpot-card anim-major !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
+                    <div
+                        class="pure-jackpot-card anim-major !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-yellow-600/20 to-transparent"></div>
-                        <span class="text-yellow-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire-alt text-yellow-500 text-[8px] md:text-lg"></i> MAJOR</span>
-                        <span id="jackpot-major" class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-lg drop-shadow-[0_0_12px_rgba(234,179,8,1)] relative z-10 whitespace-nowrap">0.00 TND</span>
+                        <span
+                            class="text-yellow-300 font-black text-[6px] md:text-[10px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i
+                                class="fas fa-fire-alt text-yellow-500 text-[8px] md:text-lg"></i> MAJOR</span>
+                        <span id="jackpot-major"
+                            class="text-heat text-white font-extrabold text-[7px] sm:text-[9px] md:text-lg drop-shadow-[0_0_12px_rgba(234,179,8,1)] relative z-10 whitespace-nowrap">0.00
+                            TND</span>
                     </div>
 
                     <!-- GRAND -->
-                    <div class="pure-jackpot-card anim-grand transform md:scale-105 !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
+                    <div
+                        class="pure-jackpot-card anim-grand transform md:scale-105 !p-1 md:!p-3 !border md:!border-2 !rounded-md md:!rounded-xl">
                         <div class="absolute inset-0 bg-gradient-to-t from-emerald-600/20 to-transparent"></div>
-                        <span class="text-emerald-300 font-black text-[7px] md:text-[11px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i class="fas fa-fire-alt text-emerald-400 text-[9px] md:text-xl"></i> GRAND</span>
-                        <span id="jackpot-grand" class="text-heat text-white font-black text-[8px] sm:text-[10px] md:text-xl drop-shadow-[0_0_15px_rgba(16,185,129,1)] relative z-10 tracking-wide whitespace-nowrap">0.00 TND</span>
+                        <span
+                            class="text-emerald-300 font-black text-[7px] md:text-[11px] tracking-widest mb-0.5 md:mb-1 flex items-center gap-0.5 md:gap-1.5 relative z-10"><i
+                                class="fas fa-fire-alt text-emerald-400 text-[9px] md:text-xl"></i> GRAND</span>
+                        <span id="jackpot-grand"
+                            class="text-heat text-white font-black text-[8px] sm:text-[10px] md:text-xl drop-shadow-[0_0_15px_rgba(16,185,129,1)] relative z-10 tracking-wide whitespace-nowrap">0.00
+                            TND</span>
                     </div>
-                    
+
                 </div>
-                <!-- ============================================== -->
-<!-- ============================================== -->
-<!-- قسم أبرز المزودين (يُعبأ تلقائياً عبر API) -->
-<!-- ============================================== -->
-<div id="dynamic-featured-providers" class="flex flex-col gap-6 mb-8 w-full mt-4">
-    <!-- الجافاسكريبت سيضع ألعاب Pragmatic و Amatic و Hacksaw هنا مع صورهم الأصلية -->
+<!-- 🚀 Bannières Promotionnelles (Slider Auto sur Mobile / Grille sur Desktop) -->
+<div class="w-full my-6 mb-8 relative">
+    <!-- حاوية السحب (تخفي شريط التمرير وتدعم السحب باليد) -->
+    <div id="promo-slider" class="flex md:grid md:grid-cols-3 gap-4 w-full overflow-x-auto snap-x snap-mandatory hide-scroll pb-2 scroll-smooth">
+        
+        <!-- Promo 1: Welcome Bonus (Thème Emerald) -->
+        <div class="snap-center shrink-0 w-[85%] md:w-auto relative bg-gradient-to-br from-[#0f1117] via-[#161922] to-emerald-900/20 border border-[#212631] hover:border-emerald-500/50 rounded-2xl p-5 overflow-hidden shadow-xl flex flex-col justify-between min-h-[160px]">
+            <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/20 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <span class="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-black uppercase px-2 py-0.5 rounded-md mb-2">Bonus de Bienvenue</span>
+                <h3 class="text-white text-lg font-black leading-tight mb-1">100% jusqu'à 500 TND</h3>
+                <p class="text-gray-400 text-[11px]">Doublez votre premier dépôt instantanément.</p>
+            </div>
+            <div class="relative z-10 mt-4">
+                <button onclick="if(typeof openCashierModal === 'function') openCashierModal(); else switchSection('accueil');" class="bg-emerald hover:bg-emerald-400 text-black font-extrabold px-5 py-2 rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                    Réclamer 🎁
+                </button>
+            </div>
+        </div>
+
+        <!-- Promo 2: Jackpot (Thème Gold) -->
+        <div class="snap-center shrink-0 w-[85%] md:w-auto relative bg-gradient-to-br from-[#0f1117] via-[#161922] to-yellow-900/20 border border-[#212631] hover:border-yellow-500/50 rounded-2xl p-5 overflow-hidden shadow-xl flex flex-col justify-between min-h-[160px]">
+            <div class="absolute -right-4 -top-4 w-24 h-24 bg-yellow-500/20 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <span class="inline-block bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[9px] font-black uppercase px-2 py-0.5 rounded-md mb-2">Grand Jackpot</span>
+                <h3 class="text-white text-lg font-black leading-tight mb-1">Drop Quotidien Actif</h3>
+                <p class="text-gray-400 text-[11px]">Jouez à vos slots préférés pour gagner.</p>
+            </div>
+            <div class="relative z-10 mt-4">
+                <button onclick="switchSection('casino'); if(typeof initCasinoLobby === 'function') initCasinoLobby();" class="bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold px-5 py-2 rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                    Jouer Maintenant 🎰
+                </button>
+            </div>
+        </div>
+
+        <!-- Promo 3: Tournaments (Thème Blue) -->
+        <div class="snap-center shrink-0 w-[85%] md:w-auto relative bg-gradient-to-br from-[#0f1117] via-[#161922] to-blue-900/20 border border-[#212631] hover:border-blue-500/50 rounded-2xl p-5 overflow-hidden shadow-xl flex flex-col justify-between min-h-[160px]">
+            <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <span class="inline-block bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[9px] font-black uppercase px-2 py-0.5 rounded-md mb-2">Tournoi Exclusif</span>
+                <h3 class="text-white text-lg font-black leading-tight mb-1">Championnat Virtuel</h3>
+                <p class="text-gray-400 text-[11px]">Grimpez dans le classement aujourd'hui.</p>
+            </div>
+            <div class="relative z-10 mt-4">
+                <button onclick="switchSection('virtuals'); if(typeof initVirtualsLobby === 'function') initVirtualsLobby();" class="bg-blue-500 hover:bg-blue-400 text-white font-extrabold px-5 py-2 rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                    Rejoindre 🏆
+                </button>
+            </div>
+        </div>
+
+    </div>
 </div>
-<!-- ============================================== --><!-- ============================================== -->
+</style>
+                
+                <div id="dynamic-featured-providers" class="flex flex-col gap-6 mb-8 w-full mt-4">
+                    <!-- الجافاسكريبت سيضع ألعاب Pragmatic و Amatic و Hacksaw هنا مع صورهم الأصلية -->
+                </div>
+                <!-- ============================================== --><!-- ============================================== -->
 
                 <!-- اختيار اليوم (الألعاب المتغيرة) -->
                 <div>
@@ -519,16 +616,6 @@
 
     </main>
     </main>
-
-    <!-- ⚽ PANE: SPORT -->
-    <div id="pane-sport" class="player-view-section hidden w-full bg-[#0f1117]" style="height: calc(100dvh - 130px);">
-        <div id="sport-loader"
-            class="absolute inset-0 flex flex-col items-center justify-center bg-[#0f1117] z-[5] hidden">
-            <i class="fas fa-futbol text-4xl text-emerald animate-bounce mb-3"></i>
-            <span class="text-emerald font-bold tracking-widest text-xs">CHARGEMENT...</span>
-        </div>
-        <iframe id="sportsbook-iframe" class="w-full h-full border-0 block m-0 p-0" allowfullscreen></iframe>
-    </div>
 
     <!-- 🌟 تذييل الصفحة (الذي تم حذفه بالخطأ) -->
     <div
@@ -818,7 +905,63 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
+        // ================= محرك الذاكرة الشاملة للبحث (Global Game Cache) =================
+window.globalGameDictionary = [];
+window.isCacheLoaded = false;
 
+async function initGlobalGameCache() {
+    if (window.isCacheLoaded) return;
+
+    // 1. جلب وتخزين الألعاب الافتراضية (Virtuals)
+    try {
+        const resV = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`);
+        const dataV = await resV.json();
+        const virtuals = dataV.games || dataV.data || dataV || [];
+        virtuals.forEach(g => {
+            const name = String(g.game_name || g.name || "").trim();
+            if (name) {
+                window.globalGameDictionary.push({
+                    name: name,
+                    img: g.banner || g.image || g.thumb || `https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(name.substring(0, 15))}`,
+                    onclick: `launchSpecificVirtualGame('${g.uuid || g.game_uuid || g.id || g.game_code}')`
+                });
+            }
+        });
+    } catch (e) { console.warn("Erreur chargement Virtuals cache"); }
+
+    // 2. جلب وتخزين ألعاب الكازينو لأهم المزودين في الخلفية
+    // يمكنك إضافة أي مزود آخر هنا مثل AMATIC أو PLAYNGO
+    const topProviders = ['PRAGMATIC', 'HACKSAW', 'SPRIBE', 'EVOPLAY', 'PGSOFT'];
+    
+    for (let pCode of topProviders) {
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider_code: pCode })
+            });
+            const data = await res.json();
+            let games = data.games || data.data || data || [];
+            
+            games.forEach(g => {
+                const name = String(g.game_name || g.name || "").trim();
+                if (name) {
+                    window.globalGameDictionary.push({
+                        name: name,
+                        img: g.banner || g.image || g.thumb || `https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(name.substring(0, 15))}`,
+                        onclick: `playCasinoGame('${pCode}', '${g.game_code || g.id}')`
+                    });
+                }
+            });
+        } catch (e) { console.warn(`Erreur chargement ${pCode} cache`); }
+    }
+    
+    window.isCacheLoaded = true;
+    console.log("✅ Global Game Cache Prêt:", window.globalGameDictionary.length, "Jeux");
+}
+
+
+//-------------------------------------------------------------------------
         window.onload = () => {
             // 1. استرجاع بيانات اللاعب إذا كان مسجلاً
             const savedSession = localStorage.getItem('alpha_player_session');
@@ -836,9 +979,21 @@
             startLiveJackpots();
 
             // 🌟 4. السحر هنا: تشغيل محرك شريط الفائزين! 🌟
-            if (typeof generateLiveWinnersTicker === 'function') {
+            if (typeof generateLiveWinnersTicker === 'function')
                 generateLiveWinnersTicker();
-            }
+            window.addEventListener('popstate', (event) => {
+                const container = document.getElementById('casino-iframe-container');
+
+                // إذا كانت نافذة اللعبة مفتوحة، أغلقها عند الضغط على زر الرجوع
+                if (container && container.classList.contains('flex')) {
+                    closeCasinoGame(true);
+                } else {
+                    // وإلا قم بتغيير القسم عادي جداً
+                    const section = event.state?.section || 'accueil';
+                    switchSection(section, true);
+                }
+                initGlobalGameCache();
+            });
         };
         // ================= محرك الجاكبوت الحي (Real-time WebSocket) =================
         function startLiveJackpots() {
@@ -941,7 +1096,7 @@
             closeLoginModal();
             const authBtns = document.getElementById('auth-buttons-container');
             if (authBtns) authBtns.classList.add('hidden');
-            
+
             const userProfile = document.getElementById('top-user-profile');
             if (userProfile) { userProfile.classList.remove('hidden'); userProfile.classList.add('flex'); }
 
@@ -957,9 +1112,9 @@
 
             refreshBalance();
             setInterval(refreshBalance, 5000);
-            
+
             // جلب الإشعارات مباشرة عند الدخول
-            if(typeof fetchNotifications === 'function') fetchNotifications();
+            if (typeof fetchNotifications === 'function') fetchNotifications();
         }
 
         function logoutPlayer() {
@@ -968,7 +1123,7 @@
             location.reload();
         }
 
-       async function refreshBalance() {
+        async function refreshBalance() {
             if (!playerSession) return;
             try {
                 const res = await fetch(`${BACKEND_URL}/gold_api`, {
@@ -979,7 +1134,7 @@
                 if (data.user_balance !== undefined) {
                     playerSession.balance = data.user_balance;
                     const formattedBalance = parseFloat(data.user_balance).toFixed(2);
-                    
+
                     // 1. تحديث الرصيد في الشريط العلوي المخفي
                     const balDisplay = document.getElementById('player-balance-val');
                     if (balDisplay) balDisplay.innerText = formattedBalance;
@@ -1037,7 +1192,7 @@
             }
         }
 
-       async function loadProviderGames(providerCode, providerName = null) {
+        async function loadProviderGames(providerCode, providerName = null) {
             currentActiveProviderCode = providerCode;
             currentDisplayLimit = 50;
 
@@ -1059,9 +1214,9 @@
                 });
 
                 if (!res.ok) throw new Error("HTTP Status: " + res.status);
-                
+
                 const data = await res.json();
-                
+
                 let gamesList = [];
                 if (data.status === 1 && data.games) {
                     gamesList = data.games;
@@ -1136,7 +1291,7 @@
                 sentinel.remove();
             }
         }
-// ================= 
+        // ================= 
         function toggleProviderDropdown() {
             const dropdown = document.getElementById('provider-dropdown');
             if (dropdown) {
@@ -1144,7 +1299,7 @@
                 dropdown.classList.toggle('flex');
             }
         }
-// ================= البحث عن المزودين والألعاب =================
+        // ================= البحث عن المزودين والألعاب =================
         function filterProviders() {
             const input = document.getElementById('provider-search-input');
             const list = document.getElementById('provider-dropdown-list');
@@ -1159,7 +1314,7 @@
                 `<button onclick="loadProviderGames('${p.code}', '${p.name}'); toggleProviderDropdown();" class="text-left px-4 py-3 text-xs font-bold text-gray-300 hover:text-emerald hover:bg-[#212631] rounded-xl transition-all border border-transparent hover:border-[#2e3648]">${p.name}</button>`
             ).join('');
         }
-// ================ البحث عن الألعاب =================
+        // ================ البحث عن الألعاب =================
         function filterGames() {
             const input = document.getElementById('game-search-input');
             if (!input || !window.currentProviderGames) return;
@@ -1297,7 +1452,7 @@
 
                         if (res.ok) {
                             const data = await res.json();
-                            
+
                             // قراءة البيانات بذكاء لتعمل مع الـ API الخاص بك
                             let games = [];
                             if (data.status === 1 && data.games) games = data.games;
@@ -1347,29 +1502,34 @@
             }
             loadFeaturedProvidersBlocks();
         }
-// ================= تشغيل الألعاب =================
+        // ================= تشغيل الألعاب في تبويب جديد (نافذة مستقلة) =================
         async function playCasinoGame(providerCode, gameCode) {
             closeChat();
             if (!playerSession) return openLoginModal();
 
-            // 🌟 إضافة حالة في سجل هاتف اللاعب لدعم زر الرجوع
-            history.pushState({ modalOpen: true, type: 'casino' }, "", "");
-
-            const container = document.getElementById('casino-iframe-container');
-            const iframe = document.getElementById('casino-iframe');
-            if (!container || !iframe) return;
-
-            container.classList.remove('hidden'); container.classList.add('flex');
-            iframe.style.opacity = '0';
-            // ... (باقي الكود كما هو بدون تغيير) ...
-
             try {
                 let endpointUrl = `${BACKEND_URL}/api/provider/launch-casino`;
-                let requestBody = { game_code: gameCode, provider_code: providerCode, user_code: playerSession.username };
+                let requestBody = {
+                    game_code: gameCode,
+                    provider_code: providerCode,
+                    user_code: playerSession.username
+                };
 
+                // دعم مزود SMPL
                 if (providerCode === 'SMPL') {
                     endpointUrl = `${BACKEND_URL}/api/smpl/launch`;
-                    requestBody = { game_uuid: gameCode, user_code: playerSession.username };
+                    requestBody = {
+                        game_uuid: gameCode,
+                        user_code: playerSession.username
+                    };
+                }
+                // دعم مزود EuroVirtuals إذا تم استدعاؤه من هنا أيضاً
+                else if (providerCode === 'EUROVIRTUALS' || providerCode === 'EuroVirtuals') {
+                    endpointUrl = `${BACKEND_URL}/api/provider/launch-eurovirtuals`;
+                    requestBody = {
+                        user_code: playerSession.username,
+                        game_uuid: gameCode
+                    };
                 }
 
                 const res = await fetch(endpointUrl, {
@@ -1381,21 +1541,24 @@
                 const data = await res.json();
 
                 if (data.launch_url) {
-                    iframe.src = data.launch_url;
-                    iframe.onload = () => { iframe.style.opacity = '1'; };
+                    // 🚀 فتح اللعبة في تبويب جديد كلياً وبدون إزعاج الـ Iframe
+                    window.open(data.launch_url, '_blank');
+
+                    // تحديث رصيد اللاعب تلقائياً بعد بضع ثوانٍ ليتزامن مع أي ربح أو خسارة
+                    if (typeof refreshBalance === 'function') {
+                        setTimeout(refreshBalance, 4000);
+                    }
                 } else {
                     showNotification(data.error || "Jeu non disponible", "error");
-                    closeCasinoGame();
                 }
             } catch (error) {
                 showNotification("Erreur de connexion", "error");
-                closeCasinoGame();
             }
         }
 
         window.playSMPLGame = playCasinoGame;
         window.playNexusGame = playCasinoGame;
-// ================= إغلاق نافذة اللعبة =================
+        // ================= إغلاق نافذة اللعبة =================
         function closeCasinoGame(fromPopState = false) {
             const container = document.getElementById('casino-iframe-container');
             if (container) {
@@ -1468,31 +1631,33 @@
             closeChat();
             if (!playerSession) return openLoginModal();
 
-            // 🌟 إضافة حالة في سجل هاتف اللاعب لدعم زر الرجوع
-            history.pushState({ modalOpen: true, type: 'virtual' }, "", "");
-
-            const container = document.getElementById('casino-iframe-container');
-            const iframe = document.getElementById('casino-iframe');
-            if (container) { container.classList.remove('hidden'); container.classList.add('flex'); }
-            if (iframe) iframe.src = '';
             try {
                 const res = await fetch(`${BACKEND_URL}/api/provider/launch-eurovirtuals`, {
-                    method: 'POST', headers: getAuthHeaders(),
-                    body: JSON.stringify({ user_code: playerSession.username, game_uuid: uuid })
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        user_code: playerSession.username,
+                        game_uuid: uuid
+                    })
                 });
+
                 const data = await res.json();
+
                 if (data.launch_url) {
-                    if (iframe) iframe.src = data.launch_url;
+                    // 🚀 فتح لعبة الفيرشوال في تبويب جديد مستقل
+                    window.open(data.launch_url, '_blank');
+
+                    // تحديث رصيد اللاعب تلقائياً بعد بضع ثوانٍ
+                    if (typeof refreshBalance === 'function') {
+                        setTimeout(refreshBalance, 4000);
+                    }
                 } else {
-                    showNotification("Jeu non disponible", "error");
-                    closeCasinoGame();
+                    showNotification(data.error || "Jeu non disponible", "error");
                 }
             } catch (e) {
                 showNotification("Erreur réseau", "error");
-                closeCasinoGame();
             }
         }
-
         // ================= 5. الكاشير =================
         function toggleCashier() {
             if (!playerSession) return openLoginModal();
@@ -1570,7 +1735,7 @@
                 const formData = new FormData();
                 formData.append("target_username", playerSession.username);
                 formData.append("action", "deposit_request");
-                formData.append("amount", 1); // قيمة مؤقتة لتخطي شرط (المبلغ > 0) في الباك إند، المالك سيحدد المبلغ الحقيقي لاحقاً
+                formData.append("amount", 1);
 
                 // دمج نوع الطريقة مع الكود (أو كلمة FILE إذا كان صورة فقط) في حقل tx_id
                 const details = pinCode ? `${method.toUpperCase()}-${pinCode}` : `${method.toUpperCase()}-FILE`;
@@ -1665,56 +1830,46 @@
             }
         }
 
-        async function openSportsbookForProvider(providerCode) {
-            closeChat();
-            if (!playerSession) return openLoginModal();
+       // ================= فتح قسم الرياضة في نافذة مستقلة =================
+async function openSportsbookForProvider(providerCode) {
+    closeChat();
+    if (!playerSession) return openLoginModal();
 
-            // 🌟 حفظ الحالة لتجنب الخروج عند الريفرش
-            localStorage.setItem('active_section', 'sport');
-            localStorage.setItem('sport_provider', providerCode || 'nexus');
+    if (!providerCode || providerCode === 'nexus' || providerCode === 'SABA') {
+        providerCode = 'SPORTSBOOK';
+    }
 
-            // فتح صفحة الرياضة داخل الموقع
-            switchSection('sport');
+    try {
+        // إشعار سريع للاعب أثناء التجهيز
+        showNotification("Ouverture du Sportsbook...", "info");
 
-            if (!providerCode || providerCode === 'nexus' || providerCode === 'SABA') {
-                providerCode = 'SPORTSBOOK';
+        const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                provider_code: providerCode,
+                user_code: playerSession.username,
+                game_code: "SPORTSBOOK"
+            })
+        });
+        
+        const data = await response.json();
+
+        if (data.launch_url) {
+            // 🚀 فتح الواجهة الرياضية في تبويب مستقل
+            window.open(data.launch_url, '_blank');
+            
+            // تحديث رصيد اللاعب تلقائياً لمزامنة أي تغييرات
+            if (typeof refreshBalance === 'function') {
+                setTimeout(refreshBalance, 4000);
             }
-
-            const iframe = document.getElementById('sportsbook-iframe');
-            const loader = document.getElementById('sport-loader');
-
-            if (loader) loader.classList.remove('hidden');
-            if (iframe) { iframe.classList.add('hidden'); iframe.src = ''; }
-
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/provider/launch-sportsbook`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({
-                        provider_code: providerCode,
-                        user_code: playerSession.username,
-                        game_code: "SPORTSBOOK"
-                    })
-                });
-                const data = await response.json();
-
-                if (data.launch_url) {
-                    if (loader) loader.classList.add('hidden');
-                    if (iframe) {
-                        iframe.classList.remove('hidden');
-                        iframe.src = data.launch_url;
-                    }
-                } else {
-                    if (loader) loader.classList.add('hidden');
-                    showNotification(data.error || "Sportsbook non disponible", "error");
-                    switchSection('accueil');
-                }
-            } catch (error) {
-                if (loader) loader.classList.add('hidden');
-                showNotification("Erreur de connexion", "error");
-                switchSection('accueil');
-            }
+        } else {
+            showNotification(data.error || "Sportsbook non disponible", "error");
         }
+    } catch (error) {
+        showNotification("Erreur de connexion", "error");
+    }
+}
         // ================= شريط الفائزين المتحرك =================
         function generateLiveWinnersTicker() {
             const track = document.getElementById('winners-ticker-track');
@@ -2086,32 +2241,32 @@
         }
 
         function toggleNotificationsPanel() {
-    const panel = document.getElementById('notifications-panel');
-    panel.classList.toggle('hidden');
-    panel.classList.toggle('flex');
-}
-
-async function fetchNotifications() {
-    if (!playerSession) return;
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/user/notifications`, { headers: getAuthHeaders() });
-        const data = await res.json();
-        
-        const badge = document.getElementById('notif-badge');
-        if (data.unread > 0) {
-            badge.innerText = data.unread;
-            badge.classList.remove('hidden');
-        } else {
-            badge.classList.add('hidden');
+            const panel = document.getElementById('notifications-panel');
+            panel.classList.toggle('hidden');
+            panel.classList.toggle('flex');
         }
 
-        const list = document.getElementById('notifs-list');
-        if (data.notifications.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
-            return;
-        }
+        async function fetchNotifications() {
+            if (!playerSession) return;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/user/notifications`, { headers: getAuthHeaders() });
+                const data = await res.json();
 
-        let html = data.notifications.map(n => `
+                const badge = document.getElementById('notif-badge');
+                if (data.unread > 0) {
+                    badge.innerText = data.unread;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+
+                const list = document.getElementById('notifs-list');
+                if (data.notifications.length === 0) {
+                    list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
+                    return;
+                }
+
+                let html = data.notifications.map(n => `
             <div class="relative p-2 rounded-xl border ${n.is_read ? 'bg-[#0f1117] border-transparent' : 'bg-[#1a1e29] border-emerald/30'} hover:bg-gray-800 transition">
                 <div class="flex justify-between items-start mb-1">
                     <div class="flex items-center gap-2 cursor-pointer w-full" onclick="markAsRead('${n.id}')">
@@ -2127,87 +2282,87 @@ async function fetchNotifications() {
                 <span class="text-gray-600 text-[9px] block mt-1">${n.date}</span>
             </div>
         `).join('');
-        
-        // إضافة زر "مسح الكل" أسفل الإشعارات
-        html += `
+
+                // إضافة زر "مسح الكل" أسفل الإشعارات
+                html += `
             <div class="mt-2 pt-2 border-t border-[#212631]">
                 <button onclick="deleteNotification('all')" class="w-full text-xs text-red-400 hover:text-red-500 font-bold py-1.5 bg-red-500/10 rounded-lg transition">
                     <i class="fas fa-trash-alt"></i> Effacer tout
                 </button>
             </div>
         `;
-        
-        list.innerHTML = html;
-    } catch (e) {}
-}
 
-async function markAsRead(id) {
-    await fetch(`${BACKEND_URL}/api/user/read-notification`, {
-        method: 'POST', headers: getAuthHeaders(),
-        body: JSON.stringify({ notif_id: id })
-    });
-    fetchNotifications();
-}
+                list.innerHTML = html;
+            } catch (e) { }
+        }
 
-async function deleteNotification(id) {
-    // إذا كان يمسح الكل، نطلب التأكيد لتجنب المسح بالخطأ
-    if (id === 'all' && !confirm("Voulez-vous vraiment supprimer toutes les notifications ?")) return;
-    
-    try {
-        await fetch(`${BACKEND_URL}/api/user/delete-notification`, {
-            method: 'POST', 
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ notif_id: id })
-        });
-        // تحديث القائمة فوراً بعد المسح
-        fetchNotifications();
-    } catch(e) {
-        showNotification("Erreur de connexion", "error");
-    }
-}
-
-// تحديث الإشعارات كل 15 ثانية
-setInterval(fetchNotifications, 10000);
-
-async function loadFeaturedProvidersBlocks() {
-    const container = document.getElementById('dynamic-featured-providers');
-    if (!container) return;
-
-    // 🛡️ قفل الأمان لمنع التكرار: إذا تم تحميل القسم مسبقاً، توقف فوراً
-    if (container.dataset.loaded === 'true') return;
-    container.dataset.loaded = 'true';
-    
-    container.innerHTML = '';
-
-    const featured = [
-        { name: "Pragmatic Play", code: "PRAGMATIC", color: "bg-emerald-500", hover: "hover:border-emerald-500" },
-        { name: "Amatic", code: "AMATIC", color: "bg-blue-500", hover: "hover:border-blue-500" },
-        { name: "Hacksaw", code: "HACKSAW", color: "bg-purple-500", hover: "hover:border-purple-500" }
-    ];
-
-    let finalHtml = ''; // تجميع الكود هنا لمنع ظهوره متكرراً أو متقطعاً
-
-    for (let provider of featured) {
-        try {
-            const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider_code: provider.code })
+        async function markAsRead(id) {
+            await fetch(`${BACKEND_URL}/api/user/read-notification`, {
+                method: 'POST', headers: getAuthHeaders(),
+                body: JSON.stringify({ notif_id: id })
             });
-            
-            if (res.ok) {
-                const data = await res.json();
-                
-                let games = [];
-                if (data.status === 1 && data.games) games = data.games;
-                else if (data.data) games = data.data;
-                else if (Array.isArray(data)) games = data;
-                
-                // 💡 سحب 6 ألعاب بدلاً من 3 لتعبئة السطر وتصغير حجم البطاقات
-                games = games.slice(0, 6);
+            fetchNotifications();
+        }
 
-                if (games.length > 0) {
-                    let providerHtml = `
+        async function deleteNotification(id) {
+            // إذا كان يمسح الكل، نطلب التأكيد لتجنب المسح بالخطأ
+            if (id === 'all' && !confirm("Voulez-vous vraiment supprimer toutes les notifications ?")) return;
+
+            try {
+                await fetch(`${BACKEND_URL}/api/user/delete-notification`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ notif_id: id })
+                });
+                // تحديث القائمة فوراً بعد المسح
+                fetchNotifications();
+            } catch (e) {
+                showNotification("Erreur de connexion", "error");
+            }
+        }
+
+        // تحديث الإشعارات كل 15 ثانية
+        setInterval(fetchNotifications, 10000);
+
+        async function loadFeaturedProvidersBlocks() {
+            const container = document.getElementById('dynamic-featured-providers');
+            if (!container) return;
+
+            // 🛡️ قفل الأمان لمنع التكرار: إذا تم تحميل القسم مسبقاً، توقف فوراً
+            if (container.dataset.loaded === 'true') return;
+            container.dataset.loaded = 'true';
+
+            container.innerHTML = '';
+
+            const featured = [
+                { name: "Pragmatic Play", code: "PRAGMATIC", color: "bg-emerald-500", hover: "hover:border-emerald-500" },
+                { name: "Amatic", code: "AMATIC", color: "bg-blue-500", hover: "hover:border-blue-500" },
+                { name: "Hacksaw", code: "HACKSAW", color: "bg-purple-500", hover: "hover:border-purple-500" }
+            ];
+
+            let finalHtml = ''; // تجميع الكود هنا لمنع ظهوره متكرراً أو متقطعاً
+
+            for (let provider of featured) {
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider_code: provider.code })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+
+                        let games = [];
+                        if (data.status === 1 && data.games) games = data.games;
+                        else if (data.data) games = data.data;
+                        else if (Array.isArray(data)) games = data;
+
+                        // 💡 سحب 6 ألعاب بدلاً من 3 لتعبئة السطر وتصغير حجم البطاقات
+                        games = games.slice(0, 6);
+
+                        if (games.length > 0) {
+                            let providerHtml = `
                     <div class="mb-4">
                         <div class="flex justify-between items-center mb-3 px-1">
                             <h3 class="text-white font-extrabold text-xs md:text-sm uppercase flex items-center gap-2">
@@ -2221,13 +2376,13 @@ async function loadFeaturedProvidersBlocks() {
                         <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3">
                     `;
 
-                    games.forEach(game => {
-                        const gameName = escapeHTML(String(game.game_name || game.name || "Game"));
-                        const imageUrl = game.banner || game.image || game.thumb || `https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}`;
-                        const gameCode = game.game_code || game.id;
+                            games.forEach(game => {
+                                const gameName = escapeHTML(String(game.game_name || game.name || "Game"));
+                                const imageUrl = game.banner || game.image || game.thumb || `https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}`;
+                                const gameCode = game.game_code || game.id;
 
-                        // 💡 استخدام نفس تصميم البطاقات الأنيق والمصغر (صورة مربعة + اسم في الأسفل)
-                        providerHtml += `
+                                // 💡 استخدام نفس تصميم البطاقات الأنيق والمصغر (صورة مربعة + اسم في الأسفل)
+                                providerHtml += `
                             <div class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer ${provider.hover} transition-all flex flex-col group shadow-lg" onclick="playCasinoGame('${provider.code}', '${gameCode}')">
                                 <div class="relative w-full aspect-square overflow-hidden bg-[#161922]">
                                     <img src="${imageUrl}" alt="${gameName}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.onerror=null; this.src='https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(gameName.substring(0, 15))}';">
@@ -2238,24 +2393,170 @@ async function loadFeaturedProvidersBlocks() {
                                 <div class="p-2 text-[10px] text-white font-bold truncate text-center">${gameName}</div>
                             </div>
                         `;
-                    });
+                            });
 
-                    providerHtml += `
+                            providerHtml += `
                         </div>
                     </div>
                     `;
-                    
-                    finalHtml += providerHtml;
+
+                            finalHtml += providerHtml;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erreur chargement provider: " + provider.code, e);
                 }
             }
-        } catch (e) {
-            console.error("Erreur chargement provider: " + provider.code, e);
+
+            // طباعة كل الأقسام دفعة واحدة
+            container.innerHTML = finalHtml;
         }
+
+        function filterGames(query) {
+            const filter = query.toLowerCase();
+            const gameCards = document.querySelectorAll('.game-card-item'); // تأكد أن كروت الألعاب تحمل هذا الكلاس
+            gameCards.forEach(card => {
+                const title = card.getAttribute('data-game-name') || '';
+                if (title.toLowerCase().includes(filter)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function saveRecentGame(gameCode, gameName, gameImg) {
+            let recent = JSON.parse(localStorage.getItem('alpha_recent_games') || '[]');
+            // إزالة اللعبة إذا كانت موجودة مسبقاً لتتموضع في البداية
+            recent = recent.filter(g => g.code !== gameCode);
+            recent.unshift({ code: gameCode, name: gameName, img: gameImg });
+            if (recent.length > 6) recent.pop(); // الاحتفاظ بآخر 6 ألعاب فقط
+            localStorage.setItem('alpha_recent_games', JSON.stringify(recent));
+            loadRecentGamesUI();
+        }
+
+        function loadRecentGamesUI() {
+            const container = document.getElementById('recent-games-grid');
+            const section = document.getElementById('recent-games-section');
+            const recent = JSON.parse(localStorage.getItem('alpha_recent_games') || '[]');
+
+            if (recent.length === 0) {
+                if (section) section.classList.add('hidden');
+                return;
+            }
+
+            if (section) section.classList.remove('hidden');
+            container.innerHTML = recent.map(g => `
+        <div onclick="launchSpecificVirtualGame('${g.code}')" class="min-w-[120px] cursor-pointer group bg-[#12151d] p-2 rounded-xl border border-[#212631] hover:border-emerald-500 transition">
+            <img src="${g.img}" class="w-full h-20 object-cover rounded-lg mb-2 group-hover:scale-105 transition">
+            <p class="text-white text-xs truncate text-center">${g.name}</p>
+        </div>
+    `).join('');
+        }
+
+// ================= نظام البحث الفوري الشامل والمضمون =================
+function handleLiveSearch(query) {
+    const dropdown = document.getElementById('search-dropdown');
+    const term = query.trim().toLowerCase();
+
+    if (!term) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        return;
     }
-    
-    // طباعة كل الأقسام دفعة واحدة
-    container.innerHTML = finalHtml;
+
+    let matches = [];
+    const seenNames = new Set();
+
+    // 1. البحث الفوري في الواجهة (الألعاب المعروضة حالياً)
+    const gameCards = document.querySelectorAll('div[onclick*="playCasinoGame"], div[onclick*="launchSpecificVirtualGame"], div[onclick*="play"]');
+    gameCards.forEach(el => {
+        const onclickAttr = el.getAttribute('onclick');
+        const imgEl = el.querySelector('img');
+        const titleDiv = el.querySelector('.text-white.font-bold') || el.querySelector('p') || el.querySelector('span');
+        
+        if (onclickAttr && imgEl) {
+            const name = titleDiv ? titleDiv.innerText.trim() : (imgEl.alt || "Jeu");
+            const img = imgEl.src;
+
+            if (name && name.length > 1 && !seenNames.has(name)) {
+                if (name.toLowerCase().includes(term)) {
+                    seenNames.add(name);
+                    matches.push({ name, img, onclick: onclickAttr });
+                }
+            }
+        }
+    });
+
+    // 2. البحث في الذاكرة الشاملة (لجلب الألعاب المخفية أو الأقسام الأخرى)
+    if (window.globalGameDictionary && window.globalGameDictionary.length > 0) {
+        window.globalGameDictionary.forEach(g => {
+            if (g.name.toLowerCase().includes(term) && !seenNames.has(g.name)) {
+                seenNames.add(g.name);
+                matches.push(g);
+            }
+        });
+    } else if (window.currentProviderGames && window.currentProviderGames.length > 0) {
+        // 3. بديل آمن: البحث في الكازينو النشط في حال فشل تحميل الذاكرة الشاملة
+        window.currentProviderGames.forEach(g => {
+            const name = String(g.game_name || g.name || "").trim();
+            if (name.toLowerCase().includes(term) && !seenNames.has(name)) {
+                seenNames.add(name);
+                const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/12151d/10b981?text=${encodeURIComponent(name.substring(0, 15))}`;
+                const code = g.game_code || g.id;
+                const provider = typeof currentActiveProviderCode !== 'undefined' ? currentActiveProviderCode : 'PRAGMATIC';
+                matches.push({ name, img, onclick: `playCasinoGame('${provider}', '${code}')` });
+            }
+        });
+    }
+
+    if (matches.length === 0) {
+        dropdown.innerHTML = '<div class="p-3 text-xs text-gray-400 text-center">Aucun jeu trouvé</div>';
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    // عرض أول 8 نتائج في القائمة المنسدلة
+    dropdown.innerHTML = matches.slice(0, 8).map(m => `
+        <div onclick="${m.onclick}; document.getElementById('search-dropdown').classList.add('hidden'); document.getElementById('header-search-input').value='';" 
+             class="flex items-center gap-2.5 p-2 hover:bg-[#1a1f2c] cursor-pointer border-b border-[#212631] last:border-none transition">
+            <img src="${m.img}" class="w-8 h-8 object-cover rounded-md shrink-0 shadow-sm" onerror="this.src='https://placehold.co/400x400/12151d/10b981?text=Jeu'">
+            <span class="text-xs text-white truncate font-medium">${m.name}</span>
+        </div>
+    `).join('');
+
+    dropdown.classList.remove('hidden');
 }
+
+
+
+// ================= نظام التمرير التلقائي لبانرات الهاتف =================
+function startPromoAutoScroll() {
+    const slider = document.getElementById('promo-slider');
+    if (!slider) return;
+
+    let scrollIndex = 0;
+    const cards = slider.children;
+    const totalCards = cards.length;
+
+    setInterval(() => {
+        // العمل فقط في شاشات الهاتف (حيث يعمل الـ scroll)
+        if (window.innerWidth < 768) {
+            scrollIndex++;
+            if (scrollIndex >= totalCards) {
+                scrollIndex = 0; // العودة للبانر الأول
+            }
+            
+            // حساب مسافة التمرير بناءً على حجم البطاقة
+            const scrollPosition = cards[scrollIndex].offsetLeft - slider.offsetLeft;
+            slider.scrollTo({ left: scrollPosition, behavior: 'smooth' });
+        }
+    }, 2500); // يمرر كل ثانيتين ونصف (2500ms) - يمكنك تقليلها إلى 1500 إن أردتها أسرع
+}
+
+// استدعاء الدالة
+startPromoAutoScroll();
+
     </script>
     <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
     <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"

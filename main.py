@@ -2350,7 +2350,7 @@ async def launch_eurovirtuals(request: Request):
         # 🛡️ استخراج رصيد اللاعب من قاعدة البيانات
         async with db_lock:
             db = load_db()
-            target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
+            target_user = next((u for u in db if str(u.get("username")).lower().strip() == str(user_code).lower().strip()), None)
             
             if not target_user or target_user.get("is_blocked") == 1:
                 return {"error": "Player not found or blocked"}
@@ -2374,10 +2374,11 @@ async def launch_eurovirtuals(request: Request):
 
         headers = {
             "Accept": "application/json",
+            "Content-Type": "application/json",
             "x-api-key": EURO_API_KEY,
-            "x-signature-key": signature,
-            "x-timestamp": timestamp,
-            "Content-Type": "application/json"
+            "x-signature": signature,      # تم التصحيح هنا
+            "x-signature-key": signature,  # إرسال الاثنين معاً لتجنب أي تعقيد من المزود
+            "x-timestamp": timestamp
         }
 
         base_url_clean = str(EURO_BASE_URL).rstrip('/')
