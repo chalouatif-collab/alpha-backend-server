@@ -2301,6 +2301,8 @@ async def get_virtual_games():
         
         base_url_clean = str(EURO_BASE_URL).rstrip('/')
         games_endpoint = f"{base_url_clean}/v1/games"
+        print(f"🔗 CONNECTING TO URL: {games_endpoint}")
+        print(f"🔑 USING API KEY: {EURO_API_KEY[:10]}...")
         
         try:
             response = requests.get(games_endpoint, headers=headers, timeout=20)
