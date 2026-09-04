@@ -1891,21 +1891,20 @@ async def eurovirtuals_bet(request: Request):
         payload = await request.json()
     except Exception:
         return JSONResponse(content={"status_code": 400, "status_description": "Bad Request"}, status_code=200)
-
+        
     try:
         sec_err = check_eurovirtuals_security(request, payload)
         if sec_err: return JSONResponse(content=sec_err, status_code=200)
-        bet_data = payload.get("data", [{}])[0]
-        # دعم الكازينو والرياضة معاً
+
+        # 💡 قراءة بيانات اللاعب والمبلغ من الـ Payload الخارجي مباشرة
         player_id = str(payload.get("player_id") or payload.get("user_code") or "").strip()
         currency = str(payload.get("currency") or "TND").strip()
         transaction_id = str(payload.get("transaction_id") or payload.get("txn_id") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        # 🛑 الدرع الآمن للسبين: يمتص الفراغات و null ويحولها إلى 0.0
         def safe_float(val):
             try:
-                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none": 
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
                     return 0.0
                 return float(val)
             except:
