@@ -1896,10 +1896,14 @@ async def eurovirtuals_bet(request: Request):
         sec_err = check_eurovirtuals_security(request, payload)
         if sec_err: return JSONResponse(content=sec_err, status_code=200)
 
-        # 💡 قراءة بيانات اللاعب والمبلغ من الـ Payload الخارجي مباشرة
-        player_id = str(payload.get("player_id") or payload.get("user_code") or "").strip()
-        currency = str(payload.get("currency") or "TND").strip()
-        transaction_id = str(payload.get("transaction_id") or payload.get("txn_id") or "").strip()
+        # 💡 استخراج بيانات المصفوفة الداخلية لاستخدامها كبديل
+        bet_data_list = payload.get("data", [])
+        bet_data = bet_data_list[0] if bet_data_list and isinstance(bet_data_list, list) else {}
+
+        # 💡 البحث عن المتغيرات في الغلاف الخارجي أولاً، ثم في المصفوفة الداخلية كبديل
+        player_id = str(payload.get("player_id") or payload.get("user_code") or bet_data.get("player_id") or bet_data.get("user_code") or "").strip()
+        currency = str(payload.get("currency") or bet_data.get("currency") or "TND").strip()
+        transaction_id = str(payload.get("transaction_id") or payload.get("txn_id") or bet_data.get("transaction_id") or bet_data.get("txn_id") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
         def safe_float(val):
@@ -1910,7 +1914,8 @@ async def eurovirtuals_bet(request: Request):
             except:
                 return 0.0
 
-        amount = safe_float(payload.get("amount") or payload.get("bet_amount"))
+        # 💡 البحث عن المبلغ في الغلاف الخارجي أولاً، ثم في المصفوفة الداخلية كبديل
+        amount = safe_float(payload.get("amount") or payload.get("bet_amount") or bet_data.get("amount") or bet_data.get("bet_amount"))
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower()), None)
