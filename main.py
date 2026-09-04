@@ -2335,27 +2335,31 @@ async def get_virtual_games():
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        # 🔍 طباعة النص الحرفي القادم من المتصفح لمعرفة ما يتم إرساله فعلياً
-        print(f"🚨 EXACT DATA RECEIVED FROM FRONTEND: {data}")
+        print(f"🚨 1. EXACT DATA RECEIVED: {data}")
         
         game_uuid = str(data.get("game_uuid") or data.get("game_code") or data.get("id") or "")
-        print(f"🎯 EXTRACTED game_uuid: '{game_uuid}'")
+        print(f"🎯 2. EXTRACTED game_uuid: '{game_uuid}'")
         
         if not game_uuid or game_uuid == "undefined":
-            return {"error": "Game UUID is missing or invalid from frontend"}
+            return {"error": "Game UUID is missing"}
             
         user_code = str(data.get("user_code", "test_user"))
-        timestamp = str(int(time.time()))
-
-        # 🛡️ استخراج رصيد اللاعب من قاعدة البيانات
+        print(f"👤 3. USER CODE: {user_code}")
+        
+        # 🛡️ استخراج رصيد اللاعب
         async with db_lock:
             db = load_db()
-            target_user = next((u for u in db if str(u.get("username")).lower().strip() == str(user_code).lower().strip()), None)
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == user_code.lower().strip()), None)
             
-            if not target_user or target_user.get("is_blocked") == 1:
-                return {"error": "Player not found or blocked"}
+            if not target_user:
+                print("❌ 4. ERROR: Player not found in DB")
+                return {"error": "Player not found"}
+            if target_user.get("is_blocked") == 1:
+                print("❌ 4. ERROR: Player is blocked")
+                return {"error": "Player blocked"}
                 
             current_balance = float(target_user.get("balance", 0.0))
+            print(f"💰 5. BALANCE FOUND: {current_balance}")
 
         payload = {
             "player_id": user_code,
@@ -2369,30 +2373,33 @@ async def launch_eurovirtuals(request: Request):
             "language": "fr",
             "device": "desktop"
         }
+        print(f"📦 6. PAYLOAD PREPARED: {payload}")
 
         signature = hash_create(payload, EURO_APP_KEY)
+        print(f"✍️ 7. SIGNATURE GENERATED: {signature}")
 
         headers = {
             "Accept": "application/json",
-            "Content-Type": "application/json",
             "x-api-key": EURO_API_KEY,
-            "x-signature": signature,      # تم التصحيح هنا
-            "x-signature-key": signature,  # إرسال الاثنين معاً لتجنب أي تعقيد من المزود
-            "x-timestamp": timestamp
+            "x-signature-key": signature,
+            "x-signature": signature,
+            "x-timestamp": str(int(time.time())),
+            "Content-Type": "application/json"
         }
 
         base_url_clean = str(EURO_BASE_URL).rstrip('/')
         launch_endpoint = f"{base_url_clean}/v1/launch"
+        print(f"🚀 8. SENDING TO: {launch_endpoint}")
         
         async with httpx.AsyncClient() as client:
             response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
+            print(f"🌐 9. RAW STATUS: {response.status_code}")
+            print(f"🌐 10. RAW TEXT: {response.text}")
             
             try:
                 response_data = response.json()
             except Exception:
                 return {"error": "Invalid JSON from provider", "details": response.text}
-
-            print(f"🌐 PROVIDER FINAL RESPONSE: {response_data}")
 
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
@@ -2400,13 +2407,14 @@ async def launch_eurovirtuals(request: Request):
                     game_url = f"{base_url_clean}{game_url}"
                 return {"launch_url": game_url}
             else:
-                return {
-                    "error": response_data.get("status_description", "Provider rejected launch"), 
-                    "details": response_data
-                }
+                return {"error": response_data.get("status_description", "Rejected"), "details": response_data}
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"🔥 CRITICAL CRASH: {error_details}")
         return {"error": str(e)}
+    
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook(request: Request):
     try:
