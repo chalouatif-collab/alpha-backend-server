@@ -189,7 +189,7 @@
         <span class="badge text-emerald fw-bold px-2 py-1 border rounded-2" style="background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); font-size: 0.65rem;" id="shop-username-display">Boutique: Connected</span>
     </div>
     <div class="border-custom px-2 py-1 rounded-2 d-flex align-items-center gap-2" style="background-color: #04060c;">
-        <span class="text-secondary font-sans" style="font-size: 0.65rem;">الرصيد:</span>
+        <span class="text-secondary font-sans" style="font-size: 0.65rem;">Crédit:</span>
         <span class="text-emerald fw-black font-monospace" style="font-size: 0.75rem;" id="shop-balance-val">0.00 TND</span>
     </div>
 </header>
@@ -202,12 +202,12 @@
                 
                 <!-- حقل البحث -->
                 <div class="p-2 bg-card-custom rounded-3 border border-custom shadow-sm">
-                    <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="🔍 بحث عن مستخدم في المتجر..." class="form-control form-control-sm rounded-2">
+                    <input type="text" id="search-input" oninput="renderFilteredUsers()" placeholder="🔍  Chercher un utilisateur..." class="form-control form-control-sm rounded-2">
                 </div>
                 
                 <!-- إنشاء حساب جديد -->
                 <section class="bg-card-custom border-custom rounded-3 p-3 shadow-sm">
-                    <h5 class="fw-bold text-light mb-2" style="font-size: 0.8rem;">🕹️ إنشاء حساب لاعب جديد</h5>
+                    <h5 class="fw-bold text-light mb-2" style="font-size: 0.8rem;">🕹️ créé un Nouveau Compte</h5>
                     <div class="row g-2 mb-2">
                         <div class="col-12 col-sm-6">
                             <input type="text" id="new-user-name" placeholder="Nom du joueur" class="form-control form-control-sm">
@@ -216,33 +216,33 @@
                             <input type="password" id="player-password" placeholder="Mot de passe" class="form-control form-control-sm">
                         </div>
                     </div>
-                    <button onclick="createPlayerAccount()" class="btn btn-emerald btn-sm w-100 py-1 rounded-2 shadow-sm" style="font-size: 0.75rem;">تثبيت الحساب</button>
+                    <button onclick="createPlayerAccount()" class="btn btn-emerald btn-sm w-100 py-1 rounded-2 shadow-sm" style="font-size: 0.75rem;">Créé </button>
                 </section>
 
                 <!-- إدارة الأموال والعمليات -->
                 <section class="bg-card-custom border-custom rounded-3 overflow-hidden shadow-sm">
                     <div class="p-2 border-bottom border-custom" style="background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);">
-                        <h5 class="fw-bold text-white mb-2" style="font-size: 0.75rem;">📋 المعاملات المالية والبرمجية</h5>
+                        <h5 class="fw-bold text-white mb-2" style="font-size: 0.75rem;">📋 Dépôt/Retrait </h5>
                         
                         <!-- شريط التحكم المالي -->
                         <div class="d-flex flex-wrap gap-2 align-items-center p-2 rounded-2 border border-custom" style="background-color: #04060c;">
                             <div class="d-flex align-items-center gap-1">
-                                <input type="text" id="target-player-name" placeholder="حدد لاعباً" class="form-control form-control-sm text-warning" style="width: 80px; font-size: 0.7rem;" readonly>
+                                <input type="text" id="target-player-name" placeholder="sélectionner un compte" class="form-control form-control-sm text-warning" style="width: 80px; font-size: 0.7rem;" readonly>
                             </div>
                             
                             <div class="vr bg-secondary mx-1 d-none d-sm-block"></div>
                             
                             <div class="d-flex align-items-center gap-1">
                                 <input type="number" id="finance-amount" placeholder="المبلغ" class="form-control form-control-sm text-emerald" style="width: 70px; font-size: 0.7rem;">
-                                <button onclick="executeShopFinance('charge')" class="btn btn-emerald btn-sm fw-bold px-2 py-1" style="font-size: 0.65rem;">شحن</button>
-                                <button onclick="executeShopFinance('withdraw')" class="btn btn-danger btn-sm fw-bold px-2 py-1" style="font-size: 0.65rem;">سحب</button>
+                                <button onclick="executeShopFinance('charge')" class="btn btn-emerald btn-sm fw-bold px-2 py-1" style="font-size: 0.65rem;">Dépôt</button>
+                                <button onclick="executeShopFinance('withdraw')" class="btn btn-danger btn-sm fw-bold px-2 py-1" style="font-size: 0.65rem;">Retrait</button>
                             </div>
 
                             <div class="vr bg-secondary mx-1 d-none d-lg-block"></div>
                             
                             <div class="d-flex align-items-center gap-1 ms-auto mt-1 mt-lg-0 w-100 w-lg-auto">
-                                <input type="password" id="shop-player-new-pass" placeholder="كلمة سر جديدة" class="form-control form-control-sm flex-grow-1" style="font-size: 0.7rem;">
-                                <button onclick="changePlayerPasswordFromShop()" class="btn btn-info btn-sm text-white fw-bold px-2 py-1" style="font-size: 0.65rem;">تغيير</button>
+                                <input type="password" id="shop-player-new-pass" placeholder="Nouveau mot de passe" class="form-control form-control-sm flex-grow-1" style="font-size: 0.7rem;">
+                                <button onclick="changePlayerPasswordFromShop()" class="btn btn-info btn-sm text-white fw-bold px-2 py-1" style="font-size: 0.65rem;">Change</button>
                             </div>
                         </div>
                     </div>
