@@ -54,8 +54,8 @@ PROVIDER_ENDPOINT = os.getenv("PROVIDER_ENDPOINT", "https://api.nexusggr.eu")
 # ==========================================
 # ⚽ إعدادات الألعاب الافتراضية (EuroVirtuals)
 # ==========================================
-EURO_APP_KEY = os.getenv("EURO_APP_KEY", "")
-EURO_API_KEY = os.getenv("EURO_API_KEY", "")
+EURO_API_KEY = os.getenv("EURO_API_KEY", "RDWR6e0f1DF1ylzpxEpXzMFi.l3m1aebuSmiH6KGjiGzJf9BoQdMH37F63lGmY4TnXnLlPA3d")
+EURO_APP_KEY = os.getenv("EURO_APP_KEY", "e0c39ac6-2d70-4ba8-a918-cb2a3fedd029")
 EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk/")
 
 from dotenv import load_dotenv
