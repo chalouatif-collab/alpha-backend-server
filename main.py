@@ -2860,46 +2860,185 @@ async def get_audit_logs(current_user: str = Depends(get_admin_user)):
 import random
 from datetime import datetime, timedelta
 
-# إعدادات الجواكيب
-JACKPOTS_CONFIG = {
-    "mini":  {"max": 120, "days": 1, "share": 0.40},
-    "minor": {"max": 200, "days": 7, "share": 0.30},
-    "major": {"max": 500, "days": 15, "share": 0.20},
-    "grand": {"max": 1200, "days": 30, "share": 0.10},
+import random
+import asyncio
+from datetime import datetime, timedelta
+import uuid
+
+# ==========================================
+# 🎁 محرك الجاكبوت الزمني (Time-Based Jackpot Engine)
+# ==========================================
+
+# 1. الإعدادات الأساسية (البداية والأيام)
+JACKPOTS_BASE = {
+    "mini":  {"start": 20.0, "days": 1},
+    "minor": {"start": 40.0, "days": 2},
+    "major": {"start": 80.0, "days": 7},
+    "grand": {"start": 500.0, "days": 30},
 }
 
-# حالة الجاكبوت في قاعدة البيانات
+# دالة لتحديد موعد السقوط العشوائي بدقة
+def generate_drop_time(days):
+    now = datetime.now()
+    random_seconds = random.randint(1, int(timedelta(days=days).total_seconds()))
+    return now + timedelta(seconds=random_seconds)
+
+# 2. حالة الجاكبوت الحالية في الذاكرة
 jackpots_state = {
-    "mini":  {"current_amount": 10.0, "drop_threshold": random.uniform(50, 120), "deadline": datetime.now() + timedelta(days=1)},
-    "minor": {"current_amount": 20.0, "drop_threshold": random.uniform(80, 200), "deadline": datetime.now() + timedelta(days=7)},
-    "major": {"current_amount": 50.0, "drop_threshold": random.uniform(200, 500), "deadline": datetime.now() + timedelta(days=15)},
-    "grand": {"current_amount": 100.0, "drop_threshold": random.uniform(500, 1200), "deadline": datetime.now() + timedelta(days=30)},
+    "mini":  {"current_amount": 20.0, "drop_time": generate_drop_time(1)},
+    "minor": {"current_amount": 40.0, "drop_time": generate_drop_time(2)},
+    "major": {"current_amount": 80.0, "drop_time": generate_drop_time(7)},
+    "grand": {"current_amount": 500.0, "drop_time": generate_drop_time(30)},
 }
 
-def process_loss_and_check_jackpot(player_id: str, loss_amount: float):
-    # نأخذ 2% من خسارة اللاعب كتمويل للجاكبوت
-    jackpot_funding = loss_amount * 0.02 
-    winners = []
-
-    for level, config in JACKPOTS_CONFIG.items():
-        state = jackpots_state[level]
+# 3. محرك الجاكبوت الذي يعمل في الخلفية كل دقيقة
+async def time_based_jackpot_engine():
+    await asyncio.sleep(10) # انتظار إقلاع السيرفر
+    while True:
+        try:
+            now = datetime.now()
+            for level in jackpots_state:
+                # زيادة 0.03 دينار كل دقيقة
+                jackpots_state[level]["current_amount"] += 0.03
+                
+                # التحقق مما إذا حان وقت السقوط العشوائي
+                if now >= jackpots_state[level]["drop_time"]:
+                    await trigger_jackpot_drop(level, jackpots_state[level]["current_amount"])
+                    
+                    # إعادة ضبط الجاكبوت لدورة جديدة
+                    jackpots_state[level]["current_amount"] = JACKPOTS_BASE[level]["start"]
+                    jackpots_state[level]["drop_time"] = generate_drop_time(JACKPOTS_BASE[level]["days"])
+                    
+        except Exception as e:
+            print(f"❌ Jackpot Engine Error: {e}")
         
-        # إضافة التمويل للجاكبوت بدون تجاوز الحد الأقصى
-        added_amount = jackpot_funding * config["share"]
-        if state["current_amount"] + added_amount <= config["max"]:
-            state["current_amount"] += added_amount
-            
-        # التحقق من شروط السقوط (تخطي المبلغ السري أو انتهاء الوقت)
-        if state["current_amount"] >= state["drop_threshold"] or datetime.now() >= state["deadline"]:
-            winners.append({"level": level, "amount": state["current_amount"]})
-            
-            # إعادة تعيين الجاكبوت لدورة جديدة
-            state["current_amount"] = config["max"] * 0.1 
-            state["drop_threshold"] = random.uniform(state["current_amount"] * 2, config["max"])
-            state["deadline"] = datetime.now() + timedelta(days=config["days"])
-            
+        await asyncio.sleep(60) # تكرار العملية كل 60 ثانية (دقيقة)
 
-    return winners
+# 4. دالة سقوط الجاكبوت وتوزيع الأرباح
+async def trigger_jackpot_drop(level, total_amount):
+    async with db_lock:
+        db = load_db()
+        
+        # استخراج اللاعبين النشطين فقط
+        eligible_users = [u for u in db if str(u.get("role")) == "player" and str(u.get("is_blocked")) != "1"]
+        
+        if not eligible_users:
+            return 
+        
+        # اختيار 5 لاعبين عشوائياً (أو أقل إذا كان عدد اللاعبين في الموقع أقل من 5)
+        winners = random.sample(eligible_users, min(5, len(eligible_users)))
+        win_per_user = round(total_amount / len(winners), 2)
+        
+        db_session = SessionLocal()
+        try:
+            for winner in winners:
+                # 1. إضافة الرصيد للاعب
+                winner["balance"] = round(float(winner.get("balance", 0.0)) + win_per_user, 2)
+                
+                # 2. تسجيل العملية في جدول المعاملات
+                new_tx = Transaction(
+                    admin_username="SYSTEM_JACKPOT",
+                    target_username=winner["username"],
+                    action=f"jackpot_win ({level})",
+                    amount=win_per_user,
+                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    tx_id=f"jp_{uuid.uuid4().hex[:8]}"
+                )
+                db_session.add(new_tx)
+                
+                # 3. إرسال إشعار فوري للاعب الفائز
+                if "notifications" not in db.full_data:
+                    db.full_data["notifications"] = []
+                new_notif = {
+                    "id": str(uuid.uuid4())[:8],
+                    "target": winner["username"],
+                    "title": f"🎉 Jackpot {level.upper()} !",
+                    "message": f"Félicitations! Vous avez gagné une part du jackpot. {win_per_user} TND ont été ajoutés à votre compte.",
+                    "icon": "fa-coins",
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "read_by": []
+                }
+                db.full_data["notifications"].append(new_notif)
+                
+            db_session.commit()
+            save_db(db)
+            db_session.commit()
+            save_db(db)
+            print(f"🎉 JACKPOT {level.upper()} DROP! {total_amount} TND divided among {len(winners)} players.")
+            
+            # 🌟 الكود الجديد: بث إشعار السقوط الفوري لجميع المتصلين
+            try:
+                masked_winners = [f"{str(w['username'])[:4]}***" for w in winners]
+                drop_data = {
+                    "type": "jackpot_drop",
+                    "level": level.upper(),
+                    "total_amount": total_amount,
+                    "win_per_user": win_per_user,
+                    "winners": masked_winners
+                }
+                # نستخدم نفس مدير الـ WebSocket لإرسال الإشعار
+                asyncio.create_task(jackpot_manager.broadcast(json.dumps(drop_data)))
+            except Exception as e:
+                print(f"Error broadcasting jackpot drop: {e}")
+                
+        except Exception as e:
+            db_session.rollback()
+            print(f"🎉 JACKPOT {level.upper()} DROP! {total_amount} TND divided among {len(winners)} players.")
+        except Exception as e:
+            db_session.rollback()
+            print(f"❌ Error distributing jackpot: {e}")
+        finally:
+            db_session.close()
+
+# 🛡️ مدير اتصالات WebSockets
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except:
+                pass
+
+jackpot_manager = ConnectionManager()
+
+# 🌐 مسار الـ WebSocket الخاص بالجاكبوت
+@app.websocket("/ws/jackpot")
+async def websocket_jackpot(websocket: WebSocket):
+    await jackpot_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        jackpot_manager.disconnect(websocket)
+
+# 🔄 مهمة خلفية تبث أرقام الجاكبوت للواجهة
+async def broadcast_jackpots():
+    while True:
+        live_data = {
+            "mini": round(jackpots_state["mini"]["current_amount"], 2),
+            "minor": round(jackpots_state["minor"]["current_amount"], 2),
+            "major": round(jackpots_state["major"]["current_amount"], 2),
+            "grand": round(jackpots_state["grand"]["current_amount"], 2)
+        }
+        await jackpot_manager.broadcast(json.dumps(live_data))
+        await asyncio.sleep(2)
+
+# تشغيل البث ومحرك الجاكبوت تلقائياً عند الإقلاع
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(broadcast_jackpots())
+    asyncio.create_task(time_based_jackpot_engine()) # 👈 المحرك الجديد
   
 
 

@@ -51,62 +51,57 @@
 <body class="antialiased text-sm flex flex-col min-h-screen">
     <!-- 1. الشريط العلوي (الرصيد وتسجيل الدخول - متجاوب وأنيق للهاتف) -->
     <header class="bg-[#161922] border-b border-[#212631] sticky top-0 z-50">
-        <div class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3">
+        <div class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3 relative">
 
-            <!-- القسم الأيسر: الشعار + شريط البحث المصغر والذكي -->
+            <!-- القسم الأيسر: الشعار -->
             <div class="flex items-center gap-4 md:gap-6">
-                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0"
-                    onclick="switchSection('accueil')">
-                    <!-- تصغير الشعار في الهاتف -->
-                    <div
-                        class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
+                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0" onclick="switchSection('accueil')">
+                    <div class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
                         <i class="fas fa-bolt"></i>
                     </div>
-                    <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span
-                            class="text-emerald">216</span></span>
+                    <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span class="text-emerald">216</span></span>
+                </div>
+            </div>
+
+            <!-- القسم الأيمن (تم تجميع الأزرار والجرس في حاوية واحدة لتجنب المنتصف) -->
+            <div class="flex items-center gap-2 md:gap-4">
+                
+                <!-- أزرار الدخول -->
+                <div id="auth-buttons-container" class="flex items-center gap-2">
+                    <button onclick="openLoginModal()" class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2 transition">Connexion</button>
+                    <button onclick="openRegisterModal()" class="bg-emerald hover:bg-emerald-600 text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-5 py-2 md:py-2.5 rounded-xl transition shadow-lg">S'inscrire</button>
+                </div>
+
+                <!-- بروفايل اللاعب والرصيد -->
+                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0" onclick="toggleProfileSidebar()">
+                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-[#212631] text-emerald flex items-center justify-center border border-[#2e3648] shadow-sm hover:border-emerald transition-all">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div class="text-right hidden sm:block">
+                        <span class="text-[9px] text-gray-500 font-bold uppercase block leading-none mb-0.5">Solde</span>
+                        <span class="font-extrabold text-white text-xs leading-none"><span id="player-balance-val">0.00</span> TND</span>
+                    </div>
+                </div>
+
+                <!-- جرس الإشعارات -->
+                <div id="top-notification-bell" class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0" onclick="toggleNotificationsPanel()">
+                    <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
+                    <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
                 </div>
 
             </div>
 
-            <!-- أزرار الدخول أو رصيد اللاعب (Dynamic Auth) -->
-            <div class="flex items-center gap-2 md:gap-3">
-
-                <!-- واجهة الزائر (غير مسجل الدخول) -->
-                <div id="guest-ui" class="flex items-center gap-2">
-                    <button onclick="openLoginModal()"
-                        class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2 transition">Connexion</button>
-                    <button onclick="openRegisterModal()"
-                        class="bg-emerald hover:bg-emerald-600 text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-5 py-2 md:py-2.5 rounded-xl transition shadow-lg">S'inscrire</button>
+            <!-- النافذة المنسدلة للإشعارات -->
+            <div id="notifications-panel" class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
+                <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
+                    <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
                 </div>
-
-                <!-- واجهة اللاعب (مسجل الدخول) -->
-                <div id="logged-in-ui" class="hidden items-center gap-2 md:gap-3">
-                    <!-- الرصيد -->
-                    <div class="bg-[#0f1117] border border-[#212631] rounded-xl p-1 px-3 hidden sm:flex items-center">
-                        <div>
-                            <span class="text-[9px] text-gray-500 font-bold uppercase block">Solde</span>
-                            <span class="font-bold text-white text-xs"><span id="player-balance-val">0.00</span>
-                                TND</span>
-                        </div>
-                    </div>
-
-                    <!-- زر الإيداع (يظهر فقط لمن سجل بنفسه) -->
-                    <button id="btn-deposit-ui" onclick="toggleCashier()"
-                        class="hidden bg-emerald hover:bg-emerald-600 text-black font-extrabold uppercase text-[10px] md:text-xs px-3 md:px-5 py-2 md:py-2.5 rounded-xl transition shadow-lg">
-                        Dépôt
-                    </button>
-
-                    <!-- أيقونة الحساب (تسجيل الخروج) -->
-                    <div onclick="logoutPlayer()"
-                        class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#212631] flex items-center justify-center text-gray-300 hover:text-red-400 cursor-pointer transition"
-                        title="Déconnexion">
-                        <i class="fas fa-user"></i>
-                    </div>
+                <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
                 </div>
-
             </div>
 
-            <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
+        </div>
+    </header>            <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
             <div id="top-notification-bell"
                 class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1"
                 onclick="toggleNotificationsPanel()">
@@ -161,6 +156,11 @@
                 onclick="setActiveMenuBtn('btn-nav-virtuals'); switchSection('virtuals'); initVirtualsLobby();"
                 class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center justify-center gap-2 flex-shrink-0 grow transition-all whitespace-nowrap">
                 <i class="fas fa-gamepad text-blue-400"></i> Virtuels
+            </button>
+
+            <button id="btn-nav-virtuals2" onclick="setActiveMenuBtn('btn-nav-virtuals2'); switchSection('virtuals2');"
+                class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-yellow-500 flex items-center justify-center gap-2 flex-shrink-0 grow transition-all whitespace-nowrap">
+                <i class="fas fa-bug text-yellow-500"></i> Virtuels 2
             </button>
 
             <button id="btn-nav-aviator"
@@ -697,8 +697,14 @@
                 <div id="virtuals-games-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-10"></div>
             </div>
 
-        </div>
-
+        <!-- PANE: VIRTUALS 2 (Tests / Jeux cassés) -->
+            <div id="pane-virtuals2" class="player-view-section hidden w-full">
+                <div class="flex items-center gap-2 mb-4">
+                    <i class="fas fa-bug text-xl text-yellow-500"></i>
+                    <h2 class="text-white font-bold text-lg">Jeux Virtuels (Tests)</h2>
+                </div>
+                <div id="virtuals2-games-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-10"></div>
+            </div>
 
     </main>
     </main>
@@ -1221,36 +1227,61 @@
                     initGlobalGameCache();
                 });
             };
-            // ================= محرك الجاكبوت الحي (Real-time WebSocket) =================
-            function startLiveJackpots() {
-                // تحويل رابط الباك إند العادي إلى رابط WebSocket (ws:// أو wss://)
-                const wsUrl = BACKEND_URL.replace("http", "ws").replace("https", "wss") + "/ws/jackpot";
-                const socket = new WebSocket(wsUrl);
+            // دالة الـ WebSocket المحدثة
+function startLiveJackpots() {
+    const wsUrl = BACKEND_URL.replace("http", "ws").replace("https", "wss") + "/ws/jackpot";
+    const socket = new WebSocket(wsUrl);
 
-                socket.onmessage = function (event) {
-                    const data = JSON.parse(event.data);
+    socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
 
-                    const elMini = document.getElementById('jackpot-mini');
-                    const elMinor = document.getElementById('jackpot-minor');
-                    const elMajor = document.getElementById('jackpot-major');
-                    const elGrand = document.getElementById('jackpot-grand');
+        // 🌟 التقاط إشعار سقوط الجاكبوت الاستثنائي
+        if (data.type === 'jackpot_drop') {
+            announceJackpotDrop(data);
+            return; // نوقف التنفيذ هنا كي لا يقرأه كأرقام عادية
+        }
 
-                    // تحديث الأرقام في الواجهة وتنسيقها كعملة
-                    if (elMini) elMini.innerText = parseFloat(data.mini).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-                    if (elMinor) elMinor.innerText = parseFloat(data.minor).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-                    if (elMajor) elMajor.innerText = parseFloat(data.major).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-                    if (elGrand) elGrand.innerText = parseFloat(data.grand).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-                };
+        // التحديث العادي للأرقام
+        const elMini = document.getElementById('jackpot-mini');
+        const elMinor = document.getElementById('jackpot-minor');
+        const elMajor = document.getElementById('jackpot-major');
+        const elGrand = document.getElementById('jackpot-grand');
 
-                socket.onerror = function (error) {
-                    console.error("Jackpot WS Error:", error);
-                };
+        if (elMini && data.mini !== undefined) elMini.innerText = parseFloat(data.mini).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+        if (elMinor && data.minor !== undefined) elMinor.innerText = parseFloat(data.minor).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+        if (elMajor && data.major !== undefined) elMajor.innerText = parseFloat(data.major).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+        if (elGrand && data.grand !== undefined) elGrand.innerText = parseFloat(data.grand).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+    };
 
-                socket.onclose = function () {
-                    // إعادة الاتصال الصامت تلقائياً إذا انقطع الإنترنت أو السيرفر
-                    setTimeout(startLiveJackpots, 5000);
-                };
-            }
+    socket.onerror = function (error) { console.error("Jackpot WS Error:", error); };
+    socket.onclose = function () { setTimeout(startLiveJackpots, 5000); };
+}
+
+// 🌟 دالة رسم الإشعار الذهبي في التيكر
+function announceJackpotDrop(data) {
+    const track = document.getElementById('winners-ticker-track');
+    if (!track) return;
+
+    // دمج أسماء الفائزين (المشفرة)
+    const winnersStr = data.winners.join(' & ');
+    
+    // تصميم كارت استثنائي يختلف عن بقية الفائزين
+    const alertHTML = `
+    <div class="flex items-center gap-2 text-[11px] font-black text-white bg-gradient-to-r from-yellow-600 to-yellow-400 px-4 py-1.5 rounded-lg border border-yellow-300 shrink-0 shadow-[0_0_15px_rgba(234,179,8,0.6)] animate-pulse">
+        <i class="fas fa-crown text-yellow-900 text-lg animate-bounce"></i>
+        <span class="text-yellow-900 drop-shadow-md">ALERTE JACKPOT ${data.level} !</span> 
+        <span>${winnersStr} se partagent ${parseFloat(data.total_amount).toFixed(2)} TND !</span> 
+        <span class="bg-black/30 px-2 py-0.5 rounded text-yellow-100 border border-yellow-200/30">(${parseFloat(data.win_per_user).toFixed(2)} TND chacun)</span>
+    </div>`;
+
+    // إدراج الإشعار في بداية شريط المتحرك (التيكر) ليراه الجميع فوراً
+    track.insertAdjacentHTML('afterbegin', alertHTML);
+    
+    // إطلاق إشعار Toast إضافي يظهر في زاوية الشاشة
+    if(typeof showNotification === 'function') {
+        showNotification(`🔥 LE JACKPOT ${data.level} EST TOMBÉ !`, "success");
+    }
+}
             function switchSection(sectionId, fromPopState = false) {
                 localStorage.setItem('active_section', sectionId);
 
@@ -1296,33 +1327,13 @@
                 if (sectionId === 'casino' && typeof initCasinoLobby === 'function') initCasinoLobby();
                 else if (sectionId === 'live-casino' && typeof openLiveCasino === 'function') openLiveCasino();
                 else if (sectionId === 'virtuals' && typeof initVirtualsLobby === 'function') initVirtualsLobby();
+           
+                if (sectionId === 'casino' && typeof initCasinoLobby === 'function') initCasinoLobby();
+                else if (sectionId === 'live-casino' && typeof openLiveCasino === 'function') openLiveCasino();
+                else if (sectionId === 'virtuals' && typeof initVirtualsLobby === 'function') initVirtualsLobby();
+                else if (sectionId === 'virtuals2' && typeof initVirtualsLobby2 === 'function') initVirtualsLobby2();
             }
-
-            function updateAuthUI() {
-    const token = localStorage.getItem('player_token');
-    
-    const guestUI = document.getElementById('guest-ui');
-    const loggedInUI = document.getElementById('logged-in-ui');
-    const depositBtn = document.getElementById('btn-deposit-ui');
-    
-    if (token) {
-        guestUI.classList.add('hidden');
-        guestUI.classList.remove('flex');
-        loggedInUI.classList.remove('hidden');
-        loggedInUI.classList.add('flex');
-
-        // إخفاء زر الإيداع دائماً لأن الحسابات تدار عبر الوكلاء
-        if (depositBtn) {
-            depositBtn.classList.add('hidden');
-            depositBtn.classList.remove('block');
-        }
-    } else {
-        guestUI.classList.remove('hidden');
-        guestUI.classList.add('flex');
-        loggedInUI.classList.add('hidden');
-        loggedInUI.classList.remove('flex');
-    }
-}
+// دالة تسجيل الدخول
 async function handlePlayerAuth() {
     const user = document.getElementById('p-auth-username').value;
     const pass = document.getElementById('p-auth-password').value;
@@ -1344,10 +1355,7 @@ async function handlePlayerAuth() {
                 playerSession = { username: data.username, balance: data.balance };
                 localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
 
-                closeLoginModal();
-                updateAuthUI();
-                
-                if(typeof setupLoggedInUI === 'function') setupLoggedInUI();
+                setupLoggedInUI(); // استدعاء الدالة الأصلية التي تخفي الأزرار وتظهر الرصيد
                 showNotification("Connexion réussie !", "success");
             } else {
                 showNotification(data.detail || "Identifiants incorrects", "error");
@@ -1359,64 +1367,59 @@ async function handlePlayerAuth() {
         showNotification("Veuillez remplir tous les champs", "error");
     }
 }
+
+function logoutPlayer() {
+    localStorage.removeItem('player_token');
+    localStorage.removeItem('alpha_player_session');
+    window.playerToken = null;
+    playerSession = null;
+    
+    // إيقاف أي عدادات نشطة
+    if (window.balInterval) clearInterval(window.balInterval);
+
+    // إعادة الواجهة لوضع الزائر
+    const authBtns = document.getElementById('auth-buttons-container');
+    if (authBtns) { authBtns.classList.remove('hidden'); authBtns.classList.add('flex'); }
+
+    const userProfile = document.getElementById('top-user-profile');
+    if (userProfile) { userProfile.classList.add('hidden'); userProfile.classList.remove('flex'); }
+
+    const notifBell = document.getElementById('top-notification-bell');
+    if (notifBell) { notifBell.classList.add('hidden'); notifBell.classList.remove('flex'); }
+
+    if (typeof closeCasinoGame === 'function') closeCasinoGame();
+}
            
+
             function setupLoggedInUI() {
-                closeLoginModal();
-                const authBtns = document.getElementById('auth-buttons-container');
-                if (authBtns) authBtns.classList.add('hidden');
+    closeLoginModal();
+    
+    const authBtns = document.getElementById('auth-buttons-container');
+    if (authBtns) { authBtns.classList.add('hidden'); authBtns.classList.remove('flex'); }
 
-                const userProfile = document.getElementById('top-user-profile');
-                if (userProfile) { userProfile.classList.remove('hidden'); userProfile.classList.add('flex'); }
+    const userProfile = document.getElementById('top-user-profile');
+    if (userProfile) { userProfile.classList.remove('hidden'); userProfile.classList.add('flex'); }
 
-                // 🔔 إظهار جرس الإشعارات
-                const notifBell = document.getElementById('top-notification-bell');
-                if (notifBell) { notifBell.classList.remove('hidden'); notifBell.classList.add('flex'); }
+    const notifBell = document.getElementById('top-notification-bell');
+    if (notifBell) { notifBell.classList.remove('hidden'); notifBell.classList.add('flex'); }
 
-                const nameDisplay = document.getElementById('player-name-display');
-                if (nameDisplay) nameDisplay.innerText = playerSession.username;
+    const sidebarName = document.getElementById('sidebar-username');
+    if (sidebarName) sidebarName.innerText = playerSession.username;
 
-                const sidebarName = document.getElementById('sidebar-username');
-                if (sidebarName) sidebarName.innerText = playerSession.username;
+    // 🌟 تحديث الأرقام فوراً من بيانات الجلسة لكي لا تظهر الأرقام الوهمية
+    if (playerSession.balance !== undefined) {
+        updateBalanceDisplays(playerSession.balance);
+    }
 
-                refreshBalance();
-                setInterval(refreshBalance, 5000);
+    refreshBalance();
+    
+    // منع تكرار العدادات في الخلفية
+    if (window.balInterval) clearInterval(window.balInterval);
+    window.balInterval = setInterval(refreshBalance, 5000);
 
-                // جلب الإشعارات مباشرة عند الدخول
-                if (typeof fetchNotifications === 'function') fetchNotifications();
-            }
-
-            function logoutPlayer() {
-                localStorage.removeItem('player_token');
-                localStorage.removeItem('is_self_registered');
-                updateAuthUI();
-                if (typeof closeCasinoGame === 'function') closeCasinoGame();
-            }
-            async function refreshBalance() {
-                if (!playerSession) return;
-                try {
-                    const res = await fetch(`${BACKEND_URL}/gold_api`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ method: 'user_balance', user_code: playerSession.username })
-                    });
-                    const data = await res.json();
-                    if (data.user_balance !== undefined) {
-                        playerSession.balance = data.user_balance;
-                        const formattedBalance = parseFloat(data.user_balance).toFixed(2);
-
-                        // 1. تحديث الرصيد في الشريط العلوي المخفي
-                        const balDisplay = document.getElementById('player-balance-val');
-                        if (balDisplay) balDisplay.innerText = formattedBalance;
-
-                        // 2. تحديث الرصيد في القائمة الجانبية (Sidebar)
-                        const sidebarBalDisplay = document.getElementById('sidebar-balance');
-                        if (sidebarBalDisplay) sidebarBalDisplay.innerText = formattedBalance + ' TND';
-
-                        // 3. تحديث الرصيد في نافذة السحب (Cashier)
-                        const modalBalDisplay = document.getElementById('modal-balance');
-                        if (modalBalDisplay) modalBalDisplay.innerText = formattedBalance;
-                    }
-                } catch (e) { }
-            }
+    if (typeof fetchNotifications === 'function') fetchNotifications();
+}
+            
 
             function getAuthHeaders() { return { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' }; }
 
@@ -2154,6 +2157,8 @@ async function handlePlayerAuth() {
                 }
             }
 
+
+
             function showWithdrawForm(formId) {
                 document.querySelectorAll('.withdraw-form').forEach(f => f.classList.add('hidden'));
                 document.getElementById(formId).classList.remove('hidden');
@@ -2635,45 +2640,54 @@ async function handlePlayerAuth() {
                 panel.classList.toggle('flex');
             }
 
-            async function fetchNotifications() {
-                if (!playerSession) return;
-                try {
-                    const res = await fetch(`${BACKEND_URL}/api/user/notifications`, { headers: getAuthHeaders() });
-                    const data = await res.json();
+            // 1. دالة جلب الإشعارات المحمية ضد انتهاء الجلسة (401)
+async function fetchNotifications() {
+    if (!playerSession) return;
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/user/notifications`, { headers: getAuthHeaders() });
+        
+        // إذا انتهت صلاحية التوكن أو كان غير صالح، يتم تسجيل الخروج صامتاً لمنع التكرار
+        if (res.status === 401) {
+            logoutPlayer();
+            return;
+        }
 
-                    const badge = document.getElementById('notif-badge');
-                    if (data.unread > 0) {
-                        badge.innerText = data.unread;
-                        badge.classList.remove('hidden');
-                    } else {
-                        badge.classList.add('hidden');
-                    }
+        const data = await res.json();
+        if (!res.ok) return;
 
-                    const list = document.getElementById('notifs-list');
-                    if (data.notifications.length === 0) {
-                        list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
-                        return;
-                    }
+        const badge = document.getElementById('notif-badge');
+        if (badge && data.unread > 0) {
+            badge.innerText = data.unread;
+            badge.classList.remove('hidden');
+        } else if (badge) {
+            badge.classList.add('hidden');
+        }
 
-                    let html = data.notifications.map(n => `
+        const list = document.getElementById('notifs-list');
+        if (!list) return;
+
+        if (!data.notifications || data.notifications.length === 0) {
+            list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
+            return;
+        }
+
+        let html = data.notifications.map(n => `
             <div class="relative p-2 rounded-xl border ${n.is_read ? 'bg-[#0f1117] border-transparent' : 'bg-[#1a1e29] border-emerald/30'} hover:bg-gray-800 transition">
                 <div class="flex justify-between items-start mb-1">
                     <div class="flex items-center gap-2 cursor-pointer w-full" onclick="markAsRead('${n.id}')">
-                        <i class="fas ${n.icon} text-emerald"></i>
-                        <strong class="text-white text-xs">${n.title}</strong>
+                        <i class="fas ${n.icon || 'fa-bell'} text-emerald"></i>
+                        <strong class="text-white text-xs">${escapeHTML(n.title)}</strong>
                     </div>
-                    <!-- زر مسح هذا الإشعار تحديداً -->
                     <button onclick="deleteNotification('${n.id}')" class="text-gray-500 hover:text-red-500 transition px-1">
                         <i class="fas fa-times text-[12px]"></i>
                     </button>
                 </div>
-                <p class="text-gray-400 text-[10px] cursor-pointer" onclick="markAsRead('${n.id}')">${n.message}</p>
-                <span class="text-gray-600 text-[9px] block mt-1">${n.date}</span>
+                <p class="text-gray-400 text-[10px] cursor-pointer" onclick="markAsRead('${n.id}')">${escapeHTML(n.message)}</p>
+                <span class="text-gray-600 text-[9px] block mt-1">${escapeHTML(n.date)}</span>
             </div>
         `).join('');
 
-                    // إضافة زر "مسح الكل" أسفل الإشعارات
-                    html += `
+        html += `
             <div class="mt-2 pt-2 border-t border-[#212631]">
                 <button onclick="deleteNotification('all')" class="w-full text-xs text-red-400 hover:text-red-500 font-bold py-1.5 bg-red-500/10 rounded-lg transition">
                     <i class="fas fa-trash-alt"></i> Effacer tout
@@ -2681,9 +2695,13 @@ async function handlePlayerAuth() {
             </div>
         `;
 
-                    list.innerHTML = html;
-                } catch (e) { }
-            }
+        list.innerHTML = html;
+    } catch (e) {
+        // تجاهل أخطاء الشبكة المؤقتة لعدم إزعاج الـ Console
+    }
+}
+
+                   
 
             async function markAsRead(id) {
                 await fetch(`${BACKEND_URL}/api/user/read-notification`, {
@@ -3089,6 +3107,103 @@ async function handlePlayerAuth() {
         showNotification("Veuillez remplir tous les champs obligatoires.", "error");
     }
 }
+
+async function refreshBalance() {
+    if (!playerSession) return;
+    try {
+        const res = await fetch(`${BACKEND_URL}/gold_api`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ method: 'user_balance', user_code: playerSession.username })
+        });
+        const data = await res.json();
+        
+        if (data.status === 1 && data.user_balance !== undefined) {
+            playerSession.balance = data.user_balance;
+            localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+            
+            // استدعاء الدالة المساعدة لتغيير الرقم في كل الواجهات
+            updateBalanceDisplays(data.user_balance);
+        }
+    } catch (e) {
+        console.error("Erreur balance:", e);
+    }
+}
+
+// 4. إصلاح خطأ 401 الصامت الذي كان يمنع الإشعارات وسجل المعاملات
+function getAuthHeaders() { 
+    return { 
+        'Authorization': `Bearer ${localStorage.getItem('player_token')}`, 
+        'Content-Type': 'application/json' 
+    }; 
+}
+
+function updateBalanceDisplays(balance) {
+    if (balance === undefined || balance === null) return;
+    const formattedBalance = parseFloat(balance).toFixed(2);
+    
+    const balDisplay = document.getElementById('player-balance-val');
+    if (balDisplay) balDisplay.innerText = formattedBalance;
+
+    const sidebarBalDisplay = document.getElementById('sidebar-balance');
+    if (sidebarBalDisplay) sidebarBalDisplay.innerText = formattedBalance + ' TND';
+
+    const modalBalDisplay = document.getElementById('modal-balance');
+    if (modalBalDisplay) modalBalDisplay.innerText = formattedBalance;
+}
+async function initVirtualsLobby2() {
+                const grid = document.getElementById('virtuals2-games-grid');
+                if (grid) grid.innerHTML = '<div class="col-span-full text-yellow-500 text-center py-10">Chargement des jeux à tester...</div>';
+
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`);
+                    const data = await res.json();
+                    let games = data.games || data.data || data || [];
+
+                    // قائمة الألعاب التي "تعمل" (لن نعرضها هنا)
+                    const workingGamesUUIDs = [
+                        "9542d915-1e76-4897-baf8-da867e9e504a", "9fa4f900-0ac6-a795-9e42-c3775578aa4f", "a02d0edf-4afd-d62a-e005-edbc01a4c538",
+                        "b7a2f4e3-95b4-4f83-8e27-91c4b7f6dabc", "3098bdda-d5da-d548-ce14-eb646a79b590", "f3d77a4e-71a4-4c9c-8f63-83f4b52f16b1",
+                        "8420c302-05df-1636-3344-1550b01f53d8", "e758a994-19a7-c557-cbdb-037aeeb68933", "e92f58d5-42a9-a3ad-8e85-8bf75396daf2",
+                        "123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174003",
+                        "e88411fe-6ea6-5904-b410-9b1a6c4e4c0e", "2b281ca2-753c-50af-b105-c90fe98638c7", "2b5ecf43-dd1b-5ed8-b20c-a87a3d061571",
+                        "a4ee684c-4fc7-5618-b20d-ccc60efc7a64", "0fa1c2b3-137c-94da-909b-d7250608fcb6", "ed019bee-6393-64af-0046-377cb36a4bd9",
+                        "6a1373d6-4286-62c7-daae-c86be86ea2fb", "da559e73-26a2-c4d4-26d5-842456cf98b2", "fc732415-bd48-870a-4a10-fc49095e82f2",
+                        "3c2a9f66-2e3d-4c2a-8a1e-775a79bb38a2", "9f0a1692-8fbf-8400-b284-d47b74357100", "ad8a8686-3f24-11f1-b390-42010a69900b",
+                        "ad8bf72b-3f24-11f1-b390-42010a69900b", "5e711cf5-3f2c-11f1-b390-42010a69900b", "c8c1a65d-2f89-92a5-0372-66cb2f856a62",
+                        "1df14d9c-79d8-11f1-9d45-42010a699010", "1df1a2a8-79d8-11f1-9d45-42010a699010", "f94e798c-84dc-11f1-9d45-42010a699010",
+                        "cbe3293f-af9a-ecad-0cbd-acaae3f8ff86", "9f2c7a1e-6b4d-4c8f-91a3-d0e5b7c2f846", "a3f9d7b2-4f1c-4b98-8e4d-7b1e3a0a11d2",
+                        "550e8400-e29b-41d4-a716-446655440000", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+                    ];
+
+                    // ⚠️ العكس: الاحتفاظ فقط بالألعاب التي لم تعمل
+                    const brokenGames = games.filter(g => {
+                        const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
+                        return !workingGamesUUIDs.includes(uuid);
+                    });
+
+                    if (grid) grid.innerHTML = brokenGames.map(g => {
+                        const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
+                        const safeName = escapeHTML(g.game_name || g.name || "Test Game");
+
+                        return `
+            <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-yellow-500/50 rounded-xl cursor-pointer group transition-all overflow-hidden shadow-lg shadow-black/50">
+                <div class="relative w-full aspect-square overflow-hidden bg-black/50">
+                    <img src="${g.banner || g.image || 'https://placehold.co/400x400/180A2B/FFF'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
+                    <div class="absolute inset-0 bg-black/80 flex items-center justify-center flex-col transition-all">
+                        <span class="text-white text-[8px] text-center w-full px-1 break-all mb-2">${uuid}</span>
+                        <span class="bg-yellow-500 text-black text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">TESTER</span>
+                    </div>
+                </div>
+                <div class="p-2 text-[10px] text-yellow-400 font-bold truncate text-center">${safeName}</div>
+            </div>
+            `;
+                    }).join('');
+                } catch (e) {
+                    if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de chargement</div>';
+                }
+            }
+
         </script>
         <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
         <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"
