@@ -1361,20 +1361,29 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
             return {"status": 0, "msg": "Error"}
 
     
+import re
+
 @app.post("/api/provider/launch-casino")
 async def launch_casino(request: Request):
     try:
         data = await request.json()
+        
+        # 1. تنظيف اسم المستخدم لمنع أخطاء Spribe
+        raw_user_code = str(data.get("user_code", "test_user"))
+        clean_user_code = re.sub(r'[^a-zA-Z0-9]', '', raw_user_code) 
+        
         payload = {
             "method": "game_launch",
             "agent_code": AGENT_CODE,      
             "agent_token": AGENT_TOKEN,    
-            "user_code": data.get("user_code", "test_user"),
+            "user_code": clean_user_code, # تمرير الاسم النظيف
             "provider_code": data.get("provider_code"),
             "game_code": data.get("game_code"),
+            "currency": "TND", # 2. إرسال العملة بشكل إجباري
             "lang": "fr",
             "lobby_url": "https://alphabet216.com/#casino"
         }
+        
         headers = {"Content-Type": "application/json"}
         endpoint = PROVIDER_ENDPOINT.rstrip('/')
         response = requests.post(endpoint, json=payload, headers=headers)

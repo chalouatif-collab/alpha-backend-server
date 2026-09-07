@@ -51,63 +51,57 @@
 <body class="antialiased text-sm flex flex-col min-h-screen">
     <!-- 1. الشريط العلوي (الرصيد وتسجيل الدخول - متجاوب وأنيق للهاتف) -->
     <header class="bg-[#161922] border-b border-[#212631] sticky top-0 z-50">
-        <div class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3 relative">
+        <div
+            class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3 relative">
 
             <!-- القسم الأيسر: الشعار -->
             <div class="flex items-center gap-4 md:gap-6">
-                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0" onclick="switchSection('accueil')">
-                    <div class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
+                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0"
+                    onclick="switchSection('accueil')">
+                    <div
+                        class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
                         <i class="fas fa-bolt"></i>
                     </div>
-                    <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span class="text-emerald">216</span></span>
+                    <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span
+                            class="text-emerald">216</span></span>
                 </div>
             </div>
 
             <!-- القسم الأيمن (تم تجميع الأزرار والجرس في حاوية واحدة لتجنب المنتصف) -->
             <div class="flex items-center gap-2 md:gap-4">
-                
+
                 <!-- أزرار الدخول -->
                 <div id="auth-buttons-container" class="flex items-center gap-2">
-                    <button onclick="openLoginModal()" class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2 transition">Connexion</button>
-                    <button onclick="openRegisterModal()" class="bg-emerald hover:bg-emerald-600 text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-5 py-2 md:py-2.5 rounded-xl transition shadow-lg">S'inscrire</button>
+                    <button onclick="openLoginModal()"
+                        class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2 transition">Connexion</button>
+                    <button onclick="openRegisterModal()"
+                        class="bg-emerald hover:bg-emerald-600 text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-5 py-2 md:py-2.5 rounded-xl transition shadow-lg">S'inscrire</button>
                 </div>
 
                 <!-- بروفايل اللاعب والرصيد -->
-                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0" onclick="toggleProfileSidebar()">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-[#212631] text-emerald flex items-center justify-center border border-[#2e3648] shadow-sm hover:border-emerald transition-all">
+                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0"
+                    onclick="toggleProfileSidebar()">
+                    <div
+                        class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-[#212631] text-emerald flex items-center justify-center border border-[#2e3648] shadow-sm hover:border-emerald transition-all">
                         <i class="fas fa-wallet"></i>
                     </div>
                     <div class="text-right hidden sm:block">
-                        <span class="text-[9px] text-gray-500 font-bold uppercase block leading-none mb-0.5">Solde</span>
-                        <span class="font-extrabold text-white text-xs leading-none"><span id="player-balance-val">0.00</span> TND</span>
+                        <span
+                            class="text-[9px] text-gray-500 font-bold uppercase block leading-none mb-0.5">Solde</span>
+                        <span class="font-extrabold text-white text-xs leading-none"><span
+                                id="player-balance-val">0.00</span> TND</span>
                     </div>
                 </div>
 
                 <!-- جرس الإشعارات -->
-                <div id="top-notification-bell" class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0" onclick="toggleNotificationsPanel()">
+                <div id="top-notification-bell"
+                    class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0"
+                    onclick="toggleNotificationsPanel()">
                     <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
-                    <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
+                    <span id="notif-badge"
+                        class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
                 </div>
 
-            </div>
-
-            <!-- النافذة المنسدلة للإشعارات -->
-            <div id="notifications-panel" class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
-                <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
-                    <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
-                </div>
-                <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
-                </div>
-            </div>
-
-        </div>
-    </header>            <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
-            <div id="top-notification-bell"
-                class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1"
-                onclick="toggleNotificationsPanel()">
-                <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
-                <span id="notif-badge"
-                    class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
             </div>
 
             <!-- النافذة المنسدلة للإشعارات -->
@@ -117,12 +111,32 @@
                     <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
                 </div>
                 <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
-                    <!-- الإشعارات ستظهر هنا -->
                 </div>
             </div>
 
         </div>
+    </header> <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
+    <div id="top-notification-bell"
+        class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1"
+        onclick="toggleNotificationsPanel()">
+        <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
+        <span id="notif-badge"
+            class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
+    </div>
+
+    <!-- النافذة المنسدلة للإشعارات -->
+    <div id="notifications-panel"
+        class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
+        <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
+            <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
         </div>
+        <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
+            <!-- الإشعارات ستظهر هنا -->
+        </div>
+    </div>
+
+    </div>
+    </div>
     </header>
 
     <!-- 2. شريط التصنيفات السريع الذكي (ممتد لملء الفراغ) -->
@@ -163,11 +177,10 @@
                 <i class="fas fa-bug text-yellow-500"></i> Virtuels 2
             </button>
 
-            <button id="btn-nav-aviator"
-                onclick="setActiveMenuBtn('btn-nav-aviator'); playCasinoGame('SPRIBE', 'aviator')"
+            <button id="btn-nav-aviator" onclick="setActiveMenuBtn('btn-nav-aviator'); launchAviator()"
                 class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center justify-center gap-2 flex-shrink-0 grow transition-all whitespace-nowrap">
                 <i class="fas fa-plane text-red-500"></i> Aviator
-            </button>
+            </button>>
 
             <!-- 🚀 Mini Jeux -->
             <button id="btn-nav-mini-jeux" onclick="setActiveMenuBtn('btn-nav-mini-jeux'); loadMiniJeux();"
@@ -659,8 +672,8 @@
                     <!-- مربع البحث -->
                     <div class="relative w-full md:w-72">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" id="live-casino-search" oninput="searchLiveGames()"
-                            placeholder="Rechercher un jeu live..." autocomplete="new-password"
+                        <input type="text" id="live-search-input" oninput="searchLiveGames()"
+                            placeholder="Rechercher un jeu live..."
                             class="w-full bg-[#1a1c24] border border-[#2b2d35] text-white pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:border-blue-500 text-sm transition-colors shadow-inner">
                     </div>
                 </div>
@@ -697,7 +710,7 @@
                 <div id="virtuals-games-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-10"></div>
             </div>
 
-        <!-- PANE: VIRTUALS 2 (Tests / Jeux cassés) -->
+            <!-- PANE: VIRTUALS 2 (Tests / Jeux cassés) -->
             <div id="pane-virtuals2" class="player-view-section hidden w-full">
                 <div class="flex items-center gap-2 mb-4">
                     <i class="fas fa-bug text-xl text-yellow-500"></i>
@@ -1023,76 +1036,6 @@
         <!-- ================= JAVASCRIPT (محرك الألفابت الشامل) ================= -->
         <script>
 
-
-
-
-            function filterLiveGames(providerCode) {
-                currentLiveProvider = providerCode;
-
-                // 🛡️ إفراغ مربع البحث بالقوة وتصفير ذاكرة البحث
-                const searchInput = document.getElementById('live-casino-search');
-                if (searchInput) searchInput.value = '';
-                currentLiveSearch = '';
-
-                // تحديث ألوان الأزرار
-                document.querySelectorAll('.live-provider-btn').forEach(btn => {
-                    if (btn.getAttribute('onclick').includes(providerCode)) {
-                        btn.className = "live-provider-btn bg-blue-600 text-white px-4 py-2 rounded-lg whitespace-nowrap font-bold text-sm transition-transform active:scale-95";
-                    } else {
-                        btn.className = "live-provider-btn bg-[#1a1c24] border border-[#2b2d35] hover:border-blue-500 text-white px-4 py-2 rounded-lg whitespace-nowrap text-sm transition-transform active:scale-95";
-                    }
-                });
-
-                renderLiveCasino();
-            }
-            function renderLiveCasino() {
-                const grid = document.getElementById('live-games-grid');
-                setTimeout(() => {
-                    const searchInput = document.getElementById('live-casino-search');
-                    if (searchInput) searchInput.value = '';
-                    currentLiveSearch = '';
-                }, 100);
-                if (!grid) return;
-
-                // إجبار مربع البحث على التفريغ إذا كان المتصفح قد ملأه خطأً بكلمة test1
-                const searchInput = document.getElementById('live-casino-search');
-                if (searchInput && currentLiveSearch === '') {
-                    searchInput.value = '';
-                }
-
-                const filteredGames = allLiveGames.filter(game => {
-                    // المطابقة تتم الآن عبر provider_code
-                    const gameProvider = game.provider_code || game.provider || 'PP_LIVE_PRO';
-                    const matchProvider = (currentLiveProvider === 'All') || (gameProvider === currentLiveProvider);
-
-                    const gameName = game.name || game.game_name || "Live Game";
-                    const matchSearch = gameName.toLowerCase().includes(currentLiveSearch);
-
-                    return matchProvider && matchSearch;
-                });
-
-                if (filteredGames.length === 0) {
-                    grid.innerHTML = '<div class="col-span-full text-gray-400 text-center py-10">Aucun jeu trouvé</div>';
-                    return;
-                }
-
-                grid.innerHTML = filteredGames.reverse().map(g => {
-                    const gameCode = g.game_code || g.id;
-                    const pCode = g.provider_code || g.provider || 'PP_LIVE_PRO';
-                    const safeName = escapeHTML(g.game_name || g.name || "Live Game");
-
-                    return `
-        <div onclick="playCasinoGame('${pCode}', '${gameCode}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg relative">
-            <div class="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-black px-2 py-1 z-10 rounded-bl-lg shadow-md">LIVE</div>
-            <div class="relative w-full aspect-square overflow-hidden bg-black/50">
-                <img src="${g.banner || g.image || 'https://placehold.co/400x400/180A2B/FFF'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
-            </div>
-            <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
-        </div>
-        `;
-                }).join('');
-            }
-
             function openBonusModal() {
                 showNotification("Aucun bonus disponible pour le moment.", "error");
             }
@@ -1228,45 +1171,45 @@
                 });
             };
             // دالة الـ WebSocket المحدثة
-function startLiveJackpots() {
-    const wsUrl = BACKEND_URL.replace("http", "ws").replace("https", "wss") + "/ws/jackpot";
-    const socket = new WebSocket(wsUrl);
+            function startLiveJackpots() {
+                const wsUrl = BACKEND_URL.replace("http", "ws").replace("https", "wss") + "/ws/jackpot";
+                const socket = new WebSocket(wsUrl);
 
-    socket.onmessage = function (event) {
-        const data = JSON.parse(event.data);
+                socket.onmessage = function (event) {
+                    const data = JSON.parse(event.data);
 
-        // 🌟 التقاط إشعار سقوط الجاكبوت الاستثنائي
-        if (data.type === 'jackpot_drop') {
-            announceJackpotDrop(data);
-            return; // نوقف التنفيذ هنا كي لا يقرأه كأرقام عادية
-        }
+                    // 🌟 التقاط إشعار سقوط الجاكبوت الاستثنائي
+                    if (data.type === 'jackpot_drop') {
+                        announceJackpotDrop(data);
+                        return; // نوقف التنفيذ هنا كي لا يقرأه كأرقام عادية
+                    }
 
-        // التحديث العادي للأرقام
-        const elMini = document.getElementById('jackpot-mini');
-        const elMinor = document.getElementById('jackpot-minor');
-        const elMajor = document.getElementById('jackpot-major');
-        const elGrand = document.getElementById('jackpot-grand');
+                    // التحديث العادي للأرقام
+                    const elMini = document.getElementById('jackpot-mini');
+                    const elMinor = document.getElementById('jackpot-minor');
+                    const elMajor = document.getElementById('jackpot-major');
+                    const elGrand = document.getElementById('jackpot-grand');
 
-        if (elMini && data.mini !== undefined) elMini.innerText = parseFloat(data.mini).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-        if (elMinor && data.minor !== undefined) elMinor.innerText = parseFloat(data.minor).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-        if (elMajor && data.major !== undefined) elMajor.innerText = parseFloat(data.major).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-        if (elGrand && data.grand !== undefined) elGrand.innerText = parseFloat(data.grand).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
-    };
+                    if (elMini && data.mini !== undefined) elMini.innerText = parseFloat(data.mini).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+                    if (elMinor && data.minor !== undefined) elMinor.innerText = parseFloat(data.minor).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+                    if (elMajor && data.major !== undefined) elMajor.innerText = parseFloat(data.major).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+                    if (elGrand && data.grand !== undefined) elGrand.innerText = parseFloat(data.grand).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TND';
+                };
 
-    socket.onerror = function (error) { console.error("Jackpot WS Error:", error); };
-    socket.onclose = function () { setTimeout(startLiveJackpots, 5000); };
-}
+                socket.onerror = function (error) { console.error("Jackpot WS Error:", error); };
+                socket.onclose = function () { setTimeout(startLiveJackpots, 5000); };
+            }
 
-// 🌟 دالة رسم الإشعار الذهبي في التيكر
-function announceJackpotDrop(data) {
-    const track = document.getElementById('winners-ticker-track');
-    if (!track) return;
+            // 🌟 دالة رسم الإشعار الذهبي في التيكر
+            function announceJackpotDrop(data) {
+                const track = document.getElementById('winners-ticker-track');
+                if (!track) return;
 
-    // دمج أسماء الفائزين (المشفرة)
-    const winnersStr = data.winners.join(' & ');
-    
-    // تصميم كارت استثنائي يختلف عن بقية الفائزين
-    const alertHTML = `
+                // دمج أسماء الفائزين (المشفرة)
+                const winnersStr = data.winners.join(' & ');
+
+                // تصميم كارت استثنائي يختلف عن بقية الفائزين
+                const alertHTML = `
     <div class="flex items-center gap-2 text-[11px] font-black text-white bg-gradient-to-r from-yellow-600 to-yellow-400 px-4 py-1.5 rounded-lg border border-yellow-300 shrink-0 shadow-[0_0_15px_rgba(234,179,8,0.6)] animate-pulse">
         <i class="fas fa-crown text-yellow-900 text-lg animate-bounce"></i>
         <span class="text-yellow-900 drop-shadow-md">ALERTE JACKPOT ${data.level} !</span> 
@@ -1274,14 +1217,14 @@ function announceJackpotDrop(data) {
         <span class="bg-black/30 px-2 py-0.5 rounded text-yellow-100 border border-yellow-200/30">(${parseFloat(data.win_per_user).toFixed(2)} TND chacun)</span>
     </div>`;
 
-    // إدراج الإشعار في بداية شريط المتحرك (التيكر) ليراه الجميع فوراً
-    track.insertAdjacentHTML('afterbegin', alertHTML);
-    
-    // إطلاق إشعار Toast إضافي يظهر في زاوية الشاشة
-    if(typeof showNotification === 'function') {
-        showNotification(`🔥 LE JACKPOT ${data.level} EST TOMBÉ !`, "success");
-    }
-}
+                // إدراج الإشعار في بداية شريط المتحرك (التيكر) ليراه الجميع فوراً
+                track.insertAdjacentHTML('afterbegin', alertHTML);
+
+                // إطلاق إشعار Toast إضافي يظهر في زاوية الشاشة
+                if (typeof showNotification === 'function') {
+                    showNotification(`🔥 LE JACKPOT ${data.level} EST TOMBÉ !`, "success");
+                }
+            }
             function switchSection(sectionId, fromPopState = false) {
                 localStorage.setItem('active_section', sectionId);
 
@@ -1327,99 +1270,99 @@ function announceJackpotDrop(data) {
                 if (sectionId === 'casino' && typeof initCasinoLobby === 'function') initCasinoLobby();
                 else if (sectionId === 'live-casino' && typeof openLiveCasino === 'function') openLiveCasino();
                 else if (sectionId === 'virtuals' && typeof initVirtualsLobby === 'function') initVirtualsLobby();
-           
+
                 if (sectionId === 'casino' && typeof initCasinoLobby === 'function') initCasinoLobby();
                 else if (sectionId === 'live-casino' && typeof openLiveCasino === 'function') openLiveCasino();
                 else if (sectionId === 'virtuals' && typeof initVirtualsLobby === 'function') initVirtualsLobby();
                 else if (sectionId === 'virtuals2' && typeof initVirtualsLobby2 === 'function') initVirtualsLobby2();
             }
-// دالة تسجيل الدخول
-async function handlePlayerAuth() {
-    const user = document.getElementById('p-auth-username').value;
-    const pass = document.getElementById('p-auth-password').value;
+            // دالة تسجيل الدخول
+            async function handlePlayerAuth() {
+                const user = document.getElementById('p-auth-username').value;
+                const pass = document.getElementById('p-auth-password').value;
 
-    if (user && pass) {
-        try {
-            const res = await fetch(`${window.BACKEND_URL || BACKEND_URL}/api/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: user, password: pass })
-            });
-            
-            const data = await res.json();
+                if (user && pass) {
+                    try {
+                        const res = await fetch(`${window.BACKEND_URL || BACKEND_URL}/api/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: user, password: pass })
+                        });
 
-            if (res.ok) {
-                localStorage.setItem('player_token', data.access_token);
-                window.playerToken = data.access_token;
-                
-                playerSession = { username: data.username, balance: data.balance };
-                localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+                        const data = await res.json();
 
-                setupLoggedInUI(); // استدعاء الدالة الأصلية التي تخفي الأزرار وتظهر الرصيد
-                showNotification("Connexion réussie !", "success");
-            } else {
-                showNotification(data.detail || "Identifiants incorrects", "error");
+                        if (res.ok) {
+                            localStorage.setItem('player_token', data.access_token);
+                            window.playerToken = data.access_token;
+
+                            playerSession = { username: data.username, balance: data.balance };
+                            localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+
+                            setupLoggedInUI(); // استدعاء الدالة الأصلية التي تخفي الأزرار وتظهر الرصيد
+                            showNotification("Connexion réussie !", "success");
+                        } else {
+                            showNotification(data.detail || "Identifiants incorrects", "error");
+                        }
+                    } catch (error) {
+                        showNotification("Erreur de connexion", "error");
+                    }
+                } else {
+                    showNotification("Veuillez remplir tous les champs", "error");
+                }
             }
-        } catch (error) {
-            showNotification("Erreur de connexion", "error");
-        }
-    } else {
-        showNotification("Veuillez remplir tous les champs", "error");
-    }
-}
 
-function logoutPlayer() {
-    localStorage.removeItem('player_token');
-    localStorage.removeItem('alpha_player_session');
-    window.playerToken = null;
-    playerSession = null;
-    
-    // إيقاف أي عدادات نشطة
-    if (window.balInterval) clearInterval(window.balInterval);
+            function logoutPlayer() {
+                localStorage.removeItem('player_token');
+                localStorage.removeItem('alpha_player_session');
+                window.playerToken = null;
+                playerSession = null;
 
-    // إعادة الواجهة لوضع الزائر
-    const authBtns = document.getElementById('auth-buttons-container');
-    if (authBtns) { authBtns.classList.remove('hidden'); authBtns.classList.add('flex'); }
+                // إيقاف أي عدادات نشطة
+                if (window.balInterval) clearInterval(window.balInterval);
 
-    const userProfile = document.getElementById('top-user-profile');
-    if (userProfile) { userProfile.classList.add('hidden'); userProfile.classList.remove('flex'); }
+                // إعادة الواجهة لوضع الزائر
+                const authBtns = document.getElementById('auth-buttons-container');
+                if (authBtns) { authBtns.classList.remove('hidden'); authBtns.classList.add('flex'); }
 
-    const notifBell = document.getElementById('top-notification-bell');
-    if (notifBell) { notifBell.classList.add('hidden'); notifBell.classList.remove('flex'); }
+                const userProfile = document.getElementById('top-user-profile');
+                if (userProfile) { userProfile.classList.add('hidden'); userProfile.classList.remove('flex'); }
 
-    if (typeof closeCasinoGame === 'function') closeCasinoGame();
-}
-           
+                const notifBell = document.getElementById('top-notification-bell');
+                if (notifBell) { notifBell.classList.add('hidden'); notifBell.classList.remove('flex'); }
+
+                if (typeof closeCasinoGame === 'function') closeCasinoGame();
+            }
+
 
             function setupLoggedInUI() {
-    closeLoginModal();
-    
-    const authBtns = document.getElementById('auth-buttons-container');
-    if (authBtns) { authBtns.classList.add('hidden'); authBtns.classList.remove('flex'); }
+                closeLoginModal();
 
-    const userProfile = document.getElementById('top-user-profile');
-    if (userProfile) { userProfile.classList.remove('hidden'); userProfile.classList.add('flex'); }
+                const authBtns = document.getElementById('auth-buttons-container');
+                if (authBtns) { authBtns.classList.add('hidden'); authBtns.classList.remove('flex'); }
 
-    const notifBell = document.getElementById('top-notification-bell');
-    if (notifBell) { notifBell.classList.remove('hidden'); notifBell.classList.add('flex'); }
+                const userProfile = document.getElementById('top-user-profile');
+                if (userProfile) { userProfile.classList.remove('hidden'); userProfile.classList.add('flex'); }
 
-    const sidebarName = document.getElementById('sidebar-username');
-    if (sidebarName) sidebarName.innerText = playerSession.username;
+                const notifBell = document.getElementById('top-notification-bell');
+                if (notifBell) { notifBell.classList.remove('hidden'); notifBell.classList.add('flex'); }
 
-    // 🌟 تحديث الأرقام فوراً من بيانات الجلسة لكي لا تظهر الأرقام الوهمية
-    if (playerSession.balance !== undefined) {
-        updateBalanceDisplays(playerSession.balance);
-    }
+                const sidebarName = document.getElementById('sidebar-username');
+                if (sidebarName) sidebarName.innerText = playerSession.username;
 
-    refreshBalance();
-    
-    // منع تكرار العدادات في الخلفية
-    if (window.balInterval) clearInterval(window.balInterval);
-    window.balInterval = setInterval(refreshBalance, 5000);
+                // 🌟 تحديث الأرقام فوراً من بيانات الجلسة لكي لا تظهر الأرقام الوهمية
+                if (playerSession.balance !== undefined) {
+                    updateBalanceDisplays(playerSession.balance);
+                }
 
-    if (typeof fetchNotifications === 'function') fetchNotifications();
-}
-            
+                refreshBalance();
+
+                // منع تكرار العدادات في الخلفية
+                if (window.balInterval) clearInterval(window.balInterval);
+                window.balInterval = setInterval(refreshBalance, 5000);
+
+                if (typeof fetchNotifications === 'function') fetchNotifications();
+            }
+
 
             function getAuthHeaders() { return { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' }; }
 
@@ -1824,28 +1767,6 @@ function logoutPlayer() {
                     }
                 } catch (error) {
                     showNotification("Erreur de connexion", "error");
-                }
-            }
-
-            window.playSMPLGame = playCasinoGame;
-            window.playNexusGame = playCasinoGame;
-            // ================= إغلاق نافذة اللعبة =================
-            function closeCasinoGame(fromPopState = false) {
-                const container = document.getElementById('casino-iframe-container');
-                if (container) {
-                    container.classList.add('hidden');
-                    container.classList.remove('flex');
-                }
-                const iframe = document.getElementById('casino-iframe');
-                if (iframe) iframe.src = '';
-
-                if (typeof refreshBalance === 'function') {
-                    refreshBalance();
-                }
-
-                // 🌟 الرجوع خطوة للوراء في الهاتف إذا كان الإغلاق برمجياً وليس من زر الهاتف
-                if (!fromPopState && history.state && history.state.modalOpen) {
-                    history.back();
                 }
             }
 
@@ -2641,37 +2562,37 @@ function logoutPlayer() {
             }
 
             // 1. دالة جلب الإشعارات المحمية ضد انتهاء الجلسة (401)
-async function fetchNotifications() {
-    if (!playerSession) return;
-    try {
-        const res = await fetch(`${BACKEND_URL}/api/user/notifications`, { headers: getAuthHeaders() });
-        
-        // إذا انتهت صلاحية التوكن أو كان غير صالح، يتم تسجيل الخروج صامتاً لمنع التكرار
-        if (res.status === 401) {
-            logoutPlayer();
-            return;
-        }
+            async function fetchNotifications() {
+                if (!playerSession) return;
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/user/notifications`, { headers: getAuthHeaders() });
 
-        const data = await res.json();
-        if (!res.ok) return;
+                    // إذا انتهت صلاحية التوكن أو كان غير صالح، يتم تسجيل الخروج صامتاً لمنع التكرار
+                    if (res.status === 401) {
+                        logoutPlayer();
+                        return;
+                    }
 
-        const badge = document.getElementById('notif-badge');
-        if (badge && data.unread > 0) {
-            badge.innerText = data.unread;
-            badge.classList.remove('hidden');
-        } else if (badge) {
-            badge.classList.add('hidden');
-        }
+                    const data = await res.json();
+                    if (!res.ok) return;
 
-        const list = document.getElementById('notifs-list');
-        if (!list) return;
+                    const badge = document.getElementById('notif-badge');
+                    if (badge && data.unread > 0) {
+                        badge.innerText = data.unread;
+                        badge.classList.remove('hidden');
+                    } else if (badge) {
+                        badge.classList.add('hidden');
+                    }
 
-        if (!data.notifications || data.notifications.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
-            return;
-        }
+                    const list = document.getElementById('notifs-list');
+                    if (!list) return;
 
-        let html = data.notifications.map(n => `
+                    if (!data.notifications || data.notifications.length === 0) {
+                        list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">Aucune notification</div>';
+                        return;
+                    }
+
+                    let html = data.notifications.map(n => `
             <div class="relative p-2 rounded-xl border ${n.is_read ? 'bg-[#0f1117] border-transparent' : 'bg-[#1a1e29] border-emerald/30'} hover:bg-gray-800 transition">
                 <div class="flex justify-between items-start mb-1">
                     <div class="flex items-center gap-2 cursor-pointer w-full" onclick="markAsRead('${n.id}')">
@@ -2687,7 +2608,7 @@ async function fetchNotifications() {
             </div>
         `).join('');
 
-        html += `
+                    html += `
             <div class="mt-2 pt-2 border-t border-[#212631]">
                 <button onclick="deleteNotification('all')" class="w-full text-xs text-red-400 hover:text-red-500 font-bold py-1.5 bg-red-500/10 rounded-lg transition">
                     <i class="fas fa-trash-alt"></i> Effacer tout
@@ -2695,13 +2616,13 @@ async function fetchNotifications() {
             </div>
         `;
 
-        list.innerHTML = html;
-    } catch (e) {
-        // تجاهل أخطاء الشبكة المؤقتة لعدم إزعاج الـ Console
-    }
-}
+                    list.innerHTML = html;
+                } catch (e) {
+                    // تجاهل أخطاء الشبكة المؤقتة لعدم إزعاج الـ Console
+                }
+            }
 
-                   
+
 
             async function markAsRead(id) {
                 await fetch(`${BACKEND_URL}/api/user/read-notification`, {
@@ -3052,106 +2973,106 @@ async function fetchNotifications() {
                 document.getElementById('player-register-modal').classList.remove('flex');
             }
 
-           async function handlePlayerRegistration() {
-    const user = document.getElementById('r-auth-username').value;
-    const email = document.getElementById('r-auth-email').value; // يمكنك إرساله أو تجاهله حسب الباك إند
-    const pass = document.getElementById('r-auth-password').value;
-    const phone = document.getElementById('r-auth-phone').value;
+            async function handlePlayerRegistration() {
+                const user = document.getElementById('r-auth-username').value;
+                const email = document.getElementById('r-auth-email').value; // يمكنك إرساله أو تجاهله حسب الباك إند
+                const pass = document.getElementById('r-auth-password').value;
+                const phone = document.getElementById('r-auth-phone').value;
 
-    if (user && pass) {
-        try {
-            // 🌟 التعديل الحاسم: استخدام BACKEND_URL مباشرة بدون window.
-            const response = await fetch(`${BACKEND_URL}/api/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    username: user, 
-                    password: pass, 
-                    phone: phone,
-                    role: "player",
-                    created_by: "self"
-                })
-            });
+                if (user && pass) {
+                    try {
+                        // 🌟 التعديل الحاسم: استخدام BACKEND_URL مباشرة بدون window.
+                        const response = await fetch(`${BACKEND_URL}/api/register`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                username: user,
+                                password: pass,
+                                phone: phone,
+                                role: "player",
+                                created_by: "self"
+                            })
+                        });
 
-            // قراءة الرد كنص أولاً لمنع انهيار JSON
-            const textResponse = await response.text();
-            let data = {};
+                        // قراءة الرد كنص أولاً لمنع انهيار JSON
+                        const textResponse = await response.text();
+                        let data = {};
 
-            try {
-                data = JSON.parse(textResponse);
-            } catch (e) {
-                console.error("Erreur serveur:", textResponse);
-                throw new Error("Erreur de serveur (Vérifiez Render)");
+                        try {
+                            data = JSON.parse(textResponse);
+                        } catch (e) {
+                            console.error("Erreur serveur:", textResponse);
+                            throw new Error("Erreur de serveur (Vérifiez Render)");
+                        }
+
+                        if (!response.ok) {
+                            // التقاط رسالة الخطأ الحقيقية من السيرفر (مثل: الاسم مستخدم مسبقاً)
+                            throw new Error(data.detail || data.message || "Erreur d'inscription");
+                        }
+
+                        // استلام التوكن وحالة التسجيل من الباك إند
+                        localStorage.setItem('player_token', data.token || 'new_user_token');
+                        localStorage.setItem('is_self_registered', 'true');
+                        window.playerToken = localStorage.getItem('player_token');
+
+                        closeRegisterModal();
+                        updateAuthUI();
+
+                        if (typeof setupLoggedInUI === 'function') setupLoggedInUI();
+                        showNotification("Bienvenue ! Votre compte a été créé avec succès.", "success");
+
+                    } catch (error) {
+                        showNotification(error.message, "error");
+                    }
+                } else {
+                    showNotification("Veuillez remplir tous les champs obligatoires.", "error");
+                }
             }
 
-            if (!response.ok) {
-                // التقاط رسالة الخطأ الحقيقية من السيرفر (مثل: الاسم مستخدم مسبقاً)
-                throw new Error(data.detail || data.message || "Erreur d'inscription");
+            async function refreshBalance() {
+                if (!playerSession) return;
+                try {
+                    const res = await fetch(`${BACKEND_URL}/gold_api`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ method: 'user_balance', user_code: playerSession.username })
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 1 && data.user_balance !== undefined) {
+                        playerSession.balance = data.user_balance;
+                        localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
+
+                        // استدعاء الدالة المساعدة لتغيير الرقم في كل الواجهات
+                        updateBalanceDisplays(data.user_balance);
+                    }
+                } catch (e) {
+                    console.error("Erreur balance:", e);
+                }
             }
 
-            // استلام التوكن وحالة التسجيل من الباك إند
-            localStorage.setItem('player_token', data.token || 'new_user_token');
-            localStorage.setItem('is_self_registered', 'true');
-            window.playerToken = localStorage.getItem('player_token');
+            // 4. إصلاح خطأ 401 الصامت الذي كان يمنع الإشعارات وسجل المعاملات
+            function getAuthHeaders() {
+                return {
+                    'Authorization': `Bearer ${localStorage.getItem('player_token')}`,
+                    'Content-Type': 'application/json'
+                };
+            }
 
-            closeRegisterModal();
-            updateAuthUI();
-            
-            if(typeof setupLoggedInUI === 'function') setupLoggedInUI();
-            showNotification("Bienvenue ! Votre compte a été créé avec succès.", "success");
+            function updateBalanceDisplays(balance) {
+                if (balance === undefined || balance === null) return;
+                const formattedBalance = parseFloat(balance).toFixed(2);
 
-        } catch (error) {
-            showNotification(error.message, "error");
-        }
-    } else {
-        showNotification("Veuillez remplir tous les champs obligatoires.", "error");
-    }
-}
+                const balDisplay = document.getElementById('player-balance-val');
+                if (balDisplay) balDisplay.innerText = formattedBalance;
 
-async function refreshBalance() {
-    if (!playerSession) return;
-    try {
-        const res = await fetch(`${BACKEND_URL}/gold_api`, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ method: 'user_balance', user_code: playerSession.username })
-        });
-        const data = await res.json();
-        
-        if (data.status === 1 && data.user_balance !== undefined) {
-            playerSession.balance = data.user_balance;
-            localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
-            
-            // استدعاء الدالة المساعدة لتغيير الرقم في كل الواجهات
-            updateBalanceDisplays(data.user_balance);
-        }
-    } catch (e) {
-        console.error("Erreur balance:", e);
-    }
-}
+                const sidebarBalDisplay = document.getElementById('sidebar-balance');
+                if (sidebarBalDisplay) sidebarBalDisplay.innerText = formattedBalance + ' TND';
 
-// 4. إصلاح خطأ 401 الصامت الذي كان يمنع الإشعارات وسجل المعاملات
-function getAuthHeaders() { 
-    return { 
-        'Authorization': `Bearer ${localStorage.getItem('player_token')}`, 
-        'Content-Type': 'application/json' 
-    }; 
-}
-
-function updateBalanceDisplays(balance) {
-    if (balance === undefined || balance === null) return;
-    const formattedBalance = parseFloat(balance).toFixed(2);
-    
-    const balDisplay = document.getElementById('player-balance-val');
-    if (balDisplay) balDisplay.innerText = formattedBalance;
-
-    const sidebarBalDisplay = document.getElementById('sidebar-balance');
-    if (sidebarBalDisplay) sidebarBalDisplay.innerText = formattedBalance + ' TND';
-
-    const modalBalDisplay = document.getElementById('modal-balance');
-    if (modalBalDisplay) modalBalDisplay.innerText = formattedBalance;
-}
-async function initVirtualsLobby2() {
+                const modalBalDisplay = document.getElementById('modal-balance');
+                if (modalBalDisplay) modalBalDisplay.innerText = formattedBalance;
+            }
+            async function initVirtualsLobby2() {
                 const grid = document.getElementById('virtuals2-games-grid');
                 if (grid) grid.innerHTML = '<div class="col-span-full text-yellow-500 text-center py-10">Chargement des jeux à tester...</div>';
 
@@ -3204,6 +3125,27 @@ async function initVirtualsLobby2() {
                 }
             }
 
+            window.searchLiveGames = function () {
+                const searchInput = document.getElementById('live-search-input');
+                const grid = document.getElementById('live-games-grid');
+
+                if (!grid || !searchInput) return;
+
+                const query = searchInput.value.toLowerCase().trim();
+                // استهداف جميع بطاقات الألعاب المباشرة داخل الشبكة
+                const cards = grid.children;
+
+                Array.from(cards).forEach(card => {
+                    // استخراج اسم اللعبة من النص الموجود في البطاقة
+                    const gameName = card.innerText.toLowerCase();
+
+                    if (gameName.includes(query)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            };
         </script>
         <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
         <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"
