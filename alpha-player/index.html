@@ -3052,47 +3052,60 @@ async function handlePlayerAuth() {
             }
 
             async function handlePlayerRegistration() {
-                const user = document.getElementById('r-auth-username').value;
-                const email = document.getElementById('r-auth-email').value;
-                const pass = document.getElementById('r-auth-password').value;
-                const phone = document.getElementById('r-auth-phone').value;
+    const user = document.getElementById('r-auth-username').value;
+    const email = document.getElementById('r-auth-email').value;
+    const pass = document.getElementById('r-auth-password').value;
+    const phone = document.getElementById('r-auth-phone').value;
 
-                if (user && email && pass) {
-                    try {
+    if (user && email && pass) {
+        try {
+            const response = await fetch(`${window.BACKEND_URL}/api/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // 🌟 تم إضافة role و created_by الإجبارية للباك إند 🌟
+                body: JSON.stringify({ 
+                    username: user, 
+                    password: pass, 
+                    phone: phone,
+                    role: "player",
+                    created_by: "self"
+                })
+            });
 
-                        //🌟 كود الربط الفعلي بقاعدة البيانات (افتح التعليق عندما يكون الباك إند جاهزاً)
-                        const response = await fetch(`${window.BACKEND_URL}/api/register`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username: user, email: email, password: pass, phone: phone })
-                        });
-                        const data = await response.json();
+            // قراءة الرد كنص أولاً لمنع انهيار JSON
+            const textResponse = await response.text();
+            let data = {};
 
-                        if (!response.ok) throw new Error(data.message || "Erreur d'inscription");
-
-                        // استلام التوكن من الباك إند
-                        localStorage.setItem('player_token', data.token);
-
-
-                        // محاكاة مؤقتة ريثما تربط الباك إند
-                        localStorage.setItem('player_token', 'new_user_token');
-                        localStorage.setItem('is_self_registered', 'true');
-
-                        // 🌟 تحديث المتغير العالمي فوراً
-                        window.playerToken = localStorage.getItem('player_token');
-
-                        closeRegisterModal();
-                        updateAuthUI();
-                        alert("Bienvenue ! Votre compte a été créé avec succès.");
-
-                    } catch (error) {
-                        alert(error.message);
-                    }
-                } else {
-                    alert("Veuillez remplir tous les champs obligatoires.");
-                }
+            try {
+                data = JSON.parse(textResponse);
+            } catch (e) {
+                console.error("Erreur serveur:", textResponse);
+                // 🌟 التعديل هنا: إظهار رد السيرفر الحقيقي لتشخيص المشكلة
+                throw new Error("خطأ من السيرفر: " + textResponse.substring(0, 100)); 
             }
 
+            if (!response.ok) {
+                throw new Error(data.message || data.detail || "Erreur d'inscription");
+            }
+
+            // استلام التوكن وحالة التسجيل من الباك إند
+            localStorage.setItem('player_token', data.token || 'new_user_token');
+            localStorage.setItem('is_self_registered', 'true');
+            window.playerToken = localStorage.getItem('player_token');
+
+            closeRegisterModal();
+            updateAuthUI();
+            
+            if(typeof setupLoggedInUI === 'function') setupLoggedInUI();
+            showNotification("Bienvenue ! Votre compte a été créé avec succès.", "success");
+
+        } catch (error) {
+            showNotification(error.message, "error");
+        }
+    } else {
+        showNotification("Veuillez remplir tous les champs obligatoires.", "error");
+    }
+}
         </script>
         <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
         <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"

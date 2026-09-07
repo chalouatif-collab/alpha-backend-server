@@ -771,7 +771,7 @@ class Verify2FARequest(BaseModel):
 
 
 @app.post("/api/register")
-@limiter.limit("1/minute")
+@limiter.limit("50/minute")
 async def register_user(request: Request, req: RegisterRequest):
     uname = req.username.lower().strip()
     
@@ -1451,7 +1451,7 @@ async def admin_home(request: Request):
         return f.read()
 
 @app.post("/login-router")
-@limiter.limit("5/minute")
+@limiter.limit("50/minute")
 async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
     uname = username.lower().strip()
     
@@ -1506,7 +1506,7 @@ class Verify2FARequest(BaseModel):
     totp_code: str = "000000"
 
 @app.post("/api/login")
-@limiter.limit("5/minute")
+@limiter.limit("50/minute")
 async def login_user(request: Request, req: LoginRequest):
     try:
         uname = html.escape(req.username.lower().strip())
@@ -1538,7 +1538,7 @@ async def login_user(request: Request, req: LoginRequest):
         print(f"Login Crash: {e}")
         return JSONResponse(status_code=500, content={"detail": f"خطأ داخلي: {str(e)}"})
 @app.post("/api/verify-2fa")
-@limiter.limit("5/minute")
+@limiter.limit("50/minute")
 async def verify_2fa_api(request: Request, req: Verify2FARequest):
     db = load_db()
     user = next((u for u in db if u["username"] == req.username), None)
