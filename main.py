@@ -771,7 +771,7 @@ class Verify2FARequest(BaseModel):
 
 
 @app.post("/api/register")
-@limiter.limit("50/minute")
+@limiter.limit("1/minute")
 async def register_user(request: Request, req: RegisterRequest):
     uname = req.username.lower().strip()
     
@@ -1451,7 +1451,7 @@ async def admin_home(request: Request):
         return f.read()
 
 @app.post("/login-router")
-@limiter.limit("50/minute")
+@limiter.limit("5/minute")
 async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
     uname = username.lower().strip()
     
@@ -1506,7 +1506,7 @@ class Verify2FARequest(BaseModel):
     totp_code: str = "000000"
 
 @app.post("/api/login")
-@limiter.limit("50/minute")
+@limiter.limit("5/minute")
 async def login_user(request: Request, req: LoginRequest):
     try:
         uname = html.escape(req.username.lower().strip())
@@ -1518,27 +1518,24 @@ async def login_user(request: Request, req: LoginRequest):
             bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
             asyncio.create_task(send_telegram_alert(bad_alert))
             return JSONResponse(status_code=401, content={"detail": "اسم المستخدم أو كلمة المرور غير صحيحة"})
-        
         user["last_ip"] = verify_nexus_ip(request)
         save_db(db)
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        
-        # 🌟 فحص ما إذا كان اللاعب قد سجل بنفسه أم أُضيف عبر وكيل
-        is_self_registered = True if user.get("created_by") in ["self", None, ""] else False
         
         return JSONResponse(status_code=200, content={
             "message": "success", 
             "username": user["username"],
             "role": user["role"],
             "access_token": access_token,
-            "balance": float(user.get("balance", 0.0)),
-            "is_self_registered": is_self_registered # 👈 إرسال هذه القيمة للتحكم بزر الإيداع
+            "balance": float(user.get("balance", 0.0))
         })
     except Exception as e:
         print(f"Login Crash: {e}")
+        
         return JSONResponse(status_code=500, content={"detail": f"خطأ داخلي: {str(e)}"})
+
 @app.post("/api/verify-2fa")
-@limiter.limit("50/minute")
+@limiter.limit("5/minute")
 async def verify_2fa_api(request: Request, req: Verify2FARequest):
     db = load_db()
     user = next((u for u in db if u["username"] == req.username), None)

@@ -1299,47 +1299,37 @@
             }
 
             function updateAuthUI() {
-                const token = localStorage.getItem('player_token');
-                const isSelfRegistered = localStorage.getItem('is_self_registered') === 'true'; // جلب نوع الحساب
+    const token = localStorage.getItem('player_token');
+    
+    const guestUI = document.getElementById('guest-ui');
+    const loggedInUI = document.getElementById('logged-in-ui');
+    const depositBtn = document.getElementById('btn-deposit-ui');
+    
+    if (token) {
+        guestUI.classList.add('hidden');
+        guestUI.classList.remove('flex');
+        loggedInUI.classList.remove('hidden');
+        loggedInUI.classList.add('flex');
 
-                const guestUI = document.getElementById('guest-ui');
-                const loggedInUI = document.getElementById('logged-in-ui');
-                const depositBtn = document.getElementById('btn-deposit-ui');
-
-                if (token) {
-                    // إخفاء أزرار الزائر وإظهار واجهة اللاعب
-                    guestUI.classList.add('hidden');
-                    guestUI.classList.remove('flex');
-                    loggedInUI.classList.remove('hidden');
-                    loggedInUI.classList.add('flex');
-
-                    // إظهار زر الإيداع فقط إذا كان اللاعب أنشأ حسابه بنفسه
-                    if (isSelfRegistered && depositBtn) {
-                        depositBtn.classList.remove('hidden');
-                        depositBtn.classList.add('block');
-                    } else if (depositBtn) {
-                        // إخفاء الزر للاعبين الذين تم إضافتهم من لوحة الإدارة
-                        depositBtn.classList.add('hidden');
-                        depositBtn.classList.remove('block');
-                    }
-
-                } else {
-                    // إظهار أزرار الزائر
-                    guestUI.classList.remove('hidden');
-                    guestUI.classList.add('flex');
-                    loggedInUI.classList.add('hidden');
-                    loggedInUI.classList.remove('flex');
-                }
-            }
-
-            // 1. دالة تسجيل الدخول (الربط الفعلي بالباك إند)
+        // إخفاء زر الإيداع دائماً لأن الحسابات تدار عبر الوكلاء
+        if (depositBtn) {
+            depositBtn.classList.add('hidden');
+            depositBtn.classList.remove('block');
+        }
+    } else {
+        guestUI.classList.remove('hidden');
+        guestUI.classList.add('flex');
+        loggedInUI.classList.add('hidden');
+        loggedInUI.classList.remove('flex');
+    }
+}
 async function handlePlayerAuth() {
     const user = document.getElementById('p-auth-username').value;
     const pass = document.getElementById('p-auth-password').value;
 
     if (user && pass) {
         try {
-            const res = await fetch(`${window.BACKEND_URL}/api/login`, {
+            const res = await fetch(`${window.BACKEND_URL || BACKEND_URL}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: user, password: pass })
@@ -1348,35 +1338,28 @@ async function handlePlayerAuth() {
             const data = await res.json();
 
             if (res.ok) {
-                // حفظ التوكن وبيانات اللاعب من رد السيرفر
                 localStorage.setItem('player_token', data.access_token);
-                // السطر المطلوب: حفظ حالة التسجيل الذاتي
-                localStorage.setItem('is_self_registered', data.is_self_registered);
-
-                // تحديث المتغير العالمي
                 window.playerToken = data.access_token;
                 
-                // حفظ بيانات الجلسة (اختياري، لتشغيل دالة setupLoggedInUI)
                 playerSession = { username: data.username, balance: data.balance };
                 localStorage.setItem('alpha_player_session', JSON.stringify(playerSession));
 
                 closeLoginModal();
                 updateAuthUI();
                 
-                // تحديث واجهة المستخدم بالكامل
                 if(typeof setupLoggedInUI === 'function') setupLoggedInUI();
-                
                 showNotification("Connexion réussie !", "success");
             } else {
                 showNotification(data.detail || "Identifiants incorrects", "error");
             }
         } catch (error) {
-            showNotification("Erreur de connexion au serveur", "error");
+            showNotification("Erreur de connexion", "error");
         }
     } else {
         showNotification("Veuillez remplir tous les champs", "error");
     }
 }
+           
             function setupLoggedInUI() {
                 closeLoginModal();
                 const authBtns = document.getElementById('auth-buttons-container');
@@ -3051,18 +3034,18 @@ async function handlePlayerAuth() {
                 document.getElementById('player-register-modal').classList.remove('flex');
             }
 
-            async function handlePlayerRegistration() {
+           async function handlePlayerRegistration() {
     const user = document.getElementById('r-auth-username').value;
-    const email = document.getElementById('r-auth-email').value;
+    const email = document.getElementById('r-auth-email').value; // يمكنك إرساله أو تجاهله حسب الباك إند
     const pass = document.getElementById('r-auth-password').value;
     const phone = document.getElementById('r-auth-phone').value;
 
-    if (user && email && pass) {
+    if (user && pass) {
         try {
-            const response = await fetch(`${window.BACKEND_URL}/api/register`, {
+            // 🌟 التعديل الحاسم: استخدام BACKEND_URL مباشرة بدون window.
+            const response = await fetch(`${BACKEND_URL}/api/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // 🌟 تم إضافة role و created_by الإجبارية للباك إند 🌟
                 body: JSON.stringify({ 
                     username: user, 
                     password: pass, 
@@ -3080,12 +3063,12 @@ async function handlePlayerAuth() {
                 data = JSON.parse(textResponse);
             } catch (e) {
                 console.error("Erreur serveur:", textResponse);
-                // 🌟 التعديل هنا: إظهار رد السيرفر الحقيقي لتشخيص المشكلة
-                throw new Error("خطأ من السيرفر: " + textResponse.substring(0, 100)); 
+                throw new Error("Erreur de serveur (Vérifiez Render)");
             }
 
             if (!response.ok) {
-                throw new Error(data.message || data.detail || "Erreur d'inscription");
+                // التقاط رسالة الخطأ الحقيقية من السيرفر (مثل: الاسم مستخدم مسبقاً)
+                throw new Error(data.detail || data.message || "Erreur d'inscription");
             }
 
             // استلام التوكن وحالة التسجيل من الباك إند
