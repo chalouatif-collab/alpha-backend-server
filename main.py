@@ -2919,8 +2919,13 @@ async def trigger_jackpot_drop(level, total_amount):
     async with db_lock:
         db = load_db()
         
-        # استخراج اللاعبين النشطين فقط
-        eligible_users = [u for u in db if str(u.get("role")) == "player" and str(u.get("is_blocked")) != "1"]
+        # استخراج اللاعبين النشطين فعلياً (غير محظورين + لديهم رصيد أكبر من 0 أو قاموا باللعب مسبقاً)
+        eligible_users = [
+            u for u in db 
+            if str(u.get("role")) == "player" 
+            and str(u.get("is_blocked")) != "1" 
+            and (float(u.get("balance", 0.0)) > 0 or u.get("last_spin_date", "") != "")
+        ]
         
         if not eligible_users:
             return 
