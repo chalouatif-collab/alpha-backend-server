@@ -3042,8 +3042,8 @@ async def broadcast_jackpots():
 # تشغيل البث ومحرك الجاكبوت تلقائياً عند الإقلاع
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(broadcast_jackpots())
-    asyncio.create_task(time_based_jackpot_engine()) # 👈 المحرك الجديد
+    #asyncio.create_task(broadcast_jackpots())
+    #asyncio.create_task(time_based_jackpot_engine()) # 👈 المحرك الجديد
   
 
 
