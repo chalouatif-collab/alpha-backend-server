@@ -50,63 +50,49 @@
 
 <body class="antialiased text-sm flex flex-col min-h-screen">
     <!-- 1. الشريط العلوي (الرصيد وتسجيل الدخول - متجاوب وأنيق للهاتف) -->
+    <!-- 1. الشريط العلوي (الرصيد وتسجيل الدخول) -->
     <header class="bg-[#161922] border-b border-[#212631] sticky top-0 z-50">
-        <div
-            class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3 relative">
+        <div class="max-w-[1700px] mx-auto px-3 md:px-4 h-16 md:h-18 flex justify-between items-center py-2 md:py-3 relative">
 
             <!-- القسم الأيسر: الشعار -->
             <div class="flex items-center gap-4 md:gap-6">
-                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0"
-                    onclick="switchSection('accueil')">
-                    <div
-                        class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
+                <div class="flex items-center gap-1.5 md:gap-2 cursor-pointer shrink-0" onclick="switchSection('accueil')">
+                    <div class="w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl bg-emerald flex items-center justify-center text-black font-black text-sm md:text-xl shadow-md">
                         <i class="fas fa-bolt"></i>
                     </div>
-                    <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span
-                            class="text-emerald">216</span></span>
+                    <span class="font-extrabold text-lg md:text-2xl tracking-tight text-white">Alphabet<span class="text-emerald">216</span></span>
                 </div>
             </div>
 
-            <!-- القسم الأيمن (تم تجميع الأزرار والجرس في حاوية واحدة لتجنب المنتصف) -->
+            <!-- القسم الأيمن -->
             <div class="flex items-center gap-2 md:gap-4">
 
                 <!-- أزرار الدخول -->
                 <div id="auth-buttons-container" class="flex items-center gap-2">
-                    <button onclick="openLoginModal()"
-                        class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2 transition">Connexion</button>
-                    <button onclick="openRegisterModal()"
-                        class="bg-emerald hover:bg-emerald-600 text-black font-extrabold text-[10px] md:text-xs uppercase px-3 md:px-5 py-2 md:py-2.5 rounded-xl transition shadow-lg">S'inscrire</button>
+                    <button onclick="openLoginModal()" class="text-[10px] md:text-xs font-bold text-gray-300 hover:text-white uppercase px-2 md:px-3 py-2 transition">Connexion</button>
                 </div>
 
                 <!-- بروفايل اللاعب والرصيد -->
-                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0"
-                    onclick="toggleProfileSidebar()">
-                    <div
-                        class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-[#212631] text-emerald flex items-center justify-center border border-[#2e3648] shadow-sm hover:border-emerald transition-all">
+                <div id="top-user-profile" class="hidden items-center gap-2 cursor-pointer group shrink-0" onclick="toggleProfileSidebar()">
+                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-[#212631] text-emerald flex items-center justify-center border border-[#2e3648] shadow-sm hover:border-emerald transition-all">
                         <i class="fas fa-wallet"></i>
                     </div>
                     <div class="text-right hidden sm:block">
-                        <span
-                            class="text-[9px] text-gray-500 font-bold uppercase block leading-none mb-0.5">Solde</span>
-                        <span class="font-extrabold text-white text-xs leading-none"><span
-                                id="player-balance-val">0.00</span> TND</span>
+                        <span class="text-[9px] text-gray-500 font-bold uppercase block leading-none mb-0.5">Solde</span>
+                        <span class="font-extrabold text-white text-xs leading-none"><span id="player-balance-val">0.00</span> TND</span>
                     </div>
                 </div>
 
                 <!-- جرس الإشعارات -->
-                <div id="top-notification-bell"
-                    class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0"
-                    onclick="toggleNotificationsPanel()">
+                <div id="top-notification-bell" class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0" onclick="toggleNotificationsPanel()">
                     <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
-                    <span id="notif-badge"
-                        class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
+                    <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
                 </div>
 
             </div>
 
             <!-- النافذة المنسدلة للإشعارات -->
-            <div id="notifications-panel"
-                class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
+            <div id="notifications-panel" class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
                 <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
                     <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
                 </div>
@@ -115,28 +101,7 @@
             </div>
 
         </div>
-    </header> <!-- 2️⃣ جرس الإشعارات (دائري وصغير أقصى اليمين) -->
-    <div id="top-notification-bell"
-        class="hidden relative cursor-pointer items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#12151d] border border-[#212631] hover:border-emerald-500 hover:text-white transition shrink-0 ml-1"
-        onclick="toggleNotificationsPanel()">
-        <i class="fas fa-bell text-gray-400 text-[10px] md:text-xs transition"></i>
-        <span id="notif-badge"
-            class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full hidden leading-none shadow-md">0</span>
-    </div>
-
-    <!-- النافذة المنسدلة للإشعارات -->
-    <div id="notifications-panel"
-        class="absolute top-12 md:top-14 right-2 md:right-4 w-[280px] md:w-80 bg-[#161922] border border-[#212631] rounded-2xl shadow-2xl hidden flex-col z-[100] overflow-hidden">
-        <div class="p-3 border-b border-[#212631] bg-[#0f1117] flex justify-between items-center">
-            <h3 class="text-white font-bold text-sm"> notifications🔔</h3>
-        </div>
-        <div id="notifs-list" class="max-h-[300px] overflow-y-auto hide-scroll p-2 flex flex-col gap-1">
-            <!-- الإشعارات ستظهر هنا -->
-        </div>
-    </div>
-
-    </div>
-    </div>
+    
     </header>
 
     <!-- 2. شريط التصنيفات السريع الذكي (ممتد لملء الفراغ) -->
@@ -172,15 +137,16 @@
                 <i class="fas fa-gamepad text-blue-400"></i> Virtuels
             </button>
 
-            <button id="btn-nav-virtuals2" onclick="setActiveMenuBtn('btn-nav-virtuals2'); switchSection('virtuals2');"
-                class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-yellow-500 flex items-center justify-center gap-2 flex-shrink-0 grow transition-all whitespace-nowrap">
-                <i class="fas fa-bug text-yellow-500"></i> Virtuels 2
+            <button id="btn-nav-virtual-casino"
+                onclick="setActiveMenuBtn('btn-nav-virtual-casino'); switchSection('virtual-casino'); initVirtualCasinoLobby();"
+                class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center justify-center gap-2 flex-shrink-0 grow transition-all whitespace-nowrap">
+                <i class="fas fa-slot-machine text-purple-400"></i> Casino Virtuel
             </button>
 
             <button id="btn-nav-aviator" onclick="setActiveMenuBtn('btn-nav-aviator'); launchAviator()"
                 class="main-nav-btn bg-[#1a1e29] hover:bg-[#212631] text-gray-300 hover:text-white px-4 py-1.5 rounded-xl border border-[#2e3648] hover:border-emerald flex items-center justify-center gap-2 flex-shrink-0 grow transition-all whitespace-nowrap">
                 <i class="fas fa-plane text-red-500"></i> Aviator
-            </button>>
+            </button>
 
             <!-- 🚀 Mini Jeux -->
             <button id="btn-nav-mini-jeux" onclick="setActiveMenuBtn('btn-nav-mini-jeux'); loadMiniJeux();"
@@ -701,51 +667,60 @@
 
             </div>
 
-            <!-- PANE: VIRTUALS -->
-            <div id="pane-virtuals" class="player-view-section hidden w-full">
-                <div class="flex items-center gap-2 mb-4">
-                    <i class="fas fa-gamepad text-xl text-blue-400"></i>
-                    <h2 class="text-white font-bold text-lg">Jeux Virtuels</h2>
+            <div id="pane-virtuals" class="player-view-section hidden w-full space-y-4">
+                <div class="bg-betCard p-3 md:p-4 border border-gray-700 rounded-sm flex justify-between items-center">
+                    <h2 class="text-white font-black text-lg md:text-xl flex items-center gap-2"><i
+                            class="fas fa-gamepad text-blue-400"></i> Sports Virtuels</h2>
                 </div>
-                <div id="virtuals-games-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-10"></div>
-            </div>
 
-            <!-- PANE: VIRTUALS 2 (Tests / Jeux cassés) -->
-            <div id="pane-virtuals2" class="player-view-section hidden w-full">
-                <div class="flex items-center gap-2 mb-4">
-                    <i class="fas fa-bug text-xl text-yellow-500"></i>
-                    <h2 class="text-white font-bold text-lg">Jeux Virtuels (Tests)</h2>
+                <!-- هذا هو الشريط الجديد الذي ستُرسم فيه الأزرار تلقائياً -->
+                <div id="virtuals-providers-bar"
+                    class="flex flex-wrap gap-2 bg-betCard p-2 md:p-3 border border-gray-700 rounded-sm overflow-x-auto no-scrollbar hidden">
                 </div>
-                <div id="virtuals2-games-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-10"></div>
-            </div>
 
-    </main>
-    </main>
-
-    <!-- 🌟 الفوتر: طرق الدفع والشروط 🌟 -->
-    <div class="mt-8 pt-8 border-t border-[#212631] text-center pb-8">
-        <!-- طرق الدفع -->
-        <p class="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-4">Paiements Rapides & Sécurisés</p>
-        <div
-            class="flex flex-wrap justify-center items-center gap-3 sm:gap-6 mb-8 opacity-80 grayscale hover:grayscale-0 transition-all duration-300">
-            <div class="bg-[#161922] border border-[#212631] px-4 py-2 rounded-lg flex items-center gap-2"><i
-                    class="fas fa-mobile-alt text-blue-400"></i><span class="text-white font-black text-xs">D17</span>
+                <div class="bg-betMain pt-2">
+                    <div id="virtuals-games-grid"
+                        class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pb-6"></div>
+                </div>
             </div>
-            <div class="bg-[#161922] border border-[#212631] px-4 py-2 rounded-lg flex items-center gap-2"><i
-                    class="fab fa-bitcoin text-emerald-400"></i><span class="text-white font-black text-xs">USDT</span>
+          <div id="pane-virtual-casino" class="player-view-section hidden w-full space-y-4">
+    <div class="bg-betCard p-3 md:p-4 border border-gray-700 rounded-sm flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+        <h2 class="text-white font-black text-lg md:text-xl flex items-center gap-2"><i class="fas fa-slot-machine text-purple-500"></i> Casino Virtuel</h2>
+        
+        <!-- القائمة المنسدلة للبحث عن المزودين -->
+        <div class="relative w-full sm:w-72 z-[150]">
+            <!-- الزر الرئيسي الذي يفتح القائمة -->
+            <button onclick="toggleVCDropdown()" class="w-full bg-betMain border border-gray-700 px-4 py-2 text-xs md:text-sm text-white font-bold flex items-center justify-between rounded hover:border-gray-500 transition shadow-lg">
+                <span id="vc-current-provider-label">Sélectionner un Fournisseur</span>
+                <i class="fas fa-chevron-down text-gray-500"></i>
+            </button>
+            
+            <!-- القائمة المنسدلة (الخلفية الداكنة) -->
+            <div id="vc-provider-dropdown" class="absolute right-0 top-full mt-2 w-full bg-[#1a1e29] border border-gray-700 shadow-2xl hidden flex-col rounded-md overflow-hidden z-[999]">
+                
+                <!-- مربع البحث -->
+                <div class="p-2 border-b border-gray-700 bg-[#12151d] relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input type="text" id="vc-provider-search" onkeyup="filterVCDropdown()" placeholder="Chercher un fournisseur..." class="bg-[#0f1117] text-white pl-8 py-2 text-xs md:text-sm rounded w-full border border-gray-600 focus:border-purple-500 outline-none placeholder-gray-500">
+                </div>
+                
+                <!-- قائمة المزودين -->
+                <div id="vc-provider-list" class="max-h-[300px] overflow-y-auto no-scrollbar p-1 flex flex-col bg-[#1a1e29]">
+                    <!-- سيتم رسم المزودين هنا بواسطة الجافاسكريبت -->
+                </div>
             </div>
-            <div class="bg-[#161922] border border-[#212631] px-4 py-2 rounded-lg flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full bg-red-600"></div><span
-                    class="text-white font-black text-xs">Ooredoo</span>
-            </div>
-            <div class="bg-[#161922] border border-[#212631] px-4 py-2 rounded-lg flex items-center gap-2">
-                <div class="w-3 h-3 bg-orange-500 rounded-sm"></div><span
-                    class="text-white font-black text-xs">Orange</span>
-            </div>
-            <div class="bg-[#161922] border border-[#212631] px-4 py-2 rounded-lg flex items-center gap-2"><i
-                    class="fas fa-money-bill-wave text-emerald-500"></i><span
-                    class="text-white font-black text-xs">Mandat</span></div>
         </div>
+    </div>
+
+    <!-- شبكة الألعاب -->
+    <div class="bg-betMain pt-2">
+        <div id="virtual-casino-games-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3 pb-6"></div>
+    </div>
+</div>
+
+    </main>
+    </main>
+
         <!-- 🌟 تذييل الصفحة (الذي تم حذفه بالخطأ) -->
         <div
             class="mt-8 pt-6 border-t border-[#212631] flex flex-col items-center justify-center text-center space-y-4 pb-8 w-full">
@@ -776,160 +751,6 @@
             </div>
         </div>
 
-        <!-- ================= CAISSE (DÉPÔT & RETRAIT) MODAL ================= -->
-        <div id="cashier-modal"
-            class="fixed inset-0 z-[400] hidden bg-black/80 backdrop-blur-md items-center justify-center p-4">
-            <div
-                class="bg-[#161922] border border-[#212631] rounded-3xl w-full max-w-md p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto hide-scroll">
-                <button onclick="toggleCashier()"
-                    class="absolute top-4 right-4 text-gray-400 hover:text-white font-bold text-3xl">&times;</button>
-                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2"><i
-                        class="fas fa-wallet text-emerald"></i> Caisse</h2>
-
-                <div class="flex gap-2 mb-6 bg-[#0f1117] p-1 rounded-xl border border-[#212631]">
-                    <button onclick="switchCashierTab('deposit')" id="tab-deposit"
-                        class="flex-1 bg-emerald text-black font-bold py-2 rounded-lg text-xs transition-all shadow-md">Dépôt</button>
-                    <button onclick="switchCashierTab('withdraw')" id="tab-withdraw"
-                        class="flex-1 text-gray-400 hover:text-white font-bold py-2 rounded-lg text-xs transition-all">Retrait</button>
-                </div>
-
-                <!-- SECTION DÉPÔT -->
-                <div id="deposit-section" class="space-y-4">
-                    <label class="text-xs text-gray-400 font-bold">Choisissez la méthode:</label>
-                    <div id="payment-methods-grid" class="grid grid-cols-2 gap-3">
-                        <button onclick="showForm('form-voucher')"
-                            class="bg-[#0f1117] border border-[#212631] hover:border-emerald p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
-                            <span class="text-2xl text-yellow-500">🎟️</span><span
-                                class="text-[10px] font-bold text-white">Code Voucher</span>
-                        </button>
-                        <button onclick="showForm('form-usdt')"
-                            class="bg-[#0f1117] border border-[#212631] hover:border-emerald p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
-                            <span class="text-2xl text-green-400">💎</span><span
-                                class="text-[10px] font-bold text-white">USDT (Crypto)</span>
-                        </button>
-                        <button onclick="showForm('form-ooredoo')"
-                            class="bg-[#0f1117] border border-[#212631] hover:border-red-500 p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
-                            <span class="text-2xl text-red-500 font-black">Ooredoo</span><span
-                                class="text-[10px] font-bold text-white">Recharge</span>
-                        </button>
-                        <button onclick="showForm('form-orange')"
-                            class="bg-[#0f1117] border border-[#212631] hover:border-orange-500 p-3 rounded-xl flex flex-col items-center gap-2 transition-all">
-                            <span class="text-2xl text-orange-500 font-black">Orange</span><span
-                                class="text-[10px] font-bold text-white">Recharge</span>
-                        </button>
-                    </div>
-
-                    <div id="form-voucher" class="hidden space-y-3 mt-4">
-                        <input type="text" id="voucher-code" placeholder="Entrez le code Voucher"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-3 text-white text-sm outline-none focus:border-emerald font-mono text-center tracking-widest">
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="backToMethods()"
-                                class="flex-1 bg-transparent border border-[#212631] text-white font-bold rounded-lg py-2">Retour</button>
-                            <button onclick="submitDeposit('voucher')"
-                                class="flex-1 bg-emerald text-black font-bold rounded-lg py-2">Valider</button>
-                        </div>
-                    </div>
-
-                    <div id="form-usdt" class="hidden space-y-3 mt-4">
-                        <div class="bg-[#0f1117] p-3 rounded-lg border border-emerald/30 text-center">
-                            <p class="text-xs text-gray-400 mb-1">Adresse USDT (TRC20) :</p>
-                            <p class="text-xs font-bold text-emerald break-all font-mono">
-                                TVXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-                            </p>
-                        </div>
-                        <label
-                            class="block w-full bg-[#0f1117] border border-[#212631] border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-emerald transition-all">
-                            <span class="text-sm text-gray-300">📸 Importer le reçu</span>
-                            <input type="file" id="usdt-file" accept="image/*" class="hidden"
-                                onchange="updateFileName('usdt')">
-                        </label>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="backToMethods()"
-                                class="flex-1 bg-transparent border border-[#212631] text-white font-bold rounded-lg py-2">Retour</button>
-                            <button onclick="submitDeposit('usdt')"
-                                class="flex-1 bg-emerald text-black font-bold rounded-lg py-2">Confirmer</button>
-                        </div>
-                    </div>
-
-                    <div id="form-ooredoo" class="hidden space-y-3 mt-4">
-                        <input type="number" id="ooredoo-code" placeholder="Code Ooredoo (14 chiffres)"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-3 text-white text-sm outline-none focus:border-red-500">
-                        <label
-                            class="block w-full bg-[#0f1117] border border-[#212631] border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-red-500 transition-all">
-                            <span class="text-sm text-gray-300">📸 Capture d'écran</span>
-                            <input type="file" id="ooredoo-file" accept="image/*" class="hidden"
-                                onchange="updateFileName('ooredoo')">
-                        </label>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="backToMethods()"
-                                class="flex-1 bg-transparent border border-[#212631] text-white font-bold rounded-lg py-2">Retour</button>
-                            <button onclick="submitDeposit('ooredoo')"
-                                class="flex-1 bg-red-600 text-white font-bold rounded-lg py-2">Confirmer</button>
-                        </div>
-                    </div>
-
-                    <div id="form-orange" class="hidden space-y-3 mt-4">
-                        <input type="number" id="orange-code" placeholder="Code Orange (14 chiffres)"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-3 text-white text-sm outline-none focus:border-orange-500">
-                        <label
-                            class="block w-full bg-[#0f1117] border border-[#212631] border-dashed rounded-lg p-3 text-center cursor-pointer hover:border-orange-500 transition-all">
-                            <span class="text-sm text-gray-300">📸 Capture d'écran</span>
-                            <input type="file" id="orange-file" accept="image/*" class="hidden"
-                                onchange="updateFileName('orange')">
-                        </label>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="backToMethods()"
-                                class="flex-1 bg-transparent border border-[#212631] text-white font-bold rounded-lg py-2">Retour</button>
-                            <button onclick="submitDeposit('orange')"
-                                class="flex-1 bg-orange-500 text-white font-bold rounded-lg py-2">Confirmer</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SECTION RETRAIT -->
-                <div id="withdraw-section" class="hidden space-y-4">
-                    <div
-                        class="bg-[#0f1117] border border-[#212631] p-3 rounded-xl flex justify-between items-center mb-2">
-                        <span class="text-xs text-gray-400">Solde Retirable:</span>
-                        <span class="text-sm font-black text-emerald"><span id="modal-balance">0.00</span>
-                            TND</span>
-                    </div>
-                    <label class="text-xs text-gray-400 font-bold block">Méthode de retrait:</label>
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-                        <button onclick="showWithdrawForm('form-w-mandat')"
-                            class="bg-[#0f1117] border border-[#212631] hover:border-emerald p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all">
-                            <span class="text-xl">💸</span><span class="text-[10px] font-bold text-white">Mandat
-                                Minute</span>
-                        </button>
-                        <button onclick="showWithdrawForm('form-w-d17')"
-                            class="bg-[#0f1117] border border-[#212631] hover:border-emerald p-2.5 rounded-xl flex flex-col items-center gap-1 transition-all">
-                            <span class="text-xl">📱</span><span class="text-[10px] font-bold text-white">D17</span>
-                        </button>
-                    </div>
-                    <div id="form-w-d17" class="withdraw-form space-y-3 hidden">
-                        <input type="text" id="d17-nom" placeholder="Nom et Prénom"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-2.5 text-white text-xs outline-none focus:border-emerald">
-                        <input type="tel" id="d17-phone" placeholder="Numéro D17"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-2.5 text-white text-xs outline-none focus:border-emerald">
-                        <input type="number" id="d17-amount" placeholder="Montant (TND)"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-2.5 text-white text-xs outline-none focus:border-emerald font-bold">
-                        <button onclick="submitWithdraw('d17')"
-                            class="w-full py-3 bg-emerald text-black font-bold rounded-xl hover:opacity-90 shadow-md">Confirmer</button>
-                    </div>
-                    <div id="form-w-mandat" class="withdraw-form space-y-3 hidden">
-                        <input type="text" id="mandat-nom" placeholder="Nom et Prénom"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-2.5 text-white text-xs outline-none focus:border-emerald">
-                        <input type="tel" id="mandat-phone" placeholder="Numéro Téléphone"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-2.5 text-white text-xs outline-none focus:border-emerald">
-                        <input type="number" id="mandat-amount" placeholder="Montant (TND)"
-                            class="w-full bg-[#0f1117] border border-[#212631] rounded-lg p-2.5 text-white text-xs outline-none focus:border-emerald font-bold">
-                        <button onclick="submitWithdraw('mandat')"
-                            class="w-full py-3 bg-emerald text-black font-bold rounded-xl hover:opacity-90 shadow-md">Confirmer</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Login Modal -->
         <div id="player-login-modal" class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4">
             <div class="w-full max-w-md bg-[#161922] border border-emerald/50 rounded-2xl p-8 relative">
@@ -944,42 +765,7 @@
                     class="w-full bg-emerald text-black font-bold p-3 rounded-xl">Entrer</button>
             </div>
         </div>
-        <!-- نافذة إنشاء حساب جديد (Register Modal) -->
-        <div id="player-register-modal"
-            class="fixed inset-0 z-[200] bg-black/80 hidden items-center justify-center p-4 backdrop-blur-sm">
-            <div class="w-full max-w-md bg-[#161922] border border-[#212631] rounded-2xl p-8 relative shadow-2xl">
-                <button onclick="closeRegisterModal()"
-                    class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl transition">&times;</button>
-                <h2 class="text-white text-2xl font-black mb-6 text-center uppercase tracking-wider">Créer un compte
-                </h2>
-
-                <div class="space-y-4">
-                    <div class="relative">
-                        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="text" id="r-auth-username" placeholder="Nom d'utilisateur"
-                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0f1117] border border-[#212631] text-white outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <div class="relative">
-                        <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="email" id="r-auth-email" placeholder="Adresse Email"
-                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0f1117] border border-[#212631] text-white outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <div class="relative">
-                        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="password" id="r-auth-password" placeholder="Mot de passe"
-                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0f1117] border border-[#212631] text-white outline-none focus:border-emerald-500 transition">
-                    </div>
-                    <div class="relative">
-                        <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="tel" id="r-auth-phone" placeholder="Numéro de téléphone"
-                            class="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0f1117] border border-[#212631] text-white outline-none focus:border-emerald-500 transition">
-                    </div>
-
-                    <button onclick="handlePlayerRegistration()"
-                        class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#07090e] font-black uppercase tracking-wider p-3.5 rounded-xl transition mt-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-[1.02]">
-                        S'inscrire
-                    </button>
-                </div>
+        
 
                 <p class="text-[10px] text-gray-500 mt-5 text-center leading-relaxed">
                     En vous inscrivant, vous acceptez nos <br>
@@ -1035,6 +821,328 @@
 
         <!-- ================= JAVASCRIPT (محرك الألفابت الشامل) ================= -->
         <script>
+
+            const virtualCasinoProvidersList = [
+    { code: "PRAGMATIC", name: "Pragmatic Play" },
+    { code: "HACKSAW", name: "Hacksaw Gaming" },
+    { code: "PLAYNGO", name: "Play'n Go" },
+    { code: "EVOLUTION", name: "Evolution" },
+    { code: "EVO_LIVE", name: "Evolution Live" },
+    { code: "SPRIBE", name: "Spribe (Aviator)" },
+    { code: "NOLIMIT", name: "Nolimit City" },
+    { code: "NETENT", name: "NetEnt" },
+    { code: "REDTIGER", name: "Red Tiger Gaming" },
+    { code: "QUICKSPIN", name: "Quickspin" },
+    { code: "YGGDRASIL", name: "Yggdrasil" },
+    { code: "PLAYTECH", name: "Playtech" },
+    { code: "PLAYTECH_LIVE", name: "Playtech Live" },
+    { code: "MICROGAMING", name: "Microgaming" },
+    { code: "RELAX", name: "Relax Gaming" },
+    { code: "BIGTIMEGAMING", name: "Big Time Gaming" },
+    { code: "ELK", name: "ELK Studios" },
+    { code: "PUSHGAMING", name: "Push Gaming" },
+    { code: "THUNDERKICK", name: "Thunderkick" },
+    { code: "WAZDAN", name: "Wazdan" },
+    { code: "SPINOMENAL", name: "Spinomenal" },
+    { code: "AMUSNET", name: "Amusnet" },
+    { code: "AMUSNET_LIVE", name: "Amusnet Live" },
+    { code: "EGT", name: "EGT" },
+    { code: "BETSOFT", name: "BetSoft" },
+    { code: "BGAMING", name: "BGaming" },
+    { code: "ENDORPHINA", name: "Endorphina" },
+    { code: "EVOPLAY", name: "Evoplay" },
+    { code: "BOOONGO", name: "Booongo" },
+    { code: "PLAYSON", name: "Playson" },
+    { code: "HABANERO", name: "Habanero" },
+    { code: "GAMART", name: "GameArt" }, // Assuming GamArt from typical lists, though not explicitly in PDF. Will stick to PDF exactly below.
+    { code: "100HP", name: "100HP Gaming" },
+    { code: "155IO", name: "155.io" },
+    { code: "1SPIN4WIN", name: "1spin4win" },
+    { code: "1X2", name: "1x2" },
+    { code: "30AKS", name: "30aks" },
+    { code: "4THEPLAYER", name: "4ThePlayer" },
+    { code: "7MOJOS", name: "7 Mojos" },
+    { code: "7777GAMING", name: "7777 Gaming" },
+    { code: "ABRACADABRA", name: "Abracadabra" },
+    { code: "ABSOLUTE", name: "Absolute" },
+    { code: "ADLUNAM", name: "Ad Lunam" },
+    { code: "ADVANTPLAY", name: "AdvantPlay" },
+    { code: "AIRDICE", name: "AirDice" },
+    { code: "ALTENTE", name: "Altente" },
+    { code: "AMATIC", name: "Amatic" },
+    { code: "AMIGOGAMING", name: "Amigo Gaming" },
+    { code: "APOLLO", name: "Apollo Games" },
+    { code: "APPARAT", name: "Apparat" },
+    { code: "ARMADILLO", name: "ArmadilloStudios" },
+    { code: "ARROWS", name: "Arrow's Edge" },
+    { code: "AUREA", name: "Aurea Gaming" },
+    { code: "AVATARUX", name: "Avatar UX" },
+    { code: "AVIATORSTUDIO", name: "Aviator Studio" },
+    { code: "AVIATRIX", name: "Aviatrix" },
+    { code: "BACKSEAT", name: "Backseat" },
+    { code: "BARBARA", name: "Barbara Bang" },
+    { code: "BELATRA", name: "Belatra" },
+    { code: "BEON", name: "Beon" },
+    { code: "BETBY", name: "Betby Sportsbook" },
+    { code: "BETON", name: "BetOnGames" },
+    { code: "BETORA", name: "Betora" },
+    { code: "BETSOLUTIONS", name: "BetSolutions" },
+    { code: "BFGAMES", name: "BF Games" },
+    { code: "BIGPOT", name: "BigPot Gaming" },
+    { code: "BITBLOX", name: "BitBlox" },
+    { code: "BLACKLAGOON", name: "Black Lagoon" },
+    { code: "BLUEGURU", name: "Blue Guru Games" },
+    { code: "BLUEPRINT", name: "Blueprint" },
+    { code: "BOLDPLAY", name: "Bold Play" },
+    { code: "BOOMING", name: "Booming Games" },
+    { code: "BULLSHARK", name: "Bullshark" },
+    { code: "BWGAMING", name: "BW Gaming" },
+    { code: "CALETA", name: "Caleta" },
+    { code: "CHOICE", name: "Choice Gaming" },
+    { code: "CLAWBUSTER", name: "Clawbuster" },
+    { code: "COMTRADE", name: "Comtrade Gaming" },
+    { code: "CPGAMES", name: "CP Games" },
+    { code: "CREEDROOMZ", name: "CreedRoomz" },
+    { code: "CTINTERACTIVE", name: "CT Interactive" },
+    { code: "DARPHA", name: "Darpha Studios" },
+    { code: "DATABET", name: "Data.bet Sportsbook" },
+    { code: "DRAGONGAMING", name: "Dragon Gaming" },
+    { code: "DREAMPLAY", name: "DreamPlay" },
+    { code: "EAGAMING", name: "EA Gaming" },
+    { code: "EBAKA", name: "Ebaka Gaming" },
+    { code: "EEZE", name: "Eeze Casino" },
+    { code: "ELAGAMES", name: "ELA Games" },
+    { code: "ELCASINO", name: "ElCasino" },
+    { code: "ELECTRIC", name: "Electric Elephant" },
+    { code: "EMERALD", name: "Emerald Gaming" },
+    { code: "EUROVIRTUALSORIGINALS", name: "EuroVirtuals Originals" },
+    { code: "EXAGAMING", name: "EXA Gaming" },
+    { code: "EXPANSE", name: "Expanse Studios" },
+    { code: "EYECON", name: "Eyecon" },
+    { code: "EZUGI", name: "Ezugi" },
+    { code: "FACHAI", name: "Fa Chai games" },
+    { code: "FANTASMA", name: "Fantasma Games" },
+    { code: "FAZI", name: "Fazi" },
+    { code: "FBMDS", name: "FBM DS" },
+    { code: "FELIX", name: "Felix Gaming" },
+    { code: "FELT", name: "Felt Gaming" },
+    { code: "FILS", name: "Fils" },
+    { code: "FLIPLUCK", name: "FlipLuck" },
+    { code: "FORMULA", name: "Formula Spin" },
+    { code: "FOURLEAF", name: "Four Leaf Gaming" },
+    { code: "FUGASO", name: "Fugaso" },
+    { code: "FUNKY", name: "Funky Games" },
+    { code: "GALAXSYS", name: "Galaxsys" },
+    { code: "GAMETIMETEC", name: "Game Time Tec" },
+    { code: "GAMEBEAT", name: "GameBeat" },
+    { code: "GAMINGCORPS", name: "Gaming Corps" },
+    { code: "GAMZIX", name: "Gamzix" },
+    { code: "GMW", name: "GMW" },
+    { code: "GOLDENRACE", name: "GoldenRace" },
+    { code: "HIGH5", name: "High 5 Games" },
+    { code: "HOTDOG", name: "HotDog Gaming" },
+    { code: "HYPETECH", name: "Hypetech" },
+    { code: "HOLLE", name: "Hölle Games" },
+    { code: "ICONIC21", name: "Iconic21 (BeterLive)" },
+    { code: "ICONIC21SLOTS", name: "Iconic21 Slots" },
+    { code: "ICONIX", name: "Iconix" },
+    { code: "IMAGINELIVE", name: "Imagine Live" },
+    { code: "INBET", name: "InBet" },
+    { code: "INOUT", name: "InOut" },
+    { code: "INTOUCH", name: "Intouch Games" },
+    { code: "IRONDOG", name: "Iron Dog" },
+    { code: "JACKTOP", name: "Jacktop" },
+    { code: "JACKTOPLIVE", name: "JackTop Live" },
+    { code: "JDB", name: "JDB" },
+    { code: "JOGOGLOBAL", name: "Jogo Global" },
+    { code: "JVL", name: "JVL" },
+    { code: "KAGAMING", name: "KA Gaming" },
+    { code: "KALAMBA", name: "Kalamba" },
+    { code: "KERMA", name: "Kerma Games" },
+    { code: "KINGMIDAS", name: "KingMidas" },
+    { code: "KIRON", name: "Kiron Interactive" },
+    { code: "KISSAL", name: "Kiss Al Gaming" },
+    { code: "LAGIO", name: "Lagio Gaming" },
+    { code: "LAMBDA", name: "Lambda Gaming" },
+    { code: "LIME", name: "Lime Games" },
+    { code: "LIVEGAMES", name: "LiveGames" },
+    { code: "LIW", name: "LIW Games" },
+    { code: "MAKTUB", name: "Maktub" },
+    { code: "MANCALA", name: "Mancala Gaming" },
+    { code: "MARACASH", name: "MaraCash Games" },
+    { code: "MASCOT", name: "Mascot Gaming" },
+    { code: "MAXWIN", name: "Max Win Gaming" },
+    { code: "MGSOFT", name: "MG Soft (Brazil Gaming)" },
+    { code: "MILLION", name: "Million Games" },
+    { code: "NETGAME", name: "Netgame" },
+    { code: "NETGAMING", name: "NetGaming" },
+    { code: "NOBLES", name: "Nobles Games" },
+    { code: "NOVOMATIC", name: "Novomatic" },
+    { code: "OCTOPLAY", name: "Octoplay" },
+    { code: "ONEGAME", name: "OneGame" },
+    { code: "ONETOUCH", name: "OneTouch" },
+    { code: "ONLYPLAY", name: "OnlyPlay" },
+    { code: "ORTIZ", name: "Ortiz" },
+    { code: "PARLAY", name: "Parlay" },
+    { code: "PASCAL", name: "Pascal Gaming" },
+    { code: "PASCALVIRTUAL", name: "Pascal Virtual" },
+    { code: "PATEPLAY", name: "Pateplay" },
+    { code: "PATEPLAYLIVE", name: "PatePlay Live" },
+    { code: "PEAGAMING", name: "PEA Gaming" },
+    { code: "PGSOFT", name: "PG Soft" },
+    { code: "PHOENIX7", name: "Phoenix7" },
+    { code: "PIGABOOM", name: "Pig A Boom" },
+    { code: "PIXMOVE", name: "Pixmove Games" },
+    { code: "PLATINGAMING", name: "Platin Gaming" },
+    { code: "PLATIPUS", name: "Platipus" },
+    { code: "PLATIPUSLIVE", name: "Platipus Live" },
+    { code: "PLAYNETIC", name: "Playnetic" },
+    { code: "POPIPLAY", name: "PopiPlay" },
+    { code: "POPOK", name: "PopOK" },
+    { code: "PRAGMATICVIRTUAL", name: "Pragmatic Virtual" },
+    { code: "PRINTSTUDIOS", name: "Print Studios" },
+    { code: "PROSPECT", name: "Prospect Gaming" },
+    { code: "QUIK", name: "Quik Gaming" },
+    { code: "RAW", name: "Raw iGaming" },
+    { code: "RAWLIVE", name: "Raw iGaming Live" },
+    { code: "READYPLAY", name: "Ready Play (Jacked)" },
+    { code: "REDRAKE", name: "Red Rake Gaming" },
+    { code: "REDEAGLE", name: "RedEagle" },
+    { code: "REELPLAY", name: "Reelplay" },
+    { code: "RELIGA", name: "Religa" },
+    { code: "RETRO", name: "Retro Gaming" },
+    { code: "REVOLVER", name: "Revolver" },
+    { code: "RIDDEC", name: "Riddec" },
+    { code: "RIVAL", name: "Rival" },
+    { code: "ROCKETMAN", name: "Rocketman" },
+    { code: "RTGSLOTS", name: "RTG Slots (SpinLogic)" },
+    { code: "RUBIKODE", name: "Rubikode" },
+    { code: "RUBYPLAY", name: "RubyPlay" },
+    { code: "SAGAMING", name: "SA Gaming" },
+    { code: "SCATTERKINGS", name: "Scatter Kings (Jacks)" },
+    { code: "SCATTERKING", name: "Scatterking" },
+    { code: "SHACKS", name: "Shacks Evolution" },
+    { code: "SHADYLADY", name: "Shady Lady" },
+    { code: "SIMPLEPLAY", name: "SimplePlay" },
+    { code: "SKYCONTROL", name: "Skycontrol" },
+    { code: "SKYWIND", name: "Skywind" },
+    { code: "SKYWINDLIVE", name: "Skywind Live" },
+    { code: "SLOTMATRIX", name: "SlotMatrix" },
+    { code: "SLOTMILL", name: "Slotmill" },
+    { code: "SLOTOPIA", name: "Slotopia" },
+    { code: "SMARTSOFT", name: "Smartsoft" },
+    { code: "SOLIDICON", name: "Solidicon" },
+    { code: "SPEARHEAD", name: "Spearhead Studios" },
+    { code: "SPINLOGIC", name: "Spinlogic" },
+    { code: "SPINORO", name: "Spinoro" },
+    { code: "SPINTHON", name: "Spinthon" },
+    { code: "SPLITTHEPOT", name: "Split The Pot" },
+    { code: "STAKELOGIC", name: "Stakelogic" },
+    { code: "STORM", name: "Storm Gaming" },
+    { code: "SWISH", name: "Swish Games" },
+    { code: "SYNOT", name: "SYNOT Games" },
+    { code: "TADA", name: "TaDa Gaming" },
+    { code: "THEHOOD", name: "TheHood" },
+    { code: "TOMHORN", name: "Tom Horn" },
+    { code: "TRIGGER", name: "Trigger" },
+    { code: "TRIPLECHERRY", name: "Triple Cherry" },
+    { code: "TURBOGAMES", name: "TurboGames" },
+    { code: "TVBET", name: "TVBet" },
+    { code: "UPGAMES", name: "Upgames" },
+    { code: "UPGAMING", name: "Upgaming" },
+    { code: "URGENTGAMES", name: "Urgent Games" },
+    { code: "VAGAMING", name: "VA Gaming" },
+    { code: "VIBRA", name: "Vibra Gaming" },
+    { code: "VIMPLAY", name: "Vimplay" },
+    { code: "VIMPLAYLIVE", name: "Vimplay Live" },
+    { code: "VIVOGAMING", name: "Vivo Gaming" },
+    { code: "WICKED", name: "Wicked Games" },
+    { code: "WINFINITY", name: "Winfinity" },
+    { code: "WINSPINITY", name: "Winspinity" },
+    { code: "WORLDMATCH", name: "WorldMatch" },
+    { code: "YEEBET", name: "YeeBet Live" },
+    { code: "YORIGINAL", name: "YOriginal Games" },
+    { code: "ZILLION", name: "Zillion" }
+];
+
+// دوال إدارة القائمة المنسدلة والبحث
+function toggleVCDropdown() {
+    document.getElementById('vc-provider-dropdown').classList.toggle('hidden');
+}
+
+function filterVCDropdown() {
+    const input = document.getElementById('vc-provider-search').value.toLowerCase();
+    const items = document.querySelectorAll('.vc-prov-item');
+    items.forEach(item => {
+        if (item.innerText.toLowerCase().includes(input)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function initVirtualCasinoLobby() {
+    const listContainer = document.getElementById('vc-provider-list');
+    if (!listContainer) return;
+
+    // رسم أسماء المزودين داخل القائمة المنسدلة
+    let html = '';
+    virtualCasinoProvidersList.forEach(p => {
+        html += `<button onclick="selectVCProvider('${p.code}', '${escapeHTML(p.name)}')" class="vc-prov-item text-left px-3 py-2 text-xs md:text-sm text-gray-300 font-bold hover:text-white hover:bg-gray-700 rounded transition w-full">${escapeHTML(p.name)}</button>`;
+    });
+    listContainer.innerHTML = html;
+}
+
+function selectVCProvider(providerCode, providerName) {
+    // تحديث اسم الزر وإغلاق القائمة
+    document.getElementById('vc-current-provider-label').innerText = providerName;
+    document.getElementById('vc-provider-dropdown').classList.add('hidden');
+    
+    // جلب الألعاب
+    fetchVirtualCasinoGames(providerCode);
+}
+
+async function fetchVirtualCasinoGames(providerCode) {
+    const grid = document.getElementById('virtual-casino-games-grid');
+    if (grid) grid.innerHTML = '<div class="col-span-full text-purple-400 text-center py-10"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><br>Chargement des jeux...</div>';
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider_code: providerCode })
+        });
+        const data = await res.json();
+        let games = data.games || data.data || data || [];
+
+        if (games.length === 0) {
+            if (grid) grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10 font-bold text-xs">Aucun jeu trouvé. Veuillez vérifier le code fournisseur.</div>';
+            return;
+        }
+
+        if (grid) grid.innerHTML = games.map(g => {
+            const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
+            const safeName = escapeHTML(g.game_name || g.name || "Casino Game");
+            const img = g.banner || g.image || g.thumb || 'https://placehold.co/400x400/180A2B/FFF?text=Game';
+
+            return `
+            <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg shadow-black/50">
+                <div class="relative w-full aspect-square overflow-hidden bg-black/50">
+                    <img src="${img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                        <span class="bg-purple-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
+                    </div>
+                </div>
+                <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
+            </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error(e);
+        if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion</div>';
+    }
+}
 
             function openBonusModal() {
                 showNotification("Aucun bonus disponible pour le moment.", "error");
@@ -1883,58 +1991,109 @@
                 }
             }
 
+            window.allFetchedGames = []; // لتخزين الألعاب في الذاكرة لتسهيل الفلترة السريعة
+
             async function initVirtualsLobby() {
                 const grid = document.getElementById('virtuals-games-grid');
-                if (grid) grid.innerHTML = '<div class="col-span-full text-blue-400 text-center py-10">Chargement des jeux...</div>';
+                const providerBar = document.getElementById('virtuals-providers-bar');
+
+                if (grid) grid.innerHTML = '<div class="col-span-full text-blue-400 text-center py-10"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><br>Chargement des jeux...</div>';
+                if (providerBar) { providerBar.innerHTML = ''; providerBar.classList.add('hidden'); }
 
                 try {
                     const res = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`);
                     const data = await res.json();
                     let games = data.games || data.data || data || [];
 
-                    // 🛡️ قائمة معرّفات الألعاب التي تعمل بنجاح
-                    const workingGamesUUIDs = [
-                        "9542d915-1e76-4897-baf8-da867e9e504a", "9fa4f900-0ac6-a795-9e42-c3775578aa4f", "a02d0edf-4afd-d62a-e005-edbc01a4c538",
-                        "b7a2f4e3-95b4-4f83-8e27-91c4b7f6dabc", "3098bdda-d5da-d548-ce14-eb646a79b590", "f3d77a4e-71a4-4c9c-8f63-83f4b52f16b1",
-                        "8420c302-05df-1636-3344-1550b01f53d8", "e758a994-19a7-c557-cbdb-037aeeb68933", "e92f58d5-42a9-a3ad-8e85-8bf75396daf2",
-                        "123e4567-e89b-12d3-a456-426614174001", "123e4567-e89b-12d3-a456-426614174002", "123e4567-e89b-12d3-a456-426614174003",
-                        "e88411fe-6ea6-5904-b410-9b1a6c4e4c0e", "2b281ca2-753c-50af-b105-c90fe98638c7", "2b5ecf43-dd1b-5ed8-b20c-a87a3d061571",
-                        "a4ee684c-4fc7-5618-b20d-ccc60efc7a64", "0fa1c2b3-137c-94da-909b-d7250608fcb6", "ed019bee-6393-64af-0046-377cb36a4bd9",
-                        "6a1373d6-4286-62c7-daae-c86be86ea2fb", "da559e73-26a2-c4d4-26d5-842456cf98b2", "fc732415-bd48-870a-4a10-fc49095e82f2",
-                        "3c2a9f66-2e3d-4c2a-8a1e-775a79bb38a2", "9f0a1692-8fbf-8400-b284-d47b74357100", "ad8a8686-3f24-11f1-b390-42010a69900b",
-                        "ad8bf72b-3f24-11f1-b390-42010a69900b", "5e711cf5-3f2c-11f1-b390-42010a69900b", "c8c1a65d-2f89-92a5-0372-66cb2f856a62",
-                        "1df14d9c-79d8-11f1-9d45-42010a699010", "1df1a2a8-79d8-11f1-9d45-42010a699010", "f94e798c-84dc-11f1-9d45-42010a699010",
-                        "cbe3293f-af9a-ecad-0cbd-acaae3f8ff86", "9f2c7a1e-6b4d-4c8f-91a3-d0e5b7c2f846", "a3f9d7b2-4f1c-4b98-8e4d-7b1e3a0a11d2",
-                        "550e8400-e29b-41d4-a716-446655440000", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
-                    ];
+                    if (games.length === 0) {
+                        if (grid) grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10">Aucun jeu trouvé.</div>';
+                        return;
+                    }
 
-                    // 🛡️ تطبيق الفلتر: الاحتفاظ فقط بالألعاب المطابقة للقائمة
-                    const validGames = games.filter(g => {
-                        const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
-                        return workingGamesUUIDs.includes(uuid);
+                    window.allFetchedGames = games; // حفظها للفلترة
+
+                    // 1. استخراج أسماء المزودين من استجابة السيرفر ديناميكياً
+                    const providersSet = new Set();
+                    games.forEach(g => {
+                        // نبحث عن اسم المزود في الخصائص المحتملة التي يرسلها السيرفر
+                        const pName = g.provider || g.provider_name || g.category || 'Autres';
+                        providersSet.add(pName);
                     });
 
-                    if (grid) grid.innerHTML = validGames.map(g => {
-                        const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
-                        const safeName = escapeHTML(g.game_name || g.name || "Virtual Game");
+                    // 2. رسم الأزرار بناءً على ما وجدناه في السيرفر
+                    if (providersSet.size > 0 && providerBar) {
+                        let buttonsHTML = `<button onclick="filterGamesByProvider('All', this)" class="virtual-prov-btn bg-blue-500 text-white px-4 py-1.5 md:py-2 text-[10px] md:text-sm font-bold rounded-full transition whitespace-nowrap">Tout</button>`;
 
-                        return `
-            <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg shadow-black/50">
-                <div class="relative w-full aspect-square overflow-hidden bg-black/50">
-                    <img src="${g.banner || g.image || 'https://placehold.co/400x400/180A2B/FFF'}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
-                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                        <span class="bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
-                    </div>
-                </div>
-                <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
-            </div>
-            `;
-                    }).join('');
+                        providersSet.forEach(pName => {
+                            const safePName = escapeHTML(pName);
+                            buttonsHTML += `<button onclick="filterGamesByProvider('${safePName}', this)" class="virtual-prov-btn bg-betMain border border-gray-700 text-gray-300 hover:text-white px-4 py-1.5 md:py-2 text-[10px] md:text-sm font-bold rounded-full transition whitespace-nowrap">${safePName}</button>`;
+                        });
+
+                        providerBar.innerHTML = buttonsHTML;
+                        providerBar.classList.remove('hidden');
+                    }
+
+                    // 3. عرض جميع الألعاب كبداية
+                    renderVirtualGamesList(games);
+
                 } catch (e) {
                     console.error("Erreur:", e);
-                    if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur lors du chargement des jeux</div>';
+                    if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur lors du chargement</div>';
                 }
             }
+
+            // دالة الفلترة عند الضغط على زر المزود
+            window.filterGamesByProvider = function (providerName, btnElement) {
+                // تلوين الزر المختار
+                if (btnElement) {
+                    document.querySelectorAll('.virtual-prov-btn').forEach(btn => {
+                        btn.classList.remove('bg-blue-500', 'text-white');
+                        btn.classList.add('bg-betMain', 'text-gray-300');
+                    });
+                    btnElement.classList.remove('bg-betMain', 'text-gray-300');
+                    btnElement.classList.add('bg-blue-500', 'text-white');
+                }
+
+                // فرز الألعاب
+                let filtered = window.allFetchedGames;
+                if (providerName !== 'All') {
+                    filtered = window.allFetchedGames.filter(g => {
+                        const p = g.provider || g.provider_name || g.category || 'Autres';
+                        return p === providerName;
+                    });
+                }
+
+                renderVirtualGamesList(filtered);
+            };
+
+            // دالة رسم الألعاب في الشبكة
+            window.renderVirtualGamesList = function (gamesToRender) {
+                const grid = document.getElementById('virtuals-games-grid');
+                if (!grid) return;
+
+                if (gamesToRender.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full py-8 text-center text-gray-500 font-bold text-xs">Aucun jeu trouvé.</div>';
+                    return;
+                }
+
+                grid.innerHTML = gamesToRender.map(g => {
+                    const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
+                    const safeName = escapeHTML(g.game_name || g.name || "Game");
+                    const img = g.banner || g.image || g.thumb || 'https://placehold.co/400x400/180A2B/FFF?text=Game';
+
+                    return `
+        <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg shadow-black/50">
+            <div class="relative w-full aspect-square overflow-hidden bg-black/50">
+                <img src="${img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                    <span class="bg-blue-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
+                </div>
+            </div>
+            <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
+        </div>
+        `;
+                }).join('');
+            };;
 
             async function launchSpecificVirtualGame(uuid) {
                 console.log("🖱️ Clicked game with UUID:", uuid);
@@ -3147,7 +3306,7 @@
                 });
             };
 
-      </script>
+        </script>
         <!-- 💬 مربع الشات (Modal في الهاتف، عائم في الكمبيوتر) -->
         <div id="live-chat-sidebar" onclick="if(event.target === this) closeChat()"
             class="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-4 md:right-8 z-[500] hidden items-center justify-center p-4 sm:p-0 bg-black/80 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none">
@@ -3244,14 +3403,6 @@
                 <button onclick="toggleProfileSidebar()"
                     class="text-gray-400 hover:text-white transition w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
                     <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <!-- زر الإيداع البارز -->
-            <div class="p-5 border-b border-gray-800">
-                <button onclick="toggleProfileSidebar(); setTimeout(toggleCashier, 100);"
-                    class="w-full bg-emerald hover:bg-emerald-400 text-[#0f1117] font-black py-3.5 rounded-lg flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition transform hover:scale-[1.02]">
-                    <i class="fas fa-wallet text-lg"></i> FAIRE UN DÉPÔT
                 </button>
             </div>
 
