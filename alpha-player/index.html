@@ -822,250 +822,13 @@
         <!-- ================= JAVASCRIPT (محرك الألفابت الشامل) ================= -->
         <script>
 
-            const virtualCasinoProvidersList = [
-    { code: "PRAGMATIC", name: "Pragmatic Play" },
-    { code: "HACKSAW", name: "Hacksaw Gaming" },
-    { code: "PLAYNGO", name: "Play'n Go" },
-    { code: "EVOLUTION", name: "Evolution" },
-    { code: "EVO_LIVE", name: "Evolution Live" },
-    { code: "SPRIBE", name: "Spribe (Aviator)" },
-    { code: "NOLIMIT", name: "Nolimit City" },
-    { code: "NETENT", name: "NetEnt" },
-    { code: "REDTIGER", name: "Red Tiger Gaming" },
-    { code: "QUICKSPIN", name: "Quickspin" },
-    { code: "YGGDRASIL", name: "Yggdrasil" },
-    { code: "PLAYTECH", name: "Playtech" },
-    { code: "PLAYTECH_LIVE", name: "Playtech Live" },
-    { code: "MICROGAMING", name: "Microgaming" },
-    { code: "RELAX", name: "Relax Gaming" },
-    { code: "BIGTIMEGAMING", name: "Big Time Gaming" },
-    { code: "ELK", name: "ELK Studios" },
-    { code: "PUSHGAMING", name: "Push Gaming" },
-    { code: "THUNDERKICK", name: "Thunderkick" },
-    { code: "WAZDAN", name: "Wazdan" },
-    { code: "SPINOMENAL", name: "Spinomenal" },
-    { code: "AMUSNET", name: "Amusnet" },
-    { code: "AMUSNET_LIVE", name: "Amusnet Live" },
-    { code: "EGT", name: "EGT" },
-    { code: "BETSOFT", name: "BetSoft" },
-    { code: "BGAMING", name: "BGaming" },
-    { code: "ENDORPHINA", name: "Endorphina" },
-    { code: "EVOPLAY", name: "Evoplay" },
-    { code: "BOOONGO", name: "Booongo" },
-    { code: "PLAYSON", name: "Playson" },
-    { code: "HABANERO", name: "Habanero" },
-    { code: "GAMART", name: "GameArt" }, // Assuming GamArt from typical lists, though not explicitly in PDF. Will stick to PDF exactly below.
-    { code: "100HP", name: "100HP Gaming" },
-    { code: "155IO", name: "155.io" },
-    { code: "1SPIN4WIN", name: "1spin4win" },
-    { code: "1X2", name: "1x2" },
-    { code: "30AKS", name: "30aks" },
-    { code: "4THEPLAYER", name: "4ThePlayer" },
-    { code: "7MOJOS", name: "7 Mojos" },
-    { code: "7777GAMING", name: "7777 Gaming" },
-    { code: "ABRACADABRA", name: "Abracadabra" },
-    { code: "ABSOLUTE", name: "Absolute" },
-    { code: "ADLUNAM", name: "Ad Lunam" },
-    { code: "ADVANTPLAY", name: "AdvantPlay" },
-    { code: "AIRDICE", name: "AirDice" },
-    { code: "ALTENTE", name: "Altente" },
-    { code: "AMATIC", name: "Amatic" },
-    { code: "AMIGOGAMING", name: "Amigo Gaming" },
-    { code: "APOLLO", name: "Apollo Games" },
-    { code: "APPARAT", name: "Apparat" },
-    { code: "ARMADILLO", name: "ArmadilloStudios" },
-    { code: "ARROWS", name: "Arrow's Edge" },
-    { code: "AUREA", name: "Aurea Gaming" },
-    { code: "AVATARUX", name: "Avatar UX" },
-    { code: "AVIATORSTUDIO", name: "Aviator Studio" },
-    { code: "AVIATRIX", name: "Aviatrix" },
-    { code: "BACKSEAT", name: "Backseat" },
-    { code: "BARBARA", name: "Barbara Bang" },
-    { code: "BELATRA", name: "Belatra" },
-    { code: "BEON", name: "Beon" },
-    { code: "BETBY", name: "Betby Sportsbook" },
-    { code: "BETON", name: "BetOnGames" },
-    { code: "BETORA", name: "Betora" },
-    { code: "BETSOLUTIONS", name: "BetSolutions" },
-    { code: "BFGAMES", name: "BF Games" },
-    { code: "BIGPOT", name: "BigPot Gaming" },
-    { code: "BITBLOX", name: "BitBlox" },
-    { code: "BLACKLAGOON", name: "Black Lagoon" },
-    { code: "BLUEGURU", name: "Blue Guru Games" },
-    { code: "BLUEPRINT", name: "Blueprint" },
-    { code: "BOLDPLAY", name: "Bold Play" },
-    { code: "BOOMING", name: "Booming Games" },
-    { code: "BULLSHARK", name: "Bullshark" },
-    { code: "BWGAMING", name: "BW Gaming" },
-    { code: "CALETA", name: "Caleta" },
-    { code: "CHOICE", name: "Choice Gaming" },
-    { code: "CLAWBUSTER", name: "Clawbuster" },
-    { code: "COMTRADE", name: "Comtrade Gaming" },
-    { code: "CPGAMES", name: "CP Games" },
-    { code: "CREEDROOMZ", name: "CreedRoomz" },
-    { code: "CTINTERACTIVE", name: "CT Interactive" },
-    { code: "DARPHA", name: "Darpha Studios" },
-    { code: "DATABET", name: "Data.bet Sportsbook" },
-    { code: "DRAGONGAMING", name: "Dragon Gaming" },
-    { code: "DREAMPLAY", name: "DreamPlay" },
-    { code: "EAGAMING", name: "EA Gaming" },
-    { code: "EBAKA", name: "Ebaka Gaming" },
-    { code: "EEZE", name: "Eeze Casino" },
-    { code: "ELAGAMES", name: "ELA Games" },
-    { code: "ELCASINO", name: "ElCasino" },
-    { code: "ELECTRIC", name: "Electric Elephant" },
-    { code: "EMERALD", name: "Emerald Gaming" },
-    { code: "EUROVIRTUALSORIGINALS", name: "EuroVirtuals Originals" },
-    { code: "EXAGAMING", name: "EXA Gaming" },
-    { code: "EXPANSE", name: "Expanse Studios" },
-    { code: "EYECON", name: "Eyecon" },
-    { code: "EZUGI", name: "Ezugi" },
-    { code: "FACHAI", name: "Fa Chai games" },
-    { code: "FANTASMA", name: "Fantasma Games" },
-    { code: "FAZI", name: "Fazi" },
-    { code: "FBMDS", name: "FBM DS" },
-    { code: "FELIX", name: "Felix Gaming" },
-    { code: "FELT", name: "Felt Gaming" },
-    { code: "FILS", name: "Fils" },
-    { code: "FLIPLUCK", name: "FlipLuck" },
-    { code: "FORMULA", name: "Formula Spin" },
-    { code: "FOURLEAF", name: "Four Leaf Gaming" },
-    { code: "FUGASO", name: "Fugaso" },
-    { code: "FUNKY", name: "Funky Games" },
-    { code: "GALAXSYS", name: "Galaxsys" },
-    { code: "GAMETIMETEC", name: "Game Time Tec" },
-    { code: "GAMEBEAT", name: "GameBeat" },
-    { code: "GAMINGCORPS", name: "Gaming Corps" },
-    { code: "GAMZIX", name: "Gamzix" },
-    { code: "GMW", name: "GMW" },
-    { code: "GOLDENRACE", name: "GoldenRace" },
-    { code: "HIGH5", name: "High 5 Games" },
-    { code: "HOTDOG", name: "HotDog Gaming" },
-    { code: "HYPETECH", name: "Hypetech" },
-    { code: "HOLLE", name: "Hölle Games" },
-    { code: "ICONIC21", name: "Iconic21 (BeterLive)" },
-    { code: "ICONIC21SLOTS", name: "Iconic21 Slots" },
-    { code: "ICONIX", name: "Iconix" },
-    { code: "IMAGINELIVE", name: "Imagine Live" },
-    { code: "INBET", name: "InBet" },
-    { code: "INOUT", name: "InOut" },
-    { code: "INTOUCH", name: "Intouch Games" },
-    { code: "IRONDOG", name: "Iron Dog" },
-    { code: "JACKTOP", name: "Jacktop" },
-    { code: "JACKTOPLIVE", name: "JackTop Live" },
-    { code: "JDB", name: "JDB" },
-    { code: "JOGOGLOBAL", name: "Jogo Global" },
-    { code: "JVL", name: "JVL" },
-    { code: "KAGAMING", name: "KA Gaming" },
-    { code: "KALAMBA", name: "Kalamba" },
-    { code: "KERMA", name: "Kerma Games" },
-    { code: "KINGMIDAS", name: "KingMidas" },
-    { code: "KIRON", name: "Kiron Interactive" },
-    { code: "KISSAL", name: "Kiss Al Gaming" },
-    { code: "LAGIO", name: "Lagio Gaming" },
-    { code: "LAMBDA", name: "Lambda Gaming" },
-    { code: "LIME", name: "Lime Games" },
-    { code: "LIVEGAMES", name: "LiveGames" },
-    { code: "LIW", name: "LIW Games" },
-    { code: "MAKTUB", name: "Maktub" },
-    { code: "MANCALA", name: "Mancala Gaming" },
-    { code: "MARACASH", name: "MaraCash Games" },
-    { code: "MASCOT", name: "Mascot Gaming" },
-    { code: "MAXWIN", name: "Max Win Gaming" },
-    { code: "MGSOFT", name: "MG Soft (Brazil Gaming)" },
-    { code: "MILLION", name: "Million Games" },
-    { code: "NETGAME", name: "Netgame" },
-    { code: "NETGAMING", name: "NetGaming" },
-    { code: "NOBLES", name: "Nobles Games" },
-    { code: "NOVOMATIC", name: "Novomatic" },
-    { code: "OCTOPLAY", name: "Octoplay" },
-    { code: "ONEGAME", name: "OneGame" },
-    { code: "ONETOUCH", name: "OneTouch" },
-    { code: "ONLYPLAY", name: "OnlyPlay" },
-    { code: "ORTIZ", name: "Ortiz" },
-    { code: "PARLAY", name: "Parlay" },
-    { code: "PASCAL", name: "Pascal Gaming" },
-    { code: "PASCALVIRTUAL", name: "Pascal Virtual" },
-    { code: "PATEPLAY", name: "Pateplay" },
-    { code: "PATEPLAYLIVE", name: "PatePlay Live" },
-    { code: "PEAGAMING", name: "PEA Gaming" },
-    { code: "PGSOFT", name: "PG Soft" },
-    { code: "PHOENIX7", name: "Phoenix7" },
-    { code: "PIGABOOM", name: "Pig A Boom" },
-    { code: "PIXMOVE", name: "Pixmove Games" },
-    { code: "PLATINGAMING", name: "Platin Gaming" },
-    { code: "PLATIPUS", name: "Platipus" },
-    { code: "PLATIPUSLIVE", name: "Platipus Live" },
-    { code: "PLAYNETIC", name: "Playnetic" },
-    { code: "POPIPLAY", name: "PopiPlay" },
-    { code: "POPOK", name: "PopOK" },
-    { code: "PRAGMATICVIRTUAL", name: "Pragmatic Virtual" },
-    { code: "PRINTSTUDIOS", name: "Print Studios" },
-    { code: "PROSPECT", name: "Prospect Gaming" },
-    { code: "QUIK", name: "Quik Gaming" },
-    { code: "RAW", name: "Raw iGaming" },
-    { code: "RAWLIVE", name: "Raw iGaming Live" },
-    { code: "READYPLAY", name: "Ready Play (Jacked)" },
-    { code: "REDRAKE", name: "Red Rake Gaming" },
-    { code: "REDEAGLE", name: "RedEagle" },
-    { code: "REELPLAY", name: "Reelplay" },
-    { code: "RELIGA", name: "Religa" },
-    { code: "RETRO", name: "Retro Gaming" },
-    { code: "REVOLVER", name: "Revolver" },
-    { code: "RIDDEC", name: "Riddec" },
-    { code: "RIVAL", name: "Rival" },
-    { code: "ROCKETMAN", name: "Rocketman" },
-    { code: "RTGSLOTS", name: "RTG Slots (SpinLogic)" },
-    { code: "RUBIKODE", name: "Rubikode" },
-    { code: "RUBYPLAY", name: "RubyPlay" },
-    { code: "SAGAMING", name: "SA Gaming" },
-    { code: "SCATTERKINGS", name: "Scatter Kings (Jacks)" },
-    { code: "SCATTERKING", name: "Scatterking" },
-    { code: "SHACKS", name: "Shacks Evolution" },
-    { code: "SHADYLADY", name: "Shady Lady" },
-    { code: "SIMPLEPLAY", name: "SimplePlay" },
-    { code: "SKYCONTROL", name: "Skycontrol" },
-    { code: "SKYWIND", name: "Skywind" },
-    { code: "SKYWINDLIVE", name: "Skywind Live" },
-    { code: "SLOTMATRIX", name: "SlotMatrix" },
-    { code: "SLOTMILL", name: "Slotmill" },
-    { code: "SLOTOPIA", name: "Slotopia" },
-    { code: "SMARTSOFT", name: "Smartsoft" },
-    { code: "SOLIDICON", name: "Solidicon" },
-    { code: "SPEARHEAD", name: "Spearhead Studios" },
-    { code: "SPINLOGIC", name: "Spinlogic" },
-    { code: "SPINORO", name: "Spinoro" },
-    { code: "SPINTHON", name: "Spinthon" },
-    { code: "SPLITTHEPOT", name: "Split The Pot" },
-    { code: "STAKELOGIC", name: "Stakelogic" },
-    { code: "STORM", name: "Storm Gaming" },
-    { code: "SWISH", name: "Swish Games" },
-    { code: "SYNOT", name: "SYNOT Games" },
-    { code: "TADA", name: "TaDa Gaming" },
-    { code: "THEHOOD", name: "TheHood" },
-    { code: "TOMHORN", name: "Tom Horn" },
-    { code: "TRIGGER", name: "Trigger" },
-    { code: "TRIPLECHERRY", name: "Triple Cherry" },
-    { code: "TURBOGAMES", name: "TurboGames" },
-    { code: "TVBET", name: "TVBet" },
-    { code: "UPGAMES", name: "Upgames" },
-    { code: "UPGAMING", name: "Upgaming" },
-    { code: "URGENTGAMES", name: "Urgent Games" },
-    { code: "VAGAMING", name: "VA Gaming" },
-    { code: "VIBRA", name: "Vibra Gaming" },
-    { code: "VIMPLAY", name: "Vimplay" },
-    { code: "VIMPLAYLIVE", name: "Vimplay Live" },
-    { code: "VIVOGAMING", name: "Vivo Gaming" },
-    { code: "WICKED", name: "Wicked Games" },
-    { code: "WINFINITY", name: "Winfinity" },
-    { code: "WINSPINITY", name: "Winspinity" },
-    { code: "WORLDMATCH", name: "WorldMatch" },
-    { code: "YEEBET", name: "YeeBet Live" },
-    { code: "YORIGINAL", name: "YOriginal Games" },
-    { code: "ZILLION", name: "Zillion" }
-];
+           // =================================================================
+// 🎰 دوال قسم Casino Virtuel المربوطة بـ EuroVirtuals
+// =================================================================
 
-// دوال إدارة القائمة المنسدلة والبحث
+// متغير لتخزين ألعاب الكازينو الافتراضي محلياً لتسريع الفلترة
+window.euroVirtualCasinoGames = [];
+
 function toggleVCDropdown() {
     document.getElementById('vc-provider-dropdown').classList.toggle('hidden');
 }
@@ -1082,68 +845,104 @@ function filterVCDropdown() {
     });
 }
 
-function initVirtualCasinoLobby() {
-    const listContainer = document.getElementById('vc-provider-list');
-    if (!listContainer) return;
-
-    // رسم أسماء المزودين داخل القائمة المنسدلة
-    let html = '';
-    virtualCasinoProvidersList.forEach(p => {
-        html += `<button onclick="selectVCProvider('${p.code}', '${escapeHTML(p.name)}')" class="vc-prov-item text-left px-3 py-2 text-xs md:text-sm text-gray-300 font-bold hover:text-white hover:bg-gray-700 rounded transition w-full">${escapeHTML(p.name)}</button>`;
-    });
-    listContainer.innerHTML = html;
-}
-
-function selectVCProvider(providerCode, providerName) {
-    // تحديث اسم الزر وإغلاق القائمة
-    document.getElementById('vc-current-provider-label').innerText = providerName;
-    document.getElementById('vc-provider-dropdown').classList.add('hidden');
-    
-    // جلب الألعاب
-    fetchVirtualCasinoGames(providerCode);
-}
-
-async function fetchVirtualCasinoGames(providerCode) {
+// 1. دالة تهيئة الكازينو الافتراضي وجلب الألعاب
+async function initVirtualCasinoLobby() {
     const grid = document.getElementById('virtual-casino-games-grid');
+    const listContainer = document.getElementById('vc-provider-list');
+    
     if (grid) grid.innerHTML = '<div class="col-span-full text-purple-400 text-center py-10"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><br>Chargement des jeux...</div>';
 
     try {
-        const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider_code: providerCode })
-        });
+        // جلب الألعاب من سيرفر EuroVirtuals
+        const res = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`);
         const data = await res.json();
+        
         let games = data.games || data.data || data || [];
-
+        
         if (games.length === 0) {
-            if (grid) grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10 font-bold text-xs">Aucun jeu trouvé. Veuillez vérifier le code fournisseur.</div>';
+            if (grid) grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10 font-bold text-xs">Aucun jeu trouvé.</div>';
             return;
         }
 
-        if (grid) grid.innerHTML = games.map(g => {
-            const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
-            const safeName = escapeHTML(g.game_name || g.name || "Casino Game");
-            const img = g.banner || g.image || g.thumb || 'https://placehold.co/400x400/180A2B/FFF?text=Game';
+        // حفظ الألعاب في الذاكرة
+        window.euroVirtualCasinoGames = games;
 
-            return `
-            <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg shadow-black/50">
-                <div class="relative w-full aspect-square overflow-hidden bg-black/50">
-                    <img src="${img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
-                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                        <span class="bg-purple-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
-                    </div>
-                </div>
-                <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
-            </div>
-            `;
-        }).join('');
+        // استخراج أسماء المزودين ديناميكياً من الألعاب الواردة
+        const providersSet = new Set();
+        games.forEach(g => {
+            const pName = g.provider || g.provider_name || g.category || 'EuroVirtuals';
+            providersSet.add(pName);
+        });
+
+        // رسم قائمة المزودين في النافذة المنسدلة
+        if (listContainer) {
+            let html = `<button onclick="selectVCProvider('All')" class="vc-prov-item text-left px-3 py-2 text-xs md:text-sm text-purple-400 font-black hover:text-white hover:bg-gray-700 rounded transition w-full">Tout Afficher</button>`;
+            
+            providersSet.forEach(pName => {
+                const safePName = escapeHTML(pName);
+                html += `<button onclick="selectVCProvider('${safePName}')" class="vc-prov-item text-left px-3 py-2 text-xs md:text-sm text-gray-300 font-bold hover:text-white hover:bg-gray-700 rounded transition w-full">${safePName}</button>`;
+            });
+            listContainer.innerHTML = html;
+        }
+
+        // عرض كل الألعاب كبداية
+        renderVirtualCasinoGames(games);
+
     } catch (e) {
-        console.error(e);
-        if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion</div>';
+        console.error("Erreur EuroVirtuals:", e);
+        if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion avec le serveur EuroVirtuals</div>';
     }
 }
 
+// 2. دالة الفلترة عند اختيار مزود من القائمة المنسدلة
+function selectVCProvider(providerName) {
+    // تحديث اسم الزر وإغلاق القائمة
+    document.getElementById('vc-current-provider-label').innerText = providerName === 'All' ? 'Sélectionner un Fournisseur' : providerName;
+    document.getElementById('vc-provider-dropdown').classList.add('hidden');
+    
+    // فلترة الألعاب من الذاكرة
+    let filteredGames = window.euroVirtualCasinoGames;
+    if (providerName !== 'All') {
+        filteredGames = window.euroVirtualCasinoGames.filter(g => {
+            const p = g.provider || g.provider_name || g.category || 'EuroVirtuals';
+            return p === providerName;
+        });
+    }
+    
+    renderVirtualCasinoGames(filteredGames);
+}
+
+// 3. دالة رسم شبكة البطاقات الزجاجية
+function renderVirtualCasinoGames(gamesToRender) {
+    const grid = document.getElementById('virtual-casino-games-grid');
+    if (!grid) return;
+
+    if (gamesToRender.length === 0) {
+        grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10 font-bold text-xs">Aucun jeu trouvé pour ce fournisseur.</div>';
+        return;
+    }
+
+    grid.innerHTML = gamesToRender.map(g => {
+        const uuid = g.uuid || g.game_uuid || g.id || g.game_code;
+        const safeName = escapeHTML(g.game_name || g.name || "Casino Game");
+        const img = g.banner || g.image || g.thumbnail || g.thumb || 'https://placehold.co/400x400/180A2B/FFF?text=Game';
+
+        return `
+        <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg shadow-black/50 relative">
+            <div class="absolute top-2 right-2 bg-black/80 text-purple-400 text-[8px] font-black px-1.5 py-0.5 rounded z-10 border border-[#212631]">
+                ${escapeHTML(g.provider || g.category || 'EV')}
+            </div>
+            <div class="relative w-full aspect-square overflow-hidden bg-black/50">
+                <img src="${img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-20">
+                    <span class="bg-purple-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.6)]">JOUER</span>
+                </div>
+            </div>
+            <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
+        </div>
+        `;
+    }).join('');
+}
             function openBonusModal() {
                 showNotification("Aucun bonus disponible pour le moment.", "error");
             }
