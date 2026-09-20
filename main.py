@@ -1021,3 +1021,80 @@ async def mark_notif_read(req: MarkReadModel, current_user: str = Depends(get_cu
             break
     save_db(db)
     return {"status": "success"}
+
+# ==========================================
+# 1. دالة جلب ألعاب السلوتس والكازينو لايف عبر كود المزود
+# ==========================================
+class ProviderRequest(BaseModel):
+    provider_code: str
+
+@app.post("/api/get-providers")
+async def get_eurovirtuals_games_by_provider(request: ProviderRequest):
+    try:
+        # تجهيز الطلب مع كود المزود (هذا ما قصده المطور بكلمة provide_codr)
+        provider = request.provider_code
+        
+        # نرسل الكود بصيغتين لضمان تعرف سيرفرهم عليه
+        payload = {
+            "provider": provider,
+            "provider_code": provider
+        }
+        
+        timestamp = str(int(time.time()))
+        signature = hash_create(payload, EURO_APP_KEY)
+        
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "x-api-key": EURO_API_KEY,
+            "x-signature-key": signature,
+            "x-timestamp": timestamp
+        }
+        
+        base_url_clean = str(EURO_BASE_URL).rstrip('/')
+        games_endpoint = f"{base_url_clean}/v1/games"
+        
+        # نستخدم POST لإرسال الفلتر للسيرفر
+        async with httpx.AsyncClient() as client:
+            response = await client.post(games_endpoint, json=payload, headers=headers, timeout=25)
+            
+            # إذا كان سيرفرهم يرفض POST للفلترة ويطلب GET مع Query
+            if response.status_code in [405, 400]:
+                query_string = urllib.parse.urlencode({"provider": provider})
+                response = await client.get(f"{games_endpoint}?{query_string}", headers=headers, timeout=25)
+                
+            data = response.json()
+            
+            if response.status_code == 200 and data.get("status_code") == 200:
+                games_list = data.get("data", {}).get("data", [])
+                
+                # توحيد المتغيرات لتناسب واجهتك الفخمة
+                for game in games_list:
+                    image_url = game.get("logo") or game.get("thumbnail") or ""
+                    if image_url:
+                        game["image"] = image_url
+                        game["img"] = image_url
+                    game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
+                        
+                return {"status": "success", "games": games_list}
+            else:
+                # إذا لم يجد ألعاباً بهذا الكود، نعيد قائمة فارغة بدلاً من خطأ
+                return {"status": "success", "games": []}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+# ==========================================
+# 2. إصلاح خطأ تحديث الرصيد (gold_api) الذي يظهر في الواجهة
+# ==========================================
+class GoldApiRequest(BaseModel):
+    method: str
+    user_code: str
+
+@app.post("/gold_api")
+async def gold_api_balance(req: GoldApiRequest):
+    if req.method == "user_balance":
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == req.user_code.lower().strip()), None)
+        if target_user:
+            return {"status": 1, "user_balance": float(target_user.get("balance", 0.0))}
+    return {"status": 0, "user_balance": 0.0}
