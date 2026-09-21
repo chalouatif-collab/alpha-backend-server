@@ -1029,7 +1029,7 @@ class ProviderRequest(BaseModel):
     provider_code: str
 
 # ==========================================
-# 1. دالة جلب ألعاب السلوتس والكازينو لايف (بالجلب الشامل والفلترة المحلية المضمونة)
+# 1. دالة جلب الألعاب (محدثة بخدعة كشف الكتالوج)
 # ==========================================
 class ProviderRequest(BaseModel):
     provider_code: str
@@ -1039,7 +1039,6 @@ async def get_eurovirtuals_games_by_provider(request: ProviderRequest):
     try:
         provider = request.provider_code.upper()
         
-        # استخدام طلب GET المضمون لجلب كل الكتالوج
         payload = {}
         timestamp = str(int(time.time()))
         signature = hash_create(payload, EURO_APP_KEY)
@@ -1057,31 +1056,30 @@ async def get_eurovirtuals_games_by_provider(request: ProviderRequest):
         
         async with httpx.AsyncClient() as client:
             response = await client.get(games_endpoint, headers=headers, timeout=30)
-            
-            try:
-                data = response.json()
-            except Exception:
-                # إذا رد السيرفر بنص بدلا من JSON نظهره في الخطأ لمعرفة المشكلة
-                return {"status": "error", "error": f"رد غير صالح من المزود: {response.text[:50]}"}
+            data = response.json()
             
             if response.status_code == 200 and data.get("status_code") == 200:
                 all_games = data.get("data", {}).get("data", [])
                 filtered_games = []
                 
-                # الفلترة المحلية الصارمة
+                # تهيئة جميع الألعاب للواجهة
                 for game in all_games:
+                    image_url = game.get("logo") or game.get("thumbnail") or ""
+                    if image_url:
+                        game["image"] = image_url
+                        game["img"] = image_url
+                    game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
+                    
                     game_provider = str(game.get("provider", "")).upper()
                     game_category = str(game.get("category", "")).upper()
                     
-                    # إذا كان الكود المطلوب (مثلا PRAGMATIC) موجوداً في اسم مزود اللعبة
+                    # محاولة الفلترة
                     if provider in game_provider or provider in game_category:
-                        image_url = game.get("logo") or game.get("thumbnail") or ""
-                        if image_url:
-                            game["image"] = image_url
-                            game["img"] = image_url
-                        game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
-                        
                         filtered_games.append(game)
+                
+                # 💡 السطر السحري: إذا كانت القائمة المفلترة فارغة، أرسل "كل" الألعاب لنراها!
+                if len(filtered_games) == 0:
+                    return {"status": "success", "games": all_games}
                         
                 return {"status": "success", "games": filtered_games}
             else:
