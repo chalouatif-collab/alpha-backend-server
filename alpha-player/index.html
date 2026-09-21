@@ -2300,55 +2300,71 @@
         }
 
         async function fetchBetHistory() {
-            const tbody = document.getElementById('history-table-body');
-            const loader = document.getElementById('history-loader');
-            const emptyState = document.getElementById('history-empty');
+    const tbody = document.getElementById('history-table-body');
+    const loader = document.getElementById('history-loader');
+    const emptyState = document.getElementById('history-empty');
 
-            tbody.innerHTML = '';
-            loader.classList.remove('hidden');
-            emptyState.classList.add('hidden');
+    tbody.innerHTML = '';
+    loader.classList.remove('hidden');
+    emptyState.classList.add('hidden');
 
-            // 🌟 محاكاة جلب البيانات من السيرفر (ببيانات وهمية أنيقة ريثما نربطها بـ API السيرفر الفعلي)
-            setTimeout(() => {
-                loader.classList.add('hidden');
+    try {
+        // الاتصال بالـ API الحقيقي في الباك إند
+        const res = await fetch(`${BACKEND_URL}/api/user/bet-history`, {
+            headers: getAuthHeaders()
+        });
+        const result = await res.json();
+        
+        loader.classList.add('hidden');
 
-                // هذه البيانات سنقوم بتغييرها لاحقاً لـ fetch من السيرفر
-                const dummyData = [
-                    { date: "2026-08-28 12:15", game: "Sweet Bonanza", provider: "Pragmatic", amount: 10.00, multiplier: 2.5, win: 25.00 },
-                    { date: "2026-08-28 11:30", game: "Aviator", provider: "Spribe", amount: 5.00, multiplier: 0, win: -5.00 },
-                    { date: "2026-08-27 20:45", game: "Gates of Olympus", provider: "Pragmatic", amount: 20.00, multiplier: 15.2, win: 304.00 },
-                    { date: "2026-08-27 19:20", game: "Swift League", provider: "EuroVirtuals", amount: 10.00, multiplier: 2.0, win: 20.00 },
-                    { date: "2026-08-26 15:10", game: "Wanted Dead or a Wild", provider: "Hacksaw", amount: 2.00, multiplier: 0, win: -2.00 }
-                ];
-
-                if (dummyData.length === 0) {
-                    emptyState.classList.remove('hidden');
-                    return;
-                }
-
-                tbody.innerHTML = dummyData.map(bet => {
-                    const isWin = bet.win > 0;
-                    const colorClass = isWin ? 'text-emerald' : 'text-red-500';
-                    const sign = isWin ? '+' : '';
-                    const bgColor = isWin ? 'bg-emerald-500/10' : 'bg-red-500/10';
-
-                    return `
-                        <tr class="hover:bg-[#1a1e29] transition-colors border-l-2 ${isWin ? 'border-emerald' : 'border-red-500'}">
-                            <td class="p-3 text-gray-400 text-[10px]">${bet.date}</td>
-                            <td class="p-3">
-                                <div class="font-bold text-white">${bet.game}</div>
-                                <div class="text-[9px] text-gray-500 uppercase">${bet.provider}</div>
-                            </td>
-                            <td class="p-3 text-center font-semibold">${bet.amount.toFixed(2)} TND</td>
-                            <td class="p-3 text-center text-gray-500 font-mono">${bet.multiplier > 0 ? 'x' + bet.multiplier : '-'}</td>
-                            <td class="p-3 text-right">
-                                <span class="${bgColor} ${colorClass} font-black px-2 py-1 rounded shadow-sm">${sign}${bet.win.toFixed(2)} TND</span>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-            }, 800); // تأثير تحميل مدته 0.8 ثانية
+        if (!res.ok || !result.data || result.data.length === 0) {
+            emptyState.classList.remove('hidden');
+            return;
         }
+
+        // رسم البيانات الحقيقية في الجدول
+        tbody.innerHTML = result.data.map(bet => {
+            const isWin = bet.win > 0;
+            const isBet = bet.win < 0;
+            
+            let colorClass = 'text-gray-400';
+            let bgColor = 'bg-gray-500/10';
+            let sign = '';
+            
+            if (isWin) {
+                colorClass = 'text-emerald';
+                bgColor = 'bg-emerald-500/10';
+                sign = '+';
+            } else if (isBet) {
+                colorClass = 'text-red-500';
+                bgColor = 'bg-red-500/10';
+            }
+
+            // اقتطاع جزء من رقم المعاملة لعرضه بشكل أنيق
+            const shortTx = bet.tx_id !== "N/A" ? bet.tx_id.substring(0, 8) + '...' : '-';
+
+            return `
+            <tr class="hover:bg-[#1a1e29] transition-colors border-l-2 ${isWin ? 'border-emerald' : (isBet ? 'border-red-500' : 'border-gray-500')}">
+                <td class="p-3 text-gray-400 text-[10px]">${escapeHTML(bet.date)}</td>
+                <td class="p-3">
+                    <div class="font-bold text-white">${escapeHTML(bet.game)}</div>
+                    <div class="text-[9px] text-gray-500 uppercase">${escapeHTML(bet.provider)}</div>
+                </td>
+                <td class="p-3 text-center font-semibold">${bet.amount > 0 ? bet.amount.toFixed(2) + ' TND' : '-'}</td>
+                <td class="p-3 text-center text-gray-500 font-mono text-[9px]" title="${escapeHTML(bet.tx_id)}">${shortTx}</td>
+                <td class="p-3 text-right">
+                    <span class="${bgColor} ${colorClass} font-black px-2 py-1 rounded shadow-sm">${sign}${bet.win.toFixed(2)} TND</span>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        loader.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        showNotification("Erreur de connexion au serveur", "error");
+    }
+}      
+
         function openTransactionsModal() {
             // إغلاق الشريط الجانبي أولاً
             const sidebar = document.getElementById('profile-sidebar');

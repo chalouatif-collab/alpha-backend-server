@@ -1104,4 +1104,50 @@ async def gold_api_balance(request: Request):
     except Exception:
         return JSONResponse(content={"status": 0, "user_balance": 0.0, "cashback_est": 0.0})
     
-    
+    # ==========================================
+# جلب سجل الرهانات والألعاب الحقيقي للاعب
+# ==========================================
+@app.get("/api/user/bet-history")
+async def get_bet_history(current_user: str = Depends(get_current_user)):
+    db_session = SessionLocal()
+    try:
+        # جلب عمليات الرهان والربح والإلغاء فقط للاعب الحالي (آخر 50 عملية)
+        txs = db_session.query(Transaction).filter(
+            Transaction.target_username == current_user,
+            Transaction.action.in_(["bet", "win", "rollback"])
+        ).order_by(Transaction.id.desc()).limit(50).all()
+
+        history = []
+        for tx in txs:
+            is_win = (tx.action == "win")
+            is_rollback = (tx.action == "rollback")
+            
+            # تحديد اسم المزود
+            provider = "EuroVirtuals" if "EUROVIRTUALS" in str(tx.admin_username).upper() else str(tx.admin_username)
+            
+            # تحديد نوع العملية لعرضها كاسم للعبة مؤقتاً
+            if is_win:
+                game_name = "Gain (Win) 🏆"
+                win_amount = tx.amount
+                bet_amount = 0.0
+            elif is_rollback:
+                game_name = "Annulation 🔄"
+                win_amount = tx.amount
+                bet_amount = 0.0
+            else:
+                game_name = "Pari (Mise) 🎰"
+                win_amount = -tx.amount
+                bet_amount = tx.amount
+            
+            history.append({
+                "date": tx.date,
+                "game": game_name,
+                "provider": provider,
+                "amount": bet_amount,
+                "win": win_amount,
+                "tx_id": tx.tx_id or "N/A"
+            })
+            
+        return {"status": "success", "data": history}
+    finally:
+        db_session.close()
