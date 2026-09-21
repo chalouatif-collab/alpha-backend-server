@@ -1086,3 +1086,21 @@ async def get_eurovirtuals_games_by_provider(request: ProviderRequest):
                 return {"status": "success", "games": []}
     except Exception as e:
         return {"status": "error", "error": str(e)}
+    
+    # ==========================================
+# تحديث رصيد اللاعب المتكرر في الواجهة (بديل gold_api القديم)
+# ==========================================
+@app.post("/gold_api")
+@app.post("/gold_api/")
+async def gold_api_balance(request: Request):
+    try:
+        data = await request.json()
+        if data.get("method") == "user_balance":
+            user_code = data.get("user_code", "")
+            db = load_db()
+            target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == user_code.lower().strip()), None)
+            if target_user:
+                return JSONResponse(content={"status": 1, "user_balance": float(target_user.get("balance", 0.0))})
+        return JSONResponse(content={"status": 0, "user_balance": 0.0})
+    except Exception:
+        return JSONResponse(content={"status": 0, "user_balance": 0.0})

@@ -1349,61 +1349,42 @@ function renderVirtualCasinoGames(gamesToRender) {
         console.error("=== خطأ جلب الألعاب ===", e);
         if (grid) grid.innerHTML = `<div class="col-span-full text-red-500 text-center py-10 font-bold">Erreur de connexion<br><span class="text-xs text-gray-500 font-mono mt-2 block">${e.message}</span></div>`;
     }
-}       function renderCasinoGrid() {
-                const container = document.getElementById('games-grid');
-                if (!container) return;
+}       // دالة رسم الألعاب (بدون حدود لعرض الكتالوج بالكامل)
+function renderCasinoGrid() {
+    const container = document.getElementById('games-grid');
+    if (!container) return;
 
-                if (window.currentProviderGames.length === 0) {
-                    container.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10">Aucun jeu trouvé.</div>';
-                    return;
-                }
+    if (window.currentProviderGames.length === 0) {
+        container.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10">Aucun jeu trouvé.</div>';
+        return;
+    }
 
-                const gamesToDisplay = window.currentProviderGames.slice(0, currentDisplayLimit);
+    // إزالة قيد الـ 50 لعبة: جلب المصفوفة بالكامل
+    const gamesToDisplay = window.currentProviderGames;
 
-                container.innerHTML = gamesToDisplay.map(g => {
-                    const title = escapeHTML(String(g.game_name || g.name || "Game"));
-                    const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}`;
-                    const code = g.game_code || g.id;
+    container.innerHTML = gamesToDisplay.map(g => {
+        const title = escapeHTML(String(g.game_name || g.name || "Game"));
+        const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}`;
+        const code = g.game_code || g.id;
 
-                    return `
-                <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer hover:border-emerald transition-all flex flex-col group shadow-lg">
-                    <div class="relative w-full aspect-square overflow-hidden bg-[#161922]">
-                        <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.onerror=null; this.src='https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}';">
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                            <span class="bg-emerald text-black text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
-                        </div>
-                    </div>
-                    <div class="p-2 text-[10px] text-white font-bold truncate text-center">${title}</div>
-                </div>`;
-                }).join('');
+        return `
+    <div onclick="playCasinoGame('${currentActiveProviderCode}', '${code}')" class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer hover:border-emerald transition-all flex flex-col group shadow-lg">
+        <div class="relative w-full aspect-square overflow-hidden bg-[#161922]">
+            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.onerror=null; this.src='https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}';">
+            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                <span class="bg-emerald text-black text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
+            </div>
+        </div>
+        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${title}</div>
+    </div>`;
+    }).join('');
 
-                let sentinel = document.getElementById('games-scroll-sentinel');
+    // إزالة رسالة "جاري التحميل" من الأسفل لأننا عرضنا كل شيء
+    const sentinel = document.getElementById('games-scroll-sentinel');
+    if (sentinel) sentinel.remove();
+}          
 
-                if (currentDisplayLimit < window.currentProviderGames.length) {
-                    if (!sentinel) {
-                        sentinel = document.createElement('div');
-                        sentinel.id = 'games-scroll-sentinel';
-                        sentinel.className = 'col-span-full text-center py-6 text-emerald font-display animate-pulse text-xs font-bold';
-                        sentinel.innerHTML = 'Chargement de plus de jeux... ⏳';
-                        container.parentNode.appendChild(sentinel);
-                    }
-
-                    if (!gamesObserver) {
-                        gamesObserver = new IntersectionObserver((entries) => {
-                            entries.forEach(entry => {
-                                if (entry.isIntersecting && currentDisplayLimit < window.currentProviderGames.length) {
-                                    currentDisplayLimit += 50;
-                                    renderCasinoGrid();
-                                }
-                            });
-                        }, { rootMargin: '300px' });
-                    }
-                    gamesObserver.observe(sentinel);
-                } else if (sentinel) {
-                    sentinel.remove();
-                }
-            }
-            // ================= 
+// ================= 
             function toggleProviderDropdown() {
                 const dropdown = document.getElementById('provider-dropdown');
                 if (dropdown) {
