@@ -445,26 +445,15 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
         elif req.action == "withdraw":
             if float(target_user.get("balance", 0)) < amount: 
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez le joueur")
+            
             target_user["balance"] = round(float(target_user.get("balance", 0)) - amount, 2)
+            
+            # 🛡️ إغلاق الثغرة: خصم السحب من الإيداعات اليومية لكي لا يأخذ كاش باك وهو رابح
+            current_daily = float(target_user.get("daily_deposits", 0))
+            target_user["daily_deposits"] = max(0.0, current_daily - amount)
+            
             if not is_global_admin:
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
-
-        db_session = SessionLocal()
-        try:
-            record_action = "dépôt" if req.action == "charge" else "retrait"
-            new_tx = Transaction(admin_username=current_user.lower().strip(), target_username=target, action=record_action, amount=amount, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tx_id=str(uuid.uuid4()))
-            db_session.add(new_tx)
-            db_session.commit()
-        except Exception as e:
-            db_session.rollback()
-            raise HTTPException(status_code=500, detail="Erreur base de données.")
-        finally:
-            db_session.close()
-
-        save_db(db)
-    log_admin_action(current_user, "BALANCE_UPDATE", f"Target: {target}, Action: {req.action}, Amount: {amount}")
-    return {"status": "success", "message": "Opération réussie"}
-
 # ==========================================
 # 6. إدارة الإيداعات والسحوبات
 # ==========================================
