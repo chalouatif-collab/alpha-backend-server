@@ -1076,8 +1076,8 @@ async def get_eurovirtuals_games_by_provider(request: ProviderRequest):
     except Exception as e:
         return {"status": "error", "error": str(e)}
     
-    # ==========================================
-# تحديث رصيد اللاعب المتكرر في الواجهة (بديل gold_api القديم)
+# ==========================================
+# تحديث رصيد اللاعب المتكرر في الواجهة (مع حساب الكاش باك)
 # ==========================================
 @app.post("/gold_api")
 @app.post("/gold_api/")
@@ -1089,7 +1089,19 @@ async def gold_api_balance(request: Request):
             db = load_db()
             target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == user_code.lower().strip()), None)
             if target_user:
-                return JSONResponse(content={"status": 1, "user_balance": float(target_user.get("balance", 0.0))})
-        return JSONResponse(content={"status": 0, "user_balance": 0.0})
+                balance = float(target_user.get("balance", 0.0))
+                daily_deps = float(target_user.get("daily_deposits", 0.0))
+                
+                # حساب الكاش باك (10%) إذا كان الرصيد أقل من 1 دينار
+                cashback_est = round(daily_deps * 0.10, 2) if daily_deps > 0 else 0.0
+                
+                return JSONResponse(content={
+                    "status": 1, 
+                    "user_balance": balance,
+                    "cashback_est": cashback_est
+                })
+        return JSONResponse(content={"status": 0, "user_balance": 0.0, "cashback_est": 0.0})
     except Exception:
-        return JSONResponse(content={"status": 0, "user_balance": 0.0})
+        return JSONResponse(content={"status": 0, "user_balance": 0.0, "cashback_est": 0.0})
+    
+    
