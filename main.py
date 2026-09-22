@@ -760,9 +760,14 @@ async def eurovirtuals_adjustment(request: Request):
 @app.api_route("/api/get-eurovirtuals-games", methods=["GET"])
 async def get_eurovirtuals_games(partner_id: str = None):
     try:
+        # 1. تجهيز البيانات: إضافة partner_id ليتم تشفيره إذا كان موجوداً
         payload = {}
+        if partner_id:
+            payload["partner_id"] = int(partner_id) # تحويله لرقم كما يتوقعه المزود
+            
         timestamp = str(int(time.time()))
-        # إنشاء التشفير للمصادقة
+        
+        # 2. إنشاء التشفير بناءً على البيانات الجديدة
         signature = hash_create(payload, EURO_APP_KEY) 
         
         headers = {
@@ -773,15 +778,11 @@ async def get_eurovirtuals_games(partner_id: str = None):
             "x-timestamp": timestamp
         }
         
-        # الرابط الأساسي لجلب الألعاب
         games_endpoint = f"{str(EURO_BASE_URL).rstrip('/')}/v1/games" 
         
-        # إضافة الفلتر إذا تم تحديد استوديو معين
-        if partner_id:
-            games_endpoint += f"?partner_id={partner_id}"
-        
+        # 3. استخدام params لتركيب الرابط بشكل صحيح وآمن
         async with httpx.AsyncClient() as client:
-            response = await client.get(games_endpoint, headers=headers, timeout=20)
+            response = await client.get(games_endpoint, headers=headers, params=payload, timeout=20)
             data = response.json()
             
             if response.status_code == 200:
