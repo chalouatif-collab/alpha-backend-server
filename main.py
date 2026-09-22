@@ -1179,3 +1179,215 @@ async def get_virtual_studios():
     except Exception as e:
         return {"status": "error", "error": str(e)}
     
+    #*************************************************#
+    import hmac
+import hashlib
+import json
+import uuid
+from fastapi import FastAPI, Request, HTTPException, Header
+import httpx
+
+app = FastAPI()
+
+AGGREGATOR_BASE_URL = "https://api.01.tech"  # رابط البيئة الرسمي
+AUTH_TOKEN = "YOUR_AUTH_TOKEN_HERE"  # مفتاح الأمان المشترك
+
+
+# دالة توليد والتحقق من توقيع الأمان HMAC-SHA256
+def verify_signature(body_bytes: bytes, incoming_sign: str) -> bool:
+    if not incoming_sign:
+        return False
+    expected_sign = hmac.new(
+        AUTH_TOKEN.encode("utf-8"), body_bytes, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected_sign, incoming_sign)
+
+
+# =================================================================
+# 1. تشغيل اللعبة بمال حقيقي (Launcher Real) - طلب يُرسل للمزود
+# =================================================================
+@app.post("/api/launch-real-game")
+async def launch_real_game(request: Request):
+    try:
+        body_json = await request.json()
+
+        request_payload = {
+            "account": {
+                "country": body_json["player"]["country"],
+                "currency": body_json["player"]["currency"],
+                "date_of_birth": body_json["player"]["date_of_birth"],
+                "firstname": body_json["player"].get("firstname", ""),
+                "gender": body_json["player"].get("gender", "m"),
+                "id": body_json["player"]["id"],
+                "lastname": body_json["player"].get("lastname", ""),
+                "nickname": body_json["player"]["nickname"],
+                "registered_at": body_json["player"]["registered_at"],
+                "tags": body_json["player"].get("tags", []),
+            },
+            "casino_id": body_json["casino_id"],
+            "client_type": body_json["client_type"],
+            "game": body_json["game"],
+            "ip": body_json["ip"],
+            "jurisdiction": body_json.get("jurisdiction", "DE"),
+            "locale": body_json.get("locale", "en"),
+            "session_id": body_json["session_id"],
+            "urls": {
+                "deposit_url": body_json["urls"]["deposit_url"],
+                "return_url": body_json["urls"]["return_url"],
+            },
+        }
+
+        body_string = json.dumps(request_payload, separators=(",", ":"))
+        signature = hmac.new(
+            AUTH_TOKEN.encode("utf-8"), body_string.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-REQUEST-SIGN": signature,
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{AGGREGATOR_BASE_URL}/v2/a8r_provider.Launcher/Real",
+                content=body_string,
+                headers=headers,
+            )
+            res_data = response.json()
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=400, detail=res_data.get("msg", "Failed")
+                )
+
+            return {"status": "success", "launch_url": res_data.get("launch_url")}
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# =================================================================
+# 2. استقبال طلب التحقق من الرصيد (Player Balance) - Webhook
+# =================================================================
+@app.post("/v2/provider_a8r.Player/Balance")
+async def player_balance(request: Request, x_request_sign: str = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        return {
+            "code": "invalid_argument",
+            "msg": "Forbidden.",
+            "meta": {
+                "api_code": "403",
+                "api_message": "Request sign doesn't match.",
+            },
+        }
+
+    # استعلام رصيد اللاعب من قاعدة البيانات الخاصة بك
+    player_current_balance = "1000.00"
+    return {"balance": player_current_balance}
+
+
+# =================================================================
+# 3. معالجة الرهانات والأرباح (BetWin) - Webhook
+# =================================================================
+@app.post("/v2/provider_a8r.Round/BetWin")
+async def round_bet_win(request: Request, x_request_sign: str = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        return {
+            "code": "invalid_argument",
+            "msg": "Forbidden.",
+            "meta": {
+                "api_code": "403",
+                "api_message": "Request sign doesn't match.",
+            },
+        }
+
+    body_json = await request.json()
+    round_id = body_json.get("round_id")
+    transactions = body_json.get("transactions", [])
+
+    current_balance = 1000.00  # جلب الرصيد الحقيقي من قاعدة البيانات
+    response_transactions = []
+
+    for tx in transactions:
+        amount = float(tx["amount"])
+        if tx["type"] == "bet":
+            if current_balance < amount:
+                return {
+                    "code": "invalid_argument",
+                    "msg": "Not enough funds.",
+                    "meta": {
+                        "api_code": "100",
+                        "api_message": "Not enough funds.",
+                        "balance": f"{current_balance:.2f}",
+                    },
+                }
+            current_balance -= amount
+        elif tx["type"] == "win":
+            current_balance += amount
+
+        response_transactions.append(
+            {
+                "bonus_amount": "0.00",
+                "id": str(uuid.uuid4()),
+                "id_provider": tx["id_provider"],
+            }
+        )
+
+    return {
+        "balance": f"{current_balance:.2f}",
+        "round_id": round_id,
+        "transactions": response_transactions,
+    }
+
+
+# =================================================================
+# 4. إنهاء الجولة (Round Finish) - Webhook
+# =================================================================
+@app.post("/v2/provider_a8r.Round/Finish")
+async def round_finish(request: Request, x_request_sign: str = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        return {
+            "code": "invalid_argument",
+            "msg": "Forbidden.",
+            "meta": {
+                "api_code": "403",
+                "api_message": "Request sign doesn't match.",
+            },
+        }
+    return {"balance": "1000.00"}
+
+
+# =================================================================
+# 5. إلغاء المعاملات (Round Rollback) - Webhook
+# =================================================================
+@app.post("/v2/provider_a8r.Round/Rollback")
+async def round_rollback(request: Request, x_request_sign: str = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        return {
+            "code": "invalid_argument",
+            "msg": "Forbidden.",
+            "meta": {
+                "api_code": "403",
+                "api_message": "Request sign doesn't match.",
+            },
+        }
+
+    body_json = await request.json()
+    round_id_provider = body_json.get("round_id_provider")
+    transactions = body_json.get("transactions", [])
+
+    response_transactions = [
+        {"id": str(uuid.uuid4()), "id_provider": tx["id_provider"]}
+        for tx in transactions
+    ]
+
+    return {
+        "balance": "1000.00",
+        "round_id": round_id_provider,
+        "transactions": response_transactions,
+    }
+    

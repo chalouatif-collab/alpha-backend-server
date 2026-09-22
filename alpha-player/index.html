@@ -866,55 +866,170 @@
             });
         }
 
-        // 1. دالة تهيئة الكازينو الافتراضي وجلب الألعاب
+        // =================================================================
+        // 🎰 دوال قسم Casino Virtuel المربوطة بـ EuroVirtuals (النظام الجديد)
+        // =================================================================
+
+        function toggleVCDropdown() {
+            document.getElementById('vc-provider-dropdown').classList.toggle('hidden');
+        }
+
+        function filterVCDropdown() {
+            const input = document.getElementById('vc-provider-search').value.toLowerCase();
+            const items = document.querySelectorAll('.vc-prov-item');
+            items.forEach(item => {
+                if (item.innerText.toLowerCase().includes(input)) {
+                    item.style.display = 'flex'; // تغيير إلى flex ليتناسب مع الشعار والنص
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // 1. دالة جلب الاستوديوهات وتهيئة القائمة
         async function initVirtualCasinoLobby() {
             const grid = document.getElementById('virtual-casino-games-grid');
             const listContainer = document.getElementById('vc-provider-list');
 
-            if (grid) grid.innerHTML = '<div class="col-span-full text-purple-400 text-center py-10"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><br>Chargement des jeux...</div>';
+            if (grid) grid.innerHTML = '<div class="col-span-full text-purple-400 text-center py-10"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><br>Chargement des fournisseurs...</div>';
 
             try {
-                // جلب الألعاب من سيرفر EuroVirtuals
-                const res = await fetch(`${BACKEND_URL}/api/get-eurovirtuals-games`);
-                const data = await res.json();
+                const res = await fetch(`${BACKEND_URL}/api/get-studios`);
+                const responseData = await res.json();
 
-                let games = data.games || data.data || data || [];
+                // 🌟 الحل السحري: استخراج المصفوفة بشكل آمن مهما كان شكل الاستجابة
+                let rawStudios = responseData.studios || responseData.data || responseData;
+                let studios = Array.isArray(rawStudios) ? rawStudios : (rawStudios.data || []);
 
-                if (games.length === 0) {
-                    if (grid) grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10 font-bold text-xs">Aucun jeu trouvé.</div>';
-                    return;
-                }
-
-                // حفظ الألعاب في الذاكرة
-                window.euroVirtualCasinoGames = games;
-
-                // استخراج أسماء المزودين ديناميكياً من الألعاب الواردة
-                const providersSet = new Set();
-                games.forEach(g => {
-                    const pName = g.provider || g.provider_name || g.category || 'EuroVirtuals';
-                    providersSet.add(pName);
-                });
-
-                // رسم قائمة المزودين في النافذة المنسدلة
+                // رسم قائمة الاستوديوهات
                 if (listContainer) {
-                    let html = `<button onclick="selectVCProvider('All')" class="vc-prov-item text-left px-3 py-2 text-xs md:text-sm text-purple-400 font-black hover:text-white hover:bg-gray-700 rounded transition w-full">Tout Afficher</button>`;
+                    let html = `<button onclick="loadEuroGamesByStudio('', 'Tous les jeux')" class="vc-prov-item flex items-center px-3 py-2 text-xs md:text-sm text-purple-400 font-black hover:text-white hover:bg-gray-700 rounded transition w-full">Tous les jeux</button>`;
 
-                    providersSet.forEach(pName => {
-                        const safePName = escapeHTML(pName);
-                        html += `<button onclick="selectVCProvider('${safePName}')" class="vc-prov-item text-left px-3 py-2 text-xs md:text-sm text-gray-300 font-bold hover:text-white hover:bg-gray-700 rounded transition w-full">${safePName}</button>`;
+                    studios.forEach(studio => {
+                        const safeName = escapeHTML(studio.name);
+                        const safeId = studio.id;
+                        const thumb = studio.thumbnail ? `<img src="${studio.thumbnail}" class="w-5 h-5 rounded-full mr-2 object-cover bg-white">` : `<i class="fas fa-gamepad mr-2 text-gray-500"></i>`;
+                        
+                        html += `<button onclick="loadEuroGamesByStudio('${safeId}', '${safeName}')" class="vc-prov-item flex items-center px-3 py-2 text-xs md:text-sm text-gray-300 font-bold hover:text-white hover:bg-gray-700 rounded transition w-full">
+                            ${thumb} ${safeName}
+                        </button>`;
                     });
                     listContainer.innerHTML = html;
                 }
 
-                // عرض كل الألعاب كبداية
-                renderVirtualCasinoGames(games);
+                // عرض ألعاب أول استوديو افتراضياً
+                if (studios.length > 0) {
+                    loadEuroGamesByStudio(studios[0].id, studios[0].name);
+                } else {
+                    loadEuroGamesByStudio('', 'Tous les jeux');
+                }
 
             } catch (e) {
-                console.error("Erreur EuroVirtuals:", e);
-                if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion avec le serveur EuroVirtuals</div>';
+                console.error("Erreur EuroVirtuals Studios:", e);
+                if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur de connexion avec le serveur</div>';
+            }
+        }
+// محرك استخراج الألعاب الشامل والذكي (عميق التفتيش)
+        async function loadEuroGamesByStudio(partnerId, partnerName) {
+            document.getElementById('vc-current-provider-label').innerText = partnerName;
+            document.getElementById('vc-provider-dropdown').classList.add('hidden');
+            
+            const grid = document.getElementById('virtual-casino-games-grid');
+            if (grid) grid.innerHTML = '<div class="col-span-full text-purple-400 text-center py-10"><i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i><br>Chargement des jeux...</div>';
+
+            try {
+                let fetchUrl = `${BACKEND_URL}/api/get-eurovirtuals-games`;
+                if (partnerId) {
+                    fetchUrl += `?partner_id=${partnerId}`;
+                }
+
+                const res = await fetch(fetchUrl);
+                const responseData = await res.json();
+                
+                console.log("API Response pour", partnerName, responseData);
+
+                let games = [];
+
+                // دالة تفتيش عميق تستخرج الألعاب مهما كان مكانها في الـ JSON
+                function deepExtract(obj) {
+                    if (!obj || typeof obj !== 'object') return;
+                    
+                    if (Array.isArray(obj)) {
+                        obj.forEach(item => {
+                            if (item && typeof item === 'object') {
+                                // إذا كان العنصر يمتلك خصائص تدل على أنه لعبة
+                                if (item.uuid || item.game_uuid || item.id || item.game_code || item.name || item.game_name || item.title) {
+                                    games.push(item);
+                                } else {
+                                    deepExtract(item);
+                                }
+                            }
+                        });
+                    } else {
+                        // فحص مفاتيح الكائن بالتفصيل
+                        for (let key in obj) {
+                            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                                const val = obj[key];
+                                if (val && typeof val === 'object') {
+                                    // إذا وجدنا مصفوفة داخلية أو كائن يحتوي على ألعاب
+                                    if (Array.isArray(val) || val.name || val.game_name || val.uuid || val.game_uuid) {
+                                        deepExtract(val);
+                                    } else {
+                                        deepExtract(val);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                deepExtract(responseData);
+
+                // تصفية نهائية لإزالة أي تكرار أو عناصر غير صالحة
+                const uniqueGames = Array.from(new Set(games.map(g => g.uuid || g.id || g.game_code || g.name)))
+                    .map(id => games.find(g => (g.uuid || g.id || g.game_code || g.name) === id));
+
+                console.log("Jeux finaux extraits avec succès:", uniqueGames);
+                renderVirtualCasinoGames(uniqueGames, partnerName);
+                
+            } catch (e) {
+                console.error("Erreur Jeux:", e);
+                if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10">Erreur lors du chargement des jeux.</div>';
             }
         }
 
+        // 3. دالة الرسم المرنة للبطاقات مع البدائل التلقائية
+        function renderVirtualCasinoGames(gamesToRender, defaultProviderName) {
+            const grid = document.getElementById('virtual-casino-games-grid');
+            if (!grid) return;
+
+            if (gamesToRender.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10 font-bold text-xs">Aucun jeu trouvé pour ce fournisseur.</div>';
+                return;
+            }
+
+            grid.innerHTML = gamesToRender.map((g, index) => {
+                const uuid = g.uuid || g.game_uuid || g.id || g.game_code || g.code || `game_${index}`;
+                const safeName = escapeHTML(g.game_name || g.name || g.title || g.gameName || g.label || `Jeu ${index + 1}`);
+                const img = g.banner || g.image || g.thumbnail || g.thumb || g.img || g.poster || g.imageUrl || 'https://placehold.co/400x400/180A2B/FFF?text=Game';
+                const providerTag = escapeHTML(g.provider || g.provider_name || defaultProviderName || 'EV');
+
+                return `
+        <div onclick="launchSpecificVirtualGame('${uuid}')" class="bg-[#0f1117] border border-[#2b2d35] rounded-xl cursor-pointer group hover:-translate-y-1 transition-all overflow-hidden shadow-lg shadow-black/50 relative">
+            <div class="absolute top-2 right-2 bg-black/80 text-purple-400 text-[8px] font-black px-1.5 py-0.5 rounded z-10 border border-[#212631]">
+                ${providerTag}
+            </div>
+            <div class="relative w-full aspect-square overflow-hidden bg-black/50">
+                <img src="${img}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="${safeName}" onerror="this.src='https://placehold.co/400x400/180A2B/FFF?text=Game'">
+                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-20">
+                    <span class="bg-purple-500 text-white text-[10px] font-bold px-4 py-2 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.6)]">JOUER</span>
+                </div>
+            </div>
+            <div class="p-2 text-[10px] text-white font-bold truncate text-center">${safeName}</div>
+        </div>
+        `;
+            }).join('');
+        }
         // 2. دالة الفلترة عند اختيار مزود من القائمة المنسدلة
         function selectVCProvider(providerName) {
             // تحديث اسم الزر وإغلاق القائمة
