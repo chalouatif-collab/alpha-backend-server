@@ -758,43 +758,40 @@ async def eurovirtuals_adjustment(request: Request):
         return {"status_code": 500, "status_description": str(e)}
 
 @app.api_route("/api/get-eurovirtuals-games", methods=["GET"])
-async def get_virtual_games():
+async def get_eurovirtuals_games(partner_id: str = None):
     try:
         payload = {}
         timestamp = str(int(time.time()))
-        signature = hash_create(payload, EURO_APP_KEY)
+        # إنشاء التشفير للمصادقة
+        signature = hash_create(payload, EURO_APP_KEY) 
         
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "x-api-key": EURO_API_KEY,
+            "x-api-key": EURO_API_KEY, 
             "x-signature-key": signature,
             "x-timestamp": timestamp
         }
         
-        base_url_clean = str(EURO_BASE_URL).rstrip('/')
-        games_endpoint = f"{base_url_clean}/v1/games"
+        # الرابط الأساسي لجلب الألعاب
+        games_endpoint = f"{str(EURO_BASE_URL).rstrip('/')}/v1/games" 
         
-        try:
-            response = requests.get(games_endpoint, headers=headers, timeout=20)
+        # إضافة الفلتر إذا تم تحديد استوديو معين
+        if partner_id:
+            games_endpoint += f"?partner_id={partner_id}"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(games_endpoint, headers=headers, timeout=20)
             data = response.json()
-        except Exception:
-            return {"status": "error", "error": "Invalid JSON response from provider"}
-        
-        if response.status_code == 200 and data.get("status_code") == 200:
-            games_list = data.get("data", {}).get("data", [])
-            for game in games_list:
-                image_url = game.get("logo") or game.get("thumbnail") or ""
-                if image_url:
-                    game["image"] = image_url
-                    game["img"] = image_url
-                game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
-                    
-            return {"status": "success", "games": games_list}
-        else:
-            return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
+            
+            if response.status_code == 200:
+                return {"status": "success", "games": data}
+            else:
+                return {"status": "error", "details": data}
+                
     except Exception as e:
         return {"status": "error", "error": str(e)}
+    
     
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
@@ -1151,3 +1148,33 @@ async def get_bet_history(current_user: str = Depends(get_current_user)):
         return {"status": "success", "data": history}
     finally:
         db_session.close()
+        
+        @app.get("/api/get-studios")
+async def get_virtual_studios():
+    try:
+        payload = {}
+        timestamp = str(int(time.time()))
+        signature = hash_create(payload, EURO_APP_KEY) 
+        
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "x-api-key": EURO_API_KEY, 
+            "x-signature-key": signature,
+            "x-timestamp": timestamp
+        }
+        
+        studios_endpoint = f"{str(EURO_BASE_URL).rstrip('/')}/v1/partners" 
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(studios_endpoint, headers=headers, timeout=20)
+            data = response.json()
+            
+            if response.status_code == 200:
+                return {"status": "success", "studios": data}
+            else:
+                return {"status": "error", "details": data}
+                
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+    
