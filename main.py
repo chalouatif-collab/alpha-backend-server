@@ -3332,3 +3332,193 @@ async def rollback_round(request: Request, x_request_sign: Optional[str] = Heade
         "round_id": round_id_provider,
         "transactions": processed_rollbacks
     }
+    
+    import httpx
+import hmac
+import hashlib
+import json
+
+@app.post("/api/get-01tech-games")
+async def get_01tech_games():
+    url = f"{ZEROONE_BASE_URL}/v2/a8r_provider.Game/List"
+    
+    payload = {
+        "casino_id": ZEROONE_CASINO_ID
+    }
+    
+    # حساب التوقيع الأمني (HMAC-SHA256)
+    # التوثيق يطلب حساب التوقيع على جسد الطلب (request body) باستخدام AUTH_TOKEN
+    payload_json = json.dumps(payload, separators=(',', ':'))
+    signature = hmac.new(
+        ZEROONE_AUTH_TOKEN.encode('utf-8'),
+        payload_json.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-REQUEST-SIGN": signature 
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            
+            # استخراج الألعاب من الرد
+            # الرد يحتوي على قائمة "providers"، وكل provider يحتوي على قائمة "games"
+            all_games = []
+            if "providers" in data:
+                for provider in data["providers"]:
+                    if "games" in provider:
+                        for game in provider["games"]:
+                            # تهيئة البيانات لتناسب الواجهة
+                            game_data = {
+                                "id": game.get("id"),
+                                "name": game.get("title"),
+                                "provider": game.get("provider"),
+                                # يمكنك إضافة معالجة للصور هنا بناءً على image_assets.base_url
+                            }
+                            all_games.append(game_data)
+
+            return {"games": all_games}
+        except Exception as e:
+            print(f"Error fetching 01.tech games: {e}")
+            return {"error": str(e), "games": []}
+        
+        import httpx
+import hmac
+import hashlib
+import json
+
+async def fetch_01tech_games():
+    # مسار جلب قائمة الألعاب بناءً على التوثيق[cite: 14]
+    url = f"{ZEROONE_BASE_URL}/v2/a8r_provider.Game/List"
+    
+    # المعاملات المطلوبة في جسم الطلب[cite: 14]
+    payload = {
+        "casino_id": ZEROONE_CASINO_ID
+    }
+    
+    # تحويل الـ payload إلى سلسلة نصية JSON بدون مسافات إضافية
+    payload_json = json.dumps(payload, separators=(',', ':'))
+    
+    # حساب التوقيع الأمني HMAC-SHA256 باستخدام التوكن[cite: 14]
+    signature = hmac.new(
+        ZEROONE_AUTH_TOKEN.encode('utf-8'),
+        payload_json.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    # إعداد الهيدر متضمناً التوقيع[cite: 14]
+    headers = {
+        "Content-Type": "application/json",
+        "X-REQUEST-SIGN": signature 
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # نرسل data=payload_json بدلاً من json=payload لضمان تطابق التشفير
+            response = await client.post(url, data=payload_json, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            
+            all_games = []
+            
+            # جلب الرابط الأساسي للصور من الكائن image_assets[cite: 14]
+            base_image_url = ""
+            if "image_assets" in data and "base_url" in data["image_assets"]:
+                base_image_url = data["image_assets"]["base_url"]
+
+            # استخراج الألعاب من مصفوفة providers[cite: 14]
+            if "providers" in data:
+                for provider in data["providers"]:
+                    provider_name = provider.get("name", "01TECH")
+                    if "games" in provider:
+                        for game in provider["games"]:
+                            
+                            # بناء رابط الصورة الكامل (نختار الصورة المربعة أو الأفقية)[cite: 14]
+                            img_url = ""
+                            if "images" in game:
+                                img_path = game["images"].get("square") or game["images"].get("horizontal")
+                                if img_path:
+                                    img_url = f"{base_image_url}{img_path}"
+
+                            # تنسيق اللعبة لتتوافق مع ما تتوقعه الواجهة الأمامية لديك
+                            game_data = {
+                                "game_code": game.get("id"),
+                                "game_name": game.get("title"),
+                                "provider": provider_name,
+                                "banner": img_url,
+                                "has_demo": game.get("has_demo", False)
+                            }
+                            all_games.append(game_data)
+
+            return {"games": all_games}
+            
+        except Exception as e:
+            print(f"Error fetching 01.tech games: {e}")
+            return {"error": str(e), "games": []}
+        
+        import uuid
+
+@app.post("/api/launch-01tech-game")
+async def launch_01tech_game(request: Request):
+    data = await request.json()
+    
+    # استلام معرف اللعبة ومعرف اللاعب من الواجهة
+    game_id = data.get("game_id")
+    account_id = data.get("account_id") # يجب أن ترسله من الواجهة بناءً على جلسة اللاعب المسجل
+    
+    # 1. إنشاء Session ID فريد لهذه الجلسة
+    # (هذا الـ ID هو نفسه الذي سيرسله المزود لك لاحقاً في طلبات BetWin و Finish لتتبع اللاعب)
+    session_id = str(uuid.uuid4())
+    
+    # مسار تشغيل اللعبة بالمال الحقيقي حسب بروتوكول 01.tech
+    url = f"{ZEROONE_BASE_URL}/v2/a8r_provider.Launcher/Real"
+    
+    # 2. تجهيز البيانات المطلوبة (Payload)
+    payload = {
+        "casino_id": ZEROONE_CASINO_ID,
+        "game_id": game_id,
+        "account_id": str(account_id),
+        "currency": "TND", # أو العملة الديناميكية الخاصة باللاعب
+        "session_id": session_id,
+        "language": "fr", # لغة اللعبة
+        "return_url": "https://coutabet.com/" # الرابط الذي سيعود إليه اللاعب عند إغلاق اللعبة
+    }
+    
+    # تحويل البيانات إلى JSON بدون مسافات لضمان صحة التشفير
+    payload_json = json.dumps(payload, separators=(',', ':'))
+    
+    # 3. حساب التوقيع الأمني
+    signature = hmac.new(
+        ZEROONE_AUTH_TOKEN.encode('utf-8'),
+        payload_json.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-REQUEST-SIGN": signature 
+    }
+
+    # 4. إرسال الطلب وإرجاع رابط اللعبة
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, data=payload_json, headers=headers)
+            response.raise_for_status()
+            result = response.json()
+            
+            # استخراج رابط إطلاق اللعبة
+            game_url = result.get("url")
+            
+            if not game_url:
+                return {"error": "لم يتم إرجاع رابط اللعبة من المزود"}
+                
+            return {"game_url": game_url}
+            
+        except Exception as e:
+            print(f"Error launching 01.tech game: {e}")
+            return {"error": str(e)}
