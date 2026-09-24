@@ -70,7 +70,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "alpha-secure-key-2026")
 if not firebase_admin._apps:
     cred = credentials.Certificate("firebase-key.json") 
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://tounsibet-65e94-default-rtdb.firebaseio.com/'
+        'databaseURL': 'https://alphabet-7d14c-default-rtdb.firebaseio.com/'
     })
 
 # 2. دالة جلب البيانات من السحابة
@@ -131,7 +131,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class User(Base):
-    __tablename__ = "tounsibet_users"
+    __tablename__ = "alpha_users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     password = Column(String)
@@ -209,7 +209,7 @@ def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_ke
     INSTANCE_ID = "instance185867"
     TOKEN = "76jnhy79la7a5bxx"
     
-    message = f"""*مرحباً بك في نظام Tounsibet Core 🔐*
+    message = f"""*مرحباً بك في نظام Alpha Core 🔐*
 
 تم إنشاء حساب الإدارة الخاص بك بنجاح.
 
@@ -219,7 +219,7 @@ def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_ke
 🛡️ *خطوات تفعيل الحماية (Google Authenticator):*
 1️⃣ افتح تطبيق Google Authenticator.
 2️⃣ اختر (إدخال مفتاح الإعداد).
-3️⃣ اسم الحساب: Tounsibet Core - {username}
+3️⃣ اسم الحساب: AlphaCore - {username}
 4️⃣ المفتاح السري:
 *{secret_key}*
 
@@ -260,8 +260,10 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://tounsibet.com",
-        "https://tounsibet-player-frontend.onrender.com",
+        "https://alphabet216.com",
+        "https://alpha-player-frontend.onrender.com",
+        "https://www.admin-alphabets.com",
+        "https://admin-alphabets.com",
         "http://localhost:5500",
         "http://127.0.0.1:5500"
     ],
@@ -1371,7 +1373,7 @@ async def launch_casino(request: Request):
             "provider_code": data.get("provider_code"),
             "game_code": data.get("game_code"),
             "lang": "fr",
-            "lobby_url": "https://tounsibet.com/#casino"
+            "lobby_url": "https://alphabet216.com/#casino"
         }
         headers = {"Content-Type": "application/json"}
         endpoint = PROVIDER_ENDPOINT.rstrip('/')
@@ -1569,7 +1571,7 @@ async def setup_2fa(username: str):
     user["two_factor_secret"] = secret
     
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=username, issuer_name="Tounsibet Casino")
+    uri = totp.provisioning_uri(name=username, issuer_name="Alpha Casino")
     
     img = qrcode.make(uri)
     buf = io.BytesIO()
@@ -2418,7 +2420,7 @@ async def launch_sportsbook(request: Request):
                 "session_id": f"sess_{uuid.uuid4().hex[:10]}",
                 "player_id": user_code,
                 "player_name": user_code,
-                "return_url": "https://tounsibet.com/"
+                "return_url": "https://alphabet216.com/"
             }
             headers = get_smpl_headers_and_sign(payload)
             headers['Content-Type'] = 'application/json'
@@ -2448,7 +2450,7 @@ async def launch_sportsbook(request: Request):
                 "game_code": str(data.get("game_code", "SPORTSBOOK")),
                 "user_code": user_code,
                 "lang": "fr",
-                "lobby_url": "https://tounsibet.com/"
+                "lobby_url": "https://alphabet216.com/"
             }
             
             headers = {"Content-Type": "application/json"}
@@ -3016,5 +3018,3 @@ async def delete_notification(req: DeleteNotifModel, current_user: str = Depends
                 
     save_db(db)
     return {"status": "success"}
-
-
