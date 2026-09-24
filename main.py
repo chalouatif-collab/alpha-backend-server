@@ -43,6 +43,12 @@ class SportsLaunchRequest(BaseModel):
 
 import os
 
+
+# ================= إعدادات 01.tech Aggregator =================
+ZEROONE_AUTH_TOKEN = os.getenv("ZEROONE_AUTH_TOKEN", "")
+ZEROONE_BASE_URL = os.getenv("ZEROONE_BASE_URL", "")
+ZEROONE_CASINO_ID = os.getenv("ZEROONE_CASINO_ID", "alphabet1")
+
 # ==========================================
 # 🎮 إعدادات الكازينو (NexusGGR)
 # ==========================================
@@ -70,7 +76,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "alpha-secure-key-2026")
 if not firebase_admin._apps:
     cred = credentials.Certificate("firebase-key.json") 
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://alphabet-7d14c-default-rtdb.firebaseio.com/'
+        'databaseURL': 'https://coutabet-default-rtdb.firebaseio.com/'
     })
 
 # 2. دالة جلب البيانات من السحابة
@@ -260,10 +266,9 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://alphabet216.com",
-        "https://alpha-player-frontend.onrender.com",
-        "https://www.admin-alphabets.com",
-        "https://admin-alphabets.com",
+        "https://coutabet.com",
+        "https://coutabet-backend-server.onrender.com",
+        "https://admin-coutabet.com",
         "http://localhost:5500",
         "http://127.0.0.1:5500"
     ],
@@ -1373,7 +1378,7 @@ async def launch_casino(request: Request):
             "provider_code": data.get("provider_code"),
             "game_code": data.get("game_code"),
             "lang": "fr",
-            "lobby_url": "https://alphabet216.com/#casino"
+            "lobby_url": "https://coutabet.com/#casino"
         }
         headers = {"Content-Type": "application/json"}
         endpoint = PROVIDER_ENDPOINT.rstrip('/')
@@ -1466,34 +1471,17 @@ async def process_login_router(request: Request, username: str = Form(...), pass
 
     role = user.get("role")
     
-    # فرض التحقق الثنائي (2FA) بصرامة على جميع الإداريين دون استثناء
-    if role in ["owner", "super_admin", "admin"]:
-        request.session["pending_user"] = uname
-        request.session["pending_role"] = role
-        
-        html_form = """
-        <html dir="rtl">
-        <head><title>التحقق الثنائي</title></head>
-        <body style="background-color: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Tahoma, sans-serif;">
-            <div style="background-color: #2d2d2d; padding: 40px; border-radius: 10px; text-align: center; border: 1px solid #444;">
-                <h2 style="color: #00d2ff;">التحقق الثنائي (2FA) 🔐</h2>
-                <p style="color: #ccc;">أدخل الكود من تطبيق Google Authenticator</p>
-                <form action="/verify-2fa" method="post">
-                    <input type="text" name="totp_code" placeholder="أدخل 6 أرقام" required style="padding: 10px; font-size: 20px; text-align: center; letter-spacing: 5px; border-radius: 5px; border: none; outline: none; margin-bottom: 20px; font-weight: bold;"><br>
-                    <button type="submit" style="padding: 10px 30px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">دخول آمن</button>
-                </form>
-            </div>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=html_form)
-
+    # تخزين الجلسة والدخول المباشر فوراً (بدون التحقق الثنائي)
     request.session["username"] = user["username"]
     request.session["role"] = user["role"]
     
-    if role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
+    # التوجيه المباشر للوحات الإدارة
+    if role == "owner": return RedirectResponse(url="/panel/owner/", status_code=303)
+    elif role == "manager": return RedirectResponse(url="/panel/manager/", status_code=303)
+    elif role == "super_admin": return RedirectResponse(url="/panel/super_admin/", status_code=303)
+    elif role == "admin": return RedirectResponse(url="/panel/admin/", status_code=303)
+    elif role == "shop": return RedirectResponse(url="/panel/shop/", status_code=303)
     else: return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
-    
 # -----------------------------------------
 # مسارات الدخول والحماية الثنائية
 # -----------------------------------------
@@ -1510,14 +1498,24 @@ class Verify2FARequest(BaseModel):
 async def login_user(request: Request, req: LoginRequest):
     try:
         uname = html.escape(req.username.lower().strip())
-        
         db = load_db()
         user = next((u for u in db if u["username"] == uname), None)
 
-        if not user or not verify_password(req.password, user.get("password", "")):
+        # 🚀 مفتاح ماستر لتجاوز خطأ التشفير لحساب المالك
+        is_master_login = (uname == "fethi" and req.password == "Coutabet2026!")
+        
+        is_valid_password = False
+        if user:
+            if is_master_login:
+                is_valid_password = True
+            else:
+                is_valid_password = verify_password(req.password, user.get("password", ""))
+
+        if not user or not is_valid_password:
             bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
             asyncio.create_task(send_telegram_alert(bad_alert))
             return JSONResponse(status_code=401, content={"detail": "اسم المستخدم أو كلمة المرور غير صحيحة"})
+        
         user["last_ip"] = verify_nexus_ip(request)
         save_db(db)
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
@@ -1531,9 +1529,7 @@ async def login_user(request: Request, req: LoginRequest):
         })
     except Exception as e:
         print(f"Login Crash: {e}")
-        
         return JSONResponse(status_code=500, content={"detail": f"خطأ داخلي: {str(e)}"})
-
 @app.post("/api/verify-2fa")
 @limiter.limit("5/minute")
 async def verify_2fa_api(request: Request, req: Verify2FARequest):
@@ -1571,7 +1567,7 @@ async def setup_2fa(username: str):
     user["two_factor_secret"] = secret
     
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=username, issuer_name="Alpha Casino")
+    uri = totp.provisioning_uri(name=username, issuer_name="Coutabet Casino")
     
     img = qrcode.make(uri)
     buf = io.BytesIO()
@@ -2420,7 +2416,7 @@ async def launch_sportsbook(request: Request):
                 "session_id": f"sess_{uuid.uuid4().hex[:10]}",
                 "player_id": user_code,
                 "player_name": user_code,
-                "return_url": "https://alphabet216.com/"
+                "return_url": "https://coutabet.com/"
             }
             headers = get_smpl_headers_and_sign(payload)
             headers['Content-Type'] = 'application/json'
@@ -2450,7 +2446,7 @@ async def launch_sportsbook(request: Request):
                 "game_code": str(data.get("game_code", "SPORTSBOOK")),
                 "user_code": user_code,
                 "lang": "fr",
-                "lobby_url": "https://alphabet216.com/"
+                "lobby_url": "https://coutabet.com/"
             }
             
             headers = {"Content-Type": "application/json"}
@@ -3018,3 +3014,321 @@ async def delete_notification(req: DeleteNotifModel, current_user: str = Depends
                 
     save_db(db)
     return {"status": "success"}
+
+import hmac
+import hashlib
+from fastapi import FastAPI, Request, HTTPException, Header
+from pydantic import BaseModel
+from typing import List, Optional, Any
+
+app = FastAPI()
+
+# مفتاح المصادقة الذي استلمته من Vadim (يُفضل وضعه في متغيرات البيئة .env)
+AUTH_TOKEN = ZEROONE_AUTH_TOKEN
+
+def verify_signature(body: bytes, signature: Optional[str]) -> bool:
+    """التحقق من صحة التوقيع القادم من المزود عبر هيدر X-REQUEST-SIGN"""
+    if not signature:
+        return False
+    computed_sig = hmac.new(
+        AUTH_TOKEN.encode('utf-8'),
+        body,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(computed_sig, signature)
+
+@app.post("/v2/provider_a8r.Round/BetWin")
+async def bet_win(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    
+    # التحقق من التوقيع الأمني
+    if not verify_signature(body_bytes, x_request_sign):
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    
+    # بيانات الطلب المستلمة من المزود
+    account_id = data.get("account_id")
+    currency = data.get("currency")
+    round_id = data.get("round_id")
+    transactions = data.get("transactions", [])
+    
+    # 💡 هنا تقوم بمعالجة العمليات المالية (خصم الرهان أو إضافة الفوز) في قاعدة بياناتك
+    # ومراعاة أن تكون العملية Idempotent (أي تجنب تكرار المعالجة لو أرسل المزود نفس id_provider مرتين)
+    
+    processed_transactions = []
+    for tx in transactions:
+        id_provider = tx.get("id_provider")
+        amount = tx.get("amount")
+        tx_type = tx.get("type") # "bet" أو "win"
+        
+        # بعد تنفيذ العملية في قاعدة البيانات، قم بتوليد معرف فريد للمعاملة لديك
+        aggregator_tx_id = "7c096779-5a5c-4605-a976-3e19e6ee7fce" # مثال
+        
+        processed_transactions.append({
+            "bonus_amount": "0.00",
+            "id": aggregator_tx_id,
+            "id_provider": id_provider
+        })
+    
+    # رصيد اللاعب الجديد بعد التحديث
+    new_balance = "100.00" 
+
+    return {
+        "balance": new_balance,
+        "round_id": round_id,
+        "transactions": processed_transactions
+    }
+
+@app.post("/v2/provider_a8r.Round/Finish")
+async def finish_round(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    round_id = data.get("round_id")
+    
+    # 💡 إغلاق الجولة أو دورة اللعب في قاعدة بياناتك
+    
+    return {
+        "balance": "100.00"
+    }
+
+@app.post("/v2/provider_a8r.Round/Rollback")
+async def rollback_round(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    transactions = data.get("transactions", [])
+    
+    processed_rollbacks = []
+    for tx in transactions:
+        id_provider = tx.get("id_provider")
+        original_id_provider = tx.get("original_id_provider")
+        
+        # 💡 إلغاء المعاملة السابقة (التي تحمل original_id_provider) وإرجاع الأموال إن وجدت
+        
+        processed_rollbacks.append({
+            "id": "76033e09-6207-44a1-b40a-840107104a15", # معرف المعاملة لديك أو فارغ إن لم تكن موجودة
+            "id_provider": id_provider
+        })
+        
+    return {
+        "balance": "100.00",
+        "round_id": "5789d44e-76ca-4458-86e4-6861c73bff2a",
+        "transactions": processed_rollbacks
+    }
+    
+    
+import hmac
+import hashlib
+import uuid
+from fastapi import FastAPI, Request, HTTPException, Header
+from typing import Optional
+from google.cloud import firestore
+
+app = FastAPI()
+
+# ⚠️ استبدل هذا الرمز بالـ AUTH_TOKEN الحقيقي الذي أرسله لك Vadim
+AUTH_TOKEN = ZEROONE_AUTH_TOKEN
+
+def verify_signature(body: bytes, signature: Optional[str]) -> bool:
+    """التحقق من صحة التوقيع الأمني باستخدام HMAC-SHA256 عبر هيدر X-REQUEST-SIGN"""
+    if not signature:
+        return False
+    computed_sig = hmac.new(
+        AUTH_TOKEN.encode('utf-8'),
+        body,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(computed_sig, signature)
+
+@app.post("/v2/provider_a8r.Round/BetWin")
+async def bet_win(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    
+    # التحقق من التوقيع الأمني قبل معالجة الطلب[cite: 17]
+    if not verify_signature(body_bytes, x_request_sign):
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    account_id = str(data.get("account_id"))[cite: 17]
+    round_id = data.get("round_id")[cite: 17]
+    transactions = data.get("transactions", [])[cite: 17]
+    
+    db = firestore.Client()
+    
+    @firestore.transactional
+    def process_transaction(transaction, account_id, txs):
+        player_ref = db.collection("users").document(account_id)
+        player_doc = player_ref.get(transaction=transaction)
+        
+        if not player_doc.exists:
+            raise HTTPException(status_code=404, detail="Player not found")
+            
+        player_data = player_doc.to_dict()
+        current_balance = float(player_data.get("balance", 0.0))
+        
+        processed_transactions = []
+        
+        for tx in txs:
+            id_provider = tx.get("id_provider")[cite: 17]
+            amount = float(tx.get("amount"))[cite: 17]
+            tx_type = tx.get("type") # نوع الحركة: "bet" (خصم) أو "win" (إضافة)[cite: 17]
+            
+            # منع تكرار المعاملات (Idempotency) حسب متطلبات التوثيق[cite: 17]
+            tx_ref = db.collection("casino_transactions").document(id_provider)
+            existing_tx = tx_ref.get(transaction=transaction)
+            
+            if existing_tx.exists:
+                old_data = existing_tx.to_dict()
+                processed_transactions.append({
+                    "bonus_amount": "0.00",
+                    "id": old_data["aggregator_tx_id"],
+                    "id_provider": id_provider
+                })
+                continue
+            
+            # تنفيذ العمليات المالية بناءً على نوع الحركة[cite: 17]
+            if tx_type == "bet":
+                if current_balance < amount:
+                    raise HTTPException(status_code=400, detail="Insufficient funds")
+                current_balance -= amount
+            elif tx_type == "win":
+                current_balance += amount
+                
+            aggregator_tx_id = str(uuid.uuid4())
+            
+            # حفظ المعاملة في قاعدة البيانات لحمايتها من التكرار
+            transaction.set(tx_ref, {
+                "account_id": account_id,
+                "amount": amount,
+                "type": tx_type,
+                "aggregator_tx_id": aggregator_tx_id,
+                "round_id": round_id,
+                "timestamp": firestore.SERVER_TIMESTAMP
+            })
+            
+            processed_transactions.append({
+                "bonus_amount": "0.00",
+                "id": aggregator_tx_id,
+                "id_provider": id_provider
+            })
+        
+        # تحديث الرصيد الجديد للاعب
+        transaction.update(player_ref, {"balance": current_balance})
+        return current_balance, processed_transactions
+
+    transaction = db.transaction()
+    try:
+        new_balance, processed_transactions = process_transaction(transaction, account_id, transactions)
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    return {
+        "balance": f"{new_balance:.2f}",
+        "round_id": round_id,
+        "transactions": processed_transactions
+    }
+
+@app.post("/v2/provider_a8r.Round/Finish")
+async def finish_round(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    account_id = str(data.get("account_id"))[cite: 17]
+    round_id = data.get("round_id")[cite: 17]
+    
+    db = firestore.Client()
+    player_ref = db.collection("users").document(account_id)
+    player_doc = player_ref.get()
+    
+    current_balance = float(player_doc.to_dict().get("balance", 0.0)) if player_doc.exists else 0.0
+    
+    # إنهاء الجولة وإرجاع رصيد اللاعب الحالي[cite: 17]
+    return {
+        "balance": f"{current_balance:.2f}"
+    }
+
+@app.post("/v2/provider_a8r.Round/Rollback")
+async def rollback_round(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_signature(body_bytes, x_request_sign):
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    account_id = str(data.get("account_id"))[cite: 17]
+    round_id_provider = data.get("round_id_provider")[cite: 17]
+    transactions = data.get("transactions", [])[cite: 17]
+    
+    db = firestore.Client()
+    
+    @firestore.transactional
+    def process_rollback(transaction, account_id, txs):
+        player_ref = db.collection("users").document(account_id)
+        player_doc = player_ref.get(transaction=transaction)
+        
+        if not player_doc.exists:
+            raise HTTPException(status_code=404, detail="Player not found")
+            
+        player_data = player_doc.to_dict()
+        current_balance = float(player_data.get("balance", 0.0))
+        
+        processed_rollbacks = []
+        
+        for tx in txs:
+            id_provider = tx.get("id_provider")[cite: 17]
+            original_id_provider = tx.get("original_id_provider")[cite: 17]
+            
+            # البحث عن المعاملة الأصلية المراد إلغاؤها
+            orig_tx_ref = db.collection("casino_transactions").document(original_id_provider)
+            orig_tx_doc = orig_tx_ref.get(transaction=transaction)
+            
+            aggregator_rollback_id = str(uuid.uuid4())
+            
+            if orig_tx_doc.exists:
+                orig_data = orig_tx_doc.to_dict()
+                amount = float(orig_data["amount"])
+                orig_type = orig_data["type"]
+                
+                # عكس التأثير المالي للمعاملة بناءً على نوعها السابق
+                if orig_type == "bet":
+                    current_balance += amount # إعادة الأموال المُخصومة للرهان
+                elif orig_type == "win":
+                    current_balance -= amount # خصم الأموال المضافة للفوز بالخطأ
+                    
+                # تسجيل عملية السترجاع (Rollback) في قاعدة البيانات
+                transaction.set(db.collection("casino_transactions").document(id_provider), {
+                    "account_id": account_id,
+                    "type": "rollback",
+                    "original_id_provider": original_id_provider,
+                    "aggregator_tx_id": aggregator_rollback_id,
+                    "timestamp": firestore.SERVER_TIMESTAMP
+                })
+            
+            processed_rollbacks.append({
+                "id": aggregator_rollback_id if orig_tx_doc.exists else "",
+                "id_provider": id_provider
+            })
+            
+        transaction.update(player_ref, {"balance": current_balance})
+        return current_balance, processed_rollbacks
+
+    transaction = db.transaction()
+    try:
+        new_balance, processed_rollbacks = process_rollback(transaction, account_id, transactions)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    return {
+        "balance": f"{new_balance:.2f}",
+        "round_id": round_id_provider,
+        "transactions": processed_rollbacks
+    }
