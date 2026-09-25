@@ -3067,26 +3067,34 @@ async def balance_01tech(request: Request, x_request_sign: Optional[str] = Heade
     # يجب إرجاع الرصيد كنص (String) كما تشترط الوثائق
     return {"balance": f"{current_balance:.2f}"}
 
-# 1. مسارات المعاملات المالية
+# 1. مسارات المعاملات المالية (الرهان والربح)
 @app.post("/v2/a8r_casino.Round/BetWin")
 async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
-    if not verify_01tech_signature(body_bytes, x_request_sign): raise HTTPException(status_code=400, detail="Invalid Signature")
+    if not verify_01tech_signature(body_bytes, x_request_sign): 
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
     data = await request.json()
-    account_id = str(data.get("account_id"))
+    # طباعة البيانات في سجلات Render لتشخيص أي مشكلة
+    print(f"🎲 [01.TECH BET/WIN PAYLOAD]: {data}") 
+    
+    # استخدام player_id بدلاً من account_id
+    player_id = str(data.get("player_id") or data.get("account_id"))
     round_id = data.get("round_id")
     
     async with db_lock:
         db_data = load_db()
-        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == account_id.lower()), None)
-        if not target_user: raise HTTPException(status_code=404, detail="Player not found")
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
+        if not target_user: 
+            raise HTTPException(status_code=404, detail="Player not found")
+        
         current_balance = float(target_user.get("balance", 0.0))
         processed_transactions = []
         
         db_session = SessionLocal()
         try:
             for tx in data.get("transactions", []):
-                id_provider = tx.get("id_provider")
+                id_provider = tx.get("id_provider") or tx.get("id")
                 amount = float(tx.get("amount", 0))
                 tx_type = tx.get("type")
                 
@@ -3102,7 +3110,7 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                     current_balance += amount
                     
                 aggregator_tx_id = str(uuid.uuid4())
-                new_tx = Transaction(admin_username="01TECH", target_username=account_id, action=tx_type, amount=amount, tx_id=id_provider, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                new_tx = Transaction(admin_username="01TECH", target_username=player_id, action=tx_type, amount=amount, tx_id=id_provider, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 db_session.add(new_tx)
                 processed_transactions.append({"bonus_amount": "0.00", "id": aggregator_tx_id, "id_provider": id_provider})
             
@@ -3111,14 +3119,30 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
             save_db(db_data)
         except Exception as e:
             db_session.rollback()
+            print(f"🚨 [01.TECH BET ERROR]: {e}")
             raise HTTPException(status_code=500, detail=str(e))
-        finally: db_session.close()
+        finally: 
+            db_session.close()
+            
     return {"balance": f"{current_balance:.2f}", "round_id": round_id, "transactions": processed_transactions}
 
 @app.post("/v2/a8r_casino.Round/Finish")
 async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): 
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    data = await request.json()
+    print(f"🏁 [01.TECH FINISH PAYLOAD]: {data}")
     return {"balance": "0.00"} 
 
+@app.post("/v2/a8r_casino.Round/Rollback")
+async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): 
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    data = await request.json()
+    print(f"↩️ [01.TECH ROLLBACK PAYLOAD]: {data}")
+    return {"balance": "0.00", "round_id": "", "transactions": []}
 @app.post("/v2/a8r_casino.Round/Rollback")
 async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     return {"balance": "0.00", "round_id": "", "transactions": []}
