@@ -3347,11 +3347,11 @@ async def launch_01tech_isolated(request: Request):
         "casino_id": ZEROONE_CASINO_ID.lower().strip().replace("-", "_"),
         "client_type": "desktop",
         "game": data.get("game_id"), # Uses 'game' as per docs
-        "ip": "142.112.1.1",
+        "ip": "177.100.1.1",
         "jurisdiction": "DE",
         "locale": "fr",
         "player": {
-            "country": "CA", 
+            "country": "BR", 
             "currency": "EUR",
             "date_of_birth": "1987-02-03T00:00:00Z", # Hardcoded birth date
             "email": "test@alphabet216.com",
