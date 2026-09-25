@@ -3287,17 +3287,22 @@ async def fetch_01tech_games_isolated(category: str):
             all_games = []
             base_image_url = data.get("image_assets", {}).get("base_url", "")
             
+            # كلمات مفتاحية تدل على الكازينو المباشر أو ألعاب الطاولة
+            live_keywords = ["live", "table", "roulette", "blackjack", "baccarat", "poker"]
+            
             if "providers" in data:
                 for provider in data["providers"]:
                     provider_name = provider.get("name", "01TECH")
                     for game in provider.get("games", []):
                         
-                        # 💡 الفلترة الذكية: التعرف على الكازينو المباشر
                         game_type = str(game.get("type", "")).lower()
                         game_category = str(game.get("category", "")).lower()
-                        is_live = "live" in game_type or "live" in game_category or "live" in provider_name.lower()
                         
-                        # تطبيق الفلتر بناءً على طلب المستخدم
+                        # التحقق مما إذا كانت اللعبة تحتوي على أي من الكلمات المفتاحية
+                        is_live = any(kw in game_type for kw in live_keywords) or \
+                                  any(kw in game_category for kw in live_keywords) or \
+                                  "live" in provider_name.lower()
+                        
                         if category == "live" and not is_live:
                             continue
                         if category == "slots" and is_live:
