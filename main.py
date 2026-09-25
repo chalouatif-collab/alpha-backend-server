@@ -3090,7 +3090,6 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
 
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
-    # استخدام مسار الكازينو الصحيح
     url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
     
     clean_casino_id = ZEROONE_CASINO_ID.lower().strip().replace("-", "_")
@@ -3115,16 +3114,25 @@ async def fetch_01tech_games_isolated(category: str):
                 
             data = response.json()
             all_games = []
-            base_image_url = data.get("image_assets", {}).get("base_url", "")
+            
+            # جلب الرابط الأساسي مع حذف أي شرطة مائلة زائدة في نهايته
+            base_image_url = data.get("image_assets", {}).get("base_url", "").rstrip("/")
             
             if "providers" in data:
                 for provider in data["providers"]:
                     provider_name = provider.get("name", "01TECH")
                     for game in provider.get("games", []):
                         img_url = ""
-                        if "images" in game:
-                            img_path = game["images"].get("square") or game["images"].get("horizontal")
-                            if img_path: 
+                        
+                        # البحث الشامل عن أي صيغة صورة متوفرة للعبة
+                        if "images" in game and isinstance(game["images"], dict):
+                            imgs = game["images"]
+                            img_path = imgs.get("square") or imgs.get("horizontal") or imgs.get("vertical") or imgs.get("widescreen")
+                            
+                            if img_path:
+                                # التأكد من وجود شرطة مائلة واحدة بين الرابط الأساسي والمسار
+                                if not img_path.startswith("/"):
+                                    img_path = "/" + img_path
                                 img_url = f"{base_image_url}{img_path}"
                             
                         all_games.append({
