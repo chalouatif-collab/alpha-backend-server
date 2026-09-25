@@ -3347,6 +3347,7 @@ async def launch_01tech_isolated(request: Request):
         "casino_id": ZEROONE_CASINO_ID.lower().strip().replace("-", "_"),
         "client_type": "desktop",
         "game": data.get("game_id"), # Uses 'game' as per docs
+        "ip": "142.112.1.1",
         "ip": "8.8.8.8", # Placeholder IP
         "jurisdiction": "DE",
         "locale": "fr",
