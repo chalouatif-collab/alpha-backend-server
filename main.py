@@ -3018,3 +3018,83 @@ async def delete_notification(req: DeleteNotifModel, current_user: str = Depends
                 
     save_db(db)
     return {"status": "success"}
+async function initCasinoLobby() {
+            const grid = document.getElementById('games-grid');
+            const label = document.getElementById('current-provider-label');
+            if (label) label.innerText = "Tous les jeux";
+            if (grid) grid.innerHTML = '<div class="col-span-full text-emerald text-center py-10 animate-pulse text-lg font-bold">Chargement de tous les jeux... 🎰</div>';
+
+            try {
+                // قائمة المزودين التي سيتم سحب ألعابها لدمجها (يمكنك إضافة أو حذف ما تريد)
+                const topProviders = ['PRAGMATIC', 'HACKSAW', 'PLAYNGO', 'SPRIBE', 'EVOPLAY', 'AMATIC'];
+                let allMixedGames = [];
+
+                for (let pCode of topProviders) {
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ provider_code: pCode })
+                        });
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            let gamesList = data.games || data.data || [];
+                            if (!Array.isArray(gamesList)) gamesList = [gamesList];
+                            
+                            // 💡 السطر السحري: حقن اسم المزود داخل اللعبة لتعمل بشكل صحيح عند الإطلاق
+                            gamesList = gamesList.map(g => ({...g, actual_provider: pCode}));
+                            allMixedGames = allMixedGames.concat(gamesList);
+                        }
+                    } catch (e) { console.warn("Erreur chargement:", pCode); }
+                }
+
+                // خلط الألعاب عشوائياً لتبدو كقائمة شاملة ومتنوعة
+                allMixedGames.sort(() => 0.5 - Math.random());
+                
+                // حفظ القائمة لتعمل بشكل متوافق مع محرك البحث
+                window.currentProviderGames = allMixedGames;
+                renderCasinoGrid();
+                
+            } catch (e) {
+                console.error("Erreur chargement lobby:", e);
+                if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10 font-bold">Erreur de connexion</div>';
+            }
+        }
+
+        // تحديث دالة الرسم لتقرأ المزود الصحيح لكل لعبة مدمجة
+        function renderCasinoGrid() {
+            const container = document.getElementById('games-grid');
+            if (!container) return;
+
+            if (window.currentProviderGames.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10">Aucun jeu trouvé.</div>';
+                return;
+            }
+
+            const gamesToDisplay = window.currentProviderGames;
+
+            container.innerHTML = gamesToDisplay.map(g => {
+                const title = escapeHTML(String(g.game_name || g.name || "Game"));
+                const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}`;
+                const code = g.game_code || g.id;
+                
+                // 💡 التعديل هنا: استخدام المزود المحقون أو المزود الافتراضي
+                const correctProvider = g.actual_provider || currentActiveProviderCode;
+
+                return `
+    <div onclick="playCasinoGame('${correctProvider}', '${code}')" class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer hover:border-emerald transition-all flex flex-col group shadow-lg relative">
+        ${g.actual_provider ? `<div class="absolute top-0 right-0 bg-black/80 text-emerald text-[8px] font-black px-2 py-1 rounded-bl-lg z-20 border-b border-l border-[#212631]">${g.actual_provider}</div>` : ''}
+        <div class="relative w-full aspect-square overflow-hidden bg-[#161922]">
+            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.onerror=null; this.src='https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}';">
+            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                <span class="bg-emerald text-black text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
+            </div>
+        </div>
+        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${title}</div>
+    </div>`;
+            }).join('');
+
+            const sentinel = document.getElementById('games-scroll-sentinel');
+            if (sentinel) sentinel.remove();
+        }
