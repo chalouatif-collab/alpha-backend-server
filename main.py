@@ -3075,6 +3075,126 @@ async def balance_01tech(request: Request, x_request_sign: Optional[str] = Heade
 
 # 2. مسارات المعاملات المالية (الرهان والربح مع الحماية التلقائية)
 # مسار المعاملات المالية المحدث والمتوافق مع نظام 01.tech & Pragmatic
+# 3. مسار الرهان المنفصل (Bet)
+@app.post("/v2/a8r_casino.Round/Bet")
+async def round_bet_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): 
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    print(f"🎲 [01.TECH SEPARATE BET PAYLOAD]: {data}")
+    
+    player_id = str(data.get("player_id") or data.get("account_id") or "test")
+    round_id = data.get("round_id")
+    
+    async with db_lock:
+        db_data = load_db()
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
+        
+        if not target_user:
+            if len(db_data) > 0:
+                target_user = db_data[0]
+            else:
+                target_user = {"username": player_id, "balance": 5000.0, "is_blocked": 0}
+                db_data.append(target_user)
+        
+        current_balance = float(target_user.get("balance", 5000.0))
+        processed_transactions = []
+        
+        db_session = SessionLocal()
+        try:
+            for tx in data.get("transactions", []):
+                id_provider = tx.get("id_provider") or tx.get("id")
+                amount = float(tx.get("amount", 0))
+                
+                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == id_provider).first()
+                if existing_tx:
+                    processed_transactions.append({"bonus_amount": "0.00", "id": str(existing_tx.id), "id_provider": id_provider})
+                    continue
+                
+                current_balance -= amount
+                aggregator_tx_id = str(uuid.uuid4())
+                new_tx = Transaction(admin_username="01TECH", target_username=target_user.get("username", player_id), action="bet", amount=amount, tx_id=id_provider, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                db_session.add(new_tx)
+                processed_transactions.append({"bonus_amount": "0.00", "id": aggregator_tx_id, "id_provider": id_provider})
+            
+            db_session.commit()
+            target_user["balance"] = round(current_balance, 2)
+            save_db(db_data)
+        except Exception as e:
+            db_session.rollback()
+            print(f"🚨 [01.TECH BET ERROR]: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally: 
+            db_session.close()
+            
+    return {
+        "balance": f"{current_balance:.2f}",
+        "round_id": round_id if round_id else "",
+        "transactions": processed_transactions
+    }
+
+# 4. مسار الربح المنفصل (Win)
+@app.post("/v2/a8r_casino.Round/Win")
+async def round_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): 
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+    
+    data = await request.json()
+    print(f"🏆 [01.TECH SEPARATE WIN PAYLOAD]: {data}")
+    
+    player_id = str(data.get("player_id") or data.get("account_id") or "test")
+    round_id = data.get("round_id")
+    
+    async with db_lock:
+        db_data = load_db()
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
+        
+        if not target_user:
+            if len(db_data) > 0:
+                target_user = db_data[0]
+            else:
+                target_user = {"username": player_id, "balance": 5000.0, "is_blocked": 0}
+                db_data.append(target_user)
+        
+        current_balance = float(target_user.get("balance", 5000.0))
+        processed_transactions = []
+        
+        db_session = SessionLocal()
+        try:
+            for tx in data.get("transactions", []):
+                id_provider = tx.get("id_provider") or tx.get("id")
+                amount = float(tx.get("amount", 0))
+                
+                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == id_provider).first()
+                if existing_tx:
+                    processed_transactions.append({"bonus_amount": "0.00", "id": str(existing_tx.id), "id_provider": id_provider})
+                    continue
+                
+                current_balance += amount
+                aggregator_tx_id = str(uuid.uuid4())
+                new_tx = Transaction(admin_username="01TECH", target_username=target_user.get("username", player_id), action="win", amount=amount, tx_id=id_provider, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                db_session.add(new_tx)
+                processed_transactions.append({"bonus_amount": "0.00", "id": aggregator_tx_id, "id_provider": id_provider})
+            
+            db_session.commit()
+            target_user["balance"] = round(current_balance, 2)
+            save_db(db_data)
+        except Exception as e:
+            db_session.rollback()
+            print(f"🚨 [01.TECH WIN ERROR]: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally: 
+            db_session.close()
+            
+    return {
+        "balance": f"{current_balance:.2f}",
+        "round_id": round_id if round_id else "",
+        "transactions": processed_transactions
+    }
+
 @app.post("/v2/a8r_casino.Round/BetWin")
 async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
