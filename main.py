@@ -3091,8 +3091,8 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
     url = f"{ZEROONE_BASE_URL}/v2/a8r_provider.Game/List"
-    payload = {"casino_id": ZEROONE_CASINO_ID}
-    
+    clean_casino_id = ZEROONE_CASINO_ID.lower().replace("-", "_")
+    payload = {"casino_id": clean_casino_id}
     # === التعديل الدقيق حسب رسالة فاديم ===
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     signature = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
@@ -3141,7 +3141,7 @@ async def fetch_01tech_games_isolated(category: str):
 async def launch_01tech_isolated(request: Request):
     data = await request.json()
     payload = {
-        "casino_id": ZEROONE_CASINO_ID,
+        "casino_id": ZEROONE_CASINO_ID.lower().replace("-", "_"),
         "game_id": data.get("game_id"),
         "account_id": str(data.get("account_id")),
         "currency": "TND",
