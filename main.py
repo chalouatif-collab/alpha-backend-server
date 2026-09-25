@@ -3022,9 +3022,10 @@ async def delete_notification(req: DeleteNotifModel, current_user: str = Depends
 # ======================================================================
 # 🌟 01.TECH AGGREGATOR - منطقة اختبار معزولة تماماً (محدثة حسب فاديم) 🌟
 # ======================================================================
-ZEROONE_AUTH_TOKEN = os.getenv("ZEROONE_AUTH_TOKEN", "S3dqpz5cUrBj7Cd36ziPHSoimjqVLZospYuw/MRb0p0=")
-ZEROONE_BASE_URL = os.getenv("ZEROONE_BASE_URL", "https://alphabet1.casino.preprod.avegas.games")
-ZEROONE_CASINO_ID = os.getenv("ZEROONE_CASINO_ID", "alphabet1")
+# 🛑 فرض القيم المباشرة لمنع سيرفر رندر من استخدام متغيرات بيئية خاطئة
+ZEROONE_AUTH_TOKEN = "S3dqpz5cUrBj7Cd36ziPHSoimjqVLZospYuw/MRb0p0="
+ZEROONE_BASE_URL = "https://alphabet1.casino.preprod.avegas.games"
+ZEROONE_CASINO_ID = "alphabet1"
 
 def verify_01tech_signature(body: bytes, signature: Optional[str]) -> bool:
     if not signature: return False
@@ -3089,17 +3090,14 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
 
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
-    # 1. التعديل الأول: استخدام مسار الكازينو (casino_a8r) بدلاً من المزود (a8r_provider)
+    # استخدام مسار الكازينو الصحيح
     url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
     
-    # 2. تنظيف الـ Casino ID من أي مسافات أو أحرف كبيرة
     clean_casino_id = ZEROONE_CASINO_ID.lower().strip().replace("-", "_")
     payload = {"casino_id": clean_casino_id}
     
-    # 3. بناء البصمة بدقة متناهية (بدون أي مسافات إضافية)
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     
-    # تنظيف التوكن لتفادي أي مسافات مخفية قد تفسد التشفير
     clean_auth_token = ZEROONE_AUTH_TOKEN.strip()
     signature = hmac.new(clean_auth_token.encode('utf-8'), body, hashlib.sha256).hexdigest()
     
@@ -3139,12 +3137,12 @@ async def fetch_01tech_games_isolated(category: str):
         except Exception as e:
             return {"error": str(e), "games": []}
 
-# 3. مسار إطلاق اللعبة (تطبيق تعديلات فاديم)
+# 3. مسار إطلاق اللعبة 
 @app.post("/api/01tech/launch")
 async def launch_01tech_isolated(request: Request):
     data = await request.json()
     payload = {
-        "casino_id": ZEROONE_CASINO_ID.lower().replace("-", "_"),
+        "casino_id": ZEROONE_CASINO_ID.lower().strip().replace("-", "_"),
         "game_id": data.get("game_id"),
         "account_id": str(data.get("account_id")),
         "currency": "TND",
@@ -3153,16 +3151,17 @@ async def launch_01tech_isolated(request: Request):
         "return_url": "https://alphabet216.com/" 
     }
     
-    # === التعديل الدقيق حسب رسالة فاديم ===
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    signature = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
+    clean_auth_token = ZEROONE_AUTH_TOKEN.strip()
+    signature = hmac.new(clean_auth_token.encode('utf-8'), body, hashlib.sha256).hexdigest()
     
     headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
 
     async with httpx.AsyncClient() as client:
         try:
-            # استخدام content=body وليس json=payload
-            response = await client.post(f"{ZEROONE_BASE_URL}/v2/a8r_provider.Launcher/Real", content=body, headers=headers)
+            # 🛑 تصحيح مسار الإطلاق إلى مسار الكازينو بدلاً من المزود
+            url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Launcher/Real"
+            response = await client.post(url, content=body, headers=headers)
             if response.status_code != 200: return {"error": response.text}
             return {"game_url": response.json().get("url")}
         except Exception as e:
