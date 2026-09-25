@@ -3308,12 +3308,22 @@ async def fetch_01tech_games_isolated(category: str):
                         if category == "slots" and is_live:
                             continue
                             
+                        # 💡 كود استخراج الصورة المحدث لالتقاط كافة الصيغ
                         img_url = ""
-                        if "images" in game:
-                            img_path = game["images"].get("square") or game["images"].get("horizontal")
-                            if img_path: 
-                                img_url = f"{base_image_url}{img_path}"
+                        img_path = game.get("image") or game.get("icon")
+                        
+                        if not img_path and "images" in game:
+                            img_path = game["images"].get("square") or game["images"].get("horizontal") or game["images"].get("main")
                             
+                        if img_path:
+                            # إذا كان الرابط كاملاً نأخذه، وإلا ندمجه مع base_url
+                            if str(img_path).startswith("http"):
+                                img_url = img_path
+                            else:
+                                clean_base = base_image_url.rstrip('/')
+                                clean_path = str(img_path).lstrip('/')
+                                img_url = f"{clean_base}/{clean_path}" if clean_base else f"https://{clean_path}"
+                        
                         all_games.append({
                             "game_code": game.get("id"),
                             "game_name": game.get("title"),
