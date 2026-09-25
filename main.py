@@ -3074,6 +3074,7 @@ async def balance_01tech(request: Request, x_request_sign: Optional[str] = Heade
     return {"balance": f"{current_balance:.2f}"}
 
 # 2. مسارات المعاملات المالية (الرهان والربح مع الحماية التلقائية)
+# مسار المعاملات المالية المحدث والمتوافق مع نظام 01.tech & Pragmatic
 @app.post("/v2/a8r_casino.Round/BetWin")
 async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
@@ -3130,8 +3131,12 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         finally: 
             db_session.close()
             
-    return {"balance": f"{current_balance:.2f}", "round_id": round_id, "transactions": processed_transactions}
-
+    # 🛡️ التصحيح الحاسم لهيكل الرد ليطابق معيار الـ Aggregator
+    return {
+        "balance": f"{current_balance:.2f}",
+        "round_id": round_id if round_id else "",
+        "transactions": processed_transactions
+    }
 @app.post("/v2/a8r_casino.Round/Finish")
 async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
