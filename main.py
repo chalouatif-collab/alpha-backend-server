@@ -3019,6 +3019,15 @@ async def delete_notification(req: DeleteNotifModel, current_user: str = Depends
     save_db(db)
     return {"status": "success"}
 
+import hashlib
+import hmac
+import json
+import uuid
+from fastapi import Header, HTTPException, Request
+from typing import Optional
+
+# ... (rest of your app setup) ...
+
 # ======================================================================
 # 🌟 01.TECH AGGREGATOR - منطقة اختبار معزولة تماماً (محدثة حسب فاديم) 🌟
 # ======================================================================
@@ -3090,6 +3099,7 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
 
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
+    # استخدام مسار الكازينو الصحيح
     url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
     
     clean_casino_id = ZEROONE_CASINO_ID.lower().strip().replace("-", "_")
@@ -3114,25 +3124,16 @@ async def fetch_01tech_games_isolated(category: str):
                 
             data = response.json()
             all_games = []
-            
-            # جلب الرابط الأساسي مع حذف أي شرطة مائلة زائدة في نهايته
-            base_image_url = data.get("image_assets", {}).get("base_url", "").rstrip("/")
+            base_image_url = data.get("image_assets", {}).get("base_url", "")
             
             if "providers" in data:
                 for provider in data["providers"]:
                     provider_name = provider.get("name", "01TECH")
                     for game in provider.get("games", []):
                         img_url = ""
-                        
-                        # البحث الشامل عن أي صيغة صورة متوفرة للعبة
-                        if "images" in game and isinstance(game["images"], dict):
-                            imgs = game["images"]
-                            img_path = imgs.get("square") or imgs.get("horizontal") or imgs.get("vertical") or imgs.get("widescreen")
-                            
-                            if img_path:
-                                # التأكد من وجود شرطة مائلة واحدة بين الرابط الأساسي والمسار
-                                if not img_path.startswith("/"):
-                                    img_path = "/" + img_path
+                        if "images" in game:
+                            img_path = game["images"].get("square") or game["images"].get("horizontal")
+                            if img_path: 
                                 img_url = f"{base_image_url}{img_path}"
                             
                         all_games.append({
@@ -3149,14 +3150,37 @@ async def fetch_01tech_games_isolated(category: str):
 @app.post("/api/01tech/launch")
 async def launch_01tech_isolated(request: Request):
     data = await request.json()
+    
+    # Get player details from your DB or session. 
+    # Using defaults here as placeholders based on the provided docs.
+    # In a real scenario, fetch these from your DB using data.get("account_id")
+    player_id = str(data.get("account_id"))
+    
     payload = {
         "casino_id": ZEROONE_CASINO_ID.lower().strip().replace("-", "_"),
-        "game_id": data.get("game_id"),
-        "account_id": str(data.get("account_id")),
-        "currency": "TND",
-        "session_id": str(uuid.uuid4()),
-        "language": "fr",
-        "return_url": "https://alphabet216.com/" 
+        "client_type": "desktop",
+        "game": data.get("game_id"), # Uses 'game' as per docs
+        "ip": "8.8.8.8", # Placeholder IP
+        "jurisdiction": "DE",
+        "locale": "fr",
+        "player": {
+            "country": "TN", 
+            "currency": "TND",
+            "date_of_birth": "1987-02-03T00:00:00Z", # Hardcoded birth date
+            "email": "test@alphabet216.com",
+            "firstname": "Fethi", # Hardcoded name
+            "gender": "m",
+            "id": player_id,
+            "lastname": "Chalouati", # Hardcoded lastname
+            "nickname": player_id,
+            "registered_at": "2026-08-01T00:00:00Z",
+            "tags": []
+        },
+        "session_payload": str(uuid.uuid4()),
+        "urls": {
+            "deposit_url": "https://alphabet216.com/#deposit",
+            "return_url": "https://alphabet216.com/"
+        }
     }
     
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
@@ -3167,11 +3191,11 @@ async def launch_01tech_isolated(request: Request):
 
     async with httpx.AsyncClient() as client:
         try:
-            # 🛑 تصحيح مسار الإطلاق إلى مسار الكازينو بدلاً من المزود
             url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Launcher/Real"
             response = await client.post(url, content=body, headers=headers)
             if response.status_code != 200: return {"error": response.text}
-            return {"game_url": response.json().get("url")}
+            
+            # The response schema states 'launch_url' is the key
+            return {"game_url": response.json().get("launch_url")} 
         except Exception as e:
             return {"error": str(e)}
-# ======================================================================
