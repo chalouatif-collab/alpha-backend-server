@@ -3087,21 +3087,29 @@ async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = 
 async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     return {"balance": "0.00", "round_id": "", "transactions": []}
 
-# 2. مسار جلب الألعاب (تطبيق تعديلات فاديم)
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
-    url = f"{ZEROONE_BASE_URL}/v2/a8r_provider.Game/List"
-    clean_casino_id = ZEROONE_CASINO_ID.lower().replace("-", "_")
-    payload = {"casino_id": clean_casino_id}
-    # === التعديل الدقيق حسب رسالة فاديم ===
-    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    signature = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
+    # 1. التعديل الأول: استخدام مسار الكازينو (casino_a8r) بدلاً من المزود (a8r_provider)
+    url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
     
-    headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
+    # 2. تنظيف الـ Casino ID من أي مسافات أو أحرف كبيرة
+    clean_casino_id = ZEROONE_CASINO_ID.lower().strip().replace("-", "_")
+    payload = {"casino_id": clean_casino_id}
+    
+    # 3. بناء البصمة بدقة متناهية (بدون أي مسافات إضافية)
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    
+    # تنظيف التوكن لتفادي أي مسافات مخفية قد تفسد التشفير
+    clean_auth_token = ZEROONE_AUTH_TOKEN.strip()
+    signature = hmac.new(clean_auth_token.encode('utf-8'), body, hashlib.sha256).hexdigest()
+    
+    headers = {
+        "Content-Type": "application/json", 
+        "X-REQUEST-SIGN": signature
+    }
 
     async with httpx.AsyncClient() as client:
         try:
-            # استخدام content=body وليس json=payload
             response = await client.post(url, content=body, headers=headers)
             if response.status_code != 200:
                 print(f"🚨 01.TECH ERROR: {response.text}")
@@ -3115,16 +3123,11 @@ async def fetch_01tech_games_isolated(category: str):
                 for provider in data["providers"]:
                     provider_name = provider.get("name", "01TECH")
                     for game in provider.get("games", []):
-                        is_live = game.get("live", False)
-                        game_cat = game.get("category", "").lower()
-                        
-                        if category == "live" and not is_live and "live" not in game_cat: continue
-                        if category == "slots" and (is_live or "live" in game_cat): continue
-
                         img_url = ""
                         if "images" in game:
                             img_path = game["images"].get("square") or game["images"].get("horizontal")
-                            if img_path: img_url = f"{base_image_url}{img_path}"
+                            if img_path: 
+                                img_url = f"{base_image_url}{img_path}"
                             
                         all_games.append({
                             "game_code": game.get("id"),
