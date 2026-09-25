@@ -3267,27 +3267,20 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
 
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
-    # استخدام مسار الكازينو الصحيح
     url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
-    
     clean_casino_id = ZEROONE_CASINO_ID.lower().strip().replace("-", "_")
     payload = {"casino_id": clean_casino_id}
     
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    
     clean_auth_token = ZEROONE_AUTH_TOKEN.strip()
     signature = hmac.new(clean_auth_token.encode('utf-8'), body, hashlib.sha256).hexdigest()
     
-    headers = {
-        "Content-Type": "application/json", 
-        "X-REQUEST-SIGN": signature
-    }
+    headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
 
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(url, content=body, headers=headers)
             if response.status_code != 200:
-                print(f"🚨 01.TECH ERROR: {response.text}")
                 return {"error": response.text, "games": []}
                 
             data = response.json()
@@ -3298,6 +3291,18 @@ async def fetch_01tech_games_isolated(category: str):
                 for provider in data["providers"]:
                     provider_name = provider.get("name", "01TECH")
                     for game in provider.get("games", []):
+                        
+                        # 💡 الفلترة الذكية: التعرف على الكازينو المباشر
+                        game_type = str(game.get("type", "")).lower()
+                        game_category = str(game.get("category", "")).lower()
+                        is_live = "live" in game_type or "live" in game_category or "live" in provider_name.lower()
+                        
+                        # تطبيق الفلتر بناءً على طلب المستخدم
+                        if category == "live" and not is_live:
+                            continue
+                        if category == "slots" and is_live:
+                            continue
+                            
                         img_url = ""
                         if "images" in game:
                             img_path = game["images"].get("square") or game["images"].get("horizontal")
@@ -3313,7 +3318,6 @@ async def fetch_01tech_games_isolated(category: str):
             return {"games": all_games}
         except Exception as e:
             return {"error": str(e), "games": []}
-
 # 3. مسار إطلاق اللعبة 
 @app.post("/api/01tech/launch")
 async def launch_01tech_isolated(request: Request):
