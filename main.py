@@ -3351,7 +3351,7 @@ async def launch_01tech_isolated(request: Request):
         "jurisdiction": "DE",
         "locale": "fr",
         "player": {
-            "country": "TN", 
+            "country": "CA", 
             "currency": "EUR",
             "date_of_birth": "1987-02-03T00:00:00Z", # Hardcoded birth date
             "email": "test@alphabet216.com",
