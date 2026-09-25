@@ -3018,83 +3018,150 @@ async def delete_notification(req: DeleteNotifModel, current_user: str = Depends
                 
     save_db(db)
     return {"status": "success"}
-async function initCasinoLobby() {
-            const grid = document.getElementById('games-grid');
-            const label = document.getElementById('current-provider-label');
-            if (label) label.innerText = "Tous les jeux";
-            if (grid) grid.innerHTML = '<div class="col-span-full text-emerald text-center py-10 animate-pulse text-lg font-bold">Chargement de tous les jeux... 🎰</div>';
 
-            try {
-                // قائمة المزودين التي سيتم سحب ألعابها لدمجها (يمكنك إضافة أو حذف ما تريد)
-                const topProviders = ['PRAGMATIC', 'HACKSAW', 'PLAYNGO', 'SPRIBE', 'EVOPLAY', 'AMATIC'];
-                let allMixedGames = [];
+# ======================================================================
+# 🌟 01.TECH AGGREGATOR - منطقة اختبار معزولة تماماً (محدثة حسب فاديم) 🌟
+# ======================================================================
+ZEROONE_AUTH_TOKEN = os.getenv("ZEROONE_AUTH_TOKEN", "S3dqpz5cUrBj7Cd36ziPHSoimjqVLZospYuw/MRb0p0=")
+ZEROONE_BASE_URL = os.getenv("ZEROONE_BASE_URL", "https://alphabet1.casino.preprod.avegas.games")
+ZEROONE_CASINO_ID = os.getenv("ZEROONE_CASINO_ID", "alphabet1")
 
-                for (let pCode of topProviders) {
-                    try {
-                        const res = await fetch(`${BACKEND_URL}/api/get-providers`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ provider_code: pCode })
-                        });
+def verify_01tech_signature(body: bytes, signature: Optional[str]) -> bool:
+    if not signature: return False
+    computed_sig = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(computed_sig, signature)
 
-                        if (res.ok) {
-                            const data = await res.json();
-                            let gamesList = data.games || data.data || [];
-                            if (!Array.isArray(gamesList)) gamesList = [gamesList];
+# 1. مسارات المعاملات المالية
+@app.post("/v2/provider_a8r.Round/BetWin")
+async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): raise HTTPException(status_code=400, detail="Invalid Signature")
+    data = await request.json()
+    account_id = str(data.get("account_id"))
+    round_id = data.get("round_id")
+    
+    async with db_lock:
+        db_data = load_db()
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == account_id.lower()), None)
+        if not target_user: raise HTTPException(status_code=404, detail="Player not found")
+        current_balance = float(target_user.get("balance", 0.0))
+        processed_transactions = []
+        
+        db_session = SessionLocal()
+        try:
+            for tx in data.get("transactions", []):
+                id_provider = tx.get("id_provider")
+                amount = float(tx.get("amount", 0))
+                tx_type = tx.get("type")
+                
+                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == id_provider).first()
+                if existing_tx:
+                    processed_transactions.append({"bonus_amount": "0.00", "id": str(existing_tx.id), "id_provider": id_provider})
+                    continue
+                
+                if tx_type == "bet":
+                    if current_balance < amount: raise HTTPException(status_code=400, detail="Insufficient")
+                    current_balance -= amount
+                elif tx_type == "win":
+                    current_balance += amount
+                    
+                aggregator_tx_id = str(uuid.uuid4())
+                new_tx = Transaction(admin_username="01TECH", target_username=account_id, action=tx_type, amount=amount, tx_id=id_provider, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                db_session.add(new_tx)
+                processed_transactions.append({"bonus_amount": "0.00", "id": aggregator_tx_id, "id_provider": id_provider})
+            
+            db_session.commit()
+            target_user["balance"] = current_balance
+            save_db(db_data)
+        except Exception as e:
+            db_session.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally: db_session.close()
+    return {"balance": f"{current_balance:.2f}", "round_id": round_id, "transactions": processed_transactions}
+
+@app.post("/v2/provider_a8r.Round/Finish")
+async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    return {"balance": "0.00"} 
+
+@app.post("/v2/provider_a8r.Round/Rollback")
+async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    return {"balance": "0.00", "round_id": "", "transactions": []}
+
+# 2. مسار جلب الألعاب (تطبيق تعديلات فاديم)
+@app.get("/api/01tech/games/{category}")
+async def fetch_01tech_games_isolated(category: str):
+    url = f"{ZEROONE_BASE_URL}/v2/a8r_provider.Game/List"
+    payload = {"casino_id": ZEROONE_CASINO_ID}
+    
+    # === التعديل الدقيق حسب رسالة فاديم ===
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    signature = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
+    
+    headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # استخدام content=body وليس json=payload
+            response = await client.post(url, content=body, headers=headers)
+            if response.status_code != 200:
+                print(f"🚨 01.TECH ERROR: {response.text}")
+                return {"error": response.text, "games": []}
+                
+            data = response.json()
+            all_games = []
+            base_image_url = data.get("image_assets", {}).get("base_url", "")
+            
+            if "providers" in data:
+                for provider in data["providers"]:
+                    provider_name = provider.get("name", "01TECH")
+                    for game in provider.get("games", []):
+                        is_live = game.get("live", False)
+                        game_cat = game.get("category", "").lower()
+                        
+                        if category == "live" and not is_live and "live" not in game_cat: continue
+                        if category == "slots" and (is_live or "live" in game_cat): continue
+
+                        img_url = ""
+                        if "images" in game:
+                            img_path = game["images"].get("square") or game["images"].get("horizontal")
+                            if img_path: img_url = f"{base_image_url}{img_path}"
                             
-                            // 💡 السطر السحري: حقن اسم المزود داخل اللعبة لتعمل بشكل صحيح عند الإطلاق
-                            gamesList = gamesList.map(g => ({...g, actual_provider: pCode}));
-                            allMixedGames = allMixedGames.concat(gamesList);
-                        }
-                    } catch (e) { console.warn("Erreur chargement:", pCode); }
-                }
+                        all_games.append({
+                            "game_code": game.get("id"),
+                            "game_name": game.get("title"),
+                            "provider": provider_name,
+                            "banner": img_url
+                        })
+            return {"games": all_games}
+        except Exception as e:
+            return {"error": str(e), "games": []}
 
-                // خلط الألعاب عشوائياً لتبدو كقائمة شاملة ومتنوعة
-                allMixedGames.sort(() => 0.5 - Math.random());
-                
-                // حفظ القائمة لتعمل بشكل متوافق مع محرك البحث
-                window.currentProviderGames = allMixedGames;
-                renderCasinoGrid();
-                
-            } catch (e) {
-                console.error("Erreur chargement lobby:", e);
-                if (grid) grid.innerHTML = '<div class="col-span-full text-red-500 text-center py-10 font-bold">Erreur de connexion</div>';
-            }
-        }
+# 3. مسار إطلاق اللعبة (تطبيق تعديلات فاديم)
+@app.post("/api/01tech/launch")
+async def launch_01tech_isolated(request: Request):
+    data = await request.json()
+    payload = {
+        "casino_id": ZEROONE_CASINO_ID,
+        "game_id": data.get("game_id"),
+        "account_id": str(data.get("account_id")),
+        "currency": "TND",
+        "session_id": str(uuid.uuid4()),
+        "language": "fr",
+        "return_url": "https://alphabet216.com/" 
+    }
+    
+    # === التعديل الدقيق حسب رسالة فاديم ===
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    signature = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
+    
+    headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
 
-        // تحديث دالة الرسم لتقرأ المزود الصحيح لكل لعبة مدمجة
-        function renderCasinoGrid() {
-            const container = document.getElementById('games-grid');
-            if (!container) return;
-
-            if (window.currentProviderGames.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-gray-500 text-center py-10">Aucun jeu trouvé.</div>';
-                return;
-            }
-
-            const gamesToDisplay = window.currentProviderGames;
-
-            container.innerHTML = gamesToDisplay.map(g => {
-                const title = escapeHTML(String(g.game_name || g.name || "Game"));
-                const img = g.banner || g.image || g.thumb || `https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}`;
-                const code = g.game_code || g.id;
-                
-                // 💡 التعديل هنا: استخدام المزود المحقون أو المزود الافتراضي
-                const correctProvider = g.actual_provider || currentActiveProviderCode;
-
-                return `
-    <div onclick="playCasinoGame('${correctProvider}', '${code}')" class="bg-[#0f1117] border border-[#212631] rounded-xl overflow-hidden cursor-pointer hover:border-emerald transition-all flex flex-col group shadow-lg relative">
-        ${g.actual_provider ? `<div class="absolute top-0 right-0 bg-black/80 text-emerald text-[8px] font-black px-2 py-1 rounded-bl-lg z-20 border-b border-l border-[#212631]">${g.actual_provider}</div>` : ''}
-        <div class="relative w-full aspect-square overflow-hidden bg-[#161922]">
-            <img src="${img}" alt="${title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.onerror=null; this.src='https://placehold.co/400x400/180A2B/10b981?text=${encodeURIComponent(title.substring(0, 15))}';">
-            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                <span class="bg-emerald text-black text-[10px] font-bold px-4 py-2 rounded-full shadow-lg">JOUER</span>
-            </div>
-        </div>
-        <div class="p-2 text-[10px] text-white font-bold truncate text-center">${title}</div>
-    </div>`;
-            }).join('');
-
-            const sentinel = document.getElementById('games-scroll-sentinel');
-            if (sentinel) sentinel.remove();
-        }
+    async with httpx.AsyncClient() as client:
+        try:
+            # استخدام content=body وليس json=payload
+            response = await client.post(f"{ZEROONE_BASE_URL}/v2/a8r_provider.Launcher/Real", content=body, headers=headers)
+            if response.status_code != 200: return {"error": response.text}
+            return {"game_url": response.json().get("url")}
+        except Exception as e:
+            return {"error": str(e)}
+# ======================================================================
