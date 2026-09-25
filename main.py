@@ -3041,8 +3041,34 @@ def verify_01tech_signature(body: bytes, signature: Optional[str]) -> bool:
     computed_sig = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(computed_sig, signature)
 
+# ---------------------------------------------------------
+# مسار جلب الرصيد (مطلوب عند فتح اللعبة مباشرة)
+# ---------------------------------------------------------
+@app.post("/v2/a8r_casino.Player/Balance")
+async def balance_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    # 1. التحقق من التشفير الأمني (لكي لا يسرق أحد الرصيد)
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): 
+        raise HTTPException(status_code=400, detail="Invalid Signature")
+        
+    data = await request.json()
+    player_id = str(data.get("player_id")) # المزود هنا يستخدم player_id
+    
+    async with db_lock:
+        db_data = load_db()
+        # البحث عن اللاعب في قاعدة بياناتك
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
+        
+        if not target_user: 
+            raise HTTPException(status_code=404, detail="Player not found")
+            
+        current_balance = float(target_user.get("balance", 0.0))
+        
+    # يجب إرجاع الرصيد كنص (String) كما تشترط الوثائق
+    return {"balance": f"{current_balance:.2f}"}
+
 # 1. مسارات المعاملات المالية
-@app.post("/v2/provider_a8r.Round/BetWin")
+@app.post("/v2/a8r_casino.Round/BetWin")
 async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
     if not verify_01tech_signature(body_bytes, x_request_sign): raise HTTPException(status_code=400, detail="Invalid Signature")
@@ -3089,11 +3115,11 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         finally: db_session.close()
     return {"balance": f"{current_balance:.2f}", "round_id": round_id, "transactions": processed_transactions}
 
-@app.post("/v2/provider_a8r.Round/Finish")
+@app.post("/v2/a8r_casino.Round/Finish")
 async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     return {"balance": "0.00"} 
 
-@app.post("/v2/provider_a8r.Round/Rollback")
+@app.post("/v2/a8r_casino.Round/Rollback")
 async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     return {"balance": "0.00", "round_id": "", "transactions": []}
 
