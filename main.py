@@ -3396,6 +3396,31 @@ EURO_APP_KEY = os.getenv("EURO_APP_KEY", "YOUR_APP_KEY")
 EURO_API_KEY = os.getenv("EURO_API_KEY", "YOUR_API_KEY")
 EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk")
 
+@app.get("/api/eurovirtuals/studios")
+async def get_eurovirtuals_studios():
+    """ جلب قائمة الاستوديوهات والمزودين المتاحين من المزود (Partners API) """
+    payload = {}
+    timestamp = str(int(time.time()))
+    signature = hash_create(payload, EURO_APP_KEY)
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp
+    }
+    
+    base_url_clean = str(EURO_BASE_URL).rstrip('/')
+    endpoint = f"{base_url_clean}/v1/partners"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(endpoint, headers=headers, timeout=20.0)
+            return response.json()
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
 @app.get("/api/eurovirtuals/studio-games/{partner_id}")
 async def get_games_by_partner_studio(partner_id: str):
     """ جلب ألعاب استوديو أو مزود محدد عبر الـ partner_id الخاص به """
