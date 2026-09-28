@@ -3396,9 +3396,9 @@ EURO_APP_KEY = os.getenv("EURO_APP_KEY", "YOUR_APP_KEY")
 EURO_API_KEY = os.getenv("EURO_API_KEY", "YOUR_API_KEY")
 EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk")
 
-@app.get("/api/eurovirtuals/studios")
-async def get_eurovirtuals_studios():
-    """ جلب قائمة الاستوديوهات (Partners) المتاحة """
+@app.get("/api/eurovirtuals/studio-games/{partner_id}")
+async def get_games_by_partner_studio(partner_id: str):
+    """ جلب ألعاب استوديو أو مزود محدد عبر الـ partner_id الخاص به """
     payload = {}
     timestamp = str(int(time.time()))
     signature = hash_create(payload, EURO_APP_KEY)
@@ -3412,15 +3412,21 @@ async def get_eurovirtuals_studios():
     }
     
     base_url_clean = str(EURO_BASE_URL).rstrip('/')
-    endpoint = f"{base_url_clean}/v1/partners"
+    endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}"
     
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(endpoint, headers=headers, timeout=20.0)
-            return response.json()
+            data = response.json()
+            
+            if data.get("status_code") == 200 or response.status_code == 200:
+                games_list = data.get("data", {}).get("data", []) if isinstance(data.get("data"), dict) else data.get("data", [])
+                return {"status": "success", "games": games_list}
+            else:
+                return {"status": "error", "details": data}
         except Exception as e:
-            return {"status": "error", "error": f"خطأ في الاتصال: {str(e)}"}
-
+            return {"status": "error", "error": str(e)}
+        
 @app.get("/api/get-eurovirtuals-games")
 async def fetch_eurovirtuals_games(partner_id: str = None):
     """ جلب الألعاب مع إمكانية التصفية حسب الاستوديو (partner_id) """
