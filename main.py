@@ -3386,3 +3386,79 @@ async def launch_01tech_isolated(request: Request):
             return {"game_url": response.json().get("launch_url")} 
         except Exception as e:
             return {"error": str(e)}
+        
+ # ==========================================
+# 🎮 دوال جلب الألعاب والاستوديوهات (EuroVirtuals)
+# ==========================================
+
+# تأكد من وجود هذه المتغيرات في أعلى الملف
+EURO_APP_KEY = os.getenv("EURO_APP_KEY", "YOUR_APP_KEY")
+EURO_API_KEY = os.getenv("EURO_API_KEY", "YOUR_API_KEY")
+EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk")
+
+@app.get("/api/eurovirtuals/studios")
+async def get_eurovirtuals_studios():
+    """ جلب قائمة الاستوديوهات (Partners) المتاحة """
+    payload = {}
+    timestamp = str(int(time.time()))
+    signature = hash_create(payload, EURO_APP_KEY)
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp
+    }
+    
+    base_url_clean = str(EURO_BASE_URL).rstrip('/')
+    endpoint = f"{base_url_clean}/v1/partners"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(endpoint, headers=headers, timeout=20.0)
+            return response.json()
+        except Exception as e:
+            return {"status": "error", "error": f"خطأ في الاتصال: {str(e)}"}
+
+@app.get("/api/get-eurovirtuals-games")
+async def fetch_eurovirtuals_games(partner_id: str = None):
+    """ جلب الألعاب مع إمكانية التصفية حسب الاستوديو (partner_id) """
+    payload = {}
+    timestamp = str(int(time.time()))
+    signature = hash_create(payload, EURO_APP_KEY)
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp
+    }
+    
+    base_url_clean = str(EURO_BASE_URL).rstrip('/')
+    # إضافة partner_id للرابط إذا تم تمريره، كما طلب المزود
+    endpoint = f"{base_url_clean}/v1/games"
+    if partner_id:
+        endpoint += f"?partner_id={partner_id}"
+        
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(endpoint, headers=headers, timeout=20.0)
+            data = response.json()
+            
+            if data.get("status_code") == 200:
+                games_list = data.get("data", {}).get("data", [])
+                
+                for game in games_list:
+                    image_url = game.get("logo") or game.get("thumbnail") or ""
+                    if image_url:
+                        game["image"] = image_url
+                        game["img"] = image_url
+                    game["game_code"] = game.get("uuid") or game.get("id")
+                    
+                return {"status": "success", "games": games_list}
+            else:
+                return {"status": "error", "error": data.get("status_description", "Unknown Error"), "details": data}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}      
