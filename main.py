@@ -3320,6 +3320,82 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
         try: os.rmdir(lock_dir)
         except: pass
         
+# ---------------------------------------------------------
+# 7. مسار اللفات المجانية (Freespins)
+# ---------------------------------------------------------
+@app.post("/v2/a8r_casino.Freespins/Issue")
+async def freespins_issue_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    # 1. فحص التوقيع (التشفير)
+    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
+    
+    data = await request.json()
+    player_data = data.get("player", {})
+    
+    # 2. الفحص الاستباقي للبيانات (Validation)
+    if player_data.get("currency") != "TND": return arg_error("154")
+    
+    games = data.get("games", [])
+    if not games or len(games) == 0: return arg_error("602")
+    
+    # 01Tech يسمح بـ bet_amount أو bet_level، وليس كلاهما، ولا يجوز غيابهما معاً
+    has_amount = "bet_amount" in data
+    has_level = "bet_level" in data
+    if has_amount and has_level: return arg_error()
+    if not has_amount and not has_level: return arg_error()
+    
+    casino_id = data.get("casino_id")
+    # تأكد أن ZEROONE_CASINO_ID تم تعريفه مسبقاً في ملفك (أو استخدم "alphabet1" مؤقتاً)
+    expected_casino_id = "alphabet1" 
+    if casino_id != expected_casino_id: return arg_error()
+    
+    issue_id = data.get("issue_id")
+    if issue_id and len(str(issue_id)) > 255: return arg_error()
+    
+    player_id = str(player_data.get("id", ""))
+    
+    # 3. قفل الملف الذري لضمان عدم تعارض العمال (Workers)
+    lock_dir = "db_json.lock"
+    while True:
+        try: os.mkdir(lock_dir); break
+        except FileExistsError:
+            if os.path.getmtime(lock_dir) < time.time() - 3:
+                try: os.rmdir(lock_dir)
+                except: pass
+            await asyncio.sleep(0.05)
+            
+    try:
+        db_data = load_db()
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
+        if not target_user: return arg_error("101")
+        
+        # 4. منع تكرار نفس الحملة (Idempotency) أو تعديلها
+        if "freespins_log" not in target_user:
+            target_user["freespins_log"] = []
+            
+        existing_issue = next((f for f in target_user["freespins_log"] if f["issue_id"] == issue_id), None)
+        if existing_issue:
+            # إذا أرسل نفس الـ issue_id ولكن مع عدد لفات مختلف (تلاعب)، نرفضه بـ 409
+            if str(existing_issue.get("quantity")) != str(data.get("freespins_quantity")):
+                return arg_error("409")
+            # إذا كان الطلب متطابقاً تماماً، نعيد 200 (Idempotent)
+            return JSONResponse(status_code=200, content={})
+        
+        # 5. حفظ حملة اللفات المجانية للمستخدم
+        target_user["freespins_log"].append({
+            "issue_id": issue_id,
+            "quantity": str(data.get("freespins_quantity", 0)),
+            "valid_until": data.get("valid_until", "")
+        })
+        
+        save_db(db_data)
+        return JSONResponse(status_code=200, content={})
+        
+    except Exception as e:
+        return arg_error()
+    finally:
+        try: os.rmdir(lock_dir)
+        except: pass        
         
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
