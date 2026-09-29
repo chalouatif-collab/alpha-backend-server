@@ -3110,9 +3110,41 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 amount = Decimal(str(tx.get("amount", "0")))
                 tx_type = tx.get("type")
                 
+                # 1. مساهمة الجاكبوت القديمة أكبر من الرهان
+                if "jackpot_contribution" in tx and Decimal(str(tx["jackpot_contribution"])) > amount:
+                    return arg_error()
+                # 2. ربح الجاكبوت القديم أكبر من الربح الفعلي
+                if "jackpot_win" in tx and Decimal(str(tx["jackpot_win"])) > amount:
+                    return arg_error()
+                
+                # 3. التحقق من كائن الجاكبوت الجديد
+                if "jackpot_details" in tx:
+                    j_details = tx["jackpot_details"]
+                    # لا يجب أن يكون الكائن فارغاً
+                    if not j_details:
+                        return arg_error()
+                    
+                    # إجمالي المساهمة أكبر من الرهان
+                    if "total_contribution" in j_details and Decimal(str(j_details["total_contribution"])) > amount:
+                        return arg_error()
+                    
+                    # إجمالي الربح أكبر من الربح الفعلي
+                    if "total_win" in j_details and Decimal(str(j_details["total_win"])) > amount:
+                        return arg_error()
+                    
+                    # التحقق من التفاصيل الدقيقة (Breakdown)
+                    if "breakdown" in j_details:
+                        for b in j_details["breakdown"]:
+                            # طول الـ ID يتجاوز 255 حرف
+                            if "id" in b and len(str(b["id"])) > 255:
+                                return arg_error()
+                            # مفقود قيمة الربح والمساهمة معاً
+                            if "contribution" not in b and "win" not in b:
+                                return arg_error()
+                # --------------------------------------------------------
+
                 existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
                 if existing_tx:
-                    # إذا كانت موجودة، نرجع نفس الـ ID الخاص بها (مثل 231)
                     processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(existing_tx.id)})
                     continue
                 
@@ -3123,11 +3155,7 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                     
                 new_tx = Transaction(admin_username="01TECH", target_username=target_user.get("username", player_id), action=tx_type, amount=float(amount), tx_id=req_tx_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 db_session.add(new_tx)
-                
-                # السطر السحري: يجبر قاعدة البيانات على توليد المعرف (ID) فوراً دون انتظار الـ commit
                 db_session.flush() 
-                
-                # نستخدم المعرف الحقيقي لقاعدة البيانات ليكون متطابقاً دائماً في حال تكرار الطلب
                 processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(new_tx.id)})
             
             db_session.commit()
@@ -3140,7 +3168,8 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
             db_session.close()
             
     return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
-# ---------------------------------------------------------
+            
+            
 # 3. مسار الرهان المنفصل
 # ---------------------------------------------------------
 @app.post("/v2/a8r_casino.Round/Bet")
