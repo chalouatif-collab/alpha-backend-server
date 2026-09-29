@@ -3399,7 +3399,83 @@ async def freespins_issue_01tech(request: Request, x_request_sign: Optional[str]
         return arg_error()
     finally:
         try: os.rmdir(lock_dir)
-        except: pass        
+        except: pass   
+        
+# ---------------------------------------------------------
+# 8. مسار إنهاء اللفات المجانية وإضافة الأرباح (Freespins Finish)
+# ---------------------------------------------------------
+@app.post("/v2/a8r_casino.Freespins/Finish")
+async def freespins_finish_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
+    body_bytes = await request.body()
+    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
+    
+    data = await request.json()
+    issue_id = data.get("issue_id")
+    amount = data.get("amount")
+    
+    if issue_id is None or amount is None: return arg_error()
+    
+    # قفل الملفات لتنظيم العمال (Workers) ومنع تداخل العمليات
+    lock_dir = "db_json.lock"
+    while True:
+        try: os.mkdir(lock_dir); break
+        except FileExistsError:
+            if os.path.getmtime(lock_dir) < time.time() - 3:
+                try: os.rmdir(lock_dir)
+                except: pass
+            await asyncio.sleep(0.05)
+            
+    try:
+        db_data = load_db()
+        target_user = None
+        target_issue = None
+        
+        # البحث في قاعدة البيانات عن اللاعب صاحب الـ issue_id
+        for u in db_data:
+            if "freespins_log" in u:
+                for f in u["freespins_log"]:
+                    if f["issue_id"] == issue_id:
+                        target_user = u
+                        target_issue = f
+                        break
+            if target_user: break
+            
+        # إذا لم نجد الحملة (مما يعني أن المزود يرسل معرفاً وهمياً) نرفض الطلب بـ 400
+        if not target_user or not target_issue:
+            return arg_error("400")
+            
+        current_balance = Decimal(str(target_user.get("balance", 0.0)))
+        
+        # التحقق من التكرار الآمن (Idempotency): إذا كانت الحملة منتهية مسبقاً
+        if target_issue.get("status") == "finished":
+            # إذا اختلفت قيمة الربح عما هو مسجل لدينا، فهذا تلاعب نرفضه بـ 409
+            if target_issue.get("finished_amount") != str(amount):
+                return arg_error("409")
+            
+            reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
+            return {"balance": f"{reported_balance:.2f}"}
+            
+        # إذا كانت الحملة جديدة، نقوم بإضافة الأرباح للرصيد
+        win_amount = Decimal(str(amount))
+        if win_amount < 0: return arg_error()
+        
+        current_balance += win_amount
+        
+        # توثيق الإغلاق لمنع إضافة المبلغ مرة أخرى مستقبلاً
+        target_issue["status"] = "finished"
+        target_issue["finished_amount"] = str(amount)
+        target_user["balance"] = str(current_balance)
+        
+        save_db(db_data)
+        
+        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
+        return {"balance": f"{reported_balance:.2f}"}
+        
+    except Exception as e:
+        return arg_error()
+    finally:
+        try: os.rmdir(lock_dir)
+        except: pass             
         
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
