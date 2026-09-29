@@ -3048,9 +3048,8 @@ from fastapi.responses import JSONResponse
 def sig_error():
     return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Forbidden.", "meta": {"api_code": "403", "api_message": "Forbidden."}})
 
-def arg_error():
-    return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Invalid argument.", "meta": {"api_code": "400", "api_message": "Invalid argument."}})
-
+def arg_error(api_code="400"):
+    return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Invalid argument.", "meta": {"api_code": str(api_code), "api_message": "Invalid argument."}})
 # ---------------------------------------------------------
 # 1. مسار جلب الرصيد
 # ---------------------------------------------------------
@@ -3090,7 +3089,53 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
     
     data = await request.json()
-    if data.get("currency") != "TND": return arg_error()
+    
+    # فحص العملة (يعيد 154)
+    if data.get("currency") != "TND": return arg_error("154")
+    
+    transactions = data.get("transactions", [])
+    # فحص المصفوفة الفارغة
+    if not transactions or len(transactions) == 0: return arg_error()
+    
+    # --- 🛡️ الفحص الاستباقي للطلب (Pre-validation) 🛡️ ---
+    req_tx_ids = set()
+    total_bet_amount = Decimal('0')
+    
+    for tx in transactions:
+        tx_id = tx.get("id")
+        tx_type = tx.get("type")
+        
+        # فحص المعرف المفقود
+        if not tx_id: return arg_error()
+        
+        # فحص المعرفات المكررة في نفس الطلب
+        if tx_id in req_tx_ids: return arg_error()
+        req_tx_ids.add(tx_id)
+        
+        # فحص نوع المعاملة
+        if tx_type not in ["bet", "win"]: return arg_error()
+        
+        amount = Decimal(str(tx.get("amount", "0")))
+        if amount < 0: return arg_error()
+        
+        if tx_type == "bet":
+            total_bet_amount += amount
+            
+        # فحص الجواكيب القديمة
+        if "jackpot_contribution" in tx and Decimal(str(tx["jackpot_contribution"])) > amount: return arg_error()
+        if "jackpot_win" in tx and Decimal(str(tx["jackpot_win"])) > amount: return arg_error()
+        
+        # فحص كائن الجاكبوت الجديد
+        if "jackpot_details" in tx:
+            j_details = tx["jackpot_details"]
+            if not j_details: return arg_error()
+            if "total_contribution" in j_details and Decimal(str(j_details["total_contribution"])) > amount: return arg_error()
+            if "total_win" in j_details and Decimal(str(j_details["total_win"])) > amount: return arg_error()
+            if "breakdown" in j_details:
+                for b in j_details["breakdown"]:
+                    if "id" in b and len(str(b["id"])) > 255: return arg_error()
+                    if "contribution" not in b and "win" not in b: return arg_error()
+    # --------------------------------------------------------
     
     player_id = str(data.get("player_id", ""))
     round_id_casino = str(uuid.uuid4())
@@ -3098,53 +3143,29 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
     async with db_lock:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error()
+        
+        # فحص اللاعب غير الموجود (يعيد 101)
+        if not target_user: return arg_error("101")
         
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
+        
+        # فحص الرصيد الكافي (يعيد 100)
+        if current_balance < total_bet_amount: return arg_error("100")
+        
         processed_transactions = []
         db_session = SessionLocal()
         
         try:
-            for tx in data.get("transactions", []):
+            for tx in transactions:
                 req_tx_id = tx.get("id")
                 amount = Decimal(str(tx.get("amount", "0")))
                 tx_type = tx.get("type")
                 
-                # 1. مساهمة الجاكبوت القديمة أكبر من الرهان
-                if "jackpot_contribution" in tx and Decimal(str(tx["jackpot_contribution"])) > amount:
-                    return arg_error()
-                # 2. ربح الجاكبوت القديم أكبر من الربح الفعلي
-                if "jackpot_win" in tx and Decimal(str(tx["jackpot_win"])) > amount:
-                    return arg_error()
-                
-                # 3. التحقق من كائن الجاكبوت الجديد
-                if "jackpot_details" in tx:
-                    j_details = tx["jackpot_details"]
-                    # لا يجب أن يكون الكائن فارغاً
-                    if not j_details:
-                        return arg_error()
-                    
-                    # إجمالي المساهمة أكبر من الرهان
-                    if "total_contribution" in j_details and Decimal(str(j_details["total_contribution"])) > amount:
-                        return arg_error()
-                    
-                    # إجمالي الربح أكبر من الربح الفعلي
-                    if "total_win" in j_details and Decimal(str(j_details["total_win"])) > amount:
-                        return arg_error()
-                    
-                    # التحقق من التفاصيل الدقيقة (Breakdown)
-                    if "breakdown" in j_details:
-                        for b in j_details["breakdown"]:
-                            # طول الـ ID يتجاوز 255 حرف
-                            if "id" in b and len(str(b["id"])) > 255:
-                                return arg_error()
-                            # مفقود قيمة الربح والمساهمة معاً
-                            if "contribution" not in b and "win" not in b:
-                                return arg_error()
-                # --------------------------------------------------------
-
                 existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
                 if existing_tx:
+                    # فحص إعادة استخدام المعرف لغرض مختلف (يعيد 409)
+                    if existing_tx.action != tx_type:
+                        return arg_error("409")
                     processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(existing_tx.id)})
                     continue
                 
@@ -3167,9 +3188,7 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         finally: 
             db_session.close()
             
-    return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
-            
-            
+    return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}            
 # 3. مسار الرهان المنفصل
 # ---------------------------------------------------------
 @app.post("/v2/a8r_casino.Round/Bet")
