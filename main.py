@@ -3090,7 +3090,6 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
     data = await request.json()
     
     if data.get("currency") != "TND": return arg_error("154")
-    
     transactions = data.get("transactions", [])
     if not transactions or len(transactions) == 0: return arg_error()
     
@@ -3104,14 +3103,12 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         if tx_id in req_tx_ids: return arg_error()
         req_tx_ids.add(tx_id)
         if tx_type not in ["bet", "win"]: return arg_error()
-        
         amount = Decimal(str(tx.get("amount", "0")))
         if amount < 0: return arg_error()
         if tx_type == "bet": total_bet_amount += amount
-            
+        
         if "jackpot_contribution" in tx and Decimal(str(tx["jackpot_contribution"])) > amount: return arg_error()
         if "jackpot_win" in tx and Decimal(str(tx["jackpot_win"])) > amount: return arg_error()
-        
         if "jackpot_details" in tx:
             j_details = tx["jackpot_details"]
             if not j_details: return arg_error()
@@ -3133,44 +3130,43 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
         if current_balance < total_bet_amount: return arg_error("100")
         
+        # إنشاء سجل المعاملات داخل ملف JSON إذا لم يكن موجوداً
+        if "transactions_log" not in target_user:
+            target_user["transactions_log"] = []
+            
         processed_transactions = []
-        db_session = SessionLocal()
-        
         try:
             for tx in transactions:
                 req_tx_id = tx.get("id")
                 amount = Decimal(str(tx.get("amount", "0")))
                 tx_type = tx.get("type")
                 
-                existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
+                # التحقق من المعاملات السابقة داخل ملف JSON
+                existing_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
                 if existing_tx:
-                    # 🛡️ السماح بمرور المعاملات "الملغاة مسبقاً" دون التأثير على الرصيد أو إعطاء خطأ 409
-                    if existing_tx.action not in [tx_type, "canceled"] and "rolledback" not in existing_tx.action:
+                    if existing_tx["action"] not in [tx_type, "canceled"] and "rolledback" not in existing_tx["action"]:
                         return arg_error("409")
-                    processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(existing_tx.id)})
+                    processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": existing_tx["id_casino"]})
                     continue
                 
-                if tx_type == "bet":
-                    current_balance -= amount
-                elif tx_type == "win":
-                    current_balance += amount
+                if tx_type == "bet": current_balance -= amount
+                elif tx_type == "win": current_balance += amount
                     
-                new_tx = Transaction(admin_username="01TECH", target_username=target_user.get("username", player_id), action=tx_type, amount=float(amount), tx_id=req_tx_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                db_session.add(new_tx)
-                db_session.flush() 
-                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(new_tx.id)})
+                casino_tx_id = str(uuid.uuid4())
+                target_user["transactions_log"].append({
+                    "id_casino": casino_tx_id,
+                    "tx_id": req_tx_id,
+                    "action": tx_type,
+                    "amount": str(amount)
+                })
+                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": casino_tx_id})
             
-            db_session.commit()
             target_user["balance"] = str(current_balance)
             save_db(db_data)
         except Exception as e:
-            db_session.rollback()
             return arg_error()
-        finally: 
-            db_session.close()
             
     return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
-
 # ---------------------------------------------------------
 # 3. مسار الرهان المنفصل
 # ---------------------------------------------------------
@@ -3210,10 +3206,8 @@ async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = 
 async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    
     data = await request.json()
     if data.get("currency") != "TND": return arg_error("154")
-    
     player_id = str(data.get("player_id", ""))
     
     async with db_lock:
@@ -3222,56 +3216,51 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
         if not target_user: return arg_error("101")
         
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
+        if "transactions_log" not in target_user:
+            target_user["transactions_log"] = []
+            
         processed_transactions = []
-        db_session = SessionLocal()
         
         try:
             for tx in data.get("transactions", []):
                 req_tx_id = tx.get("id")
                 original_id = tx.get("original_id")
                 
-                # 1. منع تكرار نفس الإلغاء (Idempotency)
-                existing_rollback = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
+                existing_rollback = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
                 if existing_rollback:
-                    processed_transactions.append({"id": req_tx_id, "id_casino": str(existing_rollback.id)})
+                    processed_transactions.append({"id": req_tx_id, "id_casino": existing_rollback["id_casino"]})
                     continue
                 
-                # 2. البحث عن المعاملة الأصلية
-                orig_tx = db_session.query(Transaction).filter(Transaction.tx_id == original_id).first()
+                # البحث عن المعاملة الأصلية في ملف الـ JSON
+                orig_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == original_id), None)
                 
                 if orig_tx:
-                    # 3. منع الإلغاء المتكرر لمعاملة أُلغيت مسبقاً
-                    if "rolledback" not in orig_tx.action and orig_tx.action != "canceled":
-                        amount = Decimal(str(orig_tx.amount))
-                        if orig_tx.action == "bet":
-                            current_balance += amount 
-                        elif orig_tx.action == "win":
-                            current_balance -= amount 
-                        
-                        # وسم المعاملة بأنها "ملغاة" لكي لا تلغى مرة أخرى
-                        orig_tx.action = f"{orig_tx.action}_rolledback"
+                    if "rolledback" not in orig_tx["action"] and orig_tx["action"] != "canceled":
+                        amount = Decimal(orig_tx["amount"])
+                        if orig_tx["action"] == "bet": current_balance += amount 
+                        elif orig_tx["action"] == "win": current_balance -= amount 
+                        # وسم المعاملة
+                        orig_tx["action"] = f"{orig_tx['action']}_rolledback"
                 else:
-                     # 4. السفر عبر الزمن (الرهان لم يصل بعد): ننشئ معاملة وهمية ملغاة مسبقاً
-                     dummy_tx = Transaction(admin_username="01TECH", target_username=player_id, action="canceled", amount=0.0, tx_id=original_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                     db_session.add(dummy_tx)
+                     dummy_tx_id = str(uuid.uuid4())
+                     target_user["transactions_log"].append({
+                         "id_casino": dummy_tx_id, "tx_id": original_id, "action": "canceled", "amount": "0.0"
+                     })
 
-                # حفظ طلب الإلغاء نفسه كإثبات
-                new_rollback_tx = Transaction(admin_username="01TECH", target_username=player_id, action="rollback", amount=0.0, tx_id=req_tx_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                db_session.add(new_rollback_tx)
-                db_session.flush()
-                
-                processed_transactions.append({"id": req_tx_id, "id_casino": str(new_rollback_tx.id)})
+                new_rollback_id = str(uuid.uuid4())
+                target_user["transactions_log"].append({
+                    "id_casino": new_rollback_id, "tx_id": req_tx_id, "action": "rollback", "amount": "0.0"
+                })
+                processed_transactions.append({"id": req_tx_id, "id_casino": new_rollback_id})
 
-            db_session.commit()
             target_user["balance"] = str(current_balance)
             save_db(db_data)
         except Exception as e:
-            db_session.rollback()
             return arg_error()
-        finally:
-            db_session.close()
             
     return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", str(uuid.uuid4())), "transactions": processed_transactions}
+
+
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
     url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
