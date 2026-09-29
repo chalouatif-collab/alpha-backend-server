@@ -3112,6 +3112,7 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 
                 existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
                 if existing_tx:
+                    # إذا كانت موجودة، نرجع نفس الـ ID الخاص بها (مثل 231)
                     processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(existing_tx.id)})
                     continue
                 
@@ -3120,14 +3121,16 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 elif tx_type == "win":
                     current_balance += amount
                     
-                casino_tx_id = str(uuid.uuid4())
                 new_tx = Transaction(admin_username="01TECH", target_username=target_user.get("username", player_id), action=tx_type, amount=float(amount), tx_id=req_tx_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 db_session.add(new_tx)
                 
-                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": casino_tx_id})
+                # السطر السحري: يجبر قاعدة البيانات على توليد المعرف (ID) فوراً دون انتظار الـ commit
+                db_session.flush() 
+                
+                # نستخدم المعرف الحقيقي لقاعدة البيانات ليكون متطابقاً دائماً في حال تكرار الطلب
+                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(new_tx.id)})
             
             db_session.commit()
-            # الحفظ كنص (String) في قاعدة البيانات لمنع بايثون من تشويه الأرقام الضخمة
             target_user["balance"] = str(current_balance)
             save_db(db_data)
         except Exception as e:
@@ -3137,7 +3140,6 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
             db_session.close()
             
     return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
-
 # ---------------------------------------------------------
 # 3. مسار الرهان المنفصل
 # ---------------------------------------------------------
