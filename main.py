@@ -3215,12 +3215,23 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
     if not transactions or len(transactions) == 0: return arg_error()
     
     req_tx_ids = set()
+    req_orig_ids = set() # 🛡️ سلة جديدة لتتبع المعرفات الأصلية
+    
     for tx in transactions:
         req_tx_id = tx.get("id")
+        orig_tx_id = tx.get("original_id")
+        
         if not req_tx_id: return arg_error()
+        
+        # فحص تكرار معرف الإلغاء الجديد
         if req_tx_id in req_tx_ids: return arg_error()
         req_tx_ids.add(req_tx_id)
         
+        # 🛡️ فحص تكرار المعرف الأصلي المستهدف في نفس الطلب
+        if orig_tx_id:
+            if orig_tx_id in req_orig_ids: return arg_error()
+            req_orig_ids.add(orig_tx_id)
+            
     player_id = str(data.get("player_id", ""))
     
     async with db_lock:
