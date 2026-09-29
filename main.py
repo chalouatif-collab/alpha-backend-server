@@ -3349,7 +3349,7 @@ async def launch_01tech_isolated(request: Request):
         "game": data.get("game_id"), # Uses 'game' as per docs
         "ip": "8.8.8.8", 
         "jurisdiction": "UK",
-        "locale": "en-GB",
+        "locale": "en",
         "player": {
             "country": "UK", 
             "currency": "TND",
