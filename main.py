@@ -3087,45 +3087,31 @@ async def balance_01tech(request: Request, x_request_sign: Optional[str] = Heade
 async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    
     data = await request.json()
     
-    # فحص العملة (يعيد 154)
     if data.get("currency") != "TND": return arg_error("154")
     
     transactions = data.get("transactions", [])
-    # فحص المصفوفة الفارغة
     if not transactions or len(transactions) == 0: return arg_error()
     
-    # --- 🛡️ الفحص الاستباقي للطلب (Pre-validation) 🛡️ ---
     req_tx_ids = set()
     total_bet_amount = Decimal('0')
     
     for tx in transactions:
         tx_id = tx.get("id")
         tx_type = tx.get("type")
-        
-        # فحص المعرف المفقود
         if not tx_id: return arg_error()
-        
-        # فحص المعرفات المكررة في نفس الطلب
         if tx_id in req_tx_ids: return arg_error()
         req_tx_ids.add(tx_id)
-        
-        # فحص نوع المعاملة
         if tx_type not in ["bet", "win"]: return arg_error()
         
         amount = Decimal(str(tx.get("amount", "0")))
         if amount < 0: return arg_error()
-        
-        if tx_type == "bet":
-            total_bet_amount += amount
+        if tx_type == "bet": total_bet_amount += amount
             
-        # فحص الجواكيب القديمة
         if "jackpot_contribution" in tx and Decimal(str(tx["jackpot_contribution"])) > amount: return arg_error()
         if "jackpot_win" in tx and Decimal(str(tx["jackpot_win"])) > amount: return arg_error()
         
-        # فحص كائن الجاكبوت الجديد
         if "jackpot_details" in tx:
             j_details = tx["jackpot_details"]
             if not j_details: return arg_error()
@@ -3135,7 +3121,6 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 for b in j_details["breakdown"]:
                     if "id" in b and len(str(b["id"])) > 255: return arg_error()
                     if "contribution" not in b and "win" not in b: return arg_error()
-    # --------------------------------------------------------
     
     player_id = str(data.get("player_id", ""))
     round_id_casino = str(uuid.uuid4())
@@ -3143,13 +3128,9 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
     async with db_lock:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        
-        # فحص اللاعب غير الموجود (يعيد 101)
         if not target_user: return arg_error("101")
         
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        
-        # فحص الرصيد الكافي (يعيد 100)
         if current_balance < total_bet_amount: return arg_error("100")
         
         processed_transactions = []
@@ -3163,8 +3144,8 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 
                 existing_tx = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
                 if existing_tx:
-                    # فحص إعادة استخدام المعرف لغرض مختلف (يعيد 409)
-                    if existing_tx.action != tx_type:
+                    # 🛡️ السماح بمرور المعاملات "الملغاة مسبقاً" دون التأثير على الرصيد أو إعطاء خطأ 409
+                    if existing_tx.action not in [tx_type, "canceled"] and "rolledback" not in existing_tx.action:
                         return arg_error("409")
                     processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": str(existing_tx.id)})
                     continue
@@ -3188,7 +3169,9 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         finally: 
             db_session.close()
             
-    return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}            
+    return {"balance": f"{current_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
+
+# ---------------------------------------------------------
 # 3. مسار الرهان المنفصل
 # ---------------------------------------------------------
 @app.post("/v2/a8r_casino.Round/Bet")
@@ -3205,30 +3188,21 @@ async def round_win_01tech(request: Request, x_request_sign: Optional[str] = Hea
 # ---------------------------------------------------------
 # 5. مسار إنهاء الجولة
 # ---------------------------------------------------------
-# ---------------------------------------------------------
-# 5. مسار إنهاء الجولة
-# ---------------------------------------------------------
 @app.post("/v2/a8r_casino.Round/Finish")
 async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    
     data = await request.json()
-    
-    # الرد برمز 154 إذا كانت العملة غير مدعومة
     if data.get("currency") != "TND": return arg_error("154")
-    
     player_id = str(data.get("player_id", ""))
+    
     async with db_lock:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        
-        # الرد برمز 101 إذا كان اللاعب غير موجود
         if not target_user: return arg_error("101")
-        
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        
-    return {"balance": f"{current_balance:.2f}"}
+    return {"balance": f"{current_balance:.2f}"} 
+
 # ---------------------------------------------------------
 # 6. مسار الإلغاء الاسترجاعي (Rollback) المبرمج بالكامل
 # ---------------------------------------------------------
@@ -3238,14 +3212,14 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
     
     data = await request.json()
-    if data.get("currency") != "TND": return arg_error()
+    if data.get("currency") != "TND": return arg_error("154")
     
     player_id = str(data.get("player_id", ""))
     
     async with db_lock:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error()
+        if not target_user: return arg_error("101")
         
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
         processed_transactions = []
@@ -3256,23 +3230,37 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
                 req_tx_id = tx.get("id")
                 original_id = tx.get("original_id")
                 
-                # البحث عن المعاملة الأصلية لعكس تأثيرها
+                # 1. منع تكرار نفس الإلغاء (Idempotency)
+                existing_rollback = db_session.query(Transaction).filter(Transaction.tx_id == req_tx_id).first()
+                if existing_rollback:
+                    processed_transactions.append({"id": req_tx_id, "id_casino": str(existing_rollback.id)})
+                    continue
+                
+                # 2. البحث عن المعاملة الأصلية
                 orig_tx = db_session.query(Transaction).filter(Transaction.tx_id == original_id).first()
                 
                 if orig_tx:
-                    amount = Decimal(str(orig_tx.amount))
-                    if orig_tx.action == "bet":
-                        current_balance += amount # استرجاع مبلغ الرهان
-                    elif orig_tx.action == "win":
-                        current_balance -= amount # سحب مبلغ الربح الملغى
+                    # 3. منع الإلغاء المتكرر لمعاملة أُلغيت مسبقاً
+                    if "rolledback" not in orig_tx.action and orig_tx.action != "canceled":
+                        amount = Decimal(str(orig_tx.amount))
+                        if orig_tx.action == "bet":
+                            current_balance += amount 
+                        elif orig_tx.action == "win":
+                            current_balance -= amount 
                         
-                    casino_tx_id = str(uuid.uuid4())
-                    new_tx = Transaction(admin_username="01TECH", target_username=player_id, action=f"rollback_{orig_tx.action}", amount=float(amount), tx_id=req_tx_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                    db_session.add(new_tx)
-                    processed_transactions.append({"id": req_tx_id, "id_casino": casino_tx_id})
+                        # وسم المعاملة بأنها "ملغاة" لكي لا تلغى مرة أخرى
+                        orig_tx.action = f"{orig_tx.action}_rolledback"
                 else:
-                     # إذا لم يتم العثور على المعاملة، نعتبرها ملغاة مسبقاً كما تنص القوانين
-                     processed_transactions.append({"id": req_tx_id, "id_casino": str(uuid.uuid4())})
+                     # 4. السفر عبر الزمن (الرهان لم يصل بعد): ننشئ معاملة وهمية ملغاة مسبقاً
+                     dummy_tx = Transaction(admin_username="01TECH", target_username=player_id, action="canceled", amount=0.0, tx_id=original_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                     db_session.add(dummy_tx)
+
+                # حفظ طلب الإلغاء نفسه كإثبات
+                new_rollback_tx = Transaction(admin_username="01TECH", target_username=player_id, action="rollback", amount=0.0, tx_id=req_tx_id, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                db_session.add(new_rollback_tx)
+                db_session.flush()
+                
+                processed_transactions.append({"id": req_tx_id, "id_casino": str(new_rollback_tx.id)})
 
             db_session.commit()
             target_user["balance"] = str(current_balance)
