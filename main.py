@@ -3348,10 +3348,10 @@ async def launch_01tech_isolated(request: Request):
         "client_type": "desktop",
         "game": data.get("game_id"), # Uses 'game' as per docs
         "ip":"102.104.167.52", 
-        "jurisdiction": "DE",
-        "locale": "fr",
+        "jurisdiction": "UK",
+        "locale": "en-GB",
         "player": {
-            "country": "TN", 
+            "country": "UK", 
             "currency": "TND",
             "date_of_birth": "1987-02-03T00:00:00Z", # Hardcoded birth date
             "email": "test@alphabet216.com",
