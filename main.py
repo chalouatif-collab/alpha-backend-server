@@ -3205,22 +3205,30 @@ async def round_win_01tech(request: Request, x_request_sign: Optional[str] = Hea
 # ---------------------------------------------------------
 # 5. مسار إنهاء الجولة
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# 5. مسار إنهاء الجولة
+# ---------------------------------------------------------
 @app.post("/v2/a8r_casino.Round/Finish")
 async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
     body_bytes = await request.body()
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
+    
     data = await request.json()
-    if data.get("currency") != "TND": return arg_error()
+    
+    # الرد برمز 154 إذا كانت العملة غير مدعومة
+    if data.get("currency") != "TND": return arg_error("154")
     
     player_id = str(data.get("player_id", ""))
     async with db_lock:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error()
+        
+        # الرد برمز 101 إذا كان اللاعب غير موجود
+        if not target_user: return arg_error("101")
+        
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
         
-    return {"balance": f"{current_balance:.2f}"} 
-
+    return {"balance": f"{current_balance:.2f}"}
 # ---------------------------------------------------------
 # 6. مسار الإلغاء الاسترجاعي (Rollback) المبرمج بالكامل
 # ---------------------------------------------------------
