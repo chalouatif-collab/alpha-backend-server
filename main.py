@@ -3337,6 +3337,10 @@ async def freespins_issue_01tech(request: Request, x_request_sign: Optional[str]
     
     games = data.get("games", [])
     if not games or len(games) == 0: return arg_error("602")
+    # فحص الألعاب الوهمية (نقبل فقط اللعبة الاختبارية المعتمدة)
+    for game in games:
+        if game != "test-provider:test_game":
+            return arg_error()
     
     # 01Tech يسمح بـ bet_amount أو bet_level، وليس كلاهما، ولا يجوز غيابهما معاً
     has_amount = "bet_amount" in data
