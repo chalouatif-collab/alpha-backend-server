@@ -3050,9 +3050,9 @@ def sig_error():
 
 def arg_error(api_code="400"):
     return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Invalid argument.", "meta": {"api_code": str(api_code), "api_message": "Invalid argument."}})
-# ---------------------------------------------------------
-# 1. مسار جلب الرصيد
-# ---------------------------------------------------------
+import os
+import time
+
 # ---------------------------------------------------------
 # 1. مسار جلب الرصيد
 # ---------------------------------------------------------
@@ -3062,17 +3062,28 @@ async def balance_01tech(request: Request, x_request_sign: Optional[str] = Heade
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
     data = await request.json()
     if data.get("currency") != "TND": return arg_error("154")
-    
     player_id = str(data.get("player_id", ""))
-    async with db_lock:
+    
+    # 🛡️ قفل الملفات الذري (يمنع تداخل العمال في Render)
+    lock_dir = "db_json.lock"
+    while True:
+        try: os.mkdir(lock_dir); break
+        except FileExistsError:
+            if os.path.getmtime(lock_dir) < time.time() - 3:
+                try: os.rmdir(lock_dir)
+                except: pass
+            await asyncio.sleep(0.05)
+            
+    try:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
         if not target_user: return arg_error("101")
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        
-    # إخفاء الرصيد السالب كما يطلب المزود
-    reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-    return {"balance": f"{reported_balance:.2f}"}
+        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
+        return {"balance": f"{reported_balance:.2f}"}
+    finally:
+        try: os.rmdir(lock_dir)
+        except: pass
 
 # ---------------------------------------------------------
 # 2. مسار المعاملات المزدوجة (رهان وربح)
@@ -3082,15 +3093,24 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
     body_bytes = await request.body()
     if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
     data = await request.json()
-    
     if data.get("currency") != "TND": return arg_error("154")
+    
     transactions = data.get("transactions", [])
     if not transactions or len(transactions) == 0: return arg_error()
     
     player_id = str(data.get("player_id", ""))
     round_id_casino = str(uuid.uuid4())
     
-    async with db_lock:
+    lock_dir = "db_json.lock"
+    while True:
+        try: os.mkdir(lock_dir); break
+        except FileExistsError:
+            if os.path.getmtime(lock_dir) < time.time() - 3:
+                try: os.rmdir(lock_dir)
+                except: pass
+            await asyncio.sleep(0.05)
+            
+    try:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
         if not target_user: return arg_error("101")
@@ -3099,7 +3119,6 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
         if "transactions_log" not in target_user:
             target_user["transactions_log"] = []
             
-        # فحص استباقي متسلسل لضمان عدم نزول الرصيد تحت الصفر أثناء الرهان
         req_tx_ids = set()
         temp_balance = current_balance
         
@@ -3124,7 +3143,8 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 if "breakdown" in j_details:
                     for b in j_details["breakdown"]:
                         if "id" in b and len(str(b["id"])) > 255: return arg_error()
-                        if "contribution" not in b and "win" not in b: return arg_error()
+                        # السماح بمرور الحقول الاختيارية 
+                        if "contribution" not in b and "win" not in b and "bet_id" not in tx: return arg_error()
 
             existing_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == tx_id), None)
             if existing_tx:
@@ -3139,33 +3159,34 @@ async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Heade
                 temp_balance += amount
 
         processed_transactions = []
-        try:
-            for tx in transactions:
-                req_tx_id = tx.get("id")
-                amount = Decimal(str(tx.get("amount", "0")))
-                tx_type = tx.get("type")
-                
-                existing_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
-                if existing_tx:
-                    processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": existing_tx["id_casino"]})
-                    continue
-                
-                if tx_type == "bet": current_balance -= amount
-                elif tx_type == "win": current_balance += amount
-                    
-                casino_tx_id = str(uuid.uuid4())
-                target_user["transactions_log"].append({
-                    "id_casino": casino_tx_id, "tx_id": req_tx_id, "action": tx_type, "amount": str(amount)
-                })
-                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": casino_tx_id})
+        for tx in transactions:
+            req_tx_id = tx.get("id")
+            amount = Decimal(str(tx.get("amount", "0")))
+            tx_type = tx.get("type")
             
-            target_user["balance"] = str(current_balance)
-            save_db(db_data)
-        except Exception as e:
-            return arg_error()
+            existing_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
+            if existing_tx:
+                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": existing_tx["id_casino"]})
+                continue
             
+            if tx_type == "bet": current_balance -= amount
+            elif tx_type == "win": current_balance += amount
+                
+            casino_tx_id = str(uuid.uuid4())
+            target_user["transactions_log"].append({
+                "id_casino": casino_tx_id, "tx_id": req_tx_id, "action": tx_type, "amount": str(amount)
+            })
+            processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": casino_tx_id})
+        
+        target_user["balance"] = str(current_balance)
+        save_db(db_data)
         reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-    return {"balance": f"{reported_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
+        return {"balance": f"{reported_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
+    except Exception as e:
+        return arg_error()
+    finally:
+        try: os.rmdir(lock_dir)
+        except: pass
 
 # ---------------------------------------------------------
 # 3. مسار الرهان المنفصل
@@ -3192,14 +3213,25 @@ async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = 
     if data.get("currency") != "TND": return arg_error("154")
     player_id = str(data.get("player_id", ""))
     
-    async with db_lock:
+    lock_dir = "db_json.lock"
+    while True:
+        try: os.mkdir(lock_dir); break
+        except FileExistsError:
+            if os.path.getmtime(lock_dir) < time.time() - 3:
+                try: os.rmdir(lock_dir)
+                except: pass
+            await asyncio.sleep(0.05)
+            
+    try:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
         if not target_user: return arg_error("101")
         current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        
-    reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-    return {"balance": f"{reported_balance:.2f}"} 
+        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
+        return {"balance": f"{reported_balance:.2f}"} 
+    finally:
+        try: os.rmdir(lock_dir)
+        except: pass
 
 # ---------------------------------------------------------
 # 6. مسار الإلغاء الاسترجاعي (Rollback)
@@ -3215,26 +3247,29 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
     if not transactions or len(transactions) == 0: return arg_error()
     
     req_tx_ids = set()
-    req_orig_ids = set() # 🛡️ سلة جديدة لتتبع المعرفات الأصلية
-    
+    req_orig_ids = set()
     for tx in transactions:
         req_tx_id = tx.get("id")
         orig_tx_id = tx.get("original_id")
-        
         if not req_tx_id: return arg_error()
-        
-        # فحص تكرار معرف الإلغاء الجديد
         if req_tx_id in req_tx_ids: return arg_error()
         req_tx_ids.add(req_tx_id)
-        
-        # 🛡️ فحص تكرار المعرف الأصلي المستهدف في نفس الطلب
         if orig_tx_id:
             if orig_tx_id in req_orig_ids: return arg_error()
             req_orig_ids.add(orig_tx_id)
             
     player_id = str(data.get("player_id", ""))
     
-    async with db_lock:
+    lock_dir = "db_json.lock"
+    while True:
+        try: os.mkdir(lock_dir); break
+        except FileExistsError:
+            if os.path.getmtime(lock_dir) < time.time() - 3:
+                try: os.rmdir(lock_dir)
+                except: pass
+            await asyncio.sleep(0.05)
+            
+    try:
         db_data = load_db()
         target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
         if not target_user: return arg_error("101")
@@ -3244,48 +3279,48 @@ async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] 
             target_user["transactions_log"] = []
             
         processed_transactions = []
-        
-        try:
-            for tx in transactions:
-                req_tx_id = tx.get("id")
-                original_id = tx.get("original_id")
-                
-                existing_rollback = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
-                if existing_rollback:
-                    # رفض محاولة تكرار معرف الإلغاء لمعاملة أصلية مختلفة (409 Conflict)
-                    if existing_rollback.get("original_id") != original_id:
-                        return arg_error("409")
-                    processed_transactions.append({"id": req_tx_id, "id_casino": existing_rollback["id_casino"]})
-                    continue
-                
-                orig_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == original_id), None)
-                
-                if orig_tx:
-                    if "rolledback" not in orig_tx["action"] and orig_tx["action"] != "canceled":
-                        amount = Decimal(orig_tx["amount"])
-                        if orig_tx["action"] == "bet": current_balance += amount 
-                        elif orig_tx["action"] == "win": current_balance -= amount 
-                        orig_tx["action"] = f"{orig_tx['action']}_rolledback"
-                else:
-                     dummy_tx_id = str(uuid.uuid4())
-                     target_user["transactions_log"].append({
-                         "id_casino": dummy_tx_id, "tx_id": original_id, "action": "canceled", "amount": "0.0"
-                     })
-
-                new_rollback_id = str(uuid.uuid4())
-                target_user["transactions_log"].append({
-                    "id_casino": new_rollback_id, "tx_id": req_tx_id, "action": "rollback", "amount": "0.0", "original_id": original_id
-                })
-                processed_transactions.append({"id": req_tx_id, "id_casino": new_rollback_id})
-
-            target_user["balance"] = str(current_balance)
-            save_db(db_data)
-        except Exception as e:
-            return arg_error()
+        for tx in transactions:
+            req_tx_id = tx.get("id")
+            original_id = tx.get("original_id")
             
-        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-    return {"balance": f"{reported_balance:.2f}", "round_id_casino": data.get("round_id", str(uuid.uuid4())), "transactions": processed_transactions}
+            existing_rollback = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
+            if existing_rollback:
+                if existing_rollback.get("original_id") != original_id:
+                    return arg_error("409")
+                processed_transactions.append({"id": req_tx_id, "id_casino": existing_rollback["id_casino"]})
+                continue
+            
+            orig_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == original_id), None)
+            
+            if orig_tx:
+                if "rolledback" not in orig_tx["action"] and orig_tx["action"] != "canceled":
+                    amount = Decimal(orig_tx["amount"])
+                    if orig_tx["action"] == "bet": current_balance += amount 
+                    elif orig_tx["action"] == "win": current_balance -= amount 
+                    orig_tx["action"] = f"{orig_tx['action']}_rolledback"
+            else:
+                 dummy_tx_id = str(uuid.uuid4())
+                 target_user["transactions_log"].append({
+                     "id_casino": dummy_tx_id, "tx_id": original_id, "action": "canceled", "amount": "0.0"
+                 })
 
+            new_rollback_id = str(uuid.uuid4())
+            target_user["transactions_log"].append({
+                "id_casino": new_rollback_id, "tx_id": req_tx_id, "action": "rollback", "amount": "0.0", "original_id": original_id
+            })
+            processed_transactions.append({"id": req_tx_id, "id_casino": new_rollback_id})
+
+        target_user["balance"] = str(current_balance)
+        save_db(db_data)
+        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
+        return {"balance": f"{reported_balance:.2f}", "round_id_casino": data.get("round_id", str(uuid.uuid4())), "transactions": processed_transactions}
+    except Exception as e:
+        return arg_error()
+    finally:
+        try: os.rmdir(lock_dir)
+        except: pass
+        
+        
 @app.get("/api/01tech/games/{category}")
 async def fetch_01tech_games_isolated(category: str):
     url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
