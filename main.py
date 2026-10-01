@@ -3664,9 +3664,11 @@ async def get_games_by_partner_studio(partner_id: str):
         except Exception as e:
             return {"status": "error", "error": str(e)}
         
+import asyncio
+
 @app.get("/api/get-eurovirtuals-games")
 async def fetch_eurovirtuals_games(partner_id: str = None):
-    """ جلب الألعاب مع إمكانية التصفية حسب الاستوديو (partner_id) """
+    """ جلب كل الألعاب من جميع الاستوديوهات كما حدد الدعم الفني """
     payload = {}
     timestamp = str(int(time.time()))
     signature = hash_create(payload, EURO_APP_KEY)
@@ -3680,28 +3682,62 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
     }
     
     base_url_clean = str(EURO_BASE_URL).rstrip('/')
-    # إضافة partner_id للرابط إذا تم تمريره، كما طلب المزود
-    endpoint = f"{base_url_clean}/v1/games"
-    if partner_id:
-        endpoint += f"?partner_id={partner_id}"
-        
+    
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(endpoint, headers=headers, timeout=20.0)
-            data = response.json()
-            
-            if data.get("status_code") == 200:
-                games_list = data.get("data", {}).get("data", [])
+            # الحالة 1: إذا طلبنا مزوداً محدداً من الواجهة الأمامية
+            if partner_id:
+                endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}"
+                response = await client.get(endpoint, headers=headers, timeout=20.0)
+                data = response.json()
                 
-                for game in games_list:
-                    image_url = game.get("logo") or game.get("thumbnail") or ""
-                    if image_url:
-                        game["image"] = image_url
-                        game["img"] = image_url
-                    game["game_code"] = game.get("uuid") or game.get("id")
-                    
-                return {"status": "success", "games": games_list}
-            else:
-                return {"status": "error", "error": data.get("status_description", "Unknown Error"), "details": data}
+                if data.get("status_code") == 200:
+                    games_list = data.get("data", {}).get("data", [])
+                    for game in games_list:
+                        img = game.get("logo") or game.get("thumbnail") or ""
+                        game["image"] = game["img"] = img
+                        game["game_code"] = game.get("uuid") or game.get("id")
+                    return {"status": "success", "games": games_list}
+                return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+
+            # الحالة 2: جلب كل الألعاب من جميع الاستوديوهات (الحل الجذري)
+            # الخطوة الأولى: جلب قائمة كل المزودين (الاستوديوهات)
+            partners_endpoint = f"{base_url_clean}/v1/partners"
+            p_resp = await client.get(partners_endpoint, headers=headers, timeout=20.0)
+            p_data = p_resp.json()
+            
+            if p_data.get("status_code") != 200:
+                return {"status": "error", "error": "فشل جلب قائمة المزودين"}
+                
+            partners_list = p_data.get("data", [])
+            all_games = []
+            
+            # الخطوة الثانية: إنشاء مهام متزامنة لجلب ألعاب كل مزود بسرعة فائقة
+            tasks = []
+            valid_partners = [p for p in partners_list if p.get("id")]
+            
+            for partner in valid_partners:
+                endpoint = f"{base_url_clean}/v1/games?partner_id={partner['id']}"
+                tasks.append(client.get(endpoint, headers=headers, timeout=30.0))
+            
+            # تنفيذ كل الطلبات في نفس الوقت (Concurrency)
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # الخطوة الثالثة: دمج النتائج مع أسماء المزودين
+            for partner, res in zip(valid_partners, responses):
+                if isinstance(res, httpx.Response) and res.status_code == 200:
+                    g_data = res.json()
+                    if g_data.get("status_code") == 200:
+                        g_list = g_data.get("data", {}).get("data", [])
+                        for game in g_list:
+                            img = game.get("logo") or game.get("thumbnail") or ""
+                            game["image"] = game["img"] = img
+                            game["game_code"] = game.get("uuid") or game.get("id")
+                            # إرفاق اسم المزود الحقيقي بكل لعبة لتسهيل الفلترة في الواجهة
+                            game["provider"] = partner.get("name", "EuroVirtuals")
+                            all_games.append(game)
+                            
+            return {"status": "success", "games": all_games}
+            
         except Exception as e:
-            return {"status": "error", "error": str(e)}      
+            return {"status": "error", "error": str(e)}
