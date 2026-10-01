@@ -3649,7 +3649,7 @@ async def get_games_by_partner_studio(partner_id: str):
     }
     
     base_url_clean = str(EURO_BASE_URL).rstrip('/')
-    endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}"
+    endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}&limit=5000"
     
     async with httpx.AsyncClient() as client:
         try:
