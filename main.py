@@ -3668,7 +3668,7 @@ import asyncio
 
 @app.get("/api/get-eurovirtuals-games")
 async def fetch_eurovirtuals_games(partner_id: str = None):
-    """ جلب كل الألعاب من جميع الاستوديوهات كما حدد الدعم الفني """
+    """ جلب الألعاب مع نظام التكرار (Loop) لسحب كل الصفحات وتجاوز حد الـ 256 """
     payload = {}
     timestamp = str(int(time.time()))
     signature = hash_create(payload, EURO_APP_KEY)
@@ -3682,61 +3682,56 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
     }
     
     base_url_clean = str(EURO_BASE_URL).rstrip('/')
+    all_games = []
+    page = 1  # نبدأ من الصفحة الأولى
     
     async with httpx.AsyncClient() as client:
         try:
-            # الحالة 1: إذا طلبنا مزوداً محدداً من الواجهة الأمامية
-            if partner_id:
-                endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}&page=1&per_page=5000"
+            # حلقة تكرارية تسحب الصفحات واحدة تلو الأخرى حتى تنتهي كل الألعاب
+            while True:
+                endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=250"
+                
+                # إذا طلبنا استوديو محدد (للفلترة)
+                if partner_id:
+                    endpoint += f"&partner_id={partner_id}"
+                    
                 response = await client.get(endpoint, headers=headers, timeout=20.0)
                 data = response.json()
                 
                 if data.get("status_code") == 200:
-                    games_list = data.get("data", {}).get("data", [])
-                    for game in games_list:
+                    page_data = data.get("data", {})
+                    games_chunk = page_data.get("data", [])
+                    
+                    # إذا كانت الصفحة الحالية فارغة، نوقف الحلقة
+                    if not games_chunk:
+                        break
+                        
+                    # تنسيق بيانات الألعاب المستلمة في هذه الصفحة
+                    for game in games_chunk:
                         img = game.get("logo") or game.get("thumbnail") or ""
                         game["image"] = game["img"] = img
                         game["game_code"] = game.get("uuid") or game.get("id")
-                    return {"status": "success", "games": games_list}
-                return {"status": "error", "error": data.get("status_description", "Unknown Error")}
-
-            # الحالة 2: جلب كل الألعاب من جميع الاستوديوهات (الحل الجذري)
-            # الخطوة الأولى: جلب قائمة كل المزودين (الاستوديوهات)
-            partners_endpoint = f"{base_url_clean}/v1/partners"
-            p_resp = await client.get(partners_endpoint, headers=headers, timeout=20.0)
-            p_data = p_resp.json()
-            
-            if p_data.get("status_code") != 200:
-                return {"status": "error", "error": "فشل جلب قائمة المزودين"}
-                
-            partners_list = p_data.get("data", [])
-            all_games = []
-            
-            # الخطوة الثانية: إنشاء مهام متزامنة لجلب ألعاب كل مزود بسرعة فائقة
-            tasks = []
-            valid_partners = [p for p in partners_list if p.get("id")]
-            
-            for partner in valid_partners:
-                endpoint = f"{base_url_clean}/v1/games?partner_id={partner['id']}&page=1&per_page=5000"
-                tasks.append(client.get(endpoint, headers=headers, timeout=30.0))
-            
-            # تنفيذ كل الطلبات في نفس الوقت (Concurrency)
-            responses = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            # الخطوة الثالثة: دمج النتائج مع أسماء المزودين
-            for partner, res in zip(valid_partners, responses):
-                if isinstance(res, httpx.Response) and res.status_code == 200:
-                    g_data = res.json()
-                    if g_data.get("status_code") == 200:
-                        g_list = g_data.get("data", {}).get("data", [])
-                        for game in g_list:
-                            img = game.get("logo") or game.get("thumbnail") or ""
-                            game["image"] = game["img"] = img
-                            game["game_code"] = game.get("uuid") or game.get("id")
-                            # إرفاق اسم المزود الحقيقي بكل لعبة لتسهيل الفلترة في الواجهة
-                            game["provider"] = partner.get("name", "EuroVirtuals")
-                            all_games.append(game)
-                            
+                        # نحتفظ باسم المزود إذا كان موجوداً لاستخدامه في الواجهة
+                        game["provider"] = game.get("provider") or game.get("partner_name") or "EuroVirtuals"
+                        
+                    # إضافة ألعاب هذه الصفحة إلى السلة الكبرى
+                    all_games.extend(games_chunk)
+                    
+                    # قراءة العدد الإجمالي للألعاب من السيرفر
+                    total_available = page_data.get("total", 0)
+                    
+                    # إذا أصبح عدد الألعاب التي جمعناها يساوي الإجمالي، نوقف الحلقة
+                    if len(all_games) >= total_available:
+                        break
+                        
+                    # الانتقال لطلب الصفحة التالية
+                    page += 1
+                else:
+                    # إذا حدث خطأ من المزود، نكتفي بما جمعناه ونوقف الحلقة
+                    if not all_games:
+                        return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+                    break
+                    
             return {"status": "success", "games": all_games}
             
         except Exception as e:
