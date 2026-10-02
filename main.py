@@ -3668,7 +3668,7 @@ import asyncio
 
 @app.get("/api/get-eurovirtuals-games")
 async def fetch_eurovirtuals_games(partner_id: str = None):
-    """ جلب الألعاب مع نظام التكرار (Loop) لسحب كل الصفحات وتجاوز حد الـ 256 """
+    """ محرك السحب الشامل: يمر على كل المزودين (الاستوديوهات) ويسحب صفحاتهم بالكامل """
     payload = {}
     timestamp = str(int(time.time()))
     signature = hash_create(payload, EURO_APP_KEY)
@@ -3683,55 +3683,68 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
     
     base_url_clean = str(EURO_BASE_URL).rstrip('/')
     all_games = []
-    page = 1  # نبدأ من الصفحة الأولى
     
     async with httpx.AsyncClient() as client:
         try:
-            # حلقة تكرارية تسحب الصفحات واحدة تلو الأخرى حتى تنتهي كل الألعاب
-            while True:
-                endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=250"
-                
-                # إذا طلبنا استوديو محدد (للفلترة)
-                if partner_id:
-                    endpoint += f"&partner_id={partner_id}"
-                    
-                response = await client.get(endpoint, headers=headers, timeout=20.0)
-                data = response.json()
-                
-                if data.get("status_code") == 200:
-                    page_data = data.get("data", {})
-                    games_chunk = page_data.get("data", [])
-                    
-                    # إذا كانت الصفحة الحالية فارغة، نوقف الحلقة
-                    if not games_chunk:
-                        break
-                        
-                    # تنسيق بيانات الألعاب المستلمة في هذه الصفحة
-                    for game in games_chunk:
-                        img = game.get("logo") or game.get("thumbnail") or ""
-                        game["image"] = game["img"] = img
-                        game["game_code"] = game.get("uuid") or game.get("id")
-                        # نحتفظ باسم المزود إذا كان موجوداً لاستخدامه في الواجهة
-                        game["provider"] = game.get("provider") or game.get("partner_name") or "EuroVirtuals"
-                        
-                    # إضافة ألعاب هذه الصفحة إلى السلة الكبرى
-                    all_games.extend(games_chunk)
-                    
-                    # قراءة العدد الإجمالي للألعاب من السيرفر
-                    total_available = page_data.get("total", 0)
-                    
-                    # إذا أصبح عدد الألعاب التي جمعناها يساوي الإجمالي، نوقف الحلقة
-                    if len(all_games) >= total_available:
-                        break
-                        
-                    # الانتقال لطلب الصفحة التالية
-                    page += 1
+            partners_list = []
+            
+            # الخطوة 1: تحديد من هم المزودين الذين سنسحب ألعابهم
+            if partner_id:
+                # إذا تم طلب مزود معين من الواجهة، نضعه فقط في القائمة
+                partners_list.append({"id": partner_id, "name": partner_id})
+            else:
+                # إذا طلبنا كل الألعاب، يجب أن نجلب قائمة كل المزودين المتاحين في حسابك
+                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=20.0)
+                p_data = p_resp.json()
+                if p_data.get("status_code") == 200:
+                    partners_list = p_data.get("data", [])
                 else:
-                    # إذا حدث خطأ من المزود، نكتفي بما جمعناه ونوقف الحلقة
-                    if not all_games:
-                        return {"status": "error", "error": data.get("status_description", "Unknown Error")}
-                    break
+                    # في حال فشل جلب الشركاء، نضع عنصراً فارغاً لجلب الحزمة الأساسية
+                    partners_list = [{"id": "", "name": "EuroVirtuals"}]
+
+            # الخطوة 2: المرور على كل مزود (Pragmatic, Evolution, etc...)
+            for partner in partners_list:
+                p_id = partner.get("id")
+                p_name = partner.get("name", "Unknown")
+                page = 1
+                
+                # الخطوة 3: سحب كل صفحات هذا المزود (حلقة تكرار للصفحات)
+                while True:
+                    endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=500"
+                    if p_id:
+                        endpoint += f"&partner_id={p_id}"
+                        
+                    res = await client.get(endpoint, headers=headers, timeout=20.0)
+                    data = res.json()
                     
+                    if data.get("status_code") == 200:
+                        page_data = data.get("data", {})
+                        games_chunk = page_data.get("data", [])
+                        
+                        # إذا كانت الصفحة فارغة، انتهت ألعاب هذا المزود
+                        if not games_chunk:
+                            break  
+                            
+                        # ترتيب الألعاب المضافة
+                        for game in games_chunk:
+                            img = game.get("logo") or game.get("thumbnail") or ""
+                            game["image"] = game["img"] = img
+                            game["game_code"] = game.get("uuid") or game.get("id")
+                            game["provider"] = p_name  # ربط اللعبة باسم المزود الحقيقي
+                            
+                        # إضافتها للسلة الكبرى
+                        all_games.extend(games_chunk)
+                        
+                        total_available = page_data.get("total", 0)
+                        
+                        # إذا سحبنا كل الألعاب، أو العدد الإجمالي انتهى، نكسر الحلقة للمزود التالي
+                        if len(games_chunk) == 0 or (page * 500) >= total_available:
+                            break
+                            
+                        page += 1
+                    else:
+                        break # فشل سحب هذا المزود، ننتقل للتالي
+                        
             return {"status": "success", "games": all_games}
             
         except Exception as e:
