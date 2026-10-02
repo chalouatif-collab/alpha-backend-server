@@ -3687,7 +3687,7 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
         try:
             # الحالة 1: إذا طلبنا مزوداً محدداً من الواجهة الأمامية
             if partner_id:
-                endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}"
+                endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}&page=1&per_page=5000"
                 response = await client.get(endpoint, headers=headers, timeout=20.0)
                 data = response.json()
                 
@@ -3717,7 +3717,7 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
             valid_partners = [p for p in partners_list if p.get("id")]
             
             for partner in valid_partners:
-                endpoint = f"{base_url_clean}/v1/games?partner_id={partner['id']}"
+                endpoint = f"{base_url_clean}/v1/games?partner_id={partner['id']}&page=1&per_page=5000"
                 tasks.append(client.get(endpoint, headers=headers, timeout=30.0))
             
             # تنفيذ كل الطلبات في نفس الوقت (Concurrency)
