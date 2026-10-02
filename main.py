@@ -3666,13 +3666,20 @@ async def get_games_by_partner_studio(partner_id: str):
         
 import asyncio
 
+import time
+import httpx
+
 @app.get("/api/get-eurovirtuals-games")
-async def fetch_eurovirtuals_games(partner_id: str = None):
-    """ محرك السحب الشامل: يمر على كل المزودين (الاستوديوهات) ويسحب صفحاتهم بالكامل """
+async def fetch_eurovirtuals_games():
+    """ 
+    جلب الألعاب حسب التوثيق الرسمي لـ EuroVirtuals حرفياً:
+    استخدام مسار /v1/games فقط، مع معاملات page و per_page
+    """
     payload = {}
     timestamp = str(int(time.time()))
     signature = hash_create(payload, EURO_APP_KEY)
     
+    # تجهيز الترويسات (Headers) المطابقة للوثائق تماماً
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -3684,67 +3691,51 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
     base_url_clean = str(EURO_BASE_URL).rstrip('/')
     all_games = []
     
+    # المتغيرات المذكورة في الوثائق
+    page = 1
+    per_page = 500  # طلب 500 لعبة في الصفحة الواحدة لتسريع الجلب
+    
     async with httpx.AsyncClient() as client:
         try:
-            partners_list = []
-            
-            # الخطوة 1: تحديد من هم المزودين الذين سنسحب ألعابهم
-            if partner_id:
-                # إذا تم طلب مزود معين من الواجهة، نضعه فقط في القائمة
-                partners_list.append({"id": partner_id, "name": partner_id})
-            else:
-                # إذا طلبنا كل الألعاب، يجب أن نجلب قائمة كل المزودين المتاحين في حسابك
-                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=20.0)
-                p_data = p_resp.json()
-                if p_data.get("status_code") == 200:
-                    partners_list = p_data.get("data", [])
-                else:
-                    # في حال فشل جلب الشركاء، نضع عنصراً فارغاً لجلب الحزمة الأساسية
-                    partners_list = [{"id": "", "name": "EuroVirtuals"}]
-
-            # الخطوة 2: المرور على كل مزود (Pragmatic, Evolution, etc...)
-            for partner in partners_list:
-                p_id = partner.get("id")
-                p_name = partner.get("name", "Unknown")
-                page = 1
+            while True:
+                # بناء الرابط حرفياً كما طلبوا في الوثائق باستخدام page و per_page
+                endpoint = f"{base_url_clean}/v1/games?page={page}&per_page={per_page}"
                 
-                # الخطوة 3: سحب كل صفحات هذا المزود (حلقة تكرار للصفحات)
-                while True:
-                    endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=500"
-                    if p_id:
-                        endpoint += f"&partner_id={p_id}"
-                        
-                    res = await client.get(endpoint, headers=headers, timeout=20.0)
-                    data = res.json()
+                response = await client.get(endpoint, headers=headers, timeout=20.0)
+                data = response.json()
+                
+                # التحقق من نجاح الطلب (status_code 200 كما في توثيقهم)
+                if data.get("status_code") == 200:
+                    page_data = data.get("data", {})
+                    games_chunk = page_data.get("data", [])
                     
-                    if data.get("status_code") == 200:
-                        page_data = data.get("data", {})
-                        games_chunk = page_data.get("data", [])
+                    # إذا كانت الصفحة فارغة، نكسر الحلقة
+                    if not games_chunk:
+                        break
                         
-                        # إذا كانت الصفحة فارغة، انتهت ألعاب هذا المزود
-                        if not games_chunk:
-                            break  
-                            
-                        # ترتيب الألعاب المضافة
-                        for game in games_chunk:
-                            img = game.get("logo") or game.get("thumbnail") or ""
-                            game["image"] = game["img"] = img
-                            game["game_code"] = game.get("uuid") or game.get("id")
-                            game["provider"] = p_name  # ربط اللعبة باسم المزود الحقيقي
-                            
-                        # إضافتها للسلة الكبرى
-                        all_games.extend(games_chunk)
+                    # تجهيز البيانات للواجهة الأمامية
+                    for game in games_chunk:
+                        img = game.get("logo") or game.get("thumbnail") or ""
+                        game["image"] = game["img"] = img
+                        game["game_code"] = game.get("uuid") or game.get("id")
+                        game["provider"] = "EuroVirtuals"
                         
-                        total_available = page_data.get("total", 0)
+                    all_games.extend(games_chunk)
+                    
+                    # قراءة العدد الإجمالي الموجود في سيرفرهم (حقل total)
+                    total_available = page_data.get("total", 0)
+                    
+                    # إذا جمعنا كل الألعاب، نتوقف
+                    if len(all_games) >= total_available:
+                        break
                         
-                        # إذا سحبنا كل الألعاب، أو العدد الإجمالي انتهى، نكسر الحلقة للمزود التالي
-                        if len(games_chunk) == 0 or (page * 500) >= total_available:
-                            break
-                            
-                        page += 1
-                    else:
-                        break # فشل سحب هذا المزود، ننتقل للتالي
-                        
+                    # الانتقال للصفحة التالية
+                    page += 1
+                else:
+                    if not all_games:
+                        return {"status": "error", "error": data.get("status_description", "Unknown Error")}
+                    break
+                    
             return {"status": "success", "games": all_games}
             
         except Exception as e:
