@@ -2039,6 +2039,17 @@ async def eurovirtuals_win(request: Request):
 
         payout_amount = safe_float(data.get("payout_amount") or data.get("amount"))
         print(f"🚨 EUROVIRTUALS WIN DETECTED: Player={player_id}, Amount={payout_amount}")
+        if payout_amount >= 50.0:
+            # تمويه اسم اللاعب للحماية (أول 3 أو 4 حروف فقط)
+            safe_player = player_id[:4] + "***" if len(player_id) > 4 else player_id + "***"
+            
+            win_data = {
+                "player": safe_player,
+                "amount": payout_amount,
+                "game": "Jeux Virtuels (Euro)"
+            }
+            # إرسال البيانات فوراً عبر الـ WebSocket
+            asyncio.create_task(bigwin_manager.broadcast(json.dumps(win_data)))
 
         async with db_lock:
             db = load_db()
@@ -2949,6 +2960,18 @@ class ConnectionManager:
                 pass
 
 jackpot_manager = ConnectionManager()
+# 🌟 مدير اتصالات الأرباح الكبرى (Big Wins)
+bigwin_manager = ConnectionManager()
+
+# 🌐 مسار الـ WebSocket الخاص بالأرباح الكبرى
+@app.websocket("/ws/bigwins")
+async def websocket_bigwins(websocket: WebSocket):
+    await bigwin_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text() # إبقاء الاتصال مفتوحاً
+    except WebSocketDisconnect:
+        bigwin_manager.disconnect(websocket)
 
 # 🌐 مسار الـ WebSocket الخاص بالجاكبوت
 @app.websocket("/ws/jackpot")
