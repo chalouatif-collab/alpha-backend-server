@@ -1,0 +1,15 @@
+{
+  "name": "Alphabet216 Casino & Sports",
+  "short_name": "Alphabet216",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3132/3132634.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
