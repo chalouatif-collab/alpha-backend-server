@@ -700,9 +700,8 @@ async def daily_cashback_system():
         try:
             now = datetime.now()
             if now.hour == 0 and now.minute < 10:
-                print("⏳ [Cashback] جاري فحص وتوزيع الكاش باك اليومي...")
+                print("⏳ [Cashback] جاري فحص وتوزيع الكاش باك اليومي في الخزنة...")
                 
-                # استخدام القفل لمنع تضارب الأرصدة أثناء لعب المستخدمين
                 async with db_lock:
                     db = load_db()
                     changes_made = False
@@ -711,46 +710,90 @@ async def daily_cashback_system():
                         current_balance = float(u.get("balance", 0.0))
                         daily_deps = float(u.get("daily_deposits", 0.0))
                         
-                        # يمكن لاحقاً إضافة حقل daily_withdrawals لخصمه من الإيداع لمعرفة الخسارة الصافية
                         net_loss = daily_deps - current_balance 
                         
                         if daily_deps > 0:
                             if current_balance < 1.0 and net_loss > 0:
                                 cashback_amount = daily_deps * 0.10
-                                u["balance"] = round(current_balance + cashback_amount, 2)
                                 
-                                # 🛡️ توثيق الكاش باك في SQL لمنع تضارب الحسابات
-                                db_session = SessionLocal()
-                                try:
-                                    new_tx = Transaction(
-                                        admin_username="SYSTEM_CASHBACK",
-                                        target_username=u["username"],
-                                        action="cashback",
-                                        amount=cashback_amount,
-                                        date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                        tx_id=f"cb_{int(time.time())}"
-                                    )
-                                    db_session.add(new_tx)
-                                    db_session.commit()
-                                except Exception:
-                                    db_session.rollback()
-                                finally:
-                                    db_session.close()
-                            
+                                # 🌟 إضافة الكاش باك إلى الخزنة (available_cashback) بدلاً من الرصيد المباشر
+                                current_vault = float(u.get("available_cashback", 0.0))
+                                u["available_cashback"] = round(current_vault + cashback_amount, 2)
+                                
                             u["daily_deposits"] = 0
                             changes_made = True
                             
                     if changes_made:
                         save_db(db)
-                        print("✅ [Cashback] تم الانتهاء من التوزيع وتصفير العدادات بنجاح!")
+                        print("✅ [Cashback] تم الانتهاء من ملء الخزائن وتصفير العدادات بنجاح!")
                 
                 await asyncio.sleep(3600)
             else:
                 await asyncio.sleep(300)
         except Exception as e:
             print(f"❌ [Cashback] حدث خطأ: {e}")
-            await asyncio.sleep(300) 
+            await asyncio.sleep(300)
+            
+@app.post("/api/user/claim-cashback")
+async def claim_vault_cashback(current_user: str = Depends(get_current_user)):
+    async with db_lock:
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == current_user.lower().strip()), None)
+        
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+            
+        vault_amount = float(target_user.get("available_cashback", 0.0))
+        
+        # 🌟 الشرط الأول: الحد الأدنى
+        if vault_amount < 10.0:
+            raise HTTPException(status_code=400, detail="Le montant minimum pour récupérer est de 10 TND.")
+            
+        # 🌟 الشرط الثاني: فحص مرور 24 ساعة على آخر سحب
+        now = datetime.now()
+        last_claim_str = target_user.get("last_cashback_claim", "")
+        if last_claim_str:
+            try:
+                last_claim_date = datetime.strptime(last_claim_str, "%Y-%m-%d %H:%M:%S")
+                time_diff = now - last_claim_date
+                if time_diff < timedelta(hours=24):
+                    remaining = timedelta(hours=24) - time_diff
+                    hours, remainder = divmod(remaining.seconds, 3600)
+                    minutes, _ = divmod(remainder, 60)
+                    raise HTTPException(status_code=400, detail=f"Veuillez patienter encore {hours}h {minutes}m avant le prochain retrait.")
+            except Exception:
+                pass # في حال كان تنسيق التاريخ قديماً أو خاطئاً، نسمح له بالسحب
+                
+        # تنفيذ السحب وتصفير الخزنة
+        target_user["balance"] = round(float(target_user.get("balance", 0.0)) + vault_amount, 2)
+        target_user["available_cashback"] = 0.0
+        target_user["last_cashback_claim"] = now.strftime("%Y-%m-%d %H:%M:%S") # تسجيل وقت السحب الجديد
+        
+        save_db(db)
+        
+    # توثيق العملية في SQL
+    db_session = SessionLocal()
+    try:
+        new_tx = Transaction(
+            admin_username="SYSTEM_CASHBACK",
+            target_username=target_user["username"],
+            action="claim_vault",
+            amount=vault_amount,
+            date=now.strftime("%Y-%m-%d %H:%M:%S"),
+            tx_id=f"vault_{int(time.time())}"
+        )
+        db_session.add(new_tx)
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+    finally:
+        db_session.close()
 
+    return {
+        "status": "success", 
+        "message": f"Vous avez récupéré {vault_amount} TND avec succès!",
+        "new_balance": target_user["balance"]
+    }
 # ==========================================
 # النماذج (Models)
 # ==========================================
