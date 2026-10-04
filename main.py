@@ -2403,20 +2403,24 @@ async def launch_eurovirtuals(request: Request):
         # توكن جلسة فريد لكل رمية (مهم جداً لألعاب اللايف)
         unique_session_token = f"tok_{user_code}_{int(time.time())}"
 
+        # 🌟 توليد اسم لاعب طويل وآمن لتجاوز حماية استوديوهات اللايف
+        safe_player_id = f"alpha_{user_code}" if len(user_code) <= 4 else user_code
+
         # البايلود المُرسل للمزود
         payload = {
-            "player_id": user_code,
-            "player_name": user_code,
+            "player_id": safe_player_id,
+            "player_name": safe_player_id,
             "player_token": unique_session_token,
-            "currency": "TND",
+            # 🌟 التغيير السحري: إرسال EUR أو USD لأن ألعاب اللايف ترفض TND
+            "currency": "EUR", 
             "demo": 0,
             "game_uuid": game_uuid,
-            "balance": current_balance,
+            "balance": current_balance, 
             "country": "TN",
             "language": "fr",
             "device": "desktop",
-            "return_url": "https://alphabet216.com",
-            "lobby_url": "https://alphabet216.com"
+            "return_url": "https://alphabet216.com/",
+            "lobby_url": "https://alphabet216.com/"
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
