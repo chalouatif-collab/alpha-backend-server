@@ -2384,34 +2384,30 @@ async def get_virtual_games():
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        print(f"🚨 EXACT DATA RECEIVED FROM FRONTEND: {data}")
         
         game_uuid = str(data.get("game_uuid") or data.get("game_code") or data.get("id") or "")
-        
         if not game_uuid or game_uuid == "undefined":
-            return {"error": "Game UUID is missing or invalid from frontend"}
+            return {"error": "Game UUID is missing from frontend"}
             
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
-        # 🛡️ استخراج رصيد اللاعب من قاعدة البيانات
+        # استخراج رصيد اللاعب
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
-            
             if not target_user or target_user.get("is_blocked") == 1:
                 return {"error": "Player not found or blocked"}
-                
             current_balance = float(target_user.get("balance", 0.0))
 
-        # 🌟 التعديلات الجذرية لحل مشكلة ألعاب اللايف (Live Games) 🌟
-        # 1. توليد توكن جلسة فريد لكل رمية لتتجاوز حماية استوديوهات اللايف
+        # توكن جلسة فريد لكل رمية (مهم جداً لألعاب اللايف)
         unique_session_token = f"tok_{user_code}_{int(time.time())}"
 
+        # البايلود المُرسل للمزود
         payload = {
             "player_id": user_code,
             "player_name": user_code,
-            "player_token": unique_session_token, # 👈 توكن متغير ديناميكي
+            "player_token": unique_session_token,
             "currency": "TND",
             "demo": 0,
             "game_uuid": game_uuid,
@@ -2419,7 +2415,6 @@ async def launch_eurovirtuals(request: Request):
             "country": "TN",
             "language": "fr",
             "device": "desktop",
-            # 2. إضافة روابط العودة الإجبارية لاستوديوهات الكازينو المباشر
             "return_url": "https://alphabet216.com",
             "lobby_url": "https://alphabet216.com"
         }
@@ -2437,15 +2432,29 @@ async def launch_eurovirtuals(request: Request):
         base_url_clean = str(EURO_BASE_URL).rstrip('/')
         launch_endpoint = f"{base_url_clean}/v1/launch"
         
+        # 🚨 [بداية الرادار والطباعة] 🚨
+        print("\n" + "="*50)
+        print("🚀 [EUROVIRTUALS LAUNCH REQUEST]")
+        print(f"URL: {launch_endpoint}")
+        print(f"GAME UUID: {game_uuid}")
+        print(f"PAYLOAD: {json.dumps(payload, indent=2)}")
+        print("="*50)
+
         async with httpx.AsyncClient() as client:
             response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
             
+            raw_response = response.text
+            
+            # طباعة الرد الخام القادم من السيرفر الخاص بهم
+            print("\n" + "="*50)
+            print(f"📥 [EUROVIRTUALS RAW RESPONSE] - Status: {response.status_code}")
+            print(raw_response)
+            print("="*50 + "\n")
+
             try:
                 response_data = response.json()
             except Exception:
-                return {"error": "Invalid JSON from provider", "details": response.text}
-
-            print(f"🌐 PROVIDER FINAL RESPONSE: {response_data}")
+                return {"error": "المزود لم يرسل رد JSON صالح", "raw_text": raw_response}
 
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
@@ -2453,12 +2462,16 @@ async def launch_eurovirtuals(request: Request):
                     game_url = f"{base_url_clean}{game_url}"
                 return {"launch_url": game_url}
             else:
+                # 🌟 إرجاع كل التفاصيل للفرونت إند لتقرأها في الـ Network
                 return {
                     "error": response_data.get("status_description", "Provider rejected launch"), 
-                    "details": response_data
+                    "provider_details": response_data,
+                    "what_we_sent": payload # لترى هل أرسلنا الـ UUID الصحيح أم لا
                 }
 
     except Exception as e:
+        import traceback
+        traceback.print_exc() # طباعة الخطأ في الكونسول إذا حدث انهيار داخلي
         return {"error": str(e)}
     
 @app.post("/api/provider/launch-sportsbook")
