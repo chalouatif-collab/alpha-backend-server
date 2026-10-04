@@ -2384,11 +2384,9 @@ async def get_virtual_games():
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        # 🔍 طباعة النص الحرفي القادم من المتصفح لمعرفة ما يتم إرساله فعلياً
         print(f"🚨 EXACT DATA RECEIVED FROM FRONTEND: {data}")
         
         game_uuid = str(data.get("game_uuid") or data.get("game_code") or data.get("id") or "")
-        print(f"🎯 EXTRACTED game_uuid: '{game_uuid}'")
         
         if not game_uuid or game_uuid == "undefined":
             return {"error": "Game UUID is missing or invalid from frontend"}
@@ -2406,17 +2404,24 @@ async def launch_eurovirtuals(request: Request):
                 
             current_balance = float(target_user.get("balance", 0.0))
 
+        # 🌟 التعديلات الجذرية لحل مشكلة ألعاب اللايف (Live Games) 🌟
+        # 1. توليد توكن جلسة فريد لكل رمية لتتجاوز حماية استوديوهات اللايف
+        unique_session_token = f"tok_{user_code}_{int(time.time())}"
+
         payload = {
             "player_id": user_code,
             "player_name": user_code,
-            "player_token": f"tok_{user_code}",
+            "player_token": unique_session_token, # 👈 توكن متغير ديناميكي
             "currency": "TND",
             "demo": 0,
             "game_uuid": game_uuid,
             "balance": current_balance,
             "country": "TN",
             "language": "fr",
-            "device": "desktop"
+            "device": "desktop",
+            # 2. إضافة روابط العودة الإجبارية لاستوديوهات الكازينو المباشر
+            "return_url": "https://alphabet216.com",
+            "lobby_url": "https://alphabet216.com"
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
@@ -2455,6 +2460,7 @@ async def launch_eurovirtuals(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
+    
 @app.post("/api/provider/launch-sportsbook")
 async def launch_sportsbook(request: Request):
     try:
