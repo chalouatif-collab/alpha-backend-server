@@ -2403,19 +2403,15 @@ async def launch_eurovirtuals(request: Request):
         # توكن جلسة فريد لكل رمية (مهم جداً لألعاب اللايف)
         unique_session_token = f"tok_{user_code}_{int(time.time())}"
 
-        # 🌟 توليد اسم لاعب طويل وآمن لتجاوز حماية استوديوهات اللايف
-        safe_player_id = f"alpha_{user_code}" if len(user_code) <= 4 else user_code
-
-        # البايلود المُرسل للمزود
+        # البايلود المُرسل للمزود (نظيف ومطابق لقاعدة بياناتك 100%)
         payload = {
-            "player_id": safe_player_id,
-            "player_name": safe_player_id,
+            "player_id": user_code,      # 🌟 العودة للاسم الحقيقي لكي تنجح الرهانات
+            "player_name": user_code,    # 🌟 العودة للاسم الحقيقي
             "player_token": unique_session_token,
-            # 🌟 التغيير هنا: العودة إلى TND لأن المزود يرفض أي عملة أخرى لحسابك
-            "currency": "TND", 
+            "currency": "TND",           # 🌟 العملة الحقيقية لحسابك
             "demo": 0,
             "game_uuid": game_uuid,
-            "balance": current_balance, 
+            "balance": current_balance,
             "country": "TN",
             "language": "fr",
             "device": "desktop",
