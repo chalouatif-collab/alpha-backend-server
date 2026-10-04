@@ -2400,7 +2400,8 @@ async def launch_eurovirtuals(request: Request):
                 return {"error": "Player not found or blocked"}
             current_balance = float(target_user.get("balance", 0.0))
 
-        
+        # توكن جلسة فريد لكل رمية (مهم جداً لألعاب اللايف)
+        unique_session_token = f"tok_{user_code}_{int(time.time())}"
 
         # 🌟 توليد اسم لاعب طويل وآمن لتجاوز حماية استوديوهات اللايف
         safe_player_id = f"alpha_{user_code}" if len(user_code) <= 4 else user_code
@@ -2410,8 +2411,8 @@ async def launch_eurovirtuals(request: Request):
             "player_id": safe_player_id,
             "player_name": safe_player_id,
             "player_token": unique_session_token,
-            # 🌟 التغيير السحري: إرسال EUR أو USD لأن ألعاب اللايف ترفض TND
-            "currency": "EUR", 
+            # 🌟 التغيير هنا: العودة إلى TND لأن المزود يرفض أي عملة أخرى لحسابك
+            "currency": "TND", 
             "demo": 0,
             "game_uuid": game_uuid,
             "balance": current_balance, 
