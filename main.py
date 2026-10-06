@@ -593,7 +593,7 @@ async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depend
                     "user_code": target_user["username"],
                     "provider_code": promo.get("provider"),
                     "game_code": promo.get("game"),
-                    "bet_level": 1,
+                    "bet_amount": 1,
                     "spin_count": promo.get("spins"),
                     "amount": promo.get("max_win", 10000),
                     "expiration_time": expiration,
@@ -2615,7 +2615,7 @@ class FreeSpinRequest(BaseModel):
     game_code: str
     spin_count: int
     amount: float
-    bet_level: int = 1
+    bet_amount: int = 1
 
 @app.post("/api/admin/grant-freespins")
 async def grant_free_spins(req: FreeSpinRequest, current_user: str = Depends(get_admin_user)):
@@ -2635,7 +2635,7 @@ async def grant_free_spins(req: FreeSpinRequest, current_user: str = Depends(get
         "user_code": req.target_username,
         "provider_code": req.provider_code,
         "game_code": req.game_code,
-        "bet_level": req.bet_level,
+        "bet_amount": req.bet_amount,
         "spin_count": req.spin_count,
         "amount": req.amount,
         "expiration_time": expiration,
@@ -3429,7 +3429,7 @@ async def freespins_issue_01tech(request: Request, x_request_sign: Optional[str]
     
     # 01Tech يسمح بـ bet_amount أو bet_level، وليس كلاهما، ولا يجوز غيابهما معاً
     has_amount = "bet_amount" in data
-    has_level = "bet_level" in data
+    has_level = "bet_amount" in data
     if has_amount and has_level: return arg_error()
     if not has_amount and not has_level: return arg_error()
     
