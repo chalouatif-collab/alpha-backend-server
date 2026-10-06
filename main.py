@@ -3427,11 +3427,9 @@ async def freespins_issue_01tech(request: Request, x_request_sign: Optional[str]
         if game != "test-provider:test_game":
             return arg_error()
     
-    # 01Tech يسمح بـ bet_amount أو bet_level، وليس كلاهما، ولا يجوز غيابهما معاً
-    has_amount = "bet_amount" in data
-    has_level = "bet_amount" in data
-    if has_amount and has_level: return arg_error()
-    if not has_amount and not has_level: return arg_error()
+    # 01Tech يسمح بـ bet_amount و freespins_quantity، لكننا نرفض أي طلب لا يحتوي على bet_amount
+    if "bet_amount" not in data: 
+        return arg_error()
     
     casino_id = data.get("casino_id")
     # تأكد أن ZEROONE_CASINO_ID تم تعريفه مسبقاً في ملفك (أو استخدم "alphabet1" مؤقتاً)
