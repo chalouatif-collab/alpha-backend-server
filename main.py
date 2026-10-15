@@ -3121,6 +3121,32 @@ ZEROONE_AUTH_TOKEN = "S3dqpz5cUrBj7Cd36ziPHSoimjqVLZospYuw/MRb0p0="
 ZEROONE_BASE_URL = "https://alphabet1.casino.preprod.avegas.games"
 ZEROONE_CASINO_ID = "alphabet1"
 
+# 🛡️ القائمة البيضاء الرسمية لعناوين IP الخاصة بـ 01.Tech (شاملة Stage و Prod)
+ZEROONE_WHITELISTED_IPS = {
+    "94.242.199.8",
+    "82.198.41.5",
+    "82.198.40.5",
+    "82.198.40.4",
+    "82.198.41.4",
+    "82.198.42.6",
+    "82.198.42.7",
+    "63.177.29.165",  # Stage IP
+    "3.65.110.141"    # Prod IP
+}
+
+def get_real_client_ip(request: Request) -> str:
+    """ استخراج الـ IP الحقيقي للطلب خلف بروكسي Render / Cloudflare """
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+        
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        # أول IP في القائمة هو دائماً عنوان المرسل الحقيقي
+        return forwarded_for.split(",")[0].strip()
+        
+    return request.client.host if request.client else ""
+
 def verify_01tech_signature(body: bytes, signature: Optional[str]) -> bool:
     if not signature: return False
     computed_sig = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
@@ -3132,6 +3158,23 @@ from fastapi.responses import JSONResponse
 # --- دوال الأخطاء القياسية التي يطلبها المزود ---
 def sig_error():
     return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Forbidden.", "meta": {"api_code": "403", "api_message": "Forbidden."}})
+
+# 🛡️ جدار الحماية التلقائي (Middleware) لجميع مسارات محفظة 01.Tech
+@app.middleware("http")
+async def zeroone_ip_whitelist_middleware(request: Request, call_next):
+    if request.url.path.startswith("/v2/a8r_casino."):
+        client_ip = get_real_client_ip(request)
+        if client_ip not in ZEROONE_WHITELISTED_IPS:
+            print(f"🚨 [SECURITY BLOCK] Unauthorized 01Tech callback from IP: {client_ip} on path: {request.url.path}")
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "code": "permission_denied",
+                    "msg": "Forbidden: IP not whitelisted.",
+                    "meta": {"api_code": "403", "api_message": "Forbidden."}
+                }
+            )
+    return await call_next(request)
 
 def arg_error(api_code="400"):
     return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Invalid argument.", "meta": {"api_code": str(api_code), "api_message": "Invalid argument."}})
