@@ -283,6 +283,15 @@ async def add_security_headers(request: Request, call_next):
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
+os.makedirs("static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+os.makedirs("images", exist_ok=True)
+app.mount("/images", StaticFiles(directory="images"), name="images")
+
+if os.path.exists("coutabet-player/static"):
+    app.mount("/coutabet-static", StaticFiles(directory="coutabet-player/static"), name="coutabet-static")
+
 # 🚨 إعدادات الإنذار المبكر (Telegram)
 TELEGRAM_TOKEN = "8879806026:AAEB64RCPW4KzsUXUlDeztP_PzjtxkJv_4g"
 TELEGRAM_CHAT_ID = "7700782611"
