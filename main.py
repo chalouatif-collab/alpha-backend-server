@@ -807,7 +807,13 @@ async def claim_vault_cashback(current_user: str = Depends(get_current_user)):
 # النماذج (Models)
 # ==========================================
 class LoginRequest(BaseModel): username: str; password: str
-class RegisterRequest(BaseModel): username: str; password: str; role: str; created_by: str; phone: str = ""
+class RegisterRequest(BaseModel): 
+    username: str
+    password: str
+    role: str = "player"
+    created_by: str = "self"
+    phone: str = ""
+    is_self_registered: bool = True
 class ConfigureAccountRequest(BaseModel): admin_username: str; target_username: str; rtp: int; is_blocked: int
 class UpdateBalanceRequest(BaseModel): admin_username: str; target_username: str; action: str; amount: float
 class ChangePlayerPasswordRequest(BaseModel): admin_username: str; target_username: str; new_password: str
@@ -854,7 +860,8 @@ async def register_user(request: Request, req: RegisterRequest):
         "last_spin_date": "", 
         "daily_deposits": 0.0,
         "two_factor_secret": new_secret_key,
-        "phone": req.phone
+        "phone": req.phone,
+        "is_self_registered": req.is_self_registered # 🌟 حفظ المتغير صراحة
     }
     
     db.append(new_user)
@@ -1579,7 +1586,9 @@ async def login_user(request: Request, req: LoginRequest):
             "username": user["username"],
             "role": user["role"],
             "access_token": access_token,
-            "balance": float(user.get("balance", 0.0))
+            "balance": float(user.get("balance", 0.0)),
+            "created_by": str(user.get("created_by", "")), # 🌟 إرسال المصدر
+            "is_self_registered": user.get("is_self_registered", False) # 🌟 إرسال الصلاحية
         })
     except Exception as e:
         print(f"Login Crash: {e}")
@@ -1603,13 +1612,14 @@ async def verify_2fa_api(request: Request, req: Verify2FARequest):
     if totp.verify(req.totp_code):
         access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
         
-        # 👈 التعديل هنا: إرجاع الرد بنفس صيغة الدخول العادي تماماً ليحفظه المتصفح
         return JSONResponse(status_code=200, content={
             "message": "success", 
             "username": user["username"],
             "role": user["role"],
             "access_token": access_token,
-            "balance": float(user.get("balance", 0.0))
+            "balance": float(user.get("balance", 0.0)),
+            "created_by": str(user.get("created_by", "")),
+            "is_self_registered": user.get("is_self_registered", False)
         })
     else:
         raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
