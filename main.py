@@ -1824,6 +1824,25 @@ async def seamless_wallet_handler(request: Request):
                 if player_balance < bet_money:
                     return JSONResponse(content={"status": 0, "msg": "INSUFFICIENT_USER_FUNDS"})
                 player_balance -= bet_money
+                
+                # 🌟 تسجيل الرهان (الخسارة المؤقتة) في قاعدة البيانات
+                if bet_money > 0:
+                    db_session = SessionLocal()
+                    try:
+                        new_tx = Transaction(
+                            admin_username=str(tx_data.get("provider_code", "NEXUS_API")),
+                            target_username=target_user["username"],
+                            action="bet",
+                            amount=bet_money,
+                            date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            tx_id=str(tx_data.get("txn_id", uuid.uuid4()))
+                        )
+                        db_session.add(new_tx)
+                        db_session.commit()
+                    except:
+                        db_session.rollback()
+                    finally:
+                        db_session.close()
 
             if txn_type in ["credit", "debit_credit"]:
                 # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
@@ -1845,7 +1864,26 @@ async def seamless_wallet_handler(request: Request):
                     finally:
                         db_session.close()
                 else:
+                    
                     player_balance += win_money # الإضافة الطبيعية للأرباح العادية
+                    # 🌟 تسجيل الربح العادي في قاعدة البيانات
+                    if win_money > 0:
+                        db_session = SessionLocal()
+                        try:
+                            new_tx = Transaction(
+                                admin_username=str(tx_data.get("provider_code", "NEXUS_API")),
+                                target_username=target_user["username"],
+                                action="win",
+                                amount=win_money,
+                                date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                tx_id=str(tx_data.get("txn_id", uuid.uuid4()))
+                            )
+                            db_session.add(new_tx)
+                            db_session.commit()
+                        except:
+                            db_session.rollback()
+                        finally:
+                            db_session.close()
 
             target_user["balance"] = player_balance
             save_db(db)
@@ -3902,3 +3940,34 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
             
         except Exception as e:
             return {"status": "error", "error": str(e)}
+        
+@app.get("/api/user/bet-history")
+async def get_user_bet_history(current_user: str = Depends(get_current_user)):
+    db_session = SessionLocal()
+    try:
+        # جلب آخر 50 عملية رهان أو ربح للاعب
+        txs = db_session.query(Transaction).filter(
+            Transaction.target_username == current_user.lower(),
+            Transaction.action.in_(["bet", "win"])
+        ).order_by(Transaction.id.desc()).limit(50).all()
+        
+        history = []
+        for t in txs:
+            is_win = (t.action == "win")
+            # ترتيب اسم المزود (لأننا حفظناه في admin_username)
+            provider_name = t.admin_username if t.admin_username and t.admin_username not in ["EUROVIRTUALS_API", "PENDING_HUGE_WIN"] else "Casino"
+            if t.admin_username == "EUROVIRTUALS_API": provider_name = "Jeux Virtuels"
+            
+            history.append({
+                "date": str(t.date)[:16],
+                "game": "Jeu de Casino", 
+                "provider": provider_name,
+                "amount": float(t.amount),
+                "type": "win" if is_win else "bet"
+            })
+            
+        return {"status": "success", "data": history}
+    except Exception as e:
+        return {"status": "error", "data": []}
+    finally:
+        db_session.close()
