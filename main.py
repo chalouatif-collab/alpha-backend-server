@@ -1022,6 +1022,7 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
                 raise HTTPException(status_code=400, detail="Solde insuffisant chez le joueur")
             
             target_user["balance"] = round(float(target_user.get("balance", 0)) - amount, 2)
+            target_user["daily_deposits"] = max(0.0, float(target_user.get("daily_deposits", 0)) - amount)
             
             if not is_global_admin:
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
@@ -1265,6 +1266,7 @@ async def handle_pending_request(req: HandleRequestModel, current_user: str = De
                 if target_user.get("balance", 0) < tx.amount:
                     raise HTTPException(status_code=400, detail="Solde insuffisant pour le retrait")
                 target_user["balance"] = float(target_user.get("balance", 0)) - tx.amount
+                target_user["daily_deposits"] = max(0.0, float(target_user.get("daily_deposits", 0)) - tx.amount)
                 tx.action = "withdraw"
 
             tx.admin_username = req.admin_username
@@ -1802,7 +1804,13 @@ async def seamless_wallet_handler(request: Request):
         player_balance = float(target_user.get("balance", 0))
 
         if method == "user_balance":
-            return JSONResponse(content={"status": 1, "user_balance": player_balance})
+            # 🌟 إرسال رصيد الكاش باك المتاح بالإضافة للرصيد العادي
+            vault_cashback = float(target_user.get("available_cashback", 0.0))
+            return JSONResponse(content={
+                "status": 1, 
+                "user_balance": player_balance,
+                "available_cashback": vault_cashback
+            })
 
         elif method == "transaction":
             game_type = data.get("game_type")
