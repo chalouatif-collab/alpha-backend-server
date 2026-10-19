@@ -3989,38 +3989,45 @@ TOP_MATCHES_CACHE = []
 # تم وضع المفتاح الخاص بك بنجاح
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24") 
 
+# ==========================================
+# ⚽ محرك المباريات المباشرة الذكي (API-Football)
+# ==========================================
+import asyncio
+from datetime import datetime, timedelta
+import httpx
+import os
+
+TOP_MATCHES_CACHE = []
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24") 
+
 async def update_top_matches():
     global TOP_MATCHES_CACHE
     while True:
         try:
-            print("⏳ [Sports] تحديث مباريات اليوم من API-Football...")
-            today = datetime.now().strftime("%Y-%m-%d")
+            print("⏳ [Sports] جاري تحديث المباريات...")
+            today_date = datetime.now()
             
-            # الرابط الصحيح والمخصص لمنصة RapidAPI
             url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-            
             headers = {
                 "x-rapidapi-key": RAPIDAPI_KEY,
                 "x-rapidapi-host": "api-football-v1.p.rapidapi.com"
             }
             
+            # أضفنا دوريات جديدة: 78 (ألماني)، 3 (أوروبي)، 4 (يورو)، 307 (سعودي)، 94 (برتغالي)
+            top_leagues = [39, 140, 2, 61, 135, 78, 3, 4, 307, 94] 
+            
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers, params={"date": today})
+                # 1. محاولة جلب مباريات اليوم
+                response = await client.get(url, headers=headers, params={"date": today_date.strftime("%Y-%m-%d")})
                 data = response.json()
+                matches = []
                 
                 if data.get("response"):
-                    matches = []
-                    # أرقام الدوريات: 39 (إنجليزي)، 140 (إسباني)، 2 (أبطال أوروبا)، 61 (فرنسي)، 135 (إيطالي)
-                    top_leagues = [39, 140, 2, 61, 135] 
-                    
                     for fixture in data["response"]:
                         if fixture["league"]["id"] in top_leagues:
                             status = fixture["fixture"]["status"]["short"]
+                            if status in ["FT", "PEN", "AET", "PST", "CANC"]: continue
                             
-                            # إخفاء المباريات المنتهية أو المؤجلة
-                            if status in ["FT", "PEN", "AET", "PST", "CANC"]:
-                                continue
-                                
                             is_live = status in ["1H", "2H", "HT", "ET", "P"]
                             match_time = "En Direct" if is_live else datetime.fromtimestamp(fixture["fixture"]["timestamp"]).strftime("%H:%M")
                             
@@ -4032,19 +4039,37 @@ async def update_top_matches():
                                 "isLive": is_live,
                                 "timestamp": fixture["fixture"]["timestamp"]
                             })
+                
+                # 2. الذكاء الاصطناعي: إذا لم توجد مباريات كبرى اليوم، اجلب مباريات الغد فوراً!
+                if len(matches) == 0:
+                    print("⚠️ لا توجد مباريات كبرى اليوم، جاري جلب مباريات الغد...")
+                    tomorrow_date = today_date + timedelta(days=1)
+                    res_tomorrow = await client.get(url, headers=headers, params={"date": tomorrow_date.strftime("%Y-%m-%d")})
+                    data_tomorrow = res_tomorrow.json()
                     
-                    # ترتيب المباريات: المباشرة أولاً، ثم الأقرب زمناً
-                    matches.sort(key=lambda x: (not x["isLive"], x["timestamp"]))
-                    TOP_MATCHES_CACHE = matches[:10] # نأخذ أبرز 10 مباريات فقط لعدم زحمة الشاشة
-                    print("✅ [Sports] تم تحديث المباريات بنجاح!")
+                    if data_tomorrow.get("response"):
+                        for fixture in data_tomorrow["response"]:
+                            if fixture["league"]["id"] in top_leagues:
+                                status = fixture["fixture"]["status"]["short"]
+                                if status in ["FT", "PEN", "AET", "PST", "CANC"]: continue
+                                
+                                match_time = "Demain " + datetime.fromtimestamp(fixture["fixture"]["timestamp"]).strftime("%H:%M")
+                                
+                                matches.append({
+                                    "league": fixture["league"]["name"],
+                                    "time": match_time,
+                                    "teamA": {"name": fixture["teams"]["home"]["name"], "logo": fixture["teams"]["home"]["logo"]},
+                                    "teamB": {"name": fixture["teams"]["away"]["name"], "logo": fixture["teams"]["away"]["logo"]},
+                                    "isLive": False,
+                                    "timestamp": fixture["fixture"]["timestamp"]
+                                })
+
+            # ترتيب وحفظ المباريات
+            matches.sort(key=lambda x: (not x["isLive"], x["timestamp"]))
+            TOP_MATCHES_CACHE = matches[:10]
+            print(f"✅ [Sports] تم تحديث وحفظ {len(TOP_MATCHES_CACHE)} مباريات بنجاح!")
                     
         except Exception as e:
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
-        # تحديث البيانات كل ساعتين (12 طلب فقط في اليوم من أصل 100 مجانية)
-        await asyncio.sleep(3600 * 2) 
-
-# مسار إرسال المباريات للواجهة الأمامية
-@app.get("/api/top-matches")
-async def get_top_matches():
-    return {"status": "success", "matches": TOP_MATCHES_CACHE}
+        await asyncio.sleep(3600 * 2)
