@@ -3978,11 +3978,11 @@ async def get_user_bet_history(current_user: str = Depends(get_current_user)):
     finally:
         db_session.close()
         
-       # ==========================================
-# ⚽ محرك المباريات المباشرة الذكي (API-Football)
+      # ==========================================
+# ⚽ محرك المباريات المباشرة (SportAPI7)
 # ==========================================
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 import httpx
 import os
 
@@ -3993,75 +3993,54 @@ async def update_top_matches():
     global TOP_MATCHES_CACHE
     while True:
         try:
-            print("⏳ [Sports] جاري تحديث المباريات...")
-            today_date = datetime.now()
+            print("⏳ [Sports] جاري جلب المباريات من SportAPI7...")
+            today = datetime.now().strftime("%Y-%m-%d")
             
-            url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
+            # الرابط الخاص بـ SportAPI7 لجلب مباريات اليوم (أو الأحداث المجدولة)
+            url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today}"
+            
             headers = {
                 "x-rapidapi-key": RAPIDAPI_KEY,
-                "x-rapidapi-host": "api-football-v1.p.rapidapi.com"
+                "x-rapidapi-host": "sportapi7.p.rapidapi.com"
             }
             
-            # أضفنا دوريات جديدة
-            top_leagues = [39, 140, 2, 61, 135, 78, 3, 4, 307, 94] 
-            
             async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers, params={"date": today_date.strftime("%Y-%m-%d")})
+                response = await client.get(url, headers=headers)
                 data = response.json()
+                
                 matches = []
+                events = data.get("events", [])
                 
-                if data.get("response"):
-                    for fixture in data["response"]:
-                        if fixture["league"]["id"] in top_leagues:
-                            status = fixture["fixture"]["status"]["short"]
-                            if status in ["FT", "PEN", "AET", "PST", "CANC"]: continue
-                            
-                            is_live = status in ["1H", "2H", "HT", "ET", "P"]
-                            match_time = "En Direct" if is_live else datetime.fromtimestamp(fixture["fixture"]["timestamp"]).strftime("%H:%M")
-                            
-                            matches.append({
-                                "league": fixture["league"]["name"],
-                                "time": match_time,
-                                "teamA": {"name": fixture["teams"]["home"]["name"], "logo": fixture["teams"]["home"]["logo"]},
-                                "teamB": {"name": fixture["teams"]["away"]["name"], "logo": fixture["teams"]["away"]["logo"]},
-                                "isLive": is_live,
-                                "timestamp": fixture["fixture"]["timestamp"]
-                            })
-                
-                # الذكاء الاصطناعي: إذا لم توجد مباريات كبرى اليوم، اجلب مباريات الغد
-                if len(matches) == 0:
-                    tomorrow_date = today_date + timedelta(days=1)
-                    res_tomorrow = await client.get(url, headers=headers, params={"date": tomorrow_date.strftime("%Y-%m-%d")})
-                    data_tomorrow = res_tomorrow.json()
+                for event in events[:15]: # نأخذ أول 15 مباراة
+                    home_team = event.get("homeTeam", {}).get("name", "Team A")
+                    away_team = event.get("awayTeam", {}).get("name", "Team B")
+                    home_logo = event.get("homeTeam", {}).get("logo", "https://via.placeholder.com/40")
+                    away_logo = event.get("awayTeam", {}).get("logo", "https://via.placeholder.com/40")
+                    tournament = event.get("tournament", {}).get("name", "Football Match")
                     
-                    if data_tomorrow.get("response"):
-                        for fixture in data_tomorrow["response"]:
-                            if fixture["league"]["id"] in top_leagues:
-                                status = fixture["fixture"]["status"]["short"]
-                                if status in ["FT", "PEN", "AET", "PST", "CANC"]: continue
-                                
-                                match_time = "Demain " + datetime.fromtimestamp(fixture["fixture"]["timestamp"]).strftime("%H:%M")
-                                
-                                matches.append({
-                                    "league": fixture["league"]["name"],
-                                    "time": match_time,
-                                    "teamA": {"name": fixture["teams"]["home"]["name"], "logo": fixture["teams"]["home"]["logo"]},
-                                    "teamB": {"name": fixture["teams"]["away"]["name"], "logo": fixture["teams"]["away"]["logo"]},
-                                    "isLive": False,
-                                    "timestamp": fixture["fixture"]["timestamp"]
-                                })
-
-            # ترتيب وحفظ المباريات
-            matches.sort(key=lambda x: (not x["isLive"], x["timestamp"]))
-            TOP_MATCHES_CACHE = matches[:10]
-            print(f"✅ [Sports] تم تحديث وحفظ {len(TOP_MATCHES_CACHE)} مباريات بنجاح!")
+                    status_type = event.get("status", {}).get("type", "")
+                    is_live = status_type == "inprogress"
+                    
+                    start_timestamp = event.get("startTimestamp", int(datetime.now().timestamp()))
+                    match_time = "En Direct" if is_live else datetime.fromtimestamp(start_timestamp).strftime("%H:%M")
+                    
+                    matches.append({
+                        "league": tournament,
+                        "time": match_time,
+                        "teamA": {"name": home_team, "logo": home_logo},
+                        "teamB": {"name": away_team, "logo": away_logo},
+                        "isLive": is_live,
+                        "timestamp": start_timestamp
+                    })
+                
+                TOP_MATCHES_CACHE = matches[:10]
+                print(f"✅ [Sports] تم جلب {len(TOP_MATCHES_CACHE)} مباراة بنجاح من SportAPI7!")
                     
         except Exception as e:
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
 
-# 👇 LA ROUTE MANQUANTE EST ICI ! NE LA SUPPRIMEZ PAS 👇
 @app.get("/api/top-matches")
 async def get_top_matches():
     return {"status": "success", "matches": TOP_MATCHES_CACHE}
