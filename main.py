@@ -3978,13 +3978,22 @@ async def get_user_bet_history(current_user: str = Depends(get_current_user)):
     finally:
         db_session.close()
         
+      # ==========================================
+# ⚽ محرك المباريات المباشرة (SportAPI7)
+# ==========================================
+import asyncio
+from datetime import datetime
+import httpx
+import os
+
+TOP_MATCHES_CACHE = []
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24") 
+
 async def update_top_matches():
     global TOP_MATCHES_CACHE
     while True:
         try:
             print("⏳ [Sports] جاري جلب المباريات من SportAPI7...")
-            
-            # سنستعمل المسار العام لجلب الأحداث الحية أو المجدولة القادمة
             url = "https://sportapi7.p.rapidapi.com/api/v1/sport/football/events/live"
             
             headers = {
@@ -3997,10 +4006,8 @@ async def update_top_matches():
                 data = response.json()
                 
                 matches = []
-                # SportAPI7 قد يعيد البيانات في شكل events أو list
                 events = data.get("events", [])
                 
-                # إذا لم تكن هناك مباريات حية الآن، سنطلب جدول المباريات القادمة
                 if not events:
                     today = datetime.now().strftime("%Y-%m-%d")
                     fallback_url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today}"
@@ -4011,7 +4018,6 @@ async def update_top_matches():
                     home_team = event.get("homeTeam", {}).get("name", "Team A")
                     away_team = event.get("awayTeam", {}).get("name", "Team B")
                     
-                    # الروابط الرسمية للشعارات في SportAPI7
                     home_id = event.get("homeTeam", {}).get("id")
                     away_id = event.get("awayTeam", {}).get("id")
                     home_logo = f"https://api.sofascore.app/api/v1/team/{home_id}/image" if home_id else "https://via.placeholder.com/40"
@@ -4040,3 +4046,7 @@ async def update_top_matches():
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
+
+@app.get("/api/top-matches")
+async def get_top_matches():
+    return {"status": "success", "matches": TOP_MATCHES_CACHE}
