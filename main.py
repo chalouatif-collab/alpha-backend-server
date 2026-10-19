@@ -257,6 +257,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -265,8 +266,11 @@ app.add_middleware(
         "https://www.admin-alphabets.com",
         "https://admin-alphabets.com",
         "http://localhost:5500",
-        "http://127.0.0.1:5500"
-        "https://app.alphabet216.com"
+        "http://127.0.0.1:5500",
+        "https://app.alphabet216.com",
+        "http://app.alphabet216.com",
+        "file://",
+        "null"
     ],
     allow_credentials=True,
     allow_methods=["*"],
