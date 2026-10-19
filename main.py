@@ -3978,18 +3978,7 @@ async def get_user_bet_history(current_user: str = Depends(get_current_user)):
     finally:
         db_session.close()
         
-        # ==========================================
-# ⚽ محرك المباريات المباشرة (API-Football)
-# ==========================================
-import asyncio
-from datetime import datetime
-
-
-TOP_MATCHES_CACHE = []
-# تم وضع المفتاح الخاص بك بنجاح
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24") 
-
-# ==========================================
+       # ==========================================
 # ⚽ محرك المباريات المباشرة الذكي (API-Football)
 # ==========================================
 import asyncio
@@ -4013,11 +4002,10 @@ async def update_top_matches():
                 "x-rapidapi-host": "api-football-v1.p.rapidapi.com"
             }
             
-            # أضفنا دوريات جديدة: 78 (ألماني)، 3 (أوروبي)، 4 (يورو)، 307 (سعودي)، 94 (برتغالي)
+            # أضفنا دوريات جديدة
             top_leagues = [39, 140, 2, 61, 135, 78, 3, 4, 307, 94] 
             
             async with httpx.AsyncClient() as client:
-                # 1. محاولة جلب مباريات اليوم
                 response = await client.get(url, headers=headers, params={"date": today_date.strftime("%Y-%m-%d")})
                 data = response.json()
                 matches = []
@@ -4040,9 +4028,8 @@ async def update_top_matches():
                                 "timestamp": fixture["fixture"]["timestamp"]
                             })
                 
-                # 2. الذكاء الاصطناعي: إذا لم توجد مباريات كبرى اليوم، اجلب مباريات الغد فوراً!
+                # الذكاء الاصطناعي: إذا لم توجد مباريات كبرى اليوم، اجلب مباريات الغد
                 if len(matches) == 0:
-                    print("⚠️ لا توجد مباريات كبرى اليوم، جاري جلب مباريات الغد...")
                     tomorrow_date = today_date + timedelta(days=1)
                     res_tomorrow = await client.get(url, headers=headers, params={"date": tomorrow_date.strftime("%Y-%m-%d")})
                     data_tomorrow = res_tomorrow.json()
@@ -4073,3 +4060,8 @@ async def update_top_matches():
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
+
+# 👇 LA ROUTE MANQUANTE EST ICI ! NE LA SUPPRIMEZ PAS 👇
+@app.get("/api/top-matches")
+async def get_top_matches():
+    return {"status": "success", "matches": TOP_MATCHES_CACHE}
