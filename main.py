@@ -4019,10 +4019,8 @@ async def update_top_matches():
                     home_team = event.get("homeTeam", {}).get("name", "Team A")
                     away_team = event.get("awayTeam", {}).get("name", "Team B")
                     
-                    # 👈 جلب الشعار مباشرة من الـ API إن وجد، أو توليد شعار أنيق واحترافي باسم الفريق كبديل مضمون
-                    home_logo = event.get("homeTeam", {}).get("logo") or f"https://ui-avatars.com/api/?name={home_team}&background=161922&color=3b82f6&bold=true&size=128"
-                    away_logo = event.get("awayTeam", {}).get("logo") or f"https://ui-avatars.com/api/?name={away_team}&background=161922&color=3b82f6&bold=true&size=128"
-                    
+                    home_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{home_id}"
+                    away_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{away_id}"
                     tournament = event.get("tournament", {}).get("name", "Football Match")
                     status_type = event.get("status", {}).get("type", "")
                     is_live = status_type == "inprogress"
@@ -4046,6 +4044,28 @@ async def update_top_matches():
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
+        
 @app.get("/api/top-matches")
 async def get_top_matches():
     return {"status": "success", "matches": TOP_MATCHES_CACHE}
+
+from fastapi.responses import Response
+
+@app.get("/api/team-logo/{team_id}")
+async def get_team_logo(team_id: int):
+    url = f"https://api.sofascore.app/api/v1/team/{team_id}/image"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, headers=headers)
+            if res.status_code == 200:
+                return Response(
+                    content=res.content, 
+                    media_type="image/png", 
+                    headers={"Cache-Control": "public, max-age=86400"} # تخزين الصورة في المتصفح لمدة 24 ساعة
+                )
+    except Exception:
+        pass
+    return Response(status_code=404)
