@@ -3987,7 +3987,8 @@ import httpx
 import os
 
 TOP_MATCHES_CACHE = []
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24") 
+# وضع المفتاح بشكل مباشر وثابت لتجنب أي خطأ في النطاق (Scope)
+RAPIDAPI_KEY = "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24"
 
 async def update_top_matches():
     global TOP_MATCHES_CACHE
