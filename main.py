@@ -691,7 +691,8 @@ async def auto_settle_tickets():
 @app.on_event("startup")
 async def start_background_tasks():
      asyncio.create_task(auto_settle_tickets()) 
-     asyncio.create_task(daily_cashback_system()) 
+     asyncio.create_task(daily_cashback_system())
+     asyncio.create_task(update_top_matches())
 
 def load_tickets_db():
     if not os.path.exists(TICKETS_FILE):
