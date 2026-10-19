@@ -3978,16 +3978,16 @@ async def get_user_bet_history(current_user: str = Depends(get_current_user)):
     finally:
         db_session.close()
         
-      # ==========================================
-# ⚽ محرك المباريات المباشرة (SportAPI7)
+     # ==========================================
+# ⚽ محرك المباريات المباشرة والشعارات (SportAPI7)
 # ==========================================
 import asyncio
 from datetime import datetime
 import httpx
 import os
+from fastapi.responses import Response, RedirectResponse
 
 TOP_MATCHES_CACHE = []
-# وضع المفتاح بشكل مباشر وثابت لتجنب أي خطأ في النطاق (Scope)
 RAPIDAPI_KEY = "68fd2fa693msha2d8253178c9adfp1165d7jsn2301d8047a24"
 
 async def update_top_matches():
@@ -4002,13 +4002,14 @@ async def update_top_matches():
                 "x-rapidapi-host": "sportapi7.p.rapidapi.com"
             }
             
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(url, headers=headers)
                 data = response.json()
                 
                 matches = []
                 events = data.get("events", [])
                 
+                # إذا لم توجد مباريات مباشرة الآن، نجلب مباريات اليوم المجدولة
                 if not events:
                     today = datetime.now().strftime("%Y-%m-%d")
                     fallback_url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today}"
@@ -4016,11 +4017,20 @@ async def update_top_matches():
                     events = res_fallback.json().get("events", [])
                 
                 for event in events[:10]:
-                    home_team = event.get("homeTeam", {}).get("name", "Team A")
-                    away_team = event.get("awayTeam", {}).get("name", "Team B")
+                    home_team_obj = event.get("homeTeam", {})
+                    away_team_obj = event.get("awayTeam", {})
                     
-                    home_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{home_id}"
-                    away_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{away_id}"
+                    home_team = home_team_obj.get("name", "Team A")
+                    away_team = away_team_obj.get("name", "Team B")
+                    
+                    # ✅ تعريف المعرفات بشكل صريح لمنع خطأ NameError
+                    home_id = home_team_obj.get("id")
+                    away_id = away_team_obj.get("id")
+                    
+                    # ✅ توجيه الشعارات عبر مسار السيرفر الخاص بك لمنع الحظر نهائياً
+                    home_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{home_id}?name={home_team}" if home_id else f"https://ui-avatars.com/api/?name={home_team}&background=161922&color=3b82f6&bold=true"
+                    away_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{away_id}?name={away_team}" if away_id else f"https://ui-avatars.com/api/?name={away_team}&background=161922&color=3b82f6&bold=true"
+                    
                     tournament = event.get("tournament", {}).get("name", "Football Match")
                     status_type = event.get("status", {}).get("type", "")
                     is_live = status_type == "inprogress"
@@ -4044,28 +4054,35 @@ async def update_top_matches():
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
-        
+
+# 1. مسار إرسال المباريات للواجهة
 @app.get("/api/top-matches")
 async def get_top_matches():
     return {"status": "success", "matches": TOP_MATCHES_CACHE}
 
-from fastapi.responses import Response
-
+# 2. مسار جلب شعارات الأندية الحقيقية (Proxy) لتخطي حظر المتصفح
 @app.get("/api/team-logo/{team_id}")
-async def get_team_logo(team_id: int):
-    url = f"https://api.sofascore.app/api/v1/team/{team_id}/image"
+async def get_team_logo(team_id: int, name: str = "T"):
+    urls = [
+        f"https://api.sofascore.app/api/v1/team/{team_id}/image",
+        f"https://img.sofascore.com/api/v1/team/{team_id}/image"
+    ]
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.sofascore.com/"
     }
-    try:
-        async with httpx.AsyncClient() as client:
-            res = await client.get(url, headers=headers)
-            if res.status_code == 200:
-                return Response(
-                    content=res.content, 
-                    media_type="image/png", 
-                    headers={"Cache-Control": "public, max-age=86400"} # تخزين الصورة في المتصفح لمدة 24 ساعة
-                )
-    except Exception:
-        pass
-    return Response(status_code=404)
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for url in urls:
+            try:
+                res = await client.get(url, headers=headers)
+                if res.status_code == 200 and len(res.content) > 100:
+                    return Response(
+                        content=res.content, 
+                        media_type="image/png", 
+                        headers={"Cache-Control": "public, max-age=604800"} # حفظ الشعار في المتصفح لمدة أسبوع كامل لسرعة فائقة
+                    )
+            except Exception:
+                continue
+                
+    # في حال كان فريقاً محلياً صغيراً ليس له شعار في قاعدة البيانات، نرجع الحروف الأنيقة كبديل
+    return RedirectResponse(f"https://ui-avatars.com/api/?name={name}&background=161922&color=3b82f6&bold=true&size=128")
