@@ -266,6 +266,7 @@ app.add_middleware(
         "https://admin-alphabets.com",
         "http://localhost:5500",
         "http://127.0.0.1:5500"
+        "https://app.alphabet216.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
