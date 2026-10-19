@@ -4049,3 +4049,6 @@ async def update_top_matches():
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
+@app.get("/api/top-matches")
+async def get_top_matches():
+    return {"status": "success", "matches": TOP_MATCHES_CACHE}
