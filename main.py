@@ -4005,19 +4005,24 @@ async def update_top_matches():
             }
             
             async with httpx.AsyncClient(timeout=15.0) as client:
-                # جلب المباريات المباشرة (نأخذ أهم 5) + المباريات المجدولة القادمة لليوم (نأخذ 5)
                 res_live = await client.get(live_url, headers=headers)
-                live_events = res_live.json().get("events", [])[:5]
+                live_events = res_live.json().get("events", [])
                 
                 res_sched = await client.get(scheduled_url, headers=headers)
                 sched_events = [
                     e for e in res_sched.json().get("events", []) 
                     if e.get("status", {}).get("type") == "notstarted"
-                ][:5]
+                ]
                 
-                events = live_events + sched_events
+                selected_live = live_events[:6]
+                needed_sched = 12 - len(selected_live)
+                selected_sched = sched_events[:needed_sched]
+                
+                events = selected_live + selected_sched
+                if len(events) < 12 and len(live_events) > len(selected_live):
+                    events = (live_events + sched_events)[:12]
+                
                 matches = []
-                
                 for event in events:
                     home_team_obj = event.get("homeTeam", {})
                     away_team_obj = event.get("awayTeam", {})
@@ -4036,7 +4041,6 @@ async def update_top_matches():
                     status_type = status_obj.get("type", "")
                     is_live = status_type == "inprogress"
                     
-                    # 🕒 حساب التاريخ والتوقيت الفعلي للمباراة دائماً
                     start_timestamp = event.get("startTimestamp", int(datetime.now().timestamp()))
                     dt_obj = datetime.fromtimestamp(start_timestamp)
                     
@@ -4045,7 +4049,6 @@ async def update_top_matches():
                     else:
                         formatted_date = dt_obj.strftime("%d/%m • %H:%M")
                     
-                    # ⚽ جلب النتيجة الحالية إذا كانت المباراة مباشرة
                     home_score = event.get("homeScore", {}).get("current", 0)
                     away_score = event.get("awayScore", {}).get("current", 0)
                     score_str = f"{home_score} - {away_score}" if is_live else "VS"
