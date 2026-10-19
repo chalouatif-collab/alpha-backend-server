@@ -4019,14 +4019,10 @@ async def update_top_matches():
                     home_team = event.get("homeTeam", {}).get("name", "Team A")
                     away_team = event.get("awayTeam", {}).get("name", "Team B")
                     
-                    home_id = event.get("homeTeam", {}).get("id")
-                    away_id = event.get("awayTeam", {}).get("id")
+                    # 👈 جلب الشعار مباشرة من الـ API إن وجد، أو توليد شعار أنيق واحترافي باسم الفريق كبديل مضمون
+                    home_logo = event.get("homeTeam", {}).get("logo") or f"https://ui-avatars.com/api/?name={home_team}&background=161922&color=3b82f6&bold=true&size=128"
+                    away_logo = event.get("awayTeam", {}).get("logo") or f"https://ui-avatars.com/api/?name={away_team}&background=161922&color=3b82f6&bold=true&size=128"
                     
-                    # 👈 استخدام روابط شعارات بديلة ومضمونة 100% لتظهر فوراً
-                    home_logo = f"https://api.sofascore.app/api/v1/team/{home_id}/image" if home_id else "https://via.placeholder.com/40"
-                    away_logo = f"https://api.sofascore.app/api/v1/team/{away_id}/image" if away_id else "https://via.placeholder.com/40"
-                    
-                    # home_logo = f"https://media.api-sports.io/football/teams/{home_id}.png"
                     tournament = event.get("tournament", {}).get("name", "Football Match")
                     status_type = event.get("status", {}).get("type", "")
                     is_live = status_type == "inprogress"
