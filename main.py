@@ -3995,7 +3995,9 @@ async def update_top_matches():
     while True:
         try:
             print("⏳ [Sports] جاري جلب المباريات والشعارات من SportAPI7...")
-            url = "https://sportapi7.p.rapidapi.com/api/v1/sport/football/events/live"
+            live_url = "https://sportapi7.p.rapidapi.com/api/v1/sport/football/events/live"
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            scheduled_url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today_str}"
             
             headers = {
                 "x-rapidapi-key": RAPIDAPI_KEY,
@@ -4003,44 +4005,55 @@ async def update_top_matches():
             }
             
             async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.get(url, headers=headers)
-                data = response.json()
+                # جلب المباريات المباشرة (نأخذ أهم 5) + المباريات المجدولة القادمة لليوم (نأخذ 5)
+                res_live = await client.get(live_url, headers=headers)
+                live_events = res_live.json().get("events", [])[:5]
                 
+                res_sched = await client.get(scheduled_url, headers=headers)
+                sched_events = [
+                    e for e in res_sched.json().get("events", []) 
+                    if e.get("status", {}).get("type") == "notstarted"
+                ][:5]
+                
+                events = live_events + sched_events
                 matches = []
-                events = data.get("events", [])
                 
-                # إذا لم توجد مباريات مباشرة الآن، نجلب مباريات اليوم المجدولة
-                if not events:
-                    today = datetime.now().strftime("%Y-%m-%d")
-                    fallback_url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today}"
-                    res_fallback = await client.get(fallback_url, headers=headers)
-                    events = res_fallback.json().get("events", [])
-                
-                for event in events[:10]:
+                for event in events:
                     home_team_obj = event.get("homeTeam", {})
                     away_team_obj = event.get("awayTeam", {})
                     
                     home_team = home_team_obj.get("name", "Team A")
                     away_team = away_team_obj.get("name", "Team B")
                     
-                    # ✅ تعريف المعرفات بشكل صريح لمنع خطأ NameError
                     home_id = home_team_obj.get("id")
                     away_id = away_team_obj.get("id")
                     
-                    # ✅ توجيه الشعارات عبر مسار السيرفر الخاص بك لمنع الحظر نهائياً
                     home_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{home_id}?name={home_team}" if home_id else f"https://ui-avatars.com/api/?name={home_team}&background=161922&color=3b82f6&bold=true"
                     away_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{away_id}?name={away_team}" if away_id else f"https://ui-avatars.com/api/?name={away_team}&background=161922&color=3b82f6&bold=true"
                     
                     tournament = event.get("tournament", {}).get("name", "Football Match")
-                    status_type = event.get("status", {}).get("type", "")
+                    status_obj = event.get("status", {})
+                    status_type = status_obj.get("type", "")
                     is_live = status_type == "inprogress"
                     
+                    # 🕒 حساب التاريخ والتوقيت الفعلي للمباراة دائماً
                     start_timestamp = event.get("startTimestamp", int(datetime.now().timestamp()))
-                    match_time = "En Direct" if is_live else datetime.fromtimestamp(start_timestamp).strftime("%H:%M")
+                    dt_obj = datetime.fromtimestamp(start_timestamp)
+                    
+                    if dt_obj.date() == datetime.now().date():
+                        formatted_date = f"Aujourd'hui • {dt_obj.strftime('%H:%M')}"
+                    else:
+                        formatted_date = dt_obj.strftime("%d/%m • %H:%M")
+                    
+                    # ⚽ جلب النتيجة الحالية إذا كانت المباراة مباشرة
+                    home_score = event.get("homeScore", {}).get("current", 0)
+                    away_score = event.get("awayScore", {}).get("current", 0)
+                    score_str = f"{home_score} - {away_score}" if is_live else "VS"
                     
                     matches.append({
                         "league": tournament,
-                        "time": match_time,
+                        "time": formatted_date, # يحتوي دائماً على الموعد والساعة
+                        "score": score_str,     # يحتوي على النتيجة للمباشر أو VS للقادم
                         "teamA": {"name": home_team, "logo": home_logo},
                         "teamB": {"name": away_team, "logo": away_logo},
                         "isLive": is_live,
@@ -4048,7 +4061,7 @@ async def update_top_matches():
                     })
                 
                 TOP_MATCHES_CACHE = matches
-                print(f"✅ [Sports] تم تحديث {len(TOP_MATCHES_CACHE)} مباراة مع الشعارات بنجاح!")
+                print(f"✅ [Sports] تم تحديث {len(TOP_MATCHES_CACHE)} مباراة بالتوقيت والنتائج بنجاح!")
                     
         except Exception as e:
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
