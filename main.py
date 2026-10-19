@@ -3994,7 +3994,7 @@ async def update_top_matches():
     global TOP_MATCHES_CACHE
     while True:
         try:
-            print("⏳ [Sports] جاري جلب المباريات من SportAPI7...")
+            print("⏳ [Sports] جاري جلب المباريات والشعارات من SportAPI7...")
             url = "https://sportapi7.p.rapidapi.com/api/v1/sport/football/events/live"
             
             headers = {
@@ -4021,8 +4021,10 @@ async def update_top_matches():
                     
                     home_id = event.get("homeTeam", {}).get("id")
                     away_id = event.get("awayTeam", {}).get("id")
-                    home_logo = f"https://api.sofascore.app/api/v1/team/{home_id}/image" if home_id else "https://via.placeholder.com/40"
-                    away_logo = f"https://api.sofascore.app/api/v1/team/{away_id}/image" if away_id else "https://via.placeholder.com/40"
+                    
+                    # 👈 الرابط المحدث والرسمي لشعارات الأندية بجودة عالية
+                    home_logo = f"https://img.sofascore.com/api/v1/team/{home_id}/image" if home_id else "https://via.placeholder.com/40"
+                    away_logo = f"https://img.sofascore.com/api/v1/team/{away_id}/image" if away_id else "https://via.placeholder.com/40"
                     
                     tournament = event.get("tournament", {}).get("name", "Football Match")
                     status_type = event.get("status", {}).get("type", "")
@@ -4041,13 +4043,9 @@ async def update_top_matches():
                     })
                 
                 TOP_MATCHES_CACHE = matches
-                print(f"✅ [Sports] تم بنجاح جلب {len(TOP_MATCHES_CACHE)} مباراة حقيقية!")
+                print(f"✅ [Sports] تم تحديث {len(TOP_MATCHES_CACHE)} مباراة مع الشعارات بنجاح!")
                     
         except Exception as e:
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
         await asyncio.sleep(3600 * 2)
-
-@app.get("/api/top-matches")
-async def get_top_matches():
-    return {"status": "success", "matches": TOP_MATCHES_CACHE}
