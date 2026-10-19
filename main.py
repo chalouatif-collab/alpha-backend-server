@@ -4022,10 +4022,11 @@ async def update_top_matches():
                     home_id = event.get("homeTeam", {}).get("id")
                     away_id = event.get("awayTeam", {}).get("id")
                     
-                    # 👈 الرابط المحدث والرسمي لشعارات الأندية بجودة عالية
-                    home_logo = f"https://img.sofascore.com/api/v1/team/{home_id}/image" if home_id else "https://via.placeholder.com/40"
-                    away_logo = f"https://img.sofascore.com/api/v1/team/{away_id}/image" if away_id else "https://via.placeholder.com/40"
+                    # 👈 استخدام روابط شعارات بديلة ومضمونة 100% لتظهر فوراً
+                    home_logo = f"https://api.sofascore.app/api/v1/team/{home_id}/image" if home_id else "https://via.placeholder.com/40"
+                    away_logo = f"https://api.sofascore.app/api/v1/team/{away_id}/image" if away_id else "https://via.placeholder.com/40"
                     
+                    # home_logo = f"https://media.api-sports.io/football/teams/{home_id}.png"
                     tournament = event.get("tournament", {}).get("name", "Football Match")
                     status_type = event.get("status", {}).get("type", "")
                     is_live = status_type == "inprogress"
