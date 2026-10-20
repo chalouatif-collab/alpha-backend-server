@@ -3994,10 +3994,11 @@ async def update_top_matches():
     global TOP_MATCHES_CACHE
     while True:
         try:
-            print("⏳ [Sports] جاري جلب المباريات والشعارات من SportAPI7...")
-            live_url = "https://sportapi7.p.rapidapi.com/api/v1/sport/football/events/live"
+            print("⏳ [Sports] جاري جلب جدول مباريات اليوم...")
+            
+            # 👈 نعتمد فقط على مسار جدول المباريات (Scheduled) ليجلب لنا مباريات اليوم القادمة والمباشرة
             today_str = datetime.now().strftime("%Y-%m-%d")
-            scheduled_url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today_str}"
+            url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{today_str}"
             
             headers = {
                 "x-rapidapi-key": RAPIDAPI_KEY,
@@ -4005,25 +4006,18 @@ async def update_top_matches():
             }
             
             async with httpx.AsyncClient(timeout=15.0) as client:
-                res_live = await client.get(live_url, headers=headers)
-                live_events = res_live.json().get("events", [])
+                response = await client.get(url, headers=headers)
+                data = response.json()
                 
-                res_sched = await client.get(scheduled_url, headers=headers)
-                sched_events = [
-                    e for e in res_sched.json().get("events", []) 
-                    if e.get("status", {}).get("type") == "notstarted"
-                ]
-                
-                selected_live = live_events[:6]
-                needed_sched = 12 - len(selected_live)
-                selected_sched = sched_events[:needed_sched]
-                
-                events = selected_live + selected_sched
-                if len(events) < 12 and len(live_events) > len(selected_live):
-                    events = (live_events + sched_events)[:12]
+                # تصفية المباريات: نأخذ فقط المباريات التي لم تبدأ (notstarted) أو الجارية الآن (inprogress)
+                # ونستبعد المباريات التي انتهت حتى لا تأخذ مساحة
+                all_events = data.get("events", [])
+                valid_events = [e for e in all_events if e.get("status", {}).get("type") in ["notstarted", "inprogress"]]
                 
                 matches = []
-                for event in events:
+                
+                # نأخذ أبرز 12 مباراة
+                for event in valid_events[:12]:
                     home_team_obj = event.get("homeTeam", {})
                     away_team_obj = event.get("awayTeam", {})
                     
@@ -4037,17 +4031,12 @@ async def update_top_matches():
                     away_logo = f"https://alpha-backend-server.onrender.com/api/team-logo/{away_id}?name={away_team}" if away_id else f"https://ui-avatars.com/api/?name={away_team}&background=161922&color=3b82f6&bold=true"
                     
                     tournament = event.get("tournament", {}).get("name", "Football Match")
-                    status_obj = event.get("status", {})
-                    status_type = status_obj.get("type", "")
+                    status_type = event.get("status", {}).get("type", "")
                     is_live = status_type == "inprogress"
                     
                     start_timestamp = event.get("startTimestamp", int(datetime.now().timestamp()))
                     dt_obj = datetime.fromtimestamp(start_timestamp)
-                    
-                    if dt_obj.date() == datetime.now().date():
-                        formatted_date = f"Aujourd'hui • {dt_obj.strftime('%H:%M')}"
-                    else:
-                        formatted_date = dt_obj.strftime("%d/%m • %H:%M")
+                    formatted_date = f"Aujourd'hui • {dt_obj.strftime('%H:%M')}"
                     
                     home_score = event.get("homeScore", {}).get("current", 0)
                     away_score = event.get("awayScore", {}).get("current", 0)
@@ -4055,8 +4044,8 @@ async def update_top_matches():
                     
                     matches.append({
                         "league": tournament,
-                        "time": formatted_date, # يحتوي دائماً على الموعد والساعة
-                        "score": score_str,     # يحتوي على النتيجة للمباشر أو VS للقادم
+                        "time": formatted_date,
+                        "score": score_str,
                         "teamA": {"name": home_team, "logo": home_logo},
                         "teamB": {"name": away_team, "logo": away_logo},
                         "isLive": is_live,
@@ -4064,14 +4053,14 @@ async def update_top_matches():
                     })
                 
                 TOP_MATCHES_CACHE = matches
-                print(f"✅ [Sports] تم تحديث {len(TOP_MATCHES_CACHE)} مباراة بالتوقيت والنتائج بنجاح!")
+                print(f"✅ [Sports] تم جلب {len(TOP_MATCHES_CACHE)} مباراة بنجاح! سيتم إيقاف الطلبات لـ 3 ساعات لتوفير الباقة.")
                     
         except Exception as e:
             print(f"❌ [Sports] خطأ في جلب المباريات: {e}")
             
-        await asyncio.sleep(3600 * 2)
-
-# 1. مسار إرسال المباريات للواجهة
+        # 👈 السحر هنا: السيرفر ينام لـ 3 ساعات كاملة ويعرض المباريات المخزنة لديه
+        # هذا يضمن استهلاك 8 طلبات فقط يومياً من RapidAPI!
+        await asyncio.sleep(3600 * 3)
 @app.get("/api/top-matches")
 async def get_top_matches():
     return {"status": "success", "matches": TOP_MATCHES_CACHE}
