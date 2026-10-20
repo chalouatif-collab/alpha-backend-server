@@ -861,6 +861,7 @@ class RegisterRequest(BaseModel):
     created_by: str = "self"
     phone: str = ""
     is_self_registered: bool = True
+    site_id: Optional[str] = None
 class ConfigureAccountRequest(BaseModel): admin_username: str; target_username: str; rtp: int; is_blocked: int
 class UpdateBalanceRequest(BaseModel): admin_username: str; target_username: str; action: str; amount: float
 class ChangePlayerPasswordRequest(BaseModel): admin_username: str; target_username: str; new_password: str
@@ -876,7 +877,7 @@ class Verify2FARequest(BaseModel):
 
 
 @app.post("/api/register")
-@limiter.limit("1/minute")
+@limiter.limit("10/minute") # رفعنا الحد قليلاً لكي لا يحظرك أثناء إنشاء عدة حسابات من لوحة الأونر
 async def register_user(request: Request, req: RegisterRequest):
     uname = req.username.lower().strip()
     
@@ -895,8 +896,18 @@ async def register_user(request: Request, req: RegisterRequest):
     new_secret_key = pyotp.random_base32()
     new_id = max([int(u.get("id", 0)) for u in db]) + 1 if db else 1
     
-    # 🌟 التقاط الموقع الذي جاء منه اللاعب أوتوماتيكياً
-    current_site = get_site_id(request)
+    # 🌟 التوجيه الذكي للموقع (الأولوية لاختيار الأونر، ثم وراثة موقع الوكيل، ثم الرابط) 🌟
+    if getattr(req, "site_id", None) and req.site_id.strip() != "":
+        # 1. إذا اختار الأونر موقعاً محدداً من القائمة (مثل coutabet)
+        current_site = req.site_id.lower().strip()
+    else:
+        # 2. إذا كان المنشئ هو Manager أو Admin أو Shop، يرث الحساب الجديد نفس موقع منشئه تلقائياً
+        creator_obj = next((u for u in db if u.get("username") == req.created_by.lower().strip()), None)
+        if creator_obj and creator_obj.get("role") != "owner" and creator_obj.get("site_id"):
+            current_site = creator_obj.get("site_id")
+        else:
+            # 3. إذا كان لاعباً يسجل بنفسه من الواجهة، نلتقط الموقع من الرابط
+            current_site = get_site_id(request)
     
     new_user = {
         "id": new_id,
@@ -912,7 +923,7 @@ async def register_user(request: Request, req: RegisterRequest):
         "two_factor_secret": new_secret_key,
         "phone": req.phone,
         "is_self_registered": req.is_self_registered,
-        "site_id": current_site # 🌟 حفظ اللاعب في موقعه المخصص
+        "site_id": current_site # 🌟 حفظ اللاعب/الوكيل في الموقع الدقيق
     }
     
     db.append(new_user)
@@ -920,7 +931,6 @@ async def register_user(request: Request, req: RegisterRequest):
     log_admin_action(req.created_by, "CREATE_USER", f"Created {uname} with role {req.role} on site {current_site}")
     
     return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id, "site": current_site}
-
 # 🌟 استخراج الرابط الديناميكي لتوجيه اللاعبين بعد إغلاق اللعبة 
 def get_dynamic_url(request: Request) -> str:
     origin = request.headers.get("origin")
