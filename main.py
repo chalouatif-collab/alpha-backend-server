@@ -120,7 +120,7 @@ DB_FILE = "tickets_database.json"
 TICKETS_FILE = "tickets_database.json" 
 
 # ==========================================
-# إعدادات قاعدة البيانات والتشفير
+# إعدادات قاعدة البيانات والتشفير (محدث للنظام المتعدد Multi-tenant)
 # ==========================================
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -143,6 +143,8 @@ class User(Base):
     last_spin_date = Column(String, default="")
     daily_deposits = Column(Float, default=0.0)
     two_factor_secret = Column(String, nullable=True)
+    # 🌟 الحقل الجديد لعزل المواقع:
+    site_id = Column(String, default="alphabet216", index=True) 
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -153,20 +155,53 @@ class Transaction(Base):
     amount = Column(Float)
     date = Column(String)  
     image_path = Column(String, nullable=True)
-    tx_id = Column(String, nullable=True) # 👈 السطر السحري الذي سيحفظ بيانات D17 و Wafacash
+    tx_id = Column(String, nullable=True)
+    # 🌟 الحقل الجديد لعزل المواقع مالياً:
+    site_id = Column(String, default="alphabet216", index=True) 
 
+# 🛡️ التحديث الآمن للجداول القديمة (لن يمسح البيانات السابقة أبداً)
 try:
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE transactions ADD COLUMN image_path VARCHAR"))
 except Exception:
     pass
 
-# 👈 أمر إجباري لتحديث الجداول القديمة
 try:
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE transactions ADD COLUMN tx_id VARCHAR"))
 except Exception:
     pass
+
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE transactions ADD COLUMN site_id VARCHAR DEFAULT 'alphabet216'"))
+        conn.execute(text("ALTER TABLE alpha_users ADD COLUMN site_id VARCHAR DEFAULT 'alphabet216'"))
+except Exception:
+    pass
+
+Base.metadata.create_all(bind=engine)
+
+
+# 🌟 كاشف المواقع الذكي (يُضاف تحت إعدادات قاعدة البيانات مباشرة)
+def get_site_id(request: Request) -> str:
+    """ 
+    يقرأ الرابط الذي جاء منه الطلب لتحديد الموقع تلقائياً.
+    يُستخدم لعزل بيانات كل موقع وتوجيه واجهات API.
+    """
+    origin = request.headers.get("origin", "")
+    host = request.headers.get("host", "")
+    url_str = (origin or host).lower()
+    
+    if "coutabet" in url_str: 
+        return "coutabet"
+    if "tounsibet" in url_str: 
+        return "tounsibet"
+    if "xdanous" in url_str: 
+        return "xdanous"
+        
+    # إذا لم يتطابق مع أي من الثلاثة، نعتبره الموقع الرئيسي
+    return "alphabet216"
+
 Base.metadata.create_all(bind=engine)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -269,6 +304,12 @@ app.add_middleware(
         "http://127.0.0.1:5500",
         "https://app.alphabet216.com",
         "http://app.alphabet216.com",
+        "https://coutabet.com",
+        "https://www.coutabet.com",
+        "https://tounsibet.com",
+        "https://www.tounsibet.com",
+        "https://xdanous.net",
+        "https://www.xdanous.net",
         "file://",
         "null"
     ],
@@ -854,6 +895,9 @@ async def register_user(request: Request, req: RegisterRequest):
     new_secret_key = pyotp.random_base32()
     new_id = max([int(u.get("id", 0)) for u in db]) + 1 if db else 1
     
+    # 🌟 التقاط الموقع الذي جاء منه اللاعب أوتوماتيكياً
+    current_site = get_site_id(request)
+    
     new_user = {
         "id": new_id,
         "username": uname, 
@@ -867,15 +911,35 @@ async def register_user(request: Request, req: RegisterRequest):
         "daily_deposits": 0.0,
         "two_factor_secret": new_secret_key,
         "phone": req.phone,
-        "is_self_registered": req.is_self_registered # 🌟 حفظ المتغير صراحة
+        "is_self_registered": req.is_self_registered,
+        "site_id": current_site # 🌟 حفظ اللاعب في موقعه المخصص
     }
     
     db.append(new_user)
     save_db(db)
-    log_admin_action(req.created_by, "CREATE_USER", f"Created {uname} with role {req.role}")
+    log_admin_action(req.created_by, "CREATE_USER", f"Created {uname} with role {req.role} on site {current_site}")
     
-    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id}
-    
+    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id, "site": current_site}
+
+# 🌟 استخراج الرابط الديناميكي لتوجيه اللاعبين بعد إغلاق اللعبة 
+def get_dynamic_url(request: Request) -> str:
+    origin = request.headers.get("origin")
+    if origin:
+        return origin + "/"
+    host = request.headers.get("host", "alphabet216.com")
+    protocol = "https" if "localhost" not in host and "127.0.0.1" not in host else "http"
+    return f"{protocol}://{host}/"
+
+# 🌟 توليد بادئة فريدة لكل موقع لعزل اللاعبين عند المزود
+def get_site_prefix(site_id: str) -> str:
+    prefixes = {
+        "coutabet": "ct",
+        "tounsibet": "tn",
+        "xdanous": "xd",
+        "alphabet216": "al"
+    }
+    return prefixes.get(site_id, "al")
+
 @app.get("/api/admin/fix-user-ids")
 async def fix_missing_user_ids(current_user: str = Depends(get_admin_user)):
     try:
@@ -1432,15 +1496,24 @@ async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int
 async def launch_casino(request: Request):
     try:
         data = await request.json()
+        
+        # 🌟 استخراج الموقع، الرابط، والبادئة
+        current_site = get_site_id(request)
+        prefix = get_site_prefix(current_site)
+        dynamic_url = get_dynamic_url(request)
+        
+        raw_user = data.get("user_code", "test_user")
+        prefixed_user = f"{prefix}_{raw_user}" # 👈 هنا يتم إضافة ct_ أو tn_
+        
         payload = {
             "method": "game_launch",
             "agent_code": AGENT_CODE,      
             "agent_token": AGENT_TOKEN,    
-            "user_code": data.get("user_code", "test_user"),
+            "user_code": prefixed_user, # 🌟 إرسال الاسم بالبادئة للمزود
             "provider_code": data.get("provider_code"),
             "game_code": data.get("game_code"),
             "lang": "fr",
-            "lobby_url": "https://alphabet216.com/#casino"
+            "lobby_url": f"{dynamic_url}#casino" # 🌟 العودة للموقع الصحيح
         }
         headers = {"Content-Type": "application/json"}
         endpoint = PROVIDER_ENDPOINT.rstrip('/')
@@ -1799,6 +1872,18 @@ async def seamless_wallet_handler(request: Request):
         data = await request.json()
         method, user_code = data.get("method"), data.get("user_code")
         
+        # 🌟 السطر السحري لفك البادئة (Prefix) واستخراج اسم اللاعب الحقيقي لخصم الرصيد
+        actual_user_code = str(user_code).lower().strip()
+        if "_" in actual_user_code:
+            actual_user_code = actual_user_code.split("_", 1)[1]
+            
+        # --- جلب الرصيد الحقيقي من قاعدة البيانات ---
+        db = load_db()
+        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == actual_user_code), None)
+        
+        if not target_user:
+            return JSONResponse(content={"status": 0, "msg": "USER_NOT_FOUND"})
+            
         # --- جلب الرصيد الحقيقي من قاعدة البيانات ---
         db = load_db()
         # التعديل السحري: توحيد الحروف لمنع أخطاء التطابق
@@ -1972,8 +2057,8 @@ async def eurovirtuals_player_info(request: Request):
         if sec_err:
             return JSONResponse(content=sec_err, status_code=200)
 
-        # 🛑 السر هنا: البحث يجب أن يكون بـ player_id وليس player_token
         player_id = str(payload.get("player_id", ""))
+        if "_" in player_id: player_id = player_id.split("_", 1)[1]
         
         db = load_db()
         target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
@@ -2012,6 +2097,7 @@ async def eurovirtuals_bet(request: Request):
 
         # دعم الكازينو والرياضة معاً
         player_id = str(payload.get("player_id") or payload.get("user_code") or "").strip()
+        if "_" in player_id: player_id = player_id.split("_", 1)[1]
         currency = str(payload.get("currency") or "TND").strip()
         transaction_id = str(payload.get("transaction_id") or payload.get("txn_id") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -2099,6 +2185,7 @@ async def eurovirtuals_win(request: Request):
         action = str(data.get("action", "")).strip()
         currency = str(data.get("currency", "TND")).strip()
         player_id = str(data.get("player_id") or data.get("user_code") or "").strip()
+        if "_" in player_id: player_id = player_id.split("_", 1)[1]
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
         def safe_float(val):
@@ -2300,6 +2387,7 @@ async def eurovirtuals_adjustment(request: Request):
             
         tx_id = str(data.get("transaction_id", ""))
         player_id = str(data.get("player_id") or "test1")
+        if "_" in player_id: player_id = player_id.split("_", 1)[1]
         amount = abs(float(data.get("amount", 0.0)))
         action = data.get("action", "")
         
@@ -2463,7 +2551,12 @@ async def launch_eurovirtuals(request: Request):
         user_code = str(data.get("user_code", "test_user"))
         timestamp = str(int(time.time()))
 
-        # استخراج رصيد اللاعب
+        # 🌟 استخراج الموقع والرابط
+        current_site = get_site_id(request)
+        prefix = get_site_prefix(current_site)
+        dynamic_url = get_dynamic_url(request)
+        prefixed_user = f"{prefix}_{user_code}"
+
         async with db_lock:
             db = load_db()
             target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
@@ -2471,23 +2564,21 @@ async def launch_eurovirtuals(request: Request):
                 return {"error": "Player not found or blocked"}
             current_balance = float(target_user.get("balance", 0.0))
 
-        # توكن جلسة فريد لكل رمية (مهم جداً لألعاب اللايف)
-        unique_session_token = f"tok_{user_code}_{int(time.time())}"
+        unique_session_token = f"tok_{prefixed_user}_{int(time.time())}"
 
-        # البايلود المُرسل للمزود (نظيف ومطابق لقاعدة بياناتك 100%)
         payload = {
-            "player_id": user_code,      # 🌟 العودة للاسم الحقيقي لكي تنجح الرهانات
-            "player_name": user_code,    # 🌟 العودة للاسم الحقيقي
+            "player_id": prefixed_user,      # 🌟 الاسم المعزول
+            "player_name": prefixed_user,    # 🌟 الاسم المعزول
             "player_token": unique_session_token,
-            "currency": "TND",           # 🌟 العملة الحقيقية لحسابك
+            "currency": "TND",
             "demo": 0,
             "game_uuid": game_uuid,
             "balance": current_balance,
             "country": "TN",
             "language": "fr",
             "device": "desktop",
-            "return_url": "https://alphabet216.com/",
-            "lobby_url": "https://alphabet216.com/"
+            "return_url": dynamic_url,       # 🌟 العودة للموقع الصحيح
+            "lobby_url": dynamic_url
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
@@ -2549,22 +2640,29 @@ async def launch_eurovirtuals(request: Request):
 async def launch_sportsbook(request: Request):
     try:
         data = await request.json()
+        
+        # 🌟 استخراج الموقع والبادئة
+        current_site = get_site_id(request)
+        prefix = get_site_prefix(current_site)
+        dynamic_url = get_dynamic_url(request)
+        
         provider_code = str(data.get("provider_code", "")).lower()
         user_code = str(data.get("user_code", "test_user"))
+        prefixed_user = f"{prefix}_{user_code}"
         
-        print(f"DEBUG: Unified Sportsbook Launch -> Provider: {provider_code}, User: {user_code}")
+        print(f"DEBUG: Unified Sportsbook Launch -> Provider: {provider_code}, User: {prefixed_user}, Site: {current_site}")
         
         # ====================================================
-        # 1. إذا كان الطلب يخص الرياضة الجديدة (SMPL)
+        # 1. قسم الرياضة الجديدة (SMPL)
         # ====================================================
         if provider_code == "smpl":
             payload = {
                 "sportsbook_uuid": "YOUR_SPORTSBOOK_UUID_HERE", 
                 "currency": "TND",
                 "session_id": f"sess_{uuid.uuid4().hex[:10]}",
-                "player_id": user_code,
-                "player_name": user_code,
-                "return_url": "https://alphabet216.com/"
+                "player_id": prefixed_user,
+                "player_name": prefixed_user,
+                "return_url": dynamic_url
             }
             headers = get_smpl_headers_and_sign(payload)
             headers['Content-Type'] = 'application/json'
@@ -2583,7 +2681,7 @@ async def launch_sportsbook(request: Request):
                     return {"error": "Erreur d'initialisation SMPL", "details": res_data}
 
         # ====================================================
-        # 2. إذا كان الطلب يخص الرياضة الأصلية (Nexus / Nexustrike)
+        # 2. قسم الرياضة الأصلية والكازينو (Nexus)
         # ====================================================
         else:
             payload = {
@@ -2592,9 +2690,9 @@ async def launch_sportsbook(request: Request):
                 "agent_token": AGENT_TOKEN,
                 "provider_code": str(data.get("provider_code", "SPORTSBOOK")), 
                 "game_code": str(data.get("game_code", "SPORTSBOOK")),
-                "user_code": user_code,
+                "user_code": prefixed_user,
                 "lang": "fr",
-                "lobby_url": "https://alphabet216.com/"
+                "lobby_url": dynamic_url
             }
             
             headers = {"Content-Type": "application/json"}
@@ -2617,6 +2715,7 @@ async def launch_sportsbook(request: Request):
     except Exception as e:
         print(f"❌ [CRITICAL ERROR IN LAUNCH SPORTSBOOK]: {str(e)}")
         return {"error": str(e)}
+    
     @app.get("/api/get-sportsbook-uuid")
     async def fetch_sportsbook_uuid():
             # نستخدم دالة التشفير الجاهزة لديك
