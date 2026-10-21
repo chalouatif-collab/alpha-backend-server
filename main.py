@@ -3359,8 +3359,16 @@ async def get_games_by_partner_studio(partner_id: str):
             return {"status": "error", "error": str(e)}
 
 
+EURO_GAMES_CACHE = {"time": 0, "games": []}
+
 @app.get("/api/get-eurovirtuals-games")
 async def fetch_eurovirtuals_games(partner_id: str = None):
+    current_time = time.time()
+    
+    # 1. إذا كانت الألعاب محفوظة في الكاش (أقل من ساعة)، نرسلها فوراً بدون انتظار
+    if not partner_id and EURO_GAMES_CACHE["games"] and (current_time - EURO_GAMES_CACHE["time"]) < 3600:
+        return {"status": "success", "games": EURO_GAMES_CACHE["games"]}
+
     payload = {}
     timestamp = str(int(time.time()))
     signature = hash_create(payload, EURO_APP_KEY)
@@ -3378,59 +3386,55 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
 
     async with httpx.AsyncClient() as client:
         try:
-            partners_list = []
-
+            # 2. الجلب المباشر والسريع من مسار الألعاب الأساسي أولاً
+            direct_endpoint = f"{base_url_clean}/v1/games?per_page=1000"
             if partner_id:
-                partners_list.append({"id": partner_id, "name": partner_id})
-            else:
-                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=20.0)
+                direct_endpoint += f"&partner_id={partner_id}"
+
+            res = await client.get(direct_endpoint, headers=headers, timeout=20.0)
+            data = res.json()
+
+            if res.status_code == 200 and data.get("status_code") == 200:
+                raw_data = data.get("data", {})
+                games_list = raw_data.get("data", []) if isinstance(raw_data, dict) else (raw_data if isinstance(raw_data, list) else [])
+
+                for game in games_list:
+                    img = game.get("logo") or game.get("thumbnail") or game.get("image") or ""
+                    game["image"] = game["img"] = game["banner"] = img
+                    game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
+                    game["provider"] = game.get("provider") or game.get("partner_name") or "EuroVirtuals"
+                    all_games.append(game)
+
+            # 3. إذا لم يرجع المسار المباشر ألعاباً، نحاول عبر الشركاء (Partners) كخطة بديلة
+            if not all_games and not partner_id:
+                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=15.0)
                 p_data = p_resp.json()
                 if p_data.get("status_code") == 200:
-                    partners_list = p_data.get("data", [])
-                else:
-                    partners_list = [{"id": "", "name": "EuroVirtuals"}]
+                    for partner in p_data.get("data", []):
+                        p_id = partner.get("id")
+                        p_name = partner.get("name", "EuroVirtuals")
+                        g_res = await client.get(f"{base_url_clean}/v1/games?partner_id={p_id}&per_page=500", headers=headers, timeout=15.0)
+                        g_data = g_res.json()
+                        if g_data.get("status_code") == 200:
+                            chunk = g_data.get("data", {}).get("data", [])
+                            for game in chunk:
+                                img = game.get("logo") or game.get("thumbnail") or ""
+                                game["image"] = game["img"] = game["banner"] = img
+                                game["game_code"] = game.get("uuid") or game.get("id")
+                                game["provider"] = p_name
+                                all_games.append(game)
 
-            for partner in partners_list:
-                p_id = partner.get("id")
-                p_name = partner.get("name", "Unknown")
-                page = 1
-
-                while True:
-                    endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=500"
-                    if p_id:
-                        endpoint += f"&partner_id={p_id}"
-
-                    res = await client.get(endpoint, headers=headers, timeout=20.0)
-                    data = res.json()
-
-                    if data.get("status_code") == 200:
-                        page_data = data.get("data", {})
-                        games_chunk = page_data.get("data", [])
-
-                        if not games_chunk:
-                            break
-
-                        for game in games_chunk:
-                            img = game.get("logo") or game.get("thumbnail") or ""
-                            game["image"] = game["img"] = img
-                            game["game_code"] = game.get("uuid") or game.get("id")
-                            game["provider"] = p_name
-
-                        all_games.extend(games_chunk)
-                        total_available = page_data.get("total", 0)
-
-                        if len(games_chunk) == 0 or (page * 500) >= total_available:
-                            break
-
-                        page += 1
-                    else:
-                        break
+            if all_games and not partner_id:
+                EURO_GAMES_CACHE["time"] = current_time
+                EURO_GAMES_CACHE["games"] = all_games
 
             return {"status": "success", "games": all_games}
 
         except Exception as e:
-            return {"status": "error", "error": str(e)}
-
+            print(f"EUROVIRTUALS FETCH ERROR: {e}")
+            if EURO_GAMES_CACHE["games"]:
+                return {"status": "success", "games": EURO_GAMES_CACHE["games"]}
+            return {"status": "error", "error": str(e), "games": []}
 
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
