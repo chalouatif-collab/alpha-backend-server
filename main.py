@@ -1,127 +1,144 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Form, Header, Body, Query,WebSocket, WebSocketDisconnect
-from fastapi.security import OAuth2PasswordBearer
-import requests
-from pydantic import BaseModel
-from typing import List, Optional
-from fastapi.middleware.cors import CORSMiddleware
-from jose import jwt
-from datetime import datetime, timedelta
-import random
+import asyncio
+import hashlib
+import hmac
+import html
+import io
 import json
 import os
-import time
-import hmac
-import hashlib
-import urllib.parse
-from passlib.context import CryptContext
-from sqlalchemy import create_engine, Column, Integer, String, Float, text
-from sqlalchemy.orm import declarative_base, sessionmaker
-import asyncio
-db_lock = asyncio.Lock()
+import random
 import shutil
-from fastapi.staticfiles import StaticFiles
+import time
+import urllib.parse
+import uuid
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+import firebase_admin
 import httpx
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, RedirectResponse, StreamingResponse
-from dotenv import load_dotenv
 import pyotp
 import qrcode
-import io
-import html
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import db
-import uuid
-
-
-PROCESSED_TRANSACTIONS = set()
+from dotenv import load_dotenv
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
+from fastapi.security import OAuth2PasswordBearer
+from fastapi.staticfiles import StaticFiles
+from firebase_admin import credentials, db
+from jose import jwt
+from passlib.context import CryptContext
 from pydantic import BaseModel
-
-class SportsLaunchRequest(BaseModel):
-    provider_code: str
-    game_code: str
-    user_code: str
-
-import os
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from sqlalchemy import Column, Float, Integer, String, create_engine, text
+from sqlalchemy.orm import declarative_base, sessionmaker
+from starlette.datastructures import UploadFile as StarletteUploadFile
+from starlette.middleware.sessions import SessionMiddleware
 
 # ==========================================
-# 🎮 إعدادات الكازينو (NexusGGR)
+# 1. ENVIRONMENT & GLOBAL CONFIGURATION
 # ==========================================
+load_dotenv()
+
 AGENT_CODE = os.getenv("AGENT_CODE", "Alphabet1")
 AGENT_TOKEN = os.getenv("AGENT_TOKEN", "")
 NEXUS_SECRET_KEY = os.getenv("NEXUS_SECRET_KEY", "")
 PROVIDER_ENDPOINT = os.getenv("PROVIDER_ENDPOINT", "https://api.nexusggr.eu")
+GOLD_API_URL = PROVIDER_ENDPOINT
 
-# ==========================================
-# ⚽ إعدادات الألعاب الافتراضية (EuroVirtuals)
-# ==========================================
 EURO_APP_KEY = os.getenv("EURO_APP_KEY", "")
 EURO_API_KEY = os.getenv("EURO_API_KEY", "")
-EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk/")
+EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk")
 
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
 ADMIN_USER = os.getenv("ADMIN_USERNAME")
 ADMIN_PASS = os.getenv("ADMIN_PASSWORD")
 SECRET_KEY = os.getenv("SECRET_KEY", "alpha-secure-key-2026")
+SALT_TOKEN = os.getenv("SALT_TOKEN", "NEXUS_SECRET_KEY")
 
-# 1. إعداد الاتصال بـ Firebase
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8879806026:AAEB64RCPW4KzsUXUlDeztP_PzjtxkJv_4g")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "7700782611")
+
+DB_FILE = "tickets_database.json"
+TICKETS_FILE = "tickets_database.json"
+PROMO_FILE = "promo_config.json"
+
+PROCESSED_TRANSACTIONS = set()
+GAMES_CACHE = {}
+CACHE_TIME_LIMIT = 3600
+db_lock = asyncio.Lock()
+
+# ==========================================
+# 2. DATABASE INITIALIZATION (FIREBASE & SQL)
+# ==========================================
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase-key.json") 
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://alphabet-7d14c-default-rtdb.firebaseio.com/'
-    })
+    cred = credentials.Certificate("firebase-key.json")
+    firebase_admin.initialize_app(
+        cred, {"databaseURL": "https://alphabet-7d14c-default-rtdb.firebaseio.com/"}
+    )
 
-# 2. دالة جلب البيانات من السحابة
+
 def load_db():
-    ref = db.reference('/') 
+    ref = db.reference("/")
     data = ref.get()
-    
+
     if data is None:
-        return {"users": [], "shop_withdrawals": [], "tickets": []}
-    
-    # 3. كائن سحري يجمع بين خصائص القائمة والقاموس
+        return {"users": [], "shop_withdrawals": [], "tickets": [], "notifications": []}
+
     users = data.get("users", [])
     if isinstance(users, dict):
         users = list(users.values())
-        
+
     class MagicDB(list):
         def __init__(self, users_list, full_data):
             super().__init__(users_list)
             self.full_data = full_data
             if "shop_withdrawals" not in self.full_data:
                 self.full_data["shop_withdrawals"] = []
-                
+            if "notifications" not in self.full_data:
+                self.full_data["notifications"] = []
+
         def get(self, key, default=None):
             return self.full_data.get(key, default)
-            
+
         def __contains__(self, key):
             return key in self.full_data
-            
+
         def __setitem__(self, key, value):
             self.full_data[key] = value
 
     return MagicDB(users, data)
 
-# 3. دالة الحفظ السحابي الفوري
+
 def save_db(data):
-    ref = db.reference('/')
-    if hasattr(data, 'full_data'):
-        data.full_data['users'] = list(data)
+    ref = db.reference("/")
+    if hasattr(data, "full_data"):
+        data.full_data["users"] = list(data)
         ref.set(data.full_data)
     elif isinstance(data, list):
-        ref.child('users').set(list(data))
+        ref.child("users").set(list(data))
     else:
         ref.set(data)
 
-# اسم ملف التخزين الموجود في مشروعك
-DB_FILE = "tickets_database.json"
-TICKETS_FILE = "tickets_database.json" 
 
-# ==========================================
-# إعدادات قاعدة البيانات والتشفير (محدث للنظام المتعدد Multi-tenant)
-# ==========================================
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./local_test.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -129,6 +146,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "alpha_users"
@@ -143,155 +161,242 @@ class User(Base):
     last_spin_date = Column(String, default="")
     daily_deposits = Column(Float, default=0.0)
     two_factor_secret = Column(String, nullable=True)
-    # 🌟 الحقل الجديد لعزل المواقع:
-    site_id = Column(String, default="alphabet216", index=True) 
+    site_id = Column(String, default="alphabet216", index=True)
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
     admin_username = Column(String)
     target_username = Column(String)
-    action = Column(String)  
+    action = Column(String)
     amount = Column(Float)
-    date = Column(String)  
+    date = Column(String)
     image_path = Column(String, nullable=True)
-    tx_id = Column(String, nullable=True)
-    # 🌟 الحقل الجديد لعزل المواقع مالياً:
-    site_id = Column(String, default="alphabet216", index=True) 
+    tx_id = Column(String, nullable=True, index=True)
+    site_id = Column(String, default="alphabet216", index=True)
 
-# 🛡️ التحديث الآمن للجداول القديمة (لن يمسح البيانات السابقة أبداً)
-try:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE transactions ADD COLUMN image_path VARCHAR"))
-except Exception:
-    pass
 
-try:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE transactions ADD COLUMN tx_id VARCHAR"))
-except Exception:
-    pass
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    admin_username = Column(String, index=True)
+    action_type = Column(String)
+    details = Column(String)
+    date = Column(String, default=lambda: str(datetime.now()))
 
-try:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE transactions ADD COLUMN site_id VARCHAR DEFAULT 'alphabet216'"))
-        conn.execute(text("ALTER TABLE alpha_users ADD COLUMN site_id VARCHAR DEFAULT 'alphabet216'"))
-except Exception:
-    pass
+
+for alter_stmt in [
+    "ALTER TABLE transactions ADD COLUMN image_path VARCHAR",
+    "ALTER TABLE transactions ADD COLUMN tx_id VARCHAR",
+    "ALTER TABLE transactions ADD COLUMN site_id VARCHAR DEFAULT 'alphabet216'",
+    "ALTER TABLE alpha_users ADD COLUMN site_id VARCHAR DEFAULT 'alphabet216'",
+]:
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(alter_stmt))
+    except Exception:
+        pass
 
 Base.metadata.create_all(bind=engine)
 
-
-# 🌟 كاشف المواقع الذكي (يُضاف تحت إعدادات قاعدة البيانات مباشرة)
+# ==========================================
+# 3. MULTI-TENANT & SECURITY HELPERS
+# ==========================================
 def get_site_id(request: Request) -> str:
-    """ 
-    يقرأ الرابط الذي جاء منه الطلب لتحديد الموقع تلقائياً.
-    يُستخدم لعزل بيانات كل موقع وتوجيه واجهات API.
-    """
     origin = request.headers.get("origin", "")
     host = request.headers.get("host", "")
     url_str = (origin or host).lower()
-    
-    if "coutabet" in url_str: 
+
+    if "coutabet" in url_str:
         return "coutabet"
-    if "tounsibet" in url_str: 
+    if "tounsibet" in url_str:
         return "tounsibet"
-    if "xdanous" in url_str: 
+    if "xdanous" in url_str:
         return "xdanous"
-        
-    # إذا لم يتطابق مع أي من الثلاثة، نعتبره الموقع الرئيسي
     return "alphabet216"
 
-Base.metadata.create_all(bind=engine)
+
+def get_dynamic_url(request: Request) -> str:
+    origin = request.headers.get("origin")
+    if origin:
+        return origin.rstrip("/") + "/"
+    host = request.headers.get("host", "alphabet216.com")
+    protocol = "https" if "localhost" not in host and "127.0.0.1" not in host else "http"
+    return f"{protocol}://{host}/"
+
+
+def get_site_prefix(site_id: str) -> str:
+    prefixes = {
+        "coutabet": "ct",
+        "tounsibet": "tn",
+        "xdanous": "xd",
+        "alphabet216": "al",
+    }
+    return prefixes.get(site_id, "al")
+
+
+def parse_prefixed_user(raw_user_code: str):
+    code = str(raw_user_code or "").lower().strip()
+    prefix_map = {
+        "ct": "coutabet",
+        "tn": "tounsibet",
+        "xd": "xdanous",
+        "al": "alphabet216",
+    }
+    if "_" in code:
+        prefix, actual_user = code.split("_", 1)
+        if prefix in prefix_map:
+            return actual_user, prefix_map[prefix]
+    return code, None
+
+
+def find_isolated_user(db_list: list, raw_user_code: str):
+    actual_user, site_id = parse_prefixed_user(raw_user_code)
+    if site_id:
+        user = next(
+            (
+                u
+                for u in db_list
+                if str(u.get("username", "")).lower().strip() == actual_user
+                and u.get("site_id", "alphabet216") == site_id
+            ),
+            None,
+        )
+        if user:
+            return user, actual_user, site_id
+
+    user = next(
+        (u for u in db_list if str(u.get("username", "")).lower().strip() == actual_user),
+        None,
+    )
+    user_site = user.get("site_id", "alphabet216") if user else "alphabet216"
+    return user, actual_user, user_site
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
 def hash_password(password: str):
     return pwd_context.hash(password)
+
 
 def verify_password(plain_password, hashed_password):
     try:
         return pwd_context.verify(plain_password, hashed_password)
     except Exception:
-        # 🛡️ تم إغلاق ثغرة تخطي التشفير
         return False
+
 
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
 
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(hours=24)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    
+
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload.get("sub")
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Jeton d'authentification invalide")
+
 
 async def get_admin_user(current_user: str = Depends(get_current_user)):
-    db = load_db()
-    user = next((u for u in db if u["username"] == current_user), None)
-    
-    if not user or user.get("role") not in ["owner","manager", "super_admin", "admin","shop"]:
-        raise HTTPException(status_code=403, detail="Access Denied: Admin privileges required")
-    
+    db_data = load_db()
+    user = next((u for u in db_data if u.get("username") == current_user), None)
+
+    if not user or user.get("role") not in ["owner", "manager", "super_admin", "admin", "shop"]:
+        raise HTTPException(status_code=403, detail="Accès refusé : privilèges administrateur requis")
+
     return current_user
 
+
+def log_admin_action(admin_username: str, action_type: str, details: str):
+    db_session = SessionLocal()
+    try:
+        log_entry = AuditLog(
+            admin_username=admin_username,
+            action_type=action_type,
+            details=details,
+            date=str(datetime.now()),
+        )
+        db_session.add(log_entry)
+        db_session.commit()
+    except Exception as e:
+        print(f"Audit Log Error: {e}")
+    finally:
+        db_session.close()
+
+
 def send_whatsapp_2fa(phone_number: str, username: str, password: str, secret_key: str):
-    INSTANCE_ID = "instance185867"
-    TOKEN = "76jnhy79la7a5bxx"
-    
-    message = f"""*مرحباً بك في نظام Alpha Core 🔐*
+    instance_id = "instance185867"
+    token = "76jnhy79la7a5bxx"
 
-تم إنشاء حساب الإدارة الخاص بك بنجاح.
+    message = f"""*Bienvenue sur le système Alpha Core 🔐*
 
-👤 *اسم المستخدم:* {username}
-🔑 *كلمة المرور:* {password}
+Votre compte administrateur a été créé avec succès.
 
-🛡️ *خطوات تفعيل الحماية (Google Authenticator):*
-1️⃣ افتح تطبيق Google Authenticator.
-2️⃣ اختر (إدخال مفتاح الإعداد).
-3️⃣ اسم الحساب: AlphaCore - {username}
-4️⃣ المفتاح السري:
+👤 *Identifiant :* {username}
+🔑 *Mot de passe :* {password}
+
+🛡️ *Étapes d'activation de la sécurité (Google Authenticator) :*
+1️⃣ Ouvrez l'application Google Authenticator.
+2️⃣ Choisissez (Saisir une clé de configuration).
+3️⃣ Nom du compte : AlphaCore - {username}
+4️⃣ Clé secrète :
 *{secret_key}*
 
-⚠️ _يرجى حذف هذه الرسالة بعد التفعيل للحفاظ على سرية بياناتك._"""
+⚠️ _Veuillez supprimer ce message après l'activation pour préserver la confidentialité de vos accès._"""
 
     if not phone_number.startswith("+"):
         phone_number = f"+{phone_number}"
 
-    url = f"https://api.ultramsg.com/{INSTANCE_ID}/messages/chat"
-    payload = {"token": TOKEN, "to": phone_number, "body": message}
-    headers = {'content-type': 'application/x-www-form-urlencoded'}
+    url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
+    payload = {"token": token, "to": phone_number, "body": message}
+    headers = {"content-type": "application/x-www-form-urlencoded"}
 
     try:
         response = httpx.post(url, data=payload, headers=headers)
         if response.status_code == 200:
-            print(f"✅ تم إرسال رسالة الواتساب بنجاح إلى: {phone_number}")
+            print(f"✅ Message WhatsApp envoyé avec succès au : {phone_number}")
         else:
-            print(f"❌ خطأ في إرسال الواتساب: {response.text}")
+            print(f"❌ Erreur d'envoi WhatsApp : {response.text}")
     except Exception as e:
-        print(f"❌ حدث خطأ في الاتصال: {e}")
+        print(f"❌ Erreur de connexion WhatsApp : {e}")
+
+
+async def send_telegram_alert(message: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload)
+    except Exception as e:
+        print(f"Telegram Alert Error: {e}")
+
+
+def verify_nexus_ip(request: Request):
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "0.0.0.0"
+
 
 # ==========================================
-# إعدادات تطبيق FastAPI الأساسية
+# 4. FASTAPI APP & MIDDLEWARE SETUP
 # ==========================================
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-
 limiter = Limiter(key_func=get_remote_address)
-
 app = FastAPI()
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-from starlette.middleware.sessions import SessionMiddleware
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -311,12 +416,14 @@ app.add_middleware(
         "https://xdanous.net",
         "https://www.xdanous.net",
         "file://",
-        "null"
+        "null",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -325,6 +432,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -338,523 +446,39 @@ app.mount("/images", StaticFiles(directory="images"), name="images")
 if os.path.exists("coutabet-player/static"):
     app.mount("/coutabet-static", StaticFiles(directory="coutabet-player/static"), name="coutabet-static")
 
-# 🚨 إعدادات الإنذار المبكر (Telegram)
-TELEGRAM_TOKEN = "8879806026:AAEB64RCPW4KzsUXUlDeztP_PzjtxkJv_4g"
-TELEGRAM_CHAT_ID = "7700782611"
+# ==========================================
+# 5. PYDANTIC MODELS
+# ==========================================
+class SportsLaunchRequest(BaseModel):
+    provider_code: str
+    game_code: str
+    user_code: str
 
-async def send_telegram_alert(message: str):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(url, json=payload)
-    except Exception as e:
-        print(f"Telegram Alert Error: {e}")
 
-ALLOWED_NEXUS_IPS = [
-    "127.0.0.1",       
-]
-
-def verify_nexus_ip(request: Request):
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        client_ip = forwarded_for.split(",")[0].strip()
-    else:
-        client_ip = request.client.host
-    return client_ip
-
-# --- التوجيه الذكي اليدوي لإجبار الروابط القديمة على العمل بالروابط النظيفة ---
-@app.get("/owner.html")
-async def redirect_owner():
-    return RedirectResponse(url="/panel/owner/", status_code=303)
-
-@app.get("/super_admin.html")
-async def redirect_super_admin():
-    return RedirectResponse(url="/panel/super_admin/", status_code=303)
-
-@app.get("/admin.html")
-async def redirect_admin():
-    return RedirectResponse(url="/panel/admin/", status_code=303)
-
-@app.get("/shop.html")
-async def redirect_shop():
-    return RedirectResponse(url="/panel/shop/", status_code=303)
-
-# --- مسارات لوحات الإدارة النظيفة ---
-@app.get("/panel/owner", response_class=HTMLResponse)
-@app.get("/panel/owner/", response_class=HTMLResponse)
-async def get_owner_panel():
-    with open("panel/owner/index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/panel/super_admin", response_class=HTMLResponse)
-@app.get("/panel/super_admin/", response_class=HTMLResponse)
-async def get_super_admin_panel():
-    with open("panel/super_admin/index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/panel/admin", response_class=HTMLResponse)
-@app.get("/panel/admin/", response_class=HTMLResponse)
-async def get_admin_panel():
-    with open("panel/admin/index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/panel/shop", response_class=HTMLResponse)
-@app.get("/panel/shop/", response_class=HTMLResponse)
-async def get_shop_panel():
-    with open("panel/shop/index.html", "r", encoding="utf-8") as f:
-        return f.read()
-    
-@app.get("/panel/manager", response_class=HTMLResponse)
-@app.get("/panel/manager/", response_class=HTMLResponse)
-async def get_manager_panel():
-    with open("panel/manager/index.html", "r", encoding="utf-8") as f:
-        return f.read()    
-    
 class ResettleTicketRequest(BaseModel):
     ticket_id: str
     new_status: str
 
-@app.post("/api/admin/resettle-ticket")
-async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depends(get_admin_user)):
-    tickets_db = load_tickets_db()
-    db = load_db()
-    
-    ticket = next((t for t in tickets_db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
-    if req.amount <= 0:
-            raise HTTPException(status_code=400, detail="Le montant doit être supérieur à zéro")
-    if not ticket:
-        raise HTTPException(status_code=404, detail="التذكرة غير موجودة")
-    
-    old_status = ticket.get("status")
-    player_username = ticket.get("username")
-    win_amount = float(ticket.get("gain", 0))
-
-    target_user = next((u for u in db if u["username"] == player_username), None)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="اللاعب غير موجود")
-
-    if old_status == "gagne" and req.new_status != "gagne":
-        target_user["balance"] = float(target_user.get("balance", 0)) - win_amount
-    elif old_status != "gagne" and req.new_status == "gagne":
-        target_user["balance"] = float(target_user.get("balance", 0)) + win_amount
-
-    ticket["status"] = req.new_status
-    save_tickets_db(tickets_db)
-    save_db(db)
-    log_admin_action(current_user, "RESET_TICKET", f"Ticket ID {req.ticket_id} changed to {req.new_status}")
-    
-    return {"status": "success", "message": f"تم تعديل التذكرة بنجاح إلى {req.new_status}"}    
 
 class DepositRequest(BaseModel):
     player: str
     method: str
     amount: float
     code: str
-    receipt_image: Optional[str] = None # 👈 السطر السحري لاستقبال لقطة الشاشة
+    receipt_image: Optional[str] = None
 
-@app.post("/api/deposit")
-@limiter.limit("1/minute")
-async def create_deposit(request: Request, req: DepositRequest):
-    try:
-        db = load_tickets_db()
-        new_ticket = {
-            "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
-            "type": "deposit",
-            "username": html.escape(req.player.strip()),
-            "method": html.escape(req.method.strip()),
-            "amount": req.amount,
-            "code": html.escape(req.code.strip()) if hasattr(req, 'code') and req.code else "",
-            "receipt_image": getattr(req, 'receipt_image', None),
-            "status": "pending",
-            "date": datetime.now().isoformat()
-        }
-        db.append(new_ticket)
-        
-        alert_msg = f"🚨 <b>عملية إيداع جديدة!</b>\n👤 اللاعب: <code>{new_ticket['username']}</code>\n💰 المبلغ: <b>{new_ticket['amount']}</b>\n💳 الطريقة: {new_ticket['method']}"
-        asyncio.create_task(send_telegram_alert(alert_msg))
- 
-        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
-            json.dump(db, f, indent=4, ensure_ascii=False)
-            
-        return {"status": "success", "message": "تم إرسال طلب الإيداع بنجاح"}
-    except Exception as e:
-        print(f"Error in create_deposit: {e}")
-        return {"status": "error", "message": "حدث خطأ أثناء معالجة الطلب"}
 
-@app.get("/api/admin/get-pending-withdrawals")
-async def get_pending_withdrawals(current_user: str = Depends(get_admin_user)):
-    """جلب جميع طلبات السحب المعلقة (القديمة والجديدة)"""
-    db_session = SessionLocal()
-    try:
-        txs = db_session.query(Transaction).filter(
-    Transaction.admin_username == "PENDING",
-    Transaction.action.ilike("%withdraw%") # 👈 اجعله مرناً هكذا
-).order_by(Transaction.id.desc()).all()
-        result = []
-        for t in txs:
-            # استخراج التفاصيل بأمان تام لعرضها للأونر
-            tx_id_val = getattr(t, "tx_id", None)
-            if not tx_id_val and t.action and "Details:" in t.action:
-                tx_id_val = t.action.split("Details: ")[-1]
-            elif not tx_id_val:
-                tx_id_val = str(t.id)
-
-            result.append({
-                "id": t.id,
-                "tx_id": tx_id_val,
-                "target_username": t.target_username,
-                "amount": float(t.amount or 0),
-                "action": "withdraw_request", # إرجاع الاسم النظيف للوحة
-                "date": str(t.date)
-            })
-        return result
-    except Exception as e:
-        print(f"Error GET withdrawals: {e}")
-        return []
-    finally:
-        db_session.close()
-
-@app.post("/api/admin/process-withdrawal")
-async def process_withdrawal(request: Request):
-    """معالجة طلب السحب (موافقة أو رفض)"""
-    data = await request.json()
-    request_id = data.get("request_id")
-    action_type = data.get("action")
-    
-    db_session = SessionLocal()
-    try:
-        # البحث عن الطلب سواء بـ id أو tx_id
-        tx = db_session.query(Transaction).filter(
-            (Transaction.id == request_id) | (Transaction.tx_id == str(request_id))
-        ).first()
-        
-        if not tx:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=404, content={"detail": "Demande introuvable"})
-            
-        if tx.admin_username != "PENDING":
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=400, content={"detail": "Cette demande a déjà été traitée"})
-            
-        if action_type == "approve":
-            # تمت الموافقة وإرسال الأموال
-            tx.admin_username = "APPROVED"
-            
-        elif action_type == "reject":
-            # تم الرفض، نعيد الرصيد للاعب
-            tx.admin_username = "REJECTED"
-            
-            # (تأكد أن جدول المستخدمين اسمه User في ملفك)
-            user = db_session.query(User).filter(User.username == tx.target_username).first()
-            if user:
-                user.balance = float(user.balance or 0) + float(tx.amount or 0)
-                
-        db_session.commit()
-        return {"status": "success", "message": "Traitement réussi"}
-        
-    except Exception as e:
-        db_session.rollback()
-        from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-    finally:
-        db_session.close()
-
-@app.get("/api/admin/get-pending-deposits")
-async def get_pending_deposits(current_user: str = Depends(get_admin_user)):
-    db_session = SessionLocal()
-    try:
-        # جلب طلبات الشحن من قاعدة بيانات SQL
-        sql_deposits = db_session.query(Transaction).filter(
-            Transaction.admin_username == "PENDING",
-            Transaction.action == "deposit_request"
-        ).order_by(Transaction.id.desc()).all()
-        
-        result = []
-        for t in sql_deposits:
-            # استخراج اسم الطريقة والكود من حقل tx_id
-            tx_parts = str(t.tx_id).split('-') if t.tx_id else ["N/A", "N/A"]
-            method_name = tx_parts[0]
-            code_val = tx_parts[1] if len(tx_parts) > 1 else "N/A"
-
-            result.append({
-                "ticket_id": t.id,
-                "username": t.target_username,
-                "method": method_name, 
-                "amount": float(t.amount or 0),
-                "code": code_val if code_val != "FILE" else "مرفق صورة",
-                "receipt_image": t.image_path,
-                "status": "pending",
-                "date": str(t.date)
-            })
-        return result
-    finally:
-        db_session.close()
 class ApproveDepositRequest(BaseModel):
     ticket_id: str
     amount: float
 
-@app.post("/api/admin/approve-deposit")
-async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depends(get_admin_user)):
-    try:
-        db = load_tickets_db()
-        ticket = next((t for t in db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
-        
-        if not ticket:
-            raise HTTPException(status_code=404, detail="التذكرة غير موجودة")
-            
-        if ticket.get("status") != "pending":
-            raise HTTPException(status_code=400, detail="هذه التذكرة تمت معالجتها مسبقاً")
 
-        real_amount = req.amount
-        ticket["status"] = "approuvé"
-        ticket["amount"] = real_amount
-        
-        # 1. جلب اللاعب وتحديث رصيده وإيداعاته اليومية للكاش باك
-        db_users = load_db()
-        target_username = ticket.get("username") or ticket.get("player") or ""
-        target_user = next((u for u in db_users if str(u.get("username", "")).lower() == str(target_username).lower()), None)
-        
-        if target_user:
-            target_user["balance"] = float(target_user.get("balance", 0)) + real_amount
-            # 👈 السطر المطلوب وضعه هنا لتسجيل المبلغ في الكاش باك اليومي:
-            target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + real_amount
-            save_db(db_users)
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
-        # 2. حفظ التذاكر
-        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
-            json.dump(db, f, indent=4, ensure_ascii=False)
 
-        # --- بداية مشغل البونص التلقائي ---
-        promo = load_promo()
-        current_day = datetime.now().strftime("%A") # يجلب اسم اليوم بالإنجليزية
-        
-        if promo.get("is_active") and real_amount >= promo.get("min_amount", 50) and current_day == promo.get("day_of_week"):
-            if target_user:
-                import asyncio
-                import uuid
-                from datetime import datetime, timedelta
-                
-                expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-                tour_id = f"auto_fs_{uuid.uuid4().hex[:8]}"
-                fs_payload = {
-                    "method": "tour_create",
-                    "agent_code": AGENT_CODE,
-                    "agent_token": AGENT_TOKEN,
-                    "user_code": target_user["username"],
-                    "provider_code": promo.get("provider"),
-                    "game_code": promo.get("game"),
-                    "bet_amount": 1,
-                    "spin_count": promo.get("spins"),
-                    "amount": promo.get("max_win", 10000),
-                    "expiration_time": expiration,
-                    "tour_id": tour_id
-                }
-                async def send_auto_fs():
-                    async with httpx.AsyncClient() as client:
-                        try: await client.post(GOLD_API_URL, json=fs_payload, timeout=10.0)
-                        except: pass
-                asyncio.create_task(send_auto_fs())
-        # --- نهاية مشغل البونص ---
-
-        return {"status": "success", "message": f"تمت الموافقة وإضافة {real_amount} بنجاح"}
-    except Exception as e:
-        print(f"Error approving deposit: {e}")
-        raise HTTPException(status_code=500, detail="حدث خطأ داخلي أثناء الموافقة")
-
-@app.get("/api/admin/get-all-tickets")
-async def get_all_tickets_api(current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    current_admin = next((u for u in db if u["username"] == current_user), None)
-    current_role = current_admin.get("role", "player")
-
-    if current_role in ["owner", "system"]:
-        allowed_users = {u["username"] for u in db}
-    else:
-        allowed_users = {current_user}
-        to_process = [current_user]
-        while to_process:
-            parent = to_process.pop(0)
-            children = [u["username"] for u in db if u.get("created_by") == parent]
-            for child in children:
-                if child not in allowed_users:
-                    allowed_users.add(child)
-                    to_process.append(child)
-
-    tickets_db = load_tickets_db()
-    if tickets_db is None: 
-        return []
-
-    allowed_tickets = []
-    for t in tickets_db:
-        t_user = t.get("username") or t.get("user")
-        # فلترة التذاكر لتعرض فقط تذاكر شبكة المانجر
-        if t_user in allowed_users:
-            allowed_tickets.append(t)
-            
-    allowed_tickets.reverse()
-    return allowed_tickets
-# ==========================================
-# الوظائف الخلفية وقاعدة البيانات (Background & DB)
-# ==========================================
-async def auto_settle_tickets():
-    await asyncio.sleep(10) 
-    while True:
-        try:
-            print("⏳ [Auto-Settler] جاري فحص التذاكر المعلقة...")
-            tickets_db = load_tickets_db()
-            db = load_db()
-            changes_made = False
-            pending_tickets = [t for t in tickets_db if t.get("status") == "encours"]
-            
-            for ticket in pending_tickets:
-                simulated_result = random.choice(["gagne", "perdu"]) 
-                ticket["status"] = simulated_result
-                changes_made = True
-                if simulated_result == "gagne":
-                    target_username = ticket["username"]
-                    win_amount = float(ticket.get("gain", 0))
-                    for u in db:
-                        if u["username"] == target_username:
-                            u["balance"] = float(u.get("balance", 0)) + win_amount
-                            break
-            if changes_made:
-                save_tickets_db(tickets_db)
-                save_db(db)
-        except Exception as e:
-            print(f"❌ [Auto-Settler] حدث خطأ: {e}")
-        await asyncio.sleep(60) 
-
-@app.on_event("startup")
-async def start_background_tasks():
-     asyncio.create_task(auto_settle_tickets()) 
-     asyncio.create_task(daily_cashback_system())
-     
-
-def load_tickets_db():
-    if not os.path.exists(TICKETS_FILE):
-        with open(TICKETS_FILE, "w") as f:
-            json.dump([], f)
-        return []
-    try:
-        with open(TICKETS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_tickets_db(data):
-    with open(TICKETS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-async def daily_cashback_system():
-    await asyncio.sleep(15)
-    while True:
-        try:
-            now = datetime.now()
-            if now.hour == 0 and now.minute < 10:
-                print("⏳ [Cashback] جاري فحص وتوزيع الكاش باك اليومي في الخزنة...")
-                
-                async with db_lock:
-                    db = load_db()
-                    changes_made = False
-                    
-                    for u in db:
-                        current_balance = float(u.get("balance", 0.0))
-                        daily_deps = float(u.get("daily_deposits", 0.0))
-                        
-                        net_loss = daily_deps - current_balance 
-                        
-                        if daily_deps > 0:
-                            if current_balance < 1.0 and net_loss > 0:
-                                cashback_amount = daily_deps * 0.10
-                                
-                                # 🌟 إضافة الكاش باك إلى الخزنة (available_cashback) بدلاً من الرصيد المباشر
-                                current_vault = float(u.get("available_cashback", 0.0))
-                                u["available_cashback"] = round(current_vault + cashback_amount, 2)
-                                
-                            u["daily_deposits"] = 0
-                            changes_made = True
-                            
-                    if changes_made:
-                        save_db(db)
-                        print("✅ [Cashback] تم الانتهاء من ملء الخزائن وتصفير العدادات بنجاح!")
-                
-                await asyncio.sleep(3600)
-            else:
-                await asyncio.sleep(300)
-        except Exception as e:
-            print(f"❌ [Cashback] حدث خطأ: {e}")
-            await asyncio.sleep(300)
-            
-@app.post("/api/user/claim-cashback")
-async def claim_vault_cashback(current_user: str = Depends(get_current_user)):
-    async with db_lock:
-        db = load_db()
-        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == current_user.lower().strip()), None)
-        
-        if not target_user:
-            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-            
-        vault_amount = float(target_user.get("available_cashback", 0.0))
-        
-        # 🌟 الشرط الأول: الحد الأدنى
-        if vault_amount < 10.0:
-            raise HTTPException(status_code=400, detail="Le montant minimum pour récupérer est de 10 TND.")
-            
-        # 🌟 الشرط الثاني: فحص مرور 24 ساعة على آخر سحب
-        now = datetime.now()
-        last_claim_str = target_user.get("last_cashback_claim", "")
-        if last_claim_str:
-            try:
-                last_claim_date = datetime.strptime(last_claim_str, "%Y-%m-%d %H:%M:%S")
-                time_diff = now - last_claim_date
-                if time_diff < timedelta(hours=24):
-                    remaining = timedelta(hours=24) - time_diff
-                    hours, remainder = divmod(remaining.seconds, 3600)
-                    minutes, _ = divmod(remainder, 60)
-                    raise HTTPException(status_code=400, detail=f"Veuillez patienter encore {hours}h {minutes}m avant le prochain retrait.")
-            except Exception:
-                pass # في حال كان تنسيق التاريخ قديماً أو خاطئاً، نسمح له بالسحب
-                
-        # تنفيذ السحب وتصفير الخزنة
-        target_user["balance"] = round(float(target_user.get("balance", 0.0)) + vault_amount, 2)
-        target_user["available_cashback"] = 0.0
-        target_user["last_cashback_claim"] = now.strftime("%Y-%m-%d %H:%M:%S") # تسجيل وقت السحب الجديد
-        
-        save_db(db)
-        
-    # توثيق العملية في SQL
-    db_session = SessionLocal()
-    try:
-        new_tx = Transaction(
-            admin_username="SYSTEM_CASHBACK",
-            target_username=target_user["username"],
-            action="claim_vault",
-            amount=vault_amount,
-            date=now.strftime("%Y-%m-%d %H:%M:%S"),
-            tx_id=f"vault_{int(time.time())}"
-        )
-        db_session.add(new_tx)
-        db_session.commit()
-    except Exception:
-        db_session.rollback()
-    finally:
-        db_session.close()
-
-    return {
-        "status": "success", 
-        "message": f"Vous avez récupéré {vault_amount} TND avec succès!",
-        "new_balance": target_user["balance"]
-    }
-# ==========================================
-# النماذج (Models)
-# ==========================================
-class LoginRequest(BaseModel): username: str; password: str
-class RegisterRequest(BaseModel): 
+class RegisterRequest(BaseModel):
     username: str
     password: str
     role: str = "player"
@@ -862,230 +486,575 @@ class RegisterRequest(BaseModel):
     phone: str = ""
     is_self_registered: bool = True
     site_id: Optional[str] = None
-class ConfigureAccountRequest(BaseModel): admin_username: str; target_username: str; rtp: int; is_blocked: int
-class UpdateBalanceRequest(BaseModel): admin_username: str; target_username: str; action: str; amount: float
-class ChangePlayerPasswordRequest(BaseModel): admin_username: str; target_username: str; new_password: str
-class SaveTicketRequest(BaseModel): username: str; ticket_data: dict
-class UpdateTicketStatusRequest(BaseModel): ticket_id: int; status: str; amount_paid: float
-class HandleRequestModel(BaseModel): transaction_id: int; decision: str; admin_username: str
-class DeleteAccountRequest(BaseModel): admin_username: str; target_username: str
-class ProviderRequest(BaseModel): provider_code: str
-class ChangeMyPasswordRequest(BaseModel): username: str; new_password: str
-class Verify2FARequest(BaseModel): 
+
+
+class ConfigureAccountRequest(BaseModel):
+    admin_username: str
+    target_username: str
+    rtp: int
+    is_blocked: int
+
+
+class UpdateBalanceRequest(BaseModel):
+    admin_username: str
+    target_username: str
+    action: str
+    amount: float
+
+
+class ChangePlayerPasswordRequest(BaseModel):
+    admin_username: str
+    target_username: str
+    new_password: str
+
+
+class SaveTicketRequest(BaseModel):
+    username: str
+    ticket_data: dict
+
+
+class UpdateTicketStatusRequest(BaseModel):
+    ticket_id: int
+    status: str
+    amount_paid: float
+
+
+class HandleRequestModel(BaseModel):
+    transaction_id: int
+    decision: str
+    admin_username: str
+
+
+class DeleteAccountRequest(BaseModel):
+    admin_username: str
+    target_username: str
+
+
+class ProviderRequest(BaseModel):
+    provider_code: str
+
+
+class ChangeMyPasswordRequest(BaseModel):
+    username: str
+    new_password: str
+
+
+class Verify2FARequest(BaseModel):
     username: str
     totp_code: str = "000000"
 
 
+class Reset2FARequest(BaseModel):
+    admin_username: str
+    target_username: str
+
+
+class HandleHugeWinRequest(BaseModel):
+    transaction_id: Optional[int] = None
+    tx_id: Optional[int] = None
+    decision: str
+
+
+class ShopWithdrawRequest(BaseModel):
+    admin_username: str
+    shop_username: str
+    amount: float
+
+
+class HandleShopWithdrawModel(BaseModel):
+    request_id: int
+    decision: str
+    shop_username: str
+
+
+class AdminWithdrawRequest(BaseModel):
+    admin_username: str
+    amount: float
+
+
+class FreeSpinRequest(BaseModel):
+    target_username: str
+    provider_code: str
+    game_code: str
+    spin_count: int
+    amount: float
+    bet_amount: float = 1.0
+    bet_level: int = 1
+
+
+class CancelTourRequest(BaseModel):
+    tour_id: str
+
+
+class PromoModel(BaseModel):
+    is_active: bool
+    day_of_week: str
+    min_amount: float
+    spins: int
+    game: str
+    provider: str
+    max_win: float
+
+
+class NotificationModel(BaseModel):
+    target_user: str
+    title: str
+    message: str
+    icon: str = "fa-bell"
+
+
+class MarkReadModel(BaseModel):
+    notif_id: str
+
+
+class DeleteNotifModel(BaseModel):
+    notif_id: str
+
+
+# ==========================================
+# 6. ROUTING & PANEL VIEWS
+# ==========================================
+@app.get("/owner.html")
+async def redirect_owner():
+    return RedirectResponse(url="/panel/owner/", status_code=303)
+
+
+@app.get("/super_admin.html")
+async def redirect_super_admin():
+    return RedirectResponse(url="/panel/super_admin/", status_code=303)
+
+
+@app.get("/admin.html")
+async def redirect_admin():
+    return RedirectResponse(url="/panel/admin/", status_code=303)
+
+
+@app.get("/shop.html")
+async def redirect_shop():
+    return RedirectResponse(url="/panel/shop/", status_code=303)
+
+
+@app.get("/panel/owner", response_class=HTMLResponse)
+@app.get("/panel/owner/", response_class=HTMLResponse)
+async def get_owner_panel():
+    with open("panel/owner/index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/panel/super_admin", response_class=HTMLResponse)
+@app.get("/panel/super_admin/", response_class=HTMLResponse)
+async def get_super_admin_panel():
+    with open("panel/super_admin/index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/panel/admin", response_class=HTMLResponse)
+@app.get("/panel/admin/", response_class=HTMLResponse)
+async def get_admin_panel():
+    with open("panel/admin/index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/panel/shop", response_class=HTMLResponse)
+@app.get("/panel/shop/", response_class=HTMLResponse)
+async def get_shop_panel():
+    with open("panel/shop/index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/panel/manager", response_class=HTMLResponse)
+@app.get("/panel/manager/", response_class=HTMLResponse)
+async def get_manager_panel():
+    with open("panel/manager/index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/owner-login", response_class=HTMLResponse)
+async def show_login_page():
+    return """
+    <html>
+        <body style="text-align:center; margin-top:100px; font-family:Arial; background-color:#1e1e2f; color:white;">
+            <h2>Connexion Administration</h2>
+            <form action="/owner-login" method="post" style="background:#2a2a40; padding:20px; width:300px; margin:auto; border-radius:10px;">
+                <input type="text" name="username" placeholder="Nom d'utilisateur" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none;"><br>
+                <input type="password" name="password" placeholder="Mot de passe" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none;"><br>
+                <button type="submit" style="width:95%; padding:10px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">Connexion</button>
+            </form>
+        </body>
+    </html>
+    """
+
+
+@app.post("/owner-login")
+@limiter.limit("5/minute")
+async def process_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    if username == ADMIN_USER and password == ADMIN_PASS:
+        request.session["is_admin"] = True
+        return RedirectResponse(url="/secure-owner", status_code=303)
+    return HTMLResponse(
+        "<h3 style='text-align:center; margin-top:100px; color:red;'>Identifiants incorrects !</h3>"
+        "<div style='text-align:center;'><a href='/owner-login'>Réessayer</a></div>"
+    )
+
+
+@app.get("/secure-owner")
+async def open_owner_panel(request: Request):
+    if not request.session.get("is_admin"):
+        return RedirectResponse(url="/owner-login")
+    return FileResponse("owner.html")
+
+
+@app.get("/owner-logout")
+async def logout_owner(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/owner-login")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def admin_home(request: Request):
+    role = request.session.get("role")
+    if role == "owner":
+        return RedirectResponse(url="/panel/owner", status_code=303)
+    elif role == "manager":
+        return RedirectResponse(url="/panel/manager", status_code=303)
+    elif role == "super_admin":
+        return RedirectResponse(url="/panel/super_admin", status_code=303)
+    elif role == "admin":
+        return RedirectResponse(url="/panel/admin", status_code=303)
+    elif role == "shop":
+        return RedirectResponse(url="/panel/shop", status_code=303)
+
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.post("/login-router")
+@limiter.limit("5/minute")
+async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
+    uname = username.lower().strip()
+
+    db_data = load_db()
+    user = next((u for u in db_data if u.get("username") == uname), None)
+
+    if not user or not verify_password(password, user.get("password", "")):
+        return HTMLResponse(
+            "<h3 style='text-align:center; margin-top:100px; color:red;'>Nom d'utilisateur ou mot de passe incorrect !</h3>"
+            "<div style='text-align:center;'><a href='/' style='color:blue;'>Retour</a></div>"
+        )
+
+    if user.get("is_blocked") == 1:
+        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>Ce compte est suspendu !</h3>")
+
+    role = user.get("role")
+
+    if role in ["owner", "super_admin", "admin"]:
+        request.session["pending_user"] = uname
+        request.session["pending_role"] = role
+
+        html_form = """
+        <html dir="ltr">
+        <head><title>Authentification 2FA</title></head>
+        <body style="background-color: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Tahoma, sans-serif;">
+            <div style="background-color: #2d2d2d; padding: 40px; border-radius: 10px; text-align: center; border: 1px solid #444;">
+                <h2 style="color: #00d2ff;">Vérification en deux étapes (2FA) 🔐</h2>
+                <p style="color: #ccc;">Entrez le code généré par Google Authenticator</p>
+                <form action="/verify-2fa" method="post">
+                    <input type="text" name="totp_code" placeholder="Code à 6 chiffres" required style="padding: 10px; font-size: 20px; text-align: center; letter-spacing: 5px; border-radius: 5px; border: none; outline: none; margin-bottom: 20px; font-weight: bold;"><br>
+                    <button type="submit" style="padding: 10px 30px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">Connexion sécurisée</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_form)
+
+    request.session["username"] = user["username"]
+    request.session["role"] = user["role"]
+
+    if role == "shop":
+        return RedirectResponse(url="/panel/shop", status_code=303)
+    return HTMLResponse("<h3 style='text-align:center; color:orange;'>Accès non autorisé.</h3>")
+
+
+# ==========================================
+# 7. AUTHENTICATION & USER MANAGEMENT
+# ==========================================
 @app.post("/api/register")
-@limiter.limit("10/minute") # رفعنا الحد قليلاً لكي لا يحظرك أثناء إنشاء عدة حسابات من لوحة الأونر
+@limiter.limit("10/minute")
 async def register_user(request: Request, req: RegisterRequest):
     uname = req.username.lower().strip()
-    
-    # ====== 🛡️ جدار حماية: منع استخدام أسماء الإدارة الحساسة ======
+
     if uname in ["fethi", "admin", "owner", "system", "boss", "super_admin"]:
-        raise HTTPException(status_code=400, detail="Ce nom d'utilisateur est réservé au système!")
-    # ==============================================================
+        raise HTTPException(status_code=400, detail="Ce nom d'utilisateur est réservé au système !")
 
-    db = load_db()
-    
-    for u in db:
-        if u["username"] == uname:
-            raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
-            
-    hashed_pwd = hash_password(req.password)
-    new_secret_key = pyotp.random_base32()
-    new_id = max([int(u.get("id", 0)) for u in db]) + 1 if db else 1
-    
-    # 🌟 التوجيه الذكي للموقع (الأولوية لاختيار الأونر، ثم وراثة موقع الوكيل، ثم الرابط) 🌟
-    if getattr(req, "site_id", None) and req.site_id.strip() != "":
-        # 1. إذا اختار الأونر موقعاً محدداً من القائمة (مثل coutabet)
-        current_site = req.site_id.lower().strip()
-    else:
-        # 2. إذا كان المنشئ هو Manager أو Admin أو Shop، يرث الحساب الجديد نفس موقع منشئه تلقائياً
-        creator_obj = next((u for u in db if u.get("username") == req.created_by.lower().strip()), None)
-        if creator_obj and creator_obj.get("role") != "owner" and creator_obj.get("site_id"):
-            current_site = creator_obj.get("site_id")
+    async with db_lock:
+        db_data = load_db()
+
+        if getattr(req, "site_id", None) and req.site_id.strip() != "":
+            current_site = req.site_id.lower().strip()
         else:
-            # 3. إذا كان لاعباً يسجل بنفسه من الواجهة، نلتقط الموقع من الرابط
-            current_site = get_site_id(request)
-    
-    new_user = {
-        "id": new_id,
-        "username": uname, 
-        "password": hashed_pwd, 
-        "role": req.role, 
-        "balance": 0.00,
-        "rtp": 50, 
-        "is_blocked": 0, 
-        "created_by": req.created_by, 
-        "last_spin_date": "", 
-        "daily_deposits": 0.0,
-        "two_factor_secret": new_secret_key,
-        "phone": req.phone,
-        "is_self_registered": req.is_self_registered,
-        "site_id": current_site # 🌟 حفظ اللاعب/الوكيل في الموقع الدقيق
-    }
-    
-    db.append(new_user)
-    save_db(db)
+            creator_obj = next(
+                (u for u in db_data if u.get("username") == req.created_by.lower().strip()),
+                None,
+            )
+            if creator_obj and creator_obj.get("role") != "owner" and creator_obj.get("site_id"):
+                current_site = creator_obj.get("site_id")
+            else:
+                current_site = get_site_id(request)
+
+        for u in db_data:
+            if u.get("username") == uname:
+                if (
+                    u.get("site_id", "alphabet216") == current_site
+                    or req.role in ["owner", "manager"]
+                    or u.get("role") in ["owner", "manager"]
+                ):
+                    raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris sur ce site")
+
+        hashed_pwd = hash_password(req.password)
+        new_secret_key = pyotp.random_base32()
+        new_id = max([int(u.get("id", 0)) for u in db_data]) + 1 if db_data else 1
+
+        new_user = {
+            "id": new_id,
+            "username": uname,
+            "password": hashed_pwd,
+            "role": req.role,
+            "balance": 0.00,
+            "rtp": 50,
+            "is_blocked": 0,
+            "created_by": req.created_by,
+            "last_spin_date": "",
+            "daily_deposits": 0.0,
+            "two_factor_secret": new_secret_key,
+            "phone": req.phone,
+            "is_self_registered": req.is_self_registered,
+            "site_id": current_site,
+        }
+
+        db_data.append(new_user)
+        save_db(db_data)
+
     log_admin_action(req.created_by, "CREATE_USER", f"Created {uname} with role {req.role} on site {current_site}")
-    
-    return {"status": "success", "message": "Compte créé", "secret_key": new_secret_key, "user_id": new_id, "site": current_site}
-# 🌟 استخراج الرابط الديناميكي لتوجيه اللاعبين بعد إغلاق اللعبة 
-def get_dynamic_url(request: Request) -> str:
-    origin = request.headers.get("origin")
-    if origin:
-        return origin + "/"
-    host = request.headers.get("host", "alphabet216.com")
-    protocol = "https" if "localhost" not in host and "127.0.0.1" not in host else "http"
-    return f"{protocol}://{host}/"
 
-# 🌟 توليد بادئة فريدة لكل موقع لعزل اللاعبين عند المزود
-def get_site_prefix(site_id: str) -> str:
-    prefixes = {
-        "coutabet": "ct",
-        "tounsibet": "tn",
-        "xdanous": "xd",
-        "alphabet216": "al"
+    return {
+        "status": "success",
+        "message": "Compte créé avec succès",
+        "secret_key": new_secret_key,
+        "user_id": new_id,
+        "site": current_site,
     }
-    return prefixes.get(site_id, "al")
-def parse_prefixed_user(raw_user_code: str):
-    """
-    تحويل ct_ahmed إلى ('ahmed', 'coutabet')
-    لضمان عزل اللاعبين حتى لو تشابهت أسماؤهم بين المواقع الأربعة
-    """
-    code = str(raw_user_code or "").lower().strip()
-    prefix_map = {
-        "ct": "coutabet",
-        "tn": "tounsibet",
-        "xd": "xdanous",
-        "al": "alphabet216"
-    }
-    if "_" in code:
-        prefix, actual_user = code.split("_", 1)
-        if prefix in prefix_map:
-            return actual_user, prefix_map[prefix]
-    return code, None
 
-def find_isolated_user(db: list, raw_user_code: str):
-    """
-    البحث عن اللاعب في موقعه المحدد بدقة لمنع تداخل الحسابات
-    """
-    actual_user, site_id = parse_prefixed_user(raw_user_code)
-    if site_id:
-        user = next((u for u in db if u["username"].lower() == actual_user and u.get("site_id", "alphabet216") == site_id), None)
-        if user:
-            return user, actual_user, site_id
-    # fallback للحسابات القديمة التي ليس لها بادئة
-    user = next((u for u in db if u["username"].lower() == actual_user), None)
-    return user, actual_user, (user.get("site_id", "alphabet216") if user else "alphabet216")
 
+@app.post("/api/login")
+@limiter.limit("5/minute")
+async def login_user(request: Request, req: LoginRequest):
+    try:
+        uname = html.escape(req.username.lower().strip())
+        current_site = get_site_id(request)
+
+        db_data = load_db()
+        user = next(
+            (
+                u
+                for u in db_data
+                if u.get("username") == uname
+                and (
+                    u.get("site_id", "alphabet216") == current_site
+                    or u.get("role") in ["owner", "manager", "super_admin", "admin", "shop"]
+                )
+            ),
+            None,
+        )
+        if not user:
+            user = next((u for u in db_data if u.get("username") == uname), None)
+
+        if not user or not verify_password(req.password, user.get("password", "")):
+            bad_alert = (
+                f"⚠️ <b>Tentative de connexion échouée !</b>\n"
+                f"👤 Utilisateur : <code>{req.username}</code>\n"
+                f"❌ Motif : Mot de passe incorrect"
+            )
+            asyncio.create_task(send_telegram_alert(bad_alert))
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Nom d'utilisateur ou mot de passe incorrect"},
+            )
+
+        if user.get("is_blocked") == 1:
+            return JSONResponse(status_code=403, content={"detail": "Ce compte a été suspendu."})
+
+        user["last_ip"] = verify_nexus_ip(request)
+        save_db(db_data)
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "success",
+                "username": user["username"],
+                "role": user["role"],
+                "access_token": access_token,
+                "balance": float(user.get("balance", 0.0)),
+                "created_by": str(user.get("created_by", "")),
+                "is_self_registered": user.get("is_self_registered", False),
+                "site_id": user.get("site_id", "alphabet216"),
+            },
+        )
+    except Exception as e:
+        print(f"Login Crash: {e}")
+        return JSONResponse(status_code=500, content={"detail": f"Erreur interne : {str(e)}"})
+
+
+@app.post("/api/verify-2fa")
+@limiter.limit("5/minute")
+async def verify_2fa_api(request: Request, req: Verify2FARequest):
+    db_data = load_db()
+    user = next((u for u in db_data if u.get("username") == req.username.lower().strip()), None)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Nom d'utilisateur incorrect")
+
+    secret = user.get("two_factor_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="L'authentification à deux facteurs (2FA) n'est pas activée !")
+
+    totp = pyotp.TOTP(secret)
+    if totp.verify(req.totp_code):
+        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "success",
+                "username": user["username"],
+                "role": user["role"],
+                "access_token": access_token,
+                "balance": float(user.get("balance", 0.0)),
+                "created_by": str(user.get("created_by", "")),
+                "is_self_registered": user.get("is_self_registered", False),
+                "site_id": user.get("site_id", "alphabet216"),
+            },
+        )
+    raise HTTPException(status_code=400, detail="Code Google Authenticator invalide !")
+
+
+@app.get("/setup-2fa/{username}")
+async def setup_2fa(username: str):
+    db_data = load_db()
+    user = next((u for u in db_data if u.get("username") == username.lower().strip()), None)
+    if not user:
+        return HTMLResponse("<h3 style='text-align:center; color:red;'>Utilisateur introuvable !</h3>")
+
+    secret = pyotp.random_base32()
+    user["two_factor_secret"] = secret
+    save_db(db_data)
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=username, issuer_name="Alpha Casino")
+
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/png")
+
+
+@app.post("/api/user/change-password")
+async def change_my_password(req: ChangeMyPasswordRequest, current_user: str = Depends(get_current_user)):
+    target_username = req.username.lower().strip()
+
+    if current_user != target_username and current_user not in [
+        "fethi",
+        "manager",
+        "admin",
+        "owner",
+        "super_admin",
+        "shop",
+    ]:
+        raise HTTPException(
+            status_code=403,
+            detail="Non autorisé : vous ne pouvez pas modifier le mot de passe d'un autre utilisateur",
+        )
+
+    async with db_lock:
+        db_data = load_db()
+        for u in db_data:
+            if u.get("username") == target_username:
+                u["password"] = hash_password(req.new_password)
+                save_db(db_data)
+                return {"status": "success", "message": "Mot de passe modifié avec succès"}
+
+    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+
+# ==========================================
+# 8. ADMIN & NETWORK OPERATIONS
+# ==========================================
 @app.get("/api/admin/fix-user-ids")
 async def fix_missing_user_ids(current_user: str = Depends(get_admin_user)):
     try:
-        db = load_db()
-        current_max_id = 0
-        for u in db:
-            user_id = u.get("id")
-            if user_id is not None and str(user_id).isdigit():
-                current_max_id = max(current_max_id, int(user_id))
-                
-        updated_count = 0
-        for u in db:
-            if "id" not in u or u.get("id") is None or u.get("id") == "":
-                current_max_id += 1
-                u["id"] = current_max_id
-                updated_count += 1
-                
-        if updated_count > 0:
-            save_db(db)
-            
-        return {"status": "success", "message": f"عملية ناجحة! تم منح ID جديد لـ {updated_count} حساب/حسابات قديمة."}
+        async with db_lock:
+            db_data = load_db()
+            current_max_id = 0
+            for u in db_data:
+                user_id = u.get("id")
+                if user_id is not None and str(user_id).isdigit():
+                    current_max_id = max(current_max_id, int(user_id))
+
+            updated_count = 0
+            for u in db_data:
+                if "id" not in u or u.get("id") is None or u.get("id") == "":
+                    current_max_id += 1
+                    u["id"] = current_max_id
+                    updated_count += 1
+
+            if updated_count > 0:
+                save_db(db_data)
+
+        return {
+            "status": "success",
+            "message": f"Opération réussie ! Nouveaux ID attribués à {updated_count} compte(s).",
+        }
     except Exception as e:
-        return {"status": "error", "message": f"حدث خطأ: {str(e)}"}
+        return {"status": "error", "message": f"Erreur : {str(e)}"}
 
-class HandleHugeWinRequest(BaseModel):
-    tx_id: int
-    decision: str 
-
-@app.get("/api/admin/pending-huge-wins")
-async def get_pending_huge_wins(current_user: str = Depends(get_admin_user)):
-    db_session = SessionLocal()
-    try:
-        txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING_HUGE_WIN").order_by(Transaction.id.desc()).all()
-        return [{"id": t.id, "target_username": t.target_username, "amount": float(t.amount), "action": t.action, "date": t.date} for t in txs]
-    except Exception as e:
-        print(f"Error fetching huge wins: {e}")
-        return []
-    finally:
-        db_session.close()
-
-@app.post("/api/admin/handle-huge-win")
-async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    admin = next((u for u in db if u["username"] == current_user), None)
-    if not admin or admin.get("role") not in ["owner", "super_admin"]:
-        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
-
-    db_session = SessionLocal()
-    try:
-        tx = db_session.query(Transaction).filter(Transaction.id == req.tx_id).first()
-        if not tx or tx.admin_username != "PENDING_HUGE_WIN":
-            return JSONResponse(status_code=404, content={"detail": "الطلب غير موجود أو تمت معالجته مسبقاً"})
-
-        if req.decision == "approve":
-            async with db_lock:
-                target_user = next((u for u in db if str(u.get("username", "")).lower() == str(tx.target_username).lower()), None)
-                if target_user:
-                    target_user["balance"] = round(float(target_user.get("balance", 0)) + tx.amount, 2)
-                    save_db(db)
-            tx.admin_username = f"APPROVED_BY_{current_user.upper()}"
-        else:
-            tx.admin_username = f"REJECTED_BY_{current_user.upper()}"
-
-        db_session.commit()
-        return {"status": "success", "message": "تمت معالجة الربح الضخم بنجاح"}
-    except Exception as e:
-        db_session.rollback()
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-    finally:
-        db_session.close()
 
 @app.get("/api/admin/users")
-async def get_all_network_users(current_user: str = Depends(get_admin_user)): 
-    db = load_db()
-    
-    current_admin = next((u for u in db if u["username"] == current_user), None)
-    current_role = current_admin.get("role", "player")
+async def get_all_network_users(current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
 
-    # 1. الأونر فقط (المالك) هو من يرى جميع الحسابات في الشبكة
+    current_admin = next((u for u in db_data if u.get("username") == current_user), None)
+    current_role = current_admin.get("role", "player") if current_admin else "player"
+
     if current_role in ["owner", "system"]:
-        allowed_users = {u["username"] for u in db}
+        allowed_users = {u["username"] for u in db_data}
     else:
-        # 2. المانجر، السوبر أدمن، الأدمن، والشوب يخضعون لشجرة الصلاحيات
-        # (يرى فقط نفسه ومن تم إنشاؤه تحته في الشجرة)
         allowed_users = {current_user}
         to_process = [current_user]
-        
+
         while to_process:
             parent = to_process.pop(0)
-            children = [u["username"] for u in db if u.get("created_by") == parent]
+            children = [u["username"] for u in db_data if u.get("created_by") == parent]
             for child in children:
                 if child not in allowed_users:
                     allowed_users.add(child)
                     to_process.append(child)
 
     safe_users = []
-    for u in db:
-        if u["username"] not in allowed_users:
+    for u in db_data:
+        if u.get("username") not in allowed_users:
             continue
-            
+
         safe_user = dict(u)
         safe_user.pop("password", None)
-        safe_user.pop("two_factor_secret", None) # 🛡️ تم التفعيل لمنع تسريب المفتاح
+        if current_role != "owner":
+            safe_user.pop("two_factor_secret", None)
         safe_users.append(safe_user)
-        
+
     return safe_users
+
 
 @app.post("/api/admin/update-balance")
 async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(get_admin_user)):
@@ -1093,13 +1062,16 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
     amount = float(req.amount)
 
     if amount <= 0:
-        raise HTTPException(status_code=400, detail="Montant invalide: ne peut pas être négatif ou zéro")
+        raise HTTPException(status_code=400, detail="Montant invalide : doit être supérieur à zéro")
 
     async with db_lock:
-        db = load_db()
-        
-        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == target), None)
-        admin_user = next((u for u in db if str(u.get("username", "")).lower().strip() == current_user.lower().strip()), None)
+        db_data = load_db()
+
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower().strip() == target), None)
+        admin_user = next(
+            (u for u in db_data if str(u.get("username", "")).lower().strip() == current_user.lower().strip()),
+            None,
+        )
 
         if not target_user:
             raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
@@ -1107,246 +1079,522 @@ async def update_balance(req: UpdateBalanceRequest, current_user: str = Depends(
             raise HTTPException(status_code=404, detail="Compte administrateur introuvable")
 
         current_role = admin_user.get("role", "")
-        is_global_admin = (current_user.lower() == "system" or current_role == "owner")
+        is_global_admin = current_user.lower() == "system" or current_role == "owner"
         admin = current_user.lower().strip()
 
-        # 🛡️ جدار الأمان: منع التحكم في حسابات تابعة لآخرين
         safe_creator = str(target_user.get("created_by", "")).lower().strip()
         if not is_global_admin and safe_creator != admin:
             raise HTTPException(status_code=403, detail="Accès refusé. Ce compte ne vous appartient pas.")
 
-        # 1. تجهيز الأرصدة في الذاكرة (بدون حفظ نهائي)
         if req.action == "charge":
             if not is_global_admin:
-                if float(admin_user.get("balance", 0)) < amount: 
-                    raise HTTPException(status_code=400, detail="Solde insuffisant dans votre compte")
+                if float(admin_user.get("balance", 0)) < amount:
+                    raise HTTPException(status_code=400, detail="Solde insuffisant sur votre compte")
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) - amount, 2)
-            
+
             target_user["balance"] = round(float(target_user.get("balance", 0)) + amount, 2)
-            
+
             if current_user.lower() != "system":
                 target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + amount
 
         elif req.action == "withdraw":
-            if float(target_user.get("balance", 0)) < amount: 
-                raise HTTPException(status_code=400, detail="Solde insuffisant chez le joueur")
-            
+            if float(target_user.get("balance", 0)) < amount:
+                raise HTTPException(status_code=400, detail="Solde insuffisant chez l'utilisateur")
+
             target_user["balance"] = round(float(target_user.get("balance", 0)) - amount, 2)
             target_user["daily_deposits"] = max(0.0, float(target_user.get("daily_deposits", 0)) - amount)
-            
+
             if not is_global_admin:
                 admin_user["balance"] = round(float(admin_user.get("balance", 0)) + amount, 2)
 
-        # 2. توثيق العملية في سجل SQL أولاً (الجدار الواقي)
+        user_site = target_user.get("site_id", "alphabet216")
+
         db_session = SessionLocal()
         try:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            record_action = "dépôt" if req.action == "charge" else "retrait"
-            
+            record_action = "charge" if req.action == "charge" else "withdraw"
+
             new_tx = Transaction(
                 admin_username=admin,
                 target_username=target,
                 action=record_action,
                 amount=amount,
                 date=current_time,
-                tx_id=str(uuid.uuid4())
+                tx_id=str(uuid.uuid4()),
+                site_id=user_site,
             )
             db_session.add(new_tx)
             db_session.commit()
         except Exception as e:
             db_session.rollback()
             print(f"Error saving transaction history: {e}")
-            # إذا فشل التوثيق في SQL، نلغي العملية بالكامل ولا نحفظ الأرصدة
-            raise HTTPException(status_code=500, detail="Erreur base de données. L'opération a été annulée de manière sécurisée.")
+            raise HTTPException(
+                status_code=500,
+                detail="Erreur base de données. L'opération a été annulée de manière sécurisée.",
+            )
         finally:
             db_session.close()
 
-        # 3. الحفظ النهائي للأرصدة (يُنفذ فقط إذا نجح التوثيق في SQL)
-        save_db(db)
-        
+        save_db(db_data)
+
     log_admin_action(current_user, "BALANCE_UPDATE", f"Target: {target}, Action: {req.action}, Amount: {amount}")
 
     return {"status": "success", "message": "Opération réussie et enregistrée"}
 
-@app.get("/api/admin/transactions-history")
-async def get_tx_history(username: str = None, current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    current_admin = next((u for u in db if u["username"] == current_user), None)
-    current_role = current_admin.get("role", "player")
-    
+
+@app.post("/api/admin/change-player-password")
+async def change_player_password(req: ChangePlayerPasswordRequest, current_user: str = Depends(get_admin_user)):
+    async with db_lock:
+        db_data = load_db()
+        for u in db_data:
+            if u.get("username") == req.target_username.lower().strip():
+                u["password"] = hash_password(req.new_password)
+                save_db(db_data)
+                log_admin_action(current_user, "CHANGE_PASSWORD", f"Changed password for {req.target_username}")
+                return {"status": "success", "message": "Mot de passe modifié avec succès"}
+    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+
+@app.post("/api/admin/reset-2fa")
+async def reset_2fa(req: Reset2FARequest, current_user: str = Depends(get_admin_user)):
+    target = req.target_username.lower().strip()
+    async with db_lock:
+        db_data = load_db()
+        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == target), None)
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+        new_secret = pyotp.random_base32()
+        target_user["two_factor_secret"] = new_secret
+        save_db(db_data)
+
+    log_admin_action(current_user, "RESET_2FA", f"Reset 2FA for {target}")
+    return {"status": "success", "message": "2FA réinitialisé avec succès", "new_secret": new_secret}
+
+
+@app.post("/api/admin/configure-account")
+async def configure_account(req: ConfigureAccountRequest, current_user: str = Depends(get_admin_user)):
+    async with db_lock:
+        db_data = load_db()
+        for u in db_data:
+            if u.get("username") == req.target_username.lower().strip():
+                u["rtp"] = req.rtp
+                u["is_blocked"] = req.is_blocked
+                save_db(db_data)
+                log_admin_action(
+                    current_user,
+                    "CONFIG_ACCOUNT",
+                    f"Target: {req.target_username}, RTP: {req.rtp}, Blocked: {req.is_blocked}",
+                )
+                return {"status": "success", "message": "Configuration enregistrée"}
+    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+
+@app.delete("/api/admin/delete-account")
+async def delete_account(req: DeleteAccountRequest, current_user: str = Depends(get_admin_user)):
+    async with db_lock:
+        db_data = load_db()
+        target = req.target_username.lower().strip()
+        new_db = [u for u in db_data if u.get("username", "").lower().strip() != target]
+        if len(new_db) == len(db_data):
+            raise HTTPException(status_code=404, detail="Compte introuvable")
+        if hasattr(db_data, "full_data"):
+            db_data.full_data["users"] = new_db
+            save_db(db_data.full_data)
+        else:
+            save_db(new_db)
+    log_admin_action(current_user, "DELETE_ACCOUNT", f"Deleted account {target}")
+    return {"status": "success", "message": "Compte supprimé avec succès"}
+
+
+# ==========================================
+# 9. DEPOSITS, WITHDRAWALS & TICKETS
+# ==========================================
+def load_tickets_db():
+    if not os.path.exists(TICKETS_FILE):
+        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f)
+        return []
+    try:
+        with open(TICKETS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def save_tickets_db(data):
+    with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+
+@app.post("/api/admin/resettle-ticket")
+async def resettle_ticket(req: ResettleTicketRequest, current_user: str = Depends(get_admin_user)):
+    async with db_lock:
+        tickets_db = load_tickets_db()
+        db_data = load_db()
+
+        ticket = next((t for t in tickets_db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket introuvable")
+
+        old_status = ticket.get("status")
+        player_username = ticket.get("username")
+        win_amount = float(ticket.get("gain", 0))
+
+        target_user = next((u for u in db_data if u.get("username") == player_username), None)
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Joueur introuvable")
+
+        if old_status == "gagne" and req.new_status != "gagne":
+            target_user["balance"] = round(float(target_user.get("balance", 0)) - win_amount, 2)
+        elif old_status != "gagne" and req.new_status == "gagne":
+            target_user["balance"] = round(float(target_user.get("balance", 0)) + win_amount, 2)
+
+        ticket["status"] = req.new_status
+        save_tickets_db(tickets_db)
+        save_db(db_data)
+
+    log_admin_action(current_user, "RESET_TICKET", f"Ticket ID {req.ticket_id} changed to {req.new_status}")
+    return {"status": "success", "message": f"Ticket mis à jour avec succès vers le statut : {req.new_status}"}
+
+
+@app.post("/api/deposit")
+@limiter.limit("1/minute")
+async def create_deposit(request: Request, req: DepositRequest):
+    try:
+        current_site = get_site_id(request)
+        tickets_db = load_tickets_db()
+        new_ticket = {
+            "ticket_id": "DEP-" + datetime.now().strftime("%Y%m%d%H%M%S"),
+            "type": "deposit",
+            "username": html.escape(req.player.strip()),
+            "method": html.escape(req.method.strip()),
+            "amount": req.amount,
+            "code": html.escape(req.code.strip()) if hasattr(req, "code") and req.code else "",
+            "receipt_image": getattr(req, "receipt_image", None),
+            "status": "pending",
+            "date": datetime.now().isoformat(),
+            "site_id": current_site,
+        }
+        tickets_db.append(new_ticket)
+
+        alert_msg = (
+            f"🚨 <b>Nouvelle demande de dépôt !</b>\n"
+            f"🌐 Site : <b>{current_site.upper()}</b>\n"
+            f"👤 Joueur : <code>{new_ticket['username']}</code>\n"
+            f"💰 Montant : <b>{new_ticket['amount']} TND</b>\n"
+            f"💳 Méthode : {new_ticket['method']}"
+        )
+        asyncio.create_task(send_telegram_alert(alert_msg))
+
+        save_tickets_db(tickets_db)
+        return {"status": "success", "message": "Demande de dépôt envoyée avec succès"}
+    except Exception as e:
+        print(f"Error in create_deposit: {e}")
+        return {"status": "error", "message": "Erreur lors du traitement de la demande"}
+
+
+@app.get("/api/admin/get-pending-withdrawals")
+async def get_pending_withdrawals(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
+    try:
+        txs = (
+            db_session.query(Transaction)
+            .filter(Transaction.admin_username == "PENDING", Transaction.action.ilike("%withdraw%"))
+            .order_by(Transaction.id.desc())
+            .all()
+        )
+        result = []
+        for t in txs:
+            tx_id_val = getattr(t, "tx_id", None)
+            if not tx_id_val and t.action and "Details:" in t.action:
+                tx_id_val = t.action.split("Details: ")[-1]
+            elif not tx_id_val:
+                tx_id_val = str(t.id)
+
+            result.append(
+                {
+                    "id": t.id,
+                    "tx_id": tx_id_val,
+                    "target_username": t.target_username,
+                    "amount": float(t.amount or 0),
+                    "action": "withdraw_request",
+                    "date": str(t.date),
+                    "site_id": getattr(t, "site_id", "alphabet216"),
+                }
+            )
+        return result
+    except Exception as e:
+        print(f"Error GET withdrawals: {e}")
+        return []
+    finally:
+        db_session.close()
+
+
+@app.post("/api/admin/process-withdrawal")
+async def process_withdrawal(request: Request, current_user: str = Depends(get_admin_user)):
+    data = await request.json()
+    request_id = data.get("request_id")
+    action_type = data.get("action")
+
+    db_session = SessionLocal()
+    try:
+        tx = (
+            db_session.query(Transaction)
+            .filter((Transaction.id == request_id) | (Transaction.tx_id == str(request_id)))
+            .first()
+        )
+
+        if not tx:
+            return JSONResponse(status_code=404, content={"detail": "Demande introuvable"})
+
+        if tx.admin_username != "PENDING":
+            return JSONResponse(status_code=400, content={"detail": "Cette demande a déjà été traitée"})
+
+        if action_type == "approve":
+            async with db_lock:
+                db_data = load_db()
+                target_user = next(
+                    (u for u in db_data if str(u.get("username", "")).lower() == str(tx.target_username).lower()),
+                    None,
+                )
+                if not target_user:
+                    return JSONResponse(status_code=404, content={"detail": "Joueur introuvable"})
+                if float(target_user.get("balance", 0)) < float(tx.amount or 0):
+                    return JSONResponse(status_code=400, content={"detail": "Solde insuffisant chez le joueur"})
+
+                target_user["balance"] = round(float(target_user.get("balance", 0)) - float(tx.amount or 0), 2)
+                target_user["daily_deposits"] = max(
+                    0.0, float(target_user.get("daily_deposits", 0)) - float(tx.amount or 0)
+                )
+                save_db(db_data)
+
+            tx.admin_username = "APPROVED"
+            tx.action = "withdraw"
+
+        elif action_type == "reject":
+            tx.admin_username = "REJECTED"
+
+        db_session.commit()
+        return {"status": "success", "message": "Traitement réussi"}
+
+    except Exception as e:
+        db_session.rollback()
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+    finally:
+        db_session.close()
+
+
+@app.get("/api/admin/get-pending-deposits")
+async def get_pending_deposits(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
+    try:
+        sql_deposits = (
+            db_session.query(Transaction)
+            .filter(Transaction.admin_username == "PENDING", Transaction.action == "deposit_request")
+            .order_by(Transaction.id.desc())
+            .all()
+        )
+
+        result = []
+        for t in sql_deposits:
+            tx_parts = str(t.tx_id).split("-") if t.tx_id else ["N/A", "N/A"]
+            method_name = tx_parts[0]
+            code_val = "-".join(tx_parts[1:]) if len(tx_parts) > 1 else "N/A"
+
+            result.append(
+                {
+                    "ticket_id": t.id,
+                    "username": t.target_username,
+                    "method": method_name,
+                    "amount": float(t.amount or 0),
+                    "code": code_val if code_val != "FILE" else "Image jointe",
+                    "receipt_image": t.image_path,
+                    "status": "pending",
+                    "date": str(t.date),
+                    "site_id": getattr(t, "site_id", "alphabet216"),
+                }
+            )
+        return result
+    finally:
+        db_session.close()
+
+
+@app.post("/api/admin/approve-deposit")
+async def approve_deposit(req: ApproveDepositRequest, current_user: str = Depends(get_admin_user)):
+    try:
+        async with db_lock:
+            tickets_db = load_tickets_db()
+            ticket = next((t for t in tickets_db if str(t.get("ticket_id")) == str(req.ticket_id)), None)
+
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket introuvable")
+
+            if ticket.get("status") != "pending":
+                raise HTTPException(status_code=400, detail="Ce ticket a déjà été traité")
+
+            real_amount = req.amount
+            ticket["status"] = "approuvé"
+            ticket["amount"] = real_amount
+
+            db_users = load_db()
+            target_username = ticket.get("username") or ticket.get("player") or ""
+            target_user = next(
+                (u for u in db_users if str(u.get("username", "")).lower() == str(target_username).lower()),
+                None,
+            )
+
+            if target_user:
+                target_user["balance"] = round(float(target_user.get("balance", 0)) + real_amount, 2)
+                target_user["daily_deposits"] = float(target_user.get("daily_deposits", 0)) + real_amount
+                save_db(db_users)
+
+            save_tickets_db(tickets_db)
+
+        promo = load_promo()
+        current_day = datetime.now().strftime("%A")
+
+        if (
+            promo.get("is_active")
+            and real_amount >= promo.get("min_amount", 50)
+            and current_day == promo.get("day_of_week")
+        ):
+            if target_user:
+                expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                tour_id = f"auto_fs_{uuid.uuid4().hex[:8]}"
+                user_site = target_user.get("site_id", "alphabet216")
+                prefixed_user = f"{get_site_prefix(user_site)}_{target_user['username']}"
+                fs_payload = {
+                    "method": "tour_create",
+                    "agent_code": AGENT_CODE,
+                    "agent_token": AGENT_TOKEN,
+                    "user_code": prefixed_user,
+                    "provider_code": promo.get("provider"),
+                    "game_code": promo.get("game"),
+                    "bet_amount": 1,
+                    "spin_count": promo.get("spins"),
+                    "amount": promo.get("max_win", 10000),
+                    "expiration_time": expiration,
+                    "tour_id": tour_id,
+                }
+
+                async def send_auto_fs():
+                    async with httpx.AsyncClient() as client:
+                        try:
+                            await client.post(GOLD_API_URL, json=fs_payload, timeout=10.0)
+                        except Exception:
+                            pass
+
+                asyncio.create_task(send_auto_fs())
+
+        return {"status": "success", "message": f"Dépôt approuvé et {real_amount} TND ajoutés avec succès"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error approving deposit: {e}")
+        raise HTTPException(status_code=500, detail="Erreur interne lors de l'approbation")
+
+
+@app.get("/api/admin/get-all-tickets")
+async def get_all_tickets_api(current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    current_admin = next((u for u in db_data if u.get("username") == current_user), None)
+    current_role = current_admin.get("role", "player") if current_admin else "player"
+
     if current_role in ["owner", "system"]:
-        allowed_users = {u["username"] for u in db}
+        allowed_users = {u["username"] for u in db_data}
     else:
         allowed_users = {current_user}
         to_process = [current_user]
         while to_process:
             parent = to_process.pop(0)
-            children = [u["username"] for u in db if u.get("created_by") == parent]
+            children = [u["username"] for u in db_data if u.get("created_by") == parent]
             for child in children:
                 if child not in allowed_users:
                     allowed_users.add(child)
                     to_process.append(child)
 
-    db_session = SessionLocal()
-    try:
-        txs = db_session.query(Transaction).all()
-        result = []
-        for t in txs:
-            target = t.target_username or t.target
-            # التأكد من أن المعاملة تخص حساباً ضمن شجرة المانجر
-            if target in allowed_users or t.username in allowed_users:
-                result.append({
-                    "id": t.id,
-                    "action": t.action,
-                    "amount": t.amount,
-                    "target_username": target,
-                    "date": str(t.date),
-                    "image_path": t.image_path
-                })
-        result.reverse()
-        return result
-    finally:
-        db_session.close()
+    tickets_db = load_tickets_db()
+    if not tickets_db:
+        return []
 
-@app.get("/api/user/transactions-history")
-async def get_user_transactions(current_user: str = Depends(get_current_user)):
-    history = []
-    
-    # 1. جلب الإيداعات (Dépôt) من ملف التذاكر
-    tickets = load_tickets_db()
-    user_deposits = [t for t in tickets if t.get("type") == "deposit" and str(t.get("username", "")).lower() == current_user.lower()]
-    
-    for d in user_deposits:
-        status_map = {"pending": "En attente", "approuvé": "Approuvé", "rejected": "Refusé"}
-        raw_status = str(d.get("status", "pending")).lower()
-        try:
-            dt_obj = datetime.fromisoformat(d.get("date", ""))
-            formatted_date = dt_obj.strftime("%Y-%m-%d %H:%M")
-        except:
-            formatted_date = str(d.get("date", ""))[:16]
+    allowed_tickets = []
+    for t in tickets_db:
+        t_user = t.get("username") or t.get("user")
+        if t_user in allowed_users:
+            allowed_tickets.append(t)
 
-        history.append({
-            "date": formatted_date,
-            "type": "Dépôt",
-            "method": str(d.get("method", "N/A")).capitalize(),
-            "amount": float(d.get("amount", 0)),
-            "status": status_map.get(raw_status, "En attente"),
-            "timestamp": d.get("date", "")
-        })
+    allowed_tickets.reverse()
+    return allowed_tickets
 
-    # 2. جلب جميع العمليات (سحوبات وشحن يدوي) من قاعدة بيانات SQL
-    db_session = SessionLocal()
-    try:
-        # جلب كل العمليات الخاصة بهذا اللاعب
-        sql_txs = db_session.query(Transaction).filter(
-            Transaction.target_username == current_user.lower()
-        ).all()
 
-        for w in sql_txs:
-            action_lower = str(w.action).lower()
-            
-            # إخفاء رهانات الألعاب وأرباحها لكي لا تزحم سجل الشحن والسحب
-            if action_lower in ["bet", "win", "rollback", "adjustment"]:
-                continue
-            
-            # تحديد النوع: إيداع أم سحب
-            tx_type = "Retrait"
-            if "dépôt" in action_lower or "charge" in action_lower or "deposit" in action_lower:
-                tx_type = "Dépôt"
-            
-            # استنتاج الطريقة
-            method = "Virement"
-            if "d17" in action_lower: method = "D17"
-            elif "mandat" in action_lower: method = "Mandat"
-            else: method = "Agent/Shop" # هذا سيميز الشحن اليدوي من الإدارة
+@app.get("/api/admin/get-player-tickets")
+async def get_player_tickets_api(username: str, current_user: str = Depends(get_admin_user)):
+    tickets_db = load_tickets_db()
+    if not tickets_db:
+        return []
+    uname = username.lower().strip()
+    user_tickets = [
+        t for t in tickets_db if str(t.get("username") or t.get("user") or "").lower().strip() == uname
+    ]
+    user_tickets.reverse()
+    return user_tickets
 
-            # تحديد الحالة
-            status = "Approuvé" if w.admin_username.lower() != "pending" else "En attente"
 
-            history.append({
-                "date": str(w.date)[:16],
-                "type": tx_type,
-                "method": method,
-                "amount": float(w.amount),
-                "status": status,
-                "timestamp": str(w.date)
-            })
-    except Exception as e:
-        print(f"Error fetching user SQL transactions: {e}")
-    finally:
-        db_session.close()
-
-    # 3. الترتيب من الأحدث للأقدم وإرسال النتيجة
-    history.sort(key=lambda x: x["timestamp"], reverse=True)
-    
-    return {"status": "success", "data": history}
 @app.post("/api/admin/request-transaction")
 async def request_transaction(request: Request):
     db_session = SessionLocal()
     try:
-        import uuid
-        import os
-        import shutil
-        from starlette.datastructures import UploadFile
-
         form = await request.form()
-        target_username = form.get("target_username")
-        action = form.get("action")
+        target_username = str(form.get("target_username", "")).lower().strip()
+        action = str(form.get("action", ""))
         amount = float(form.get("amount", 0))
-        tx_id = form.get("tx_id", str(uuid.uuid4()))
+        tx_id = str(form.get("tx_id", str(uuid.uuid4())))
+        current_site = get_site_id(request)
 
-        # 🛡️ الحارس الأمني 1: منع المبالغ السالبة والصفرية
         if amount <= 0:
-            from fastapi.responses import JSONResponse
             return JSONResponse(status_code=400, content={"detail": "Le montant doit être supérieur à zéro"})
 
         file_path = ""
         file = form.get("file")
-        if file and isinstance(file, UploadFile) and file.filename:
-            # 🛡️ الحارس الأمني 2: فحص الامتداد ونوع المحتوى معاً لمنع الملفات الخبيثة
-            allowed_extensions = ['.png', '.jpg', '.jpeg', '.webp']
-            allowed_mimes = ['image/png', 'image/jpeg', 'image/webp']
-            
+        if file and isinstance(file, StarletteUploadFile) and file.filename:
+            allowed_extensions = [".png", ".jpg", ".jpeg", ".webp"]
+            allowed_mimes = ["image/png", "image/jpeg", "image/webp"]
+
             file_ext = os.path.splitext(file.filename)[1].lower()
             if file_ext not in allowed_extensions or file.content_type not in allowed_mimes:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(status_code=400, content={"detail": "Format non autorisé ou fichier corrompu. Seules les images sont acceptées."})
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Format non autorisé. Seules les images sont acceptées."},
+                )
             os.makedirs("uploads", exist_ok=True)
             safe_filename = f"{uuid.uuid4().hex}{file_ext}"
             file_path = os.path.join("uploads", safe_filename)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-        new_tx_args = {
-            "admin_username": "PENDING",
-            "target_username": target_username,
-            "action": action,
-            "amount": amount
-        }
 
-        if hasattr(Transaction, "tx_id"):
-            new_tx_args["tx_id"] = tx_id
-        else:
-            new_tx_args["action"] = f"{action} | Details: {tx_id}"
-
-        if file_path:
-            if hasattr(Transaction, "image_path"):
-                new_tx_args["image_path"] = file_path
-            elif hasattr(Transaction, "receipt_image"):
-                new_tx_args["receipt_image"] = file_path
-
-        new_tx = Transaction(**new_tx_args)
+        new_tx = Transaction(
+            admin_username="PENDING",
+            target_username=target_username,
+            action=action,
+            amount=amount,
+            date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            tx_id=tx_id,
+            image_path=file_path if file_path else None,
+            site_id=current_site,
+        )
         db_session.add(new_tx)
         db_session.commit()
 
-        return {"status": "success", "message": "طلبك قيد المراجعة"}
+        return {"status": "success", "message": "Votre demande est en cours de vérification"}
 
     except Exception as e:
         db_session.rollback()
-        from fastapi.responses import JSONResponse
         print(f"Transaction Error: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": str(e)})
     finally:
         db_session.close()
+
 
 @app.post("/api/admin/handle-request")
 async def handle_pending_request(req: HandleRequestModel, current_user: str = Depends(get_admin_user)):
@@ -1361,532 +1609,824 @@ async def handle_pending_request(req: HandleRequestModel, current_user: str = De
             db_session.commit()
             return {"status": "success", "message": "Demande rejetée"}
 
-        # 🛡️ قفل قاعدة البيانات لتأمين تعديل الرصيد
         async with db_lock:
-            db = load_db()
-            target_user = next((u for u in db if u["username"] == tx.target_username), None)
-            
+            db_data = load_db()
+            target_user = next((u for u in db_data if u.get("username") == tx.target_username), None)
+
             if not target_user:
                 raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
             if tx.action == "deposit_request":
-                target_user["balance"] = float(target_user.get("balance", 0)) + tx.amount
+                target_user["balance"] = round(float(target_user.get("balance", 0)) + tx.amount, 2)
                 tx.action = "charge"
             elif tx.action == "withdraw_request":
-                if target_user.get("balance", 0) < tx.amount:
+                if float(target_user.get("balance", 0)) < tx.amount:
                     raise HTTPException(status_code=400, detail="Solde insuffisant pour le retrait")
-                target_user["balance"] = float(target_user.get("balance", 0)) - tx.amount
+                target_user["balance"] = round(float(target_user.get("balance", 0)) - tx.amount, 2)
                 target_user["daily_deposits"] = max(0.0, float(target_user.get("daily_deposits", 0)) - tx.amount)
                 tx.action = "withdraw"
 
             tx.admin_username = req.admin_username
             db_session.commit()
-            save_db(db)
-            
+            save_db(db_data)
+
         return {"status": "success", "message": "Demande approuvée avec succès"}
     finally:
         db_session.close()
 
-@app.post("/api/admin/change-player-password")
-async def change_player_password(req: ChangePlayerPasswordRequest):
-    db = load_db()
-    for u in db:
-        if u["username"] == req.target_username.lower().strip():
-            u["password"] = hash_password(req.new_password)
-            save_db(db)
-            return {"status": "success", "message": "Mot de passe modifié avec succès"}
-    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-class Reset2FARequest(BaseModel):
-    admin_username: str
-    target_username: str
-
-@app.post("/api/admin/reset-2fa")
-async def reset_2fa(req: Reset2FARequest, current_user: str = Depends(get_admin_user)):
-    target = req.target_username.lower().strip()
-    db = load_db()
-    
-    target_user = next((u for u in db if str(u.get("username", "")).lower() == target), None)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-        
-    # توليد مفتاح جديد كلياً
-    import pyotp
-    new_secret = pyotp.random_base32()
-    target_user["two_factor_secret"] = new_secret
-    save_db(db)
-    
-    log_admin_action(current_user, "RESET_2FA", f"Reset 2FA for {target}")
-    
-    return {"status": "success", "message": "2FA réinitialisé avec succès", "new_secret": new_secret}
-
-@app.post("/api/admin/configure-account")
-async def configure_account(req: ConfigureAccountRequest):
-    db = load_db()
-    for u in db:
-        if u["username"] == req.target_username.lower().strip():
-            u["rtp"] = req.rtp; u["is_blocked"] = req.is_blocked
-            save_db(db)
-            log_admin_action(req.created_by, "CONFIG_ACCOUNT", f"Target: {req.target_username}, RTP: {req.rtp}, Blocked: {req.is_blocked}")
-            return {"status": "success", "message": "Configuration enregistrée"}
-    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-@app.delete("/api/admin/delete-account")
-async def delete_account(req: DeleteAccountRequest):
-    db = load_db()
-    target = req.target_username.lower().strip()
-    new_db = [u for u in db if u.get("username", "").lower().strip() != target]
-    if len(new_db) == len(db): raise HTTPException(status_code=404, detail="Non trouvé")
-    save_db(new_db)
-    return {"status": "success", "message": "Supprimé"}
-
-@app.post("/api/user/change-password")
-async def change_my_password(req: ChangeMyPasswordRequest, current_user: str = Depends(get_current_user)):
-    target_username = req.username.lower().strip()
-    
-    # 🛡️ الحارس الأمني: يمنع أي مستخدم من تغيير كلمة مرور حساب آخر
-    if current_user != target_username and current_user not in ["fethi","manager", "admin", "owner", "super_admin","shop"]:
-        raise HTTPException(status_code=403, detail="Non autorisé: Vous ne pouvez pas modifier le mot de passe d'un autre utilisateur")
-        
-    db = load_db()
-    for u in db:
-        if u["username"] == target_username:
-            u["password"] = hash_password(req.new_password)
-            save_db(db)
-            return {"status": "success", "message": "Mot de passe modifié avec succès"}
-            
-    raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
 # ==========================================
-# دمج مزود الألعاب الحقيقي (NexusGGR API)
+# 10. SHOP WITHDRAWALS
 # ==========================================
-@app.get("/api/get-providers")
-async def get_real_providers():
-    payload = {
-        "method": "provider_list",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=15)
-            return response.json()
-        except Exception as e:
-            print(f"⚠️ خطأ في جلب المزودين: {e}")
-            return {"status": 0, "msg": "Error connecting to provider"}
-
-GAMES_CACHE = {}
-CACHE_TIME_LIMIT = 3600  
-
-@app.post("/api/get-providers")
-async def get_real_games(request: ProviderRequest):
-    provider_code = request.provider_code
-    current_time = time.time()
-    
-    if provider_code in GAMES_CACHE and (current_time - GAMES_CACHE[provider_code]['time']) < CACHE_TIME_LIMIT:
-        return GAMES_CACHE[provider_code]['data']
-
-    payload = {
-        "method": "game_list",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
-        "provider_code": provider_code
-    }
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
-            response_data = response.json()
-            
-            if response_data.get("status") == 1 or "games" in response_data:
-                GAMES_CACHE[provider_code] = {'time': current_time, 'data': response_data}
-                
-            return response_data
-            
-        except Exception as e:
-            print(f"⚠️ خطأ في الاتصال بالمزود: {e}")
-            if provider_code in GAMES_CACHE: 
-                return GAMES_CACHE[provider_code]['data']
-            return {"status": 0, "msg": "Error connecting to games API"}
-
-@app.get("/api/provider/get-games-paged")
-async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int = 50):
-    current_time = time.time()
-    if provider in GAMES_CACHE and (current_time - GAMES_CACHE[provider]['time']) < CACHE_TIME_LIMIT:
-        return GAMES_CACHE[provider]['data']
-
-    payload = {
-        "method": "game_list",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
-        "provider_code": provider
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
-            response_data = response.json()
-            if response_data.get("status") == 1 or "games" in response_data:
-                GAMES_CACHE[provider] = {'time': current_time, 'data': response_data}
-            return response_data
-        except Exception as e:
-            return {"status": 0, "msg": "Error"}
-
-    
-@app.post("/api/provider/launch-casino")
-async def launch_casino(request: Request):
-    try:
-        data = await request.json()
-        
-        current_site = get_site_id(request)
-        prefix = get_site_prefix(current_site)
-        dynamic_url = get_dynamic_url(request)
-        
-        user_code = str(data.get("user_code", "test_user")).lower().strip()
-        prefixed_user = f"{prefix}_{user_code}"
-        
-        payload = {
-            "method": "game_launch",
-            "agent_code": AGENT_CODE,
-            "agent_token": AGENT_TOKEN,
-            "provider_code": str(data.get("provider_code", "PRAGMATIC")),
-            "game_code": str(data.get("game_code", "")),
-            "user_code": prefixed_user,
-            "lang": "fr",
-            "lobby_url": dynamic_url
-        }
-        
-        headers = {"Content-Type": "application/json"}
-        endpoint = PROVIDER_ENDPOINT.rstrip('/')
-        
-        # 🚀 اتصال غير متزامن (Async) يتحمل آلاف الطلبات في نفس اللحظة دون تجميد السيرفر
-        async with httpx.AsyncClient() as client:
-            response = await client.post(endpoint, json=payload, headers=headers, timeout=20.0)
-            res_data = response.json()
-            
-            game_url = res_data.get("launch_url") or res_data.get("url") or (res_data.get("data", {}).get("url"))
-            if game_url:
-                return {"launch_url": game_url}
-            return {"error": "Jeu non disponible", "details": res_data}
-            
-    except Exception as e:
-        print(f"❌ [LAUNCH CASINO ERROR]: {str(e)}")
-        return {"error": str(e)}
-    
-# ==========================================
-# الجدار الأمني الثاني: حماية لوحة المالك
-# ==========================================
-@app.get("/owner-login", response_class=HTMLResponse)
-async def show_login_page():
-    return """
-    <html>
-        <body style="text-align:center; margin-top:100px; font-family:Arial; background-color:#1e1e2f; color:white;">
-            <h2>تسجيل الدخول للإدارة</h2>
-            <form action="/owner-login" method="post" style="background:#2a2a40; padding:20px; width:300px; margin:auto; border-radius:10px;">
-                <input type="text" name="username" placeholder="اسم المستخدم" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none;"><br>
-                <input type="password" name="password" placeholder="كلمة المرور" required style="width:90%; padding:10px; margin-bottom:15px; border-radius:5px; border:none;"><br>
-                <button type="submit" style="width:95%; padding:10px; background-color:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">دخول</button>
-            </form>
-        </body>
-    </html>
-    """
-
-@app.post("/owner-login")
-@limiter.limit("5/minute")
-async def process_login(request: Request, username: str = Form(...), password: str = Form(...)):
-    if username == ADMIN_USER and password == ADMIN_PASS:
-        request.session["is_admin"] = True
-        return RedirectResponse(url="/secure-owner", status_code=303)
-    return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>بيانات خاطئة!</h3><div style='text-align:center;'><a href='/owner-login'>العودة للمحاولة</a></div>")
-
-@app.get("/secure-owner")
-async def open_owner_panel(request: Request):
-    if not request.session.get("is_admin"):
-        return RedirectResponse(url="/owner-login")
-    return FileResponse("owner.html")
-
-@app.get("/owner-logout")
-async def logout_owner(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/owner-login")
-
-# ==========================================
-# نظام التوجيه الذكي والروابط النظيفة للإدارة
-# ==========================================
-@app.get("/", response_class=HTMLResponse)
-async def admin_home(request: Request):
-    role = request.session.get("role")
-    if role == "owner": return RedirectResponse(url="/panel/owner", status_code=303)
-    elif role == "manager": return RedirectResponse(url="/panel/manager", status_code=303)
-    elif role == "super_admin": return RedirectResponse(url="/panel/super_admin", status_code=303)
-    elif role == "admin": return RedirectResponse(url="/panel/admin", status_code=303)
-    elif role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
-    
-    
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.post("/login-router")
-@limiter.limit("5/minute")
-async def process_login_router(request: Request, username: str = Form(...), password: str = Form(...)):
-    uname = username.lower().strip()
-    
-    db = load_db()
-    user = next((u for u in db if u["username"] == uname), None)
-
-    if not user or not verify_password(password, user.get("password", "")):
-        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>اسم المستخدم أو كلمة المرور غير صحيحة!</h3><div style='text-align:center;'><a href='/' style='color:blue;'>العودة</a></div>")
-
-    if user.get("is_blocked") == 1:
-        return HTMLResponse("<h3 style='text-align:center; margin-top:100px; color:red;'>هذا الحساب محظور!</h3>")
-
-    role = user.get("role")
-    
-    # فرض التحقق الثنائي (2FA) بصرامة على جميع الإداريين دون استثناء
-    if role in ["owner", "super_admin", "admin"]:
-        request.session["pending_user"] = uname
-        request.session["pending_role"] = role
-        
-        html_form = """
-        <html dir="rtl">
-        <head><title>التحقق الثنائي</title></head>
-        <body style="background-color: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Tahoma, sans-serif;">
-            <div style="background-color: #2d2d2d; padding: 40px; border-radius: 10px; text-align: center; border: 1px solid #444;">
-                <h2 style="color: #00d2ff;">التحقق الثنائي (2FA) 🔐</h2>
-                <p style="color: #ccc;">أدخل الكود من تطبيق Google Authenticator</p>
-                <form action="/verify-2fa" method="post">
-                    <input type="text" name="totp_code" placeholder="أدخل 6 أرقام" required style="padding: 10px; font-size: 20px; text-align: center; letter-spacing: 5px; border-radius: 5px; border: none; outline: none; margin-bottom: 20px; font-weight: bold;"><br>
-                    <button type="submit" style="padding: 10px 30px; background-color: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">دخول آمن</button>
-                </form>
-            </div>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=html_form)
-
-    request.session["username"] = user["username"]
-    request.session["role"] = user["role"]
-    
-    if role == "shop": return RedirectResponse(url="/panel/shop", status_code=303)
-    else: return HTMLResponse("<h3 style='text-align:center; color:orange;'>ليس لديك صلاحية.</h3>")
-    
-# -----------------------------------------
-# مسارات الدخول والحماية الثنائية
-# -----------------------------------------
-class LoginRequest(BaseModel): 
-    username: str
-    password: str
-
-class Verify2FARequest(BaseModel): 
-    username: str
-    totp_code: str = "000000"
-
-@app.post("/api/login")
-@limiter.limit("5/minute")
-async def login_user(request: Request, req: LoginRequest):
-    try:
-        uname = html.escape(req.username.lower().strip())
-        
-        db = load_db()
-        user = next((u for u in db if u["username"] == uname), None)
-
-        if not user or not verify_password(req.password, user.get("password", "")):
-            bad_alert = f"⚠️ <b>محاولة دخول فاشلة للإدارة!</b>\n👤 اسم المستخدم: <code>{req.username}</code>\n❌ السبب: كلمة المرور خاطئة"
-            asyncio.create_task(send_telegram_alert(bad_alert))
-            return JSONResponse(status_code=401, content={"detail": "اسم المستخدم أو كلمة المرور غير صحيحة"})
-        user["last_ip"] = verify_nexus_ip(request)
-        save_db(db)
-        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        
-        return JSONResponse(status_code=200, content={
-            "message": "success", 
-            "username": user["username"],
-            "role": user["role"],
-            "access_token": access_token,
-            "balance": float(user.get("balance", 0.0)),
-            "created_by": str(user.get("created_by", "")), # 🌟 إرسال المصدر
-            "is_self_registered": user.get("is_self_registered", False) # 🌟 إرسال الصلاحية
-        })
-    except Exception as e:
-        print(f"Login Crash: {e}")
-        
-        return JSONResponse(status_code=500, content={"detail": f"خطأ داخلي: {str(e)}"})
-
-@app.post("/api/verify-2fa")
-@limiter.limit("5/minute")
-async def verify_2fa_api(request: Request, req: Verify2FARequest):
-    db = load_db()
-    user = next((u for u in db if u["username"] == req.username), None)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Nom d'utilisateur incorrect")
-        
-    secret = user.get("two_factor_secret")
-    if not secret:
-        raise HTTPException(status_code=400, detail="لم يتم تفعيل المصادقة الثنائية!")
-        
-    totp = pyotp.TOTP(secret)
-    if totp.verify(req.totp_code):
-        access_token = create_access_token(data={"sub": user["username"], "role": user["role"]})
-        
-        return JSONResponse(status_code=200, content={
-            "message": "success", 
-            "username": user["username"],
-            "role": user["role"],
-            "access_token": access_token,
-            "balance": float(user.get("balance", 0.0)),
-            "created_by": str(user.get("created_by", "")),
-            "is_self_registered": user.get("is_self_registered", False)
-        })
-    else:
-        raise HTTPException(status_code=400, detail="كود Google Authenticator غير صحيح!")
-@app.get("/setup-2fa/{username}")
-async def setup_2fa(username: str):
-    db = load_db()
-    user = next((u for u in db if u["username"] == username), None)
-    if not user: return HTMLResponse("<h3 style='text-align:center; color:red;'>المستخدم غير موجود!</h3>")
-    
-    secret = pyotp.random_base32()
-    user["two_factor_secret"] = secret
-    
-    totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=username, issuer_name="Alpha Casino")
-    
-    img = qrcode.make(uri)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    
-    return StreamingResponse(buf, media_type="image/png")
-
-# ==========================================
-# دمج نظام BSW Aggregator Callbacks
-# ==========================================
-SALT_TOKEN = os.getenv("SALT_TOKEN", "NEXUS_SECRET_KEY")
-
-def verify_hash(data: dict, received_hash: str) -> bool:
-  filtered_data = {k: v for k, v in data.items() if k != "hash" and v is not None}
-  sorted_params = sorted(filtered_data.items())
-  query_string = urllib.parse.urlencode(sorted_params)
-  string_to_hash = query_string + SALT_TOKEN
-  calculated_hash = hashlib.md5(string_to_hash.encode("utf-8")).hexdigest()
-  return calculated_hash == received_hash
-
-
-
-
-class ShopWithdrawRequest(BaseModel): admin_username: str; shop_username: str; amount: float
-class HandleShopWithdrawModel(BaseModel): request_id: int; decision: str; shop_username: str
-class AdminWithdrawRequest(BaseModel): admin_username: str; amount: float
-
 @app.post("/api/admin/request-shop-withdrawal")
 async def request_shop_withdrawal(req: ShopWithdrawRequest):
     try:
-        db = load_db()
-        admin_username = req.admin_username.lower()
-        shop_username = req.shop_username.strip().lower() # 👈 تحويل لحروف صغيرة وإزالة الفراغات
-        amount = float(req.amount)
-        if amount <= 0:
-            raise HTTPException(status_code=400, detail="Montant invalide")
+        async with db_lock:
+            db_data = load_db()
+            admin_username = req.admin_username.lower().strip()
+            shop_username = req.shop_username.strip().lower()
+            amount = float(req.amount)
+            if amount <= 0:
+                raise HTTPException(status_code=400, detail="Montant invalide")
 
-        if isinstance(db, list):
-            db = {"users": db, "shop_withdrawals": []}
-            
-        users_list = db.get("users", [])
+            shop = next(
+                (
+                    u
+                    for u in db_data
+                    if str(u.get("username", "")).strip().lower() == shop_username and u.get("role") == "shop"
+                ),
+                None,
+            )
+            if not shop:
+                raise HTTPException(status_code=404, detail="Shop non trouvé")
 
-        shop = next((u for u in users_list if str(u.get("username")).strip().lower() == shop_username and u.get("role") == "shop"), None)
-        if not shop: 
-            raise HTTPException(status_code=404, detail="Shop non trouvé")
+            withdrawals = db_data.get("shop_withdrawals", [])
+            new_req = {
+                "id": int(datetime.now().timestamp()),
+                "admin_username": admin_username,
+                "shop_username": shop_username,
+                "amount": amount,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "status": "pending",
+            }
+            withdrawals.append(new_req)
+            db_data["shop_withdrawals"] = withdrawals
+            save_db(db_data)
 
-        if "shop_withdrawals" not in db: 
-            db["shop_withdrawals"] = []
-        
-        from datetime import datetime
-        new_req = {
-            "id": int(datetime.now().timestamp()),
-            "admin_username": admin_username,
-            "shop_username": shop_username, # 👈 يحفظ دائماً بحروف صغيرة مطابقة
-            "amount": amount,
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "status": "pending"
-        }
-        
-        db["shop_withdrawals"].append(new_req)
-        save_db(db)
-        
         return {"status": "success", "message": "Demande envoyée avec succès"}
-        
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
-    
-    
+        raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")
+
+
 @app.get("/api/shop/pending-withdrawals")
-async def get_pending_withdrawals(username: str, current_user: str = Depends(get_current_user)):
-    db = load_db()
-    if isinstance(db, list):
-        return [] # إذا كانت القاعدة قديمة، لا يوجد طلبات
-        
-    withdrawals = db.get("shop_withdrawals", [])
-    
-    # جلب الطلبات المعلقة فقط وتجاهل حالة الأحرف
+async def get_shop_pending_withdrawals(username: str, current_user: str = Depends(get_current_user)):
+    db_data = load_db()
+    withdrawals = db_data.get("shop_withdrawals", [])
     pending_reqs = [
-        w for w in withdrawals 
-        if str(w.get("shop_username")).lower() == username.lower() and w.get("status") == "pending"
+        w
+        for w in withdrawals
+        if str(w.get("shop_username", "")).lower() == username.lower() and w.get("status") == "pending"
     ]
-    pending_reqs.reverse() # الأحدث في الأعلى
+    pending_reqs.reverse()
     return pending_reqs
 
 
 @app.get("/api/shop/withdraw-requests")
 async def get_shop_withdraw_requests(username: str, current_user: str = Depends(get_current_user)):
-    db = load_db()
-    if isinstance(db, list):
-        return []
-        
-    withdrawals = db.get("shop_withdrawals", [])
-    target_shop = username.strip().lower() # 👈 توحيد الصيغة
-    
-    all_my_reqs = [
-        w for w in withdrawals 
-        if str(w.get("shop_username")).strip().lower() == target_shop
-    ]
+    db_data = load_db()
+    withdrawals = db_data.get("shop_withdrawals", [])
+    target_shop = username.strip().lower()
+    all_my_reqs = [w for w in withdrawals if str(w.get("shop_username", "")).strip().lower() == target_shop]
     all_my_reqs.reverse()
     return all_my_reqs
 
 
-@app.post("/api/admin/handle-shop-withdrawal") # 🛡️ المسار يجب أن يكون تحت /api/admin/
-async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str = Depends(get_admin_user)): # 🛡️ استخدام get_admin_user
-    db = load_db()
-    if isinstance(db, list):
-        raise HTTPException(status_code=500, detail="Database format is outdated")
-    
-    withdrawals = db.get("shop_withdrawals", [])
-    target_req = next((w for w in withdrawals if w.get("id") == req.request_id), None)
-    
-    if not target_req: raise HTTPException(status_code=404, detail="Demande non trouvée")
-    
-    if req.decision == "accept":
-        shop = next((u for u in db.get("users", []) if u.get("username") == target_req["shop_username"]), None)
-        admin = next((u for u in db.get("users", []) if u.get("username") == target_req["admin_username"]), None)
-        if not shop or not admin: raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-        amount = target_req["amount"]
-        if shop.get("balance", 0) < amount: raise HTTPException(status_code=400, detail="Solde insuffisant chez le shop")
-        
-        shop["balance"] = float(shop.get("balance", 0)) - amount
-        admin["balance"] = float(admin.get("balance", 0)) + amount
-        target_req["status"] = "accepted"
-    else:
-        target_req["status"] = "rejected"
-        
-    save_db(db)
-    return {"status": "success", "message": "Traité avec succès"}
+@app.post("/api/admin/handle-shop-withdrawal")
+async def handle_shop_withdrawal(req: HandleShopWithdrawModel, current_user: str = Depends(get_admin_user)):
+    async with db_lock:
+        db_data = load_db()
+        withdrawals = db_data.get("shop_withdrawals", [])
+        target_req = next((w for w in withdrawals if w.get("id") == req.request_id), None)
+
+        if not target_req:
+            raise HTTPException(status_code=404, detail="Demande non trouvée")
+
+        if req.decision == "accept":
+            shop = next((u for u in db_data if u.get("username") == target_req["shop_username"]), None)
+            admin = next((u for u in db_data if u.get("username") == target_req["admin_username"]), None)
+            if not shop or not admin:
+                raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+            amount = float(target_req["amount"])
+            if float(shop.get("balance", 0)) < amount:
+                raise HTTPException(status_code=400, detail="Solde insuffisant chez le shop")
+
+            shop["balance"] = round(float(shop.get("balance", 0)) - amount, 2)
+            admin["balance"] = round(float(admin.get("balance", 0)) + amount, 2)
+            target_req["status"] = "accepted"
+        else:
+            target_req["status"] = "rejected"
+
+        save_db(db_data)
+    return {"status": "success", "message": "Demande traitée avec succès"}
 
 
 @app.get("/api/admin/my-withdrawal-requests")
 async def get_my_withdrawal_requests(username: str):
-    db = load_db()
-    withdrawals = db.get("shop_withdrawals", [])
-    return [w for w in withdrawals if w.get("admin_username") == username.lower()]
+    db_data = load_db()
+    withdrawals = db_data.get("shop_withdrawals", [])
+    return [w for w in withdrawals if str(w.get("admin_username", "")).lower() == username.lower()]
 
+
+# ==========================================
+# 11. TRANSACTIONS, AUDIT & ANALYTICS
+# ==========================================
+@app.get("/api/admin/transactions-history")
+async def get_tx_history(username: str = None, current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    current_admin = next((u for u in db_data if u.get("username") == current_user), None)
+    current_role = current_admin.get("role", "player") if current_admin else "player"
+
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db_data}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db_data if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
+    db_session = SessionLocal()
+    try:
+        txs = db_session.query(Transaction).all()
+        result = []
+        for t in txs:
+            target = getattr(t, "target_username", None)
+            admin_uname = getattr(t, "admin_username", None)
+            if target in allowed_users or admin_uname in allowed_users:
+                result.append(
+                    {
+                        "id": t.id,
+                        "action": t.action,
+                        "amount": t.amount,
+                        "target_username": target,
+                        "date": str(t.date),
+                        "image_path": t.image_path,
+                        "site_id": getattr(t, "site_id", "alphabet216"),
+                    }
+                )
+        result.reverse()
+        return result
+    finally:
+        db_session.close()
+
+
+@app.get("/api/user/transactions-history")
+async def get_user_transactions(current_user: str = Depends(get_current_user)):
+    history = []
+
+    tickets = load_tickets_db()
+    user_deposits = [
+        t
+        for t in tickets
+        if t.get("type") == "deposit" and str(t.get("username", "")).lower() == current_user.lower()
+    ]
+
+    for d in user_deposits:
+        status_map = {"pending": "En attente", "approuvé": "Approuvé", "rejected": "Refusé"}
+        raw_status = str(d.get("status", "pending")).lower()
+        try:
+            dt_obj = datetime.fromisoformat(d.get("date", ""))
+            formatted_date = dt_obj.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            formatted_date = str(d.get("date", ""))[:16]
+
+        history.append(
+            {
+                "date": formatted_date,
+                "type": "Dépôt",
+                "method": str(d.get("method", "N/A")).capitalize(),
+                "amount": float(d.get("amount", 0)),
+                "status": status_map.get(raw_status, "En attente"),
+                "timestamp": d.get("date", ""),
+            }
+        )
+
+    db_session = SessionLocal()
+    try:
+        sql_txs = (
+            db_session.query(Transaction)
+            .filter(Transaction.target_username == current_user.lower())
+            .all()
+        )
+
+        for w in sql_txs:
+            action_lower = str(w.action).lower()
+
+            if action_lower in ["bet", "win", "rollback", "adjustment"]:
+                continue
+
+            tx_type = "Retrait"
+            if "dépôt" in action_lower or "charge" in action_lower or "deposit" in action_lower:
+                tx_type = "Dépôt"
+
+            method = "Virement"
+            if "d17" in action_lower or (w.tx_id and "d17" in str(w.tx_id).lower()):
+                method = "D17"
+            elif "mandat" in action_lower or (w.tx_id and "mandat" in str(w.tx_id).lower()):
+                method = "Mandat"
+            else:
+                method = "Agent/Shop"
+
+            admin_status = str(w.admin_username or "").lower()
+            if admin_status == "pending":
+                status = "En attente"
+            elif admin_status == "rejected":
+                status = "Refusé"
+            else:
+                status = "Approuvé"
+
+            history.append(
+                {
+                    "date": str(w.date)[:16],
+                    "type": tx_type,
+                    "method": method,
+                    "amount": float(w.amount or 0),
+                    "status": status,
+                    "timestamp": str(w.date),
+                }
+            )
+    except Exception as e:
+        print(f"Error fetching user SQL transactions: {e}")
+    finally:
+        db_session.close()
+
+    history.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"status": "success", "data": history}
+
+
+@app.get("/api/user/bet-history")
+async def get_user_bet_history(current_user: str = Depends(get_current_user)):
+    db_session = SessionLocal()
+    try:
+        txs = (
+            db_session.query(Transaction)
+            .filter(
+                Transaction.target_username == current_user.lower(),
+                Transaction.action.in_(["bet", "win"]),
+            )
+            .order_by(Transaction.id.desc())
+            .limit(50)
+            .all()
+        )
+
+        history = []
+        for t in txs:
+            is_win = t.action == "win"
+            provider_name = (
+                t.admin_username
+                if t.admin_username and t.admin_username not in ["EUROVIRTUALS_API", "PENDING_HUGE_WIN"]
+                else "Casino"
+            )
+            if t.admin_username == "EUROVIRTUALS_API":
+                provider_name = "Jeux Virtuels"
+
+            history.append(
+                {
+                    "date": str(t.date)[:16],
+                    "game": "Jeu de Casino",
+                    "provider": provider_name,
+                    "amount": float(t.amount or 0),
+                    "type": "win" if is_win else "bet",
+                }
+            )
+
+        return {"status": "success", "data": history}
+    except Exception:
+        return {"status": "error", "data": []}
+    finally:
+        db_session.close()
+
+
+@app.get("/api/admin/casino-history")
+async def get_casino_history(current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    current_admin = next((u for u in db_data if u.get("username") == current_user), None)
+    current_role = current_admin.get("role", "player") if current_admin else "player"
+
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db_data}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db_data if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
+    db_session = SessionLocal()
+    try:
+        txs = (
+            db_session.query(Transaction)
+            .filter(Transaction.action.in_(["bet", "win", "rollback"]))
+            .all()
+        )
+
+        result = []
+        for t in txs:
+            username = getattr(t, "target_username", None)
+            if username in allowed_users:
+                result.append(
+                    {
+                        "id": t.id,
+                        "username": username,
+                        "action": t.action,
+                        "amount": t.amount,
+                        "date": str(t.date),
+                        "site_id": getattr(t, "site_id", "alphabet216"),
+                    }
+                )
+
+        result.reverse()
+        return result[:500]
+    finally:
+        db_session.close()
+
+
+@app.get("/api/admin/audit-logs")
+async def get_audit_logs(current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    current_admin = next((u for u in db_data if u.get("username") == current_user), None)
+    current_role = current_admin.get("role", "player") if current_admin else "player"
+
+    if current_role in ["owner", "system"]:
+        allowed_users = {u["username"] for u in db_data}
+    else:
+        allowed_users = {current_user}
+        to_process = [current_user]
+        while to_process:
+            parent = to_process.pop(0)
+            children = [u["username"] for u in db_data if u.get("created_by") == parent]
+            for child in children:
+                if child not in allowed_users:
+                    allowed_users.add(child)
+                    to_process.append(child)
+
+    db_session = SessionLocal()
+    try:
+        logs = db_session.query(AuditLog).order_by(AuditLog.id.desc()).all()
+        result = []
+        for l in logs:
+            if l.admin_username in allowed_users:
+                result.append(
+                    {
+                        "id": l.id,
+                        "admin_username": l.admin_username,
+                        "action_type": l.action_type,
+                        "details": l.details,
+                        "date": l.date,
+                    }
+                )
+        return result[:300]
+    finally:
+        db_session.close()
+
+
+@app.get("/api/admin/fraud-detection")
+async def fraud_detection(current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    ip_map = {}
+    phone_map = {}
+
+    for u in db_data:
+        ip = u.get("last_ip") or u.get("ip")
+        phone = u.get("phone")
+        uname = u.get("username")
+
+        if ip:
+            ip_map.setdefault(ip, []).append(uname)
+        if phone and phone != "00000000" and phone != "":
+            phone_map.setdefault(phone, []).append(uname)
+
+    suspicious_ips = {ip: users for ip, users in ip_map.items() if len(users) > 1}
+    suspicious_phones = {phone: users for phone, users in phone_map.items() if len(users) > 1}
+
+    return {
+        "status": "success",
+        "shared_ips": suspicious_ips,
+        "shared_phones": suspicious_phones,
+    }
+
+
+@app.get("/api/admin/analytics/ggr")
+async def get_ggr_analytics(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    site_id: Optional[str] = Query(None),
+    current_user: str = Depends(get_admin_user),
+):
+    db_session = SessionLocal()
+    try:
+        query = db_session.query(Transaction).filter(Transaction.action.in_(["bet", "win", "rollback"]))
+        if site_id and site_id.upper() != "ALL":
+            query = query.filter(Transaction.site_id == site_id.lower().strip())
+
+        txs = query.all()
+
+        filtered_txs = []
+        for t in txs:
+            if not t.date:
+                continue
+            try:
+                date_part = str(t.date).split(" ")[0]
+                parts = date_part.split("-")
+                if len(parts) >= 2:
+                    t_year = int(parts[0])
+                    t_month = int(parts[1])
+
+                    if year and t_year != year:
+                        continue
+                    if month and t_month != month:
+                        continue
+            except Exception:
+                pass
+            filtered_txs.append(t)
+
+        total_bets = sum(float(t.amount or 0) for t in filtered_txs if t.action == "bet")
+        total_wins = sum(float(t.amount or 0) for t in filtered_txs if t.action == "win")
+
+        ggr = total_bets - total_wins
+        actual_rtp = (total_wins / total_bets * 100) if total_bets > 0 else 0.0
+
+        return {
+            "status": "success",
+            "total_bets": round(total_bets, 2),
+            "total_wins": round(total_wins, 2),
+            "ggr": round(ggr, 2),
+            "actual_rtp": round(actual_rtp, 2),
+        }
+    except Exception as e:
+        print(f"Analytics Error: {e}")
+        return {"status": "error", "total_bets": 0, "total_wins": 0, "ggr": 0, "actual_rtp": 0}
+    finally:
+        db_session.close()
+
+
+# ==========================================
+# 12. HUGE WINS SECURITY WALL (30,000+ TND)
+# ==========================================
+@app.get("/api/admin/pending-huge-wins")
+async def get_pending_huge_wins(current_user: str = Depends(get_admin_user)):
+    db_session = SessionLocal()
+    try:
+        txs = (
+            db_session.query(Transaction)
+            .filter(Transaction.admin_username == "PENDING_HUGE_WIN")
+            .order_by(Transaction.id.desc())
+            .all()
+        )
+        return [
+            {
+                "id": t.id,
+                "target_username": t.target_username,
+                "amount": float(t.amount or 0),
+                "action": t.action,
+                "date": t.date,
+                "site_id": getattr(t, "site_id", "alphabet216"),
+            }
+            for t in txs
+        ]
+    except Exception as e:
+        print(f"Error fetching huge wins: {e}")
+        return []
+    finally:
+        db_session.close()
+
+
+@app.post("/api/admin/handle-huge-win")
+async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    admin = next((u for u in db_data if u.get("username") == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Privilèges Owner requis")
+
+    target_tx_id = req.transaction_id if req.transaction_id is not None else req.tx_id
+    if target_tx_id is None:
+        raise HTTPException(status_code=400, detail="ID de transaction manquant")
+
+    db_session = SessionLocal()
+    try:
+        tx = db_session.query(Transaction).filter(Transaction.id == target_tx_id).first()
+        if not tx or tx.admin_username != "PENDING_HUGE_WIN":
+            return JSONResponse(status_code=404, content={"detail": "Demande introuvable ou déjà traitée"})
+
+        if req.decision == "approve":
+            async with db_lock:
+                fresh_db = load_db()
+                target_user = next(
+                    (
+                        u
+                        for u in fresh_db
+                        if str(u.get("username", "")).lower() == str(tx.target_username).lower()
+                        and u.get("site_id", "alphabet216") == getattr(tx, "site_id", "alphabet216")
+                    ),
+                    None,
+                )
+                if not target_user:
+                    target_user = next(
+                        (u for u in fresh_db if str(u.get("username", "")).lower() == str(tx.target_username).lower()),
+                        None,
+                    )
+                if target_user:
+                    target_user["balance"] = round(float(target_user.get("balance", 0)) + float(tx.amount or 0), 2)
+                    save_db(fresh_db)
+            tx.admin_username = f"APPROVED_BY_{current_user.upper()}"
+        else:
+            tx.admin_username = f"REJECTED_BY_{current_user.upper()}"
+
+        db_session.commit()
+        return {"status": "success", "message": "Gain important traité avec succès"}
+    except Exception as e:
+        db_session.rollback()
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+    finally:
+        db_session.close()
+
+
+# ==========================================
+# 13. PROMOTIONS, FREE SPINS & CASHBACK
+# ==========================================
+def load_promo():
+    if os.path.exists(PROMO_FILE):
+        with open(PROMO_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {
+        "is_active": False,
+        "day_of_week": "Friday",
+        "min_amount": 50,
+        "spins": 10,
+        "game": "vs20doghouse",
+        "provider": "PRAGMATIC",
+        "max_win": 10000,
+    }
+
+
+@app.get("/api/admin/promo")
+async def get_promo(current_user: str = Depends(get_admin_user)):
+    return load_promo()
+
+
+@app.post("/api/admin/promo")
+async def set_promo(data: PromoModel, current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    admin = next((u for u in db_data if u.get("username") == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    with open(PROMO_FILE, "w", encoding="utf-8") as f:
+        json.dump(data.dict(), f)
+    return {"status": "success", "message": "Configuration de la promotion enregistrée avec succès"}
+
+
+@app.post("/api/admin/grant-freespins")
+async def grant_free_spins(req: FreeSpinRequest, current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    admin = next((u for u in db_data if u.get("username") == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Privilèges Owner requis")
+
+    target_user = next(
+        (u for u in db_data if str(u.get("username", "")).lower().strip() == req.target_username.lower().strip()),
+        None,
+    )
+    user_site = target_user.get("site_id", "alphabet216") if target_user else "alphabet216"
+    prefixed_user = f"{get_site_prefix(user_site)}_{req.target_username.lower().strip()}"
+
+    expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    tour_id = f"fs_{uuid.uuid4().hex[:10]}"
+
+    payload = {
+        "method": "tour_create",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "user_code": prefixed_user,
+        "provider_code": req.provider_code,
+        "game_code": req.game_code,
+        "bet_amount": req.bet_amount,
+        "spin_count": req.spin_count,
+        "amount": req.amount,
+        "expiration_time": expiration,
+        "tour_id": tour_id,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(GOLD_API_URL, json=payload, timeout=15.0)
+            res_data = response.json()
+
+            if res_data.get("status") == 1:
+                real_win = res_data.get("real_win", 0)
+                return {
+                    "status": "success",
+                    "message": f"{req.spin_count} tours gratuits envoyés avec succès !",
+                    "real_win": real_win,
+                }
+            error_msg = res_data.get("detail") or res_data.get("msg") or "Demande refusée par le fournisseur"
+            return JSONResponse(status_code=400, content={"detail": f"Erreur fournisseur : {error_msg}"})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"detail": f"Erreur de connexion : {str(e)}"})
+
+
+@app.post("/api/admin/cancel-freespins")
+async def cancel_free_spins(req: CancelTourRequest, current_user: str = Depends(get_admin_user)):
+    db_data = load_db()
+    admin = next((u for u in db_data if u.get("username") == current_user), None)
+    if not admin or admin.get("role") not in ["owner", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Privilèges Owner requis")
+
+    payload = {
+        "method": "tour_cancel",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "tour_id": req.tour_id,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(GOLD_API_URL, json=payload, timeout=15.0)
+            res_data = response.json()
+
+            if res_data.get("status") == 1:
+                refund = res_data.get("canceled_money", 0)
+                rest = res_data.get("rest_count", 0)
+                return {
+                    "status": "success",
+                    "message": f"Tour annulé ! Remboursement : {refund} TND ({rest} tours restants non joués).",
+                }
+            error_msg = res_data.get("detail") or res_data.get("msg") or "Demande refusée par le fournisseur"
+            return JSONResponse(status_code=400, content={"detail": f"Erreur fournisseur : {error_msg}"})
+        except Exception as e:
+            return JSONResponse(status_code=500, content={"detail": f"Erreur de connexion : {str(e)}"})
+
+
+@app.post("/api/user/claim-cashback")
+async def claim_vault_cashback(current_user: str = Depends(get_current_user)):
+    async with db_lock:
+        db_data = load_db()
+        target_user = next(
+            (u for u in db_data if str(u.get("username", "")).lower().strip() == current_user.lower().strip()),
+            None,
+        )
+
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+        vault_amount = float(target_user.get("available_cashback", 0.0))
+
+        if vault_amount < 10.0:
+            raise HTTPException(status_code=400, detail="Le montant minimum pour récupérer est de 10 TND.")
+
+        now = datetime.now()
+        last_claim_str = target_user.get("last_cashback_claim", "")
+        if last_claim_str:
+            try:
+                last_claim_date = datetime.strptime(last_claim_str, "%Y-%m-%d %H:%M:%S")
+                time_diff = now - last_claim_date
+                if time_diff < timedelta(hours=24):
+                    remaining = timedelta(hours=24) - time_diff
+                    hours, remainder = divmod(remaining.seconds, 3600)
+                    minutes, _ = divmod(remainder, 60)
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Veuillez patienter encore {hours}h {minutes}m avant le prochain retrait.",
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+
+        target_user["balance"] = round(float(target_user.get("balance", 0.0)) + vault_amount, 2)
+        target_user["available_cashback"] = 0.0
+        target_user["last_cashback_claim"] = now.strftime("%Y-%m-%d %H:%M:%S")
+        user_site = target_user.get("site_id", "alphabet216")
+
+        save_db(db_data)
+
+    db_session = SessionLocal()
+    try:
+        new_tx = Transaction(
+            admin_username="SYSTEM_CASHBACK",
+            target_username=target_user["username"],
+            action="claim_vault",
+            amount=vault_amount,
+            date=now.strftime("%Y-%m-%d %H:%M:%S"),
+            tx_id=f"vault_{int(time.time())}",
+            site_id=user_site,
+        )
+        db_session.add(new_tx)
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+    finally:
+        db_session.close()
+
+    return {
+        "status": "success",
+        "message": f"Vous avez récupéré {vault_amount} TND avec succès !",
+        "new_balance": target_user["balance"],
+    }
+
+
+# ==========================================
+# 14. NOTIFICATIONS SYSTEM
+# ==========================================
+@app.post("/api/admin/send-notification")
+async def send_notification(req: NotificationModel, current_user: str = Depends(get_admin_user)):
+    async with db_lock:
+        db_data = load_db()
+        if "notifications" not in db_data.full_data:
+            db_data.full_data["notifications"] = []
+
+        new_notif = {
+            "id": str(uuid.uuid4())[:8],
+            "target": req.target_user.lower().strip(),
+            "title": req.title,
+            "message": req.message,
+            "icon": req.icon,
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "read_by": [],
+        }
+        db_data.full_data["notifications"].append(new_notif)
+        save_db(db_data)
+    return {"status": "success", "message": "Notification envoyée avec succès"}
+
+
+@app.get("/api/user/notifications")
+async def get_user_notifications(current_user: str = Depends(get_current_user)):
+    db_data = load_db()
+    notifs = db_data.full_data.get("notifications", [])
+    user_notifs = []
+    unread_count = 0
+
+    for n in notifs:
+        if current_user.lower() in n.get("deleted_by", []):
+            continue
+
+        if n.get("target") == "all" or n.get("target") == current_user.lower():
+            is_read = current_user.lower() in n.get("read_by", [])
+            if not is_read:
+                unread_count += 1
+            user_notifs.append({**n, "is_read": is_read})
+
+    return {"unread": unread_count, "notifications": user_notifs[::-1][:15]}
+
+
+@app.post("/api/user/read-notification")
+async def mark_notif_read(req: MarkReadModel, current_user: str = Depends(get_current_user)):
+    async with db_lock:
+        db_data = load_db()
+        notifs = db_data.full_data.get("notifications", [])
+        for n in notifs:
+            if n.get("id") == req.notif_id:
+                if current_user.lower() not in n.get("read_by", []):
+                    n.setdefault("read_by", []).append(current_user.lower())
+                break
+        save_db(db_data)
+    return {"status": "success"}
+
+
+@app.post("/api/user/delete-notification")
+async def delete_notification(req: DeleteNotifModel, current_user: str = Depends(get_current_user)):
+    async with db_lock:
+        db_data = load_db()
+        notifs = db_data.full_data.get("notifications", [])
+
+        for n in notifs:
+            if req.notif_id == "all":
+                if n.get("target") in ["all", current_user.lower()]:
+                    if current_user.lower() not in n.get("deleted_by", []):
+                        n.setdefault("deleted_by", []).append(current_user.lower())
+            else:
+                if n.get("id") == req.notif_id:
+                    if current_user.lower() not in n.get("deleted_by", []):
+                        n.setdefault("deleted_by", []).append(current_user.lower())
+                    break
+
+        save_db(db_data)
+    return {"status": "success"}
+
+
+# ==========================================
+# 15. NEXUSGGR CASINO & SPORTSBOOK INTEGRATION
+# ==========================================
 @app.get("/api/get-server-ip")
 async def get_server_ip():
     try:
@@ -1895,226 +2435,381 @@ async def get_server_ip():
             return {"server_ip": response.text}
     except Exception as e:
         return {"error": str(e)}
-    
+
+
+@app.get("/api/get-providers")
+async def get_real_providers():
+    payload = {
+        "method": "provider_list",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=15)
+            return response.json()
+        except Exception as e:
+            print(f"⚠️ Erreur lors de la récupération des fournisseurs : {e}")
+            return {"status": 0, "msg": "Erreur de connexion au fournisseur"}
+
+
+@app.post("/api/get-providers")
+async def get_real_games(request: ProviderRequest):
+    provider_code = request.provider_code
+    current_time = time.time()
+
+    if provider_code in GAMES_CACHE and (current_time - GAMES_CACHE[provider_code]["time"]) < CACHE_TIME_LIMIT:
+        return GAMES_CACHE[provider_code]["data"]
+
+    payload = {
+        "method": "game_list",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "provider_code": provider_code,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
+            response_data = response.json()
+
+            if response_data.get("status") == 1 or "games" in response_data:
+                GAMES_CACHE[provider_code] = {"time": current_time, "data": response_data}
+
+            return response_data
+
+        except Exception as e:
+            print(f"⚠️ Erreur de connexion au fournisseur : {e}")
+            if provider_code in GAMES_CACHE:
+                return GAMES_CACHE[provider_code]["data"]
+            return {"status": 0, "msg": "Erreur de connexion à l'API des jeux"}
+
+
+@app.get("/api/provider/get-games-paged")
+async def get_games_paged(provider: str = "PRAGMATIC", page: int = 1, limit: int = 50):
+    current_time = time.time()
+    if provider in GAMES_CACHE and (current_time - GAMES_CACHE[provider]["time"]) < CACHE_TIME_LIMIT:
+        return GAMES_CACHE[provider]["data"]
+
+    payload = {
+        "method": "game_list",
+        "agent_code": AGENT_CODE,
+        "agent_token": AGENT_TOKEN,
+        "provider_code": provider,
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(PROVIDER_ENDPOINT, json=payload, timeout=20)
+            response_data = response.json()
+            if response_data.get("status") == 1 or "games" in response_data:
+                GAMES_CACHE[provider] = {"time": current_time, "data": response_data}
+            return response_data
+        except Exception:
+            return {"status": 0, "msg": "Erreur de connexion"}
+
+
+@app.post("/api/provider/launch-casino")
+async def launch_casino(request: Request):
+    try:
+        data = await request.json()
+
+        current_site = get_site_id(request)
+        prefix = get_site_prefix(current_site)
+        dynamic_url = get_dynamic_url(request)
+
+        user_code = str(data.get("user_code", "test_user")).lower().strip()
+        prefixed_user = f"{prefix}_{user_code}"
+
+        payload = {
+            "method": "game_launch",
+            "agent_code": AGENT_CODE,
+            "agent_token": AGENT_TOKEN,
+            "provider_code": str(data.get("provider_code", "PRAGMATIC")),
+            "game_code": str(data.get("game_code", "")),
+            "user_code": prefixed_user,
+            "lang": "fr",
+            "lobby_url": dynamic_url,
+        }
+
+        headers = {"Content-Type": "application/json"}
+        endpoint = PROVIDER_ENDPOINT.rstrip("/")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, json=payload, headers=headers, timeout=20.0)
+            res_data = response.json()
+
+            game_url = res_data.get("launch_url") or res_data.get("url") or (res_data.get("data", {}).get("url"))
+            if game_url:
+                return {"launch_url": game_url}
+            return {"error": "Jeu non disponible", "details": res_data}
+
+    except Exception as e:
+        print(f"❌ [LAUNCH CASINO ERROR]: {str(e)}")
+        return {"error": str(e)}
+
+
+@app.post("/api/provider/launch-sportsbook")
+async def launch_sportsbook(request: Request):
+    try:
+        data = await request.json()
+
+        current_site = get_site_id(request)
+        prefix = get_site_prefix(current_site)
+        dynamic_url = get_dynamic_url(request)
+
+        user_code = str(data.get("user_code", "test_user")).lower().strip()
+        prefixed_user = f"{prefix}_{user_code}"
+
+        payload = {
+            "method": "game_launch",
+            "agent_code": AGENT_CODE,
+            "agent_token": AGENT_TOKEN,
+            "provider_code": str(data.get("provider_code", "SPORTSBOOK")),
+            "game_code": str(data.get("game_code", "SPORTSBOOK")),
+            "user_code": prefixed_user,
+            "lang": "fr",
+            "lobby_url": dynamic_url,
+        }
+
+        headers = {"Content-Type": "application/json"}
+        endpoint = PROVIDER_ENDPOINT.rstrip("/")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(endpoint, json=payload, headers=headers, timeout=20.0)
+            try:
+                response_data = response.json()
+            except Exception:
+                return {"error": "Réponse JSON invalide du fournisseur", "details": response.text}
+
+            game_url = (
+                response_data.get("url")
+                or response_data.get("launch_url")
+                or (response_data.get("data", {}).get("url"))
+            )
+
+            if game_url:
+                return {"launch_url": game_url}
+            return {"error": "Demande refusée par le fournisseur", "details": response_data}
+
+    except Exception as e:
+        print(f"❌ [CRITICAL ERROR IN LAUNCH SPORTSBOOK]: {str(e)}")
+        return {"error": str(e)}
+
 
 # ==========================================
-# محفظة اللاعب (Seamless Wallet - API) الحقيقية
+# 16. NEXUSGGR SEAMLESS WALLET (/gold_api)
 # ==========================================
 @app.post("/gold_api")
 @app.post("/gold_api/gold_api")
 async def seamless_wallet_handler(request: Request):
     try:
         data = await request.json()
-        method, user_code = data.get("method"), data.get("user_code")
-        
-        # 🌟 السطر السحري لفك البادئة (Prefix) واستخراج اسم اللاعب الحقيقي لخصم الرصيد
-        actual_user_code = str(user_code).lower().strip()
-        if "_" in actual_user_code:
-            actual_user_code = actual_user_code.split("_", 1)[1]
-            
-        # --- جلب الرصيد الحقيقي من قاعدة البيانات ---
-        db = load_db()
-        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == actual_user_code), None)
-        
-        if not target_user:
-            return JSONResponse(content={"status": 0, "msg": "USER_NOT_FOUND"})
-            
-        # --- جلب الرصيد الحقيقي من قاعدة البيانات ---
-        db = load_db()
-        # التعديل السحري: توحيد الحروف لمنع أخطاء التطابق
-        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == str(user_code).lower().strip()), None)
-        
-        if not target_user:
-            return JSONResponse(content={"status": 0, "msg": "USER_NOT_FOUND"})
-        
-        player_balance = float(target_user.get("balance", 0))
+        method = data.get("method")
+        user_code = (
+            data.get("user_code")
+            or data.get("username")
+            or (data.get("slot", {}) if isinstance(data.get("slot"), dict) else {}).get("user_code")
+            or ""
+        )
 
         if method == "user_balance":
-            # 🌟 إرسال رصيد الكاش باك المتاح بالإضافة للرصيد العادي
-            vault_cashback = float(target_user.get("available_cashback", 0.0))
-            return JSONResponse(content={
-                "status": 1, 
-                "user_balance": player_balance,
-                "available_cashback": vault_cashback
-            })
+            db_data = load_db()
+            target_user, actual_user_code, user_site = find_isolated_user(db_data, user_code)
+            if not target_user:
+                return JSONResponse(content={"status": 0, "msg": "USER_NOT_FOUND"})
+
+            player_balance = round(float(target_user.get("balance", 0.0)), 2)
+            vault_cashback = round(float(target_user.get("available_cashback", 0.0)), 2)
+            return JSONResponse(
+                content={
+                    "status": 1,
+                    "user_balance": player_balance,
+                    "available_cashback": vault_cashback,
+                }
+            )
 
         elif method == "transaction":
-            game_type = data.get("game_type")
-            tx_data = data.get(game_type, {})
-            bet_money = float(tx_data.get("bet_money", 0))
-            win_money = float(tx_data.get("win_money", 0))
-            print(f"🚨 NEXUS WIN DETECTED: Amount={win_money}")
-            txn_type = tx_data.get("txn_type")
+            async with db_lock:
+                db_data = load_db()
+                target_user, actual_user_code, user_site = find_isolated_user(db_data, user_code)
 
-            if txn_type in ["debit", "debit_credit"]:
-                if player_balance < bet_money:
-                    return JSONResponse(content={"status": 0, "msg": "INSUFFICIENT_USER_FUNDS"})
-                player_balance -= bet_money
-                
-                # 🌟 تسجيل الرهان (الخسارة المؤقتة) في قاعدة البيانات
-                if bet_money > 0:
-                    db_session = SessionLocal()
-                    try:
-                        new_tx = Transaction(
-                            admin_username=str(tx_data.get("provider_code", "NEXUS_API")),
-                            target_username=target_user["username"],
-                            action="bet",
-                            amount=bet_money,
-                            date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            tx_id=str(tx_data.get("txn_id", uuid.uuid4()))
-                        )
-                        db_session.add(new_tx)
-                        db_session.commit()
-                    except:
-                        db_session.rollback()
-                    finally:
-                        db_session.close()
+                if not target_user:
+                    return JSONResponse(content={"status": 0, "msg": "USER_NOT_FOUND"})
 
-            if txn_type in ["credit", "debit_credit"]:
-                # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
-                if win_money >= 30000:
-                    db_session = SessionLocal()
-                    try:
-                        new_tx = Transaction(
-                            admin_username="PENDING_HUGE_WIN",
-                            target_username=target_user["username"],
-                            action="huge_win (Nexus)",
-                            amount=win_money,
-                            date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            tx_id=tx_data.get("txn_id", str(uuid.uuid4()))
-                        )
-                        db_session.add(new_tx)
-                        db_session.commit()
-                    except Exception as e:
-                        db_session.rollback()
-                    finally:
-                        db_session.close()
-                else:
-                    
-                    player_balance += win_money # الإضافة الطبيعية للأرباح العادية
-                    # 🌟 تسجيل الربح العادي في قاعدة البيانات
-                    if win_money > 0:
+                player_balance = float(target_user.get("balance", 0.0))
+                game_type = data.get("game_type")
+                tx_data = data.get(game_type, {}) if game_type and isinstance(data.get(game_type), dict) else {}
+
+                bet_money = float(tx_data.get("bet_money", 0.0))
+                win_money = float(tx_data.get("win_money", 0.0))
+                txn_type = tx_data.get("txn_type")
+                txn_id = str(tx_data.get("txn_id", uuid.uuid4()))
+                provider_code = str(tx_data.get("provider_code", "NEXUS_API"))
+
+                if txn_type in ["debit", "debit_credit"]:
+                    if player_balance < bet_money:
+                        return JSONResponse(content={"status": 0, "msg": "INSUFFICIENT_USER_FUNDS"})
+
+                    player_balance -= bet_money
+
+                    if bet_money > 0:
                         db_session = SessionLocal()
                         try:
                             new_tx = Transaction(
-                                admin_username=str(tx_data.get("provider_code", "NEXUS_API")),
+                                admin_username=provider_code,
                                 target_username=target_user["username"],
-                                action="win",
-                                amount=win_money,
+                                action="bet",
+                                amount=bet_money,
                                 date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                tx_id=str(tx_data.get("txn_id", uuid.uuid4()))
+                                tx_id=txn_id,
+                                site_id=user_site,
                             )
                             db_session.add(new_tx)
                             db_session.commit()
-                        except:
+                        except Exception:
                             db_session.rollback()
                         finally:
                             db_session.close()
 
-            target_user["balance"] = player_balance
-            save_db(db)
-            return JSONResponse(content={"status": 1, "user_balance": round(player_balance, 2)})
+                if txn_type in ["credit", "debit_credit"]:
+                    if win_money >= 30000:
+                        db_session = SessionLocal()
+                        try:
+                            new_tx = Transaction(
+                                admin_username="PENDING_HUGE_WIN",
+                                target_username=target_user["username"],
+                                action="huge_win (Nexus)",
+                                amount=win_money,
+                                date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                tx_id=txn_id,
+                                site_id=user_site,
+                            )
+                            db_session.add(new_tx)
+                            db_session.commit()
+                        except Exception:
+                            db_session.rollback()
+                        finally:
+                            db_session.close()
+                    else:
+                        player_balance += win_money
+                        if win_money > 0:
+                            db_session = SessionLocal()
+                            try:
+                                new_tx = Transaction(
+                                    admin_username=provider_code,
+                                    target_username=target_user["username"],
+                                    action="win",
+                                    amount=win_money,
+                                    date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    tx_id=txn_id,
+                                    site_id=user_site,
+                                )
+                                db_session.add(new_tx)
+                                db_session.commit()
+                            except Exception:
+                                db_session.rollback()
+                            finally:
+                                db_session.close()
 
-        else:
-            return JSONResponse(content={"status": 0, "msg": "UNKNOWN_METHOD"})
-            
+                target_user["balance"] = round(player_balance, 2)
+                save_db(db_data)
+                return JSONResponse(content={"status": 1, "user_balance": round(player_balance, 2)})
+
+        return JSONResponse(content={"status": 0, "msg": "UNKNOWN_METHOD"})
+
     except Exception as e:
-        import traceback
         print(f"🔥 GOLD API EXCEPTION: {e}")
         return JSONResponse(content={"status": 0, "msg": "INTERNAL_ERROR"})
-# ==========================================
-# 🔐 EuroVirtuals Security & Hashing (الإصدار الذهبي النهائي)
-# ==========================================
-import json
-import hashlib
-import uuid
-from datetime import datetime
 
+
+# ==========================================
+# 17. EUROVIRTUALS INTEGRATION & CALLBACKS
+# ==========================================
 def hash_create(request_data: dict, key: str) -> str:
     keys = sorted(request_data.keys())
     hashkey = ""
     for k in keys:
         value = request_data[k]
+        if value is None:
+            continue
+
         if isinstance(value, dict):
             nested_keys = sorted(value.keys())
             for nested_key in nested_keys:
                 nested_value = value[nested_key]
-                serialized = json.dumps(nested_value, separators=(',', ':'), sort_keys=True)
-                md5_hash = hashlib.md5(serialized.encode('utf-8')).hexdigest()
+                if nested_value is None:
+                    continue
+                serialized = json.dumps(nested_value, separators=(",", ":"), sort_keys=True)
+                md5_hash = hashlib.md5(serialized.encode("utf-8")).hexdigest()
                 hashkey += f"&{nested_key}={md5_hash}"
         elif isinstance(value, list):
             for index in range(len(value)):
                 array_value = value[index]
-                serialized = json.dumps(array_value, separators=(',', ':'), sort_keys=True)
-                md5_hash = hashlib.md5(serialized.encode('utf-8')).hexdigest()
+                if array_value is None:
+                    continue
+                serialized = json.dumps(array_value, separators=(",", ":"), sort_keys=True)
+                md5_hash = hashlib.md5(serialized.encode("utf-8")).hexdigest()
                 hashkey += f"&{index}={md5_hash}"
         else:
-            if isinstance(value, bool):
-                val_str = str(value).lower()
-            else:
-                val_str = str(value)
+            val_str = str(value).lower() if isinstance(value, bool) else str(value)
             hashkey += f"&{k}={val_str}"
 
-    hashkey = hashkey.lstrip('&')
+    hashkey = hashkey.lstrip("&")
     final_string = hashkey + str(key)
-    return hashlib.md5(final_string.encode('utf-8')).hexdigest()
+    return hashlib.md5(final_string.encode("utf-8")).hexdigest()
+
 
 def check_eurovirtuals_security(request: Request, payload: dict):
     token = str(request.headers.get("x-token-key") or request.headers.get("x-token") or "").strip()
     signature = str(request.headers.get("x-signature-key") or request.headers.get("x-signature") or "").strip()
-    
-    # 1. إفشال الاختبارات الخاطئة المتعمدة من المزود للحصول على العلامة الخضراء
+
     if token == "invalid-token-key":
         return {"status_code": 401, "status_description": "Invalid Token Key"}
-        
     if signature == "invalid-signature-key":
         return {"status_code": 401, "status_description": "Invalid Signature"}
-        
     if not token or not signature:
         return {"status_code": 401, "status_description": "Missing Security Headers"}
 
-    # 2. الجدار الأمني الحقيقي: فحص التوقيع باستخدام التوكن المُستلم كـ Salt
     expected_signature = hash_create(payload, token)
-    
     if signature != expected_signature:
         print(f"🚨 [RADAR] SIGNATURE MISMATCH | Expected: {expected_signature} | Received: {signature}")
         return {"status_code": 401, "status_description": "Invalid Signature"}
 
     return None
-import time
+
 
 @app.post("/api/eurovirtuals/callback/player_info")
 async def eurovirtuals_player_info(request: Request):
     try:
         payload = await request.json()
-        
+
         sec_err = check_eurovirtuals_security(request, payload)
         if sec_err:
             return JSONResponse(content=sec_err, status_code=200)
 
-        player_id = str(payload.get("player_id", ""))
-        if "_" in player_id: player_id = player_id.split("_", 1)[1]
-        
-        db = load_db()
-        target_user = next((u for u in db if str(u.get("username", "")).lower().strip() == player_id.lower().strip()), None)
+        raw_player_id = str(payload.get("player_id", "")).strip()
+        db_data = load_db()
+        target_user, actual_user_code, user_site = find_isolated_user(db_data, raw_player_id)
 
         if not target_user:
             return JSONResponse(content={"status_code": 500, "status_description": "Player not found"}, status_code=200)
 
-        balance = float(target_user.get("balance", 0.0))
+        balance = round(float(target_user.get("balance", 0.0)), 2)
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-        
-        return JSONResponse(content={
-            "status_code": 200,
-            "status_description": "Success",
-            "data": {
-                "balance": balance,
-                "currency": payload.get("currency", "TND"),
-                "player_id": target_user.get("username", player_id),
-                "date": current_time
-            }
-        }, status_code=200)
 
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "status_description": "Success",
+                "data": {
+                    "balance": balance,
+                    "currency": payload.get("currency", "TND"),
+                    "player_id": raw_player_id,
+                    "date": current_time,
+                },
+            },
+            status_code=200,
+        )
     except Exception as e:
         return JSONResponse(content={"status_code": 500, "status_description": str(e)}, status_code=200)
 
@@ -2128,19 +2823,17 @@ async def eurovirtuals_bet(request: Request):
 
     try:
         sec_err = check_eurovirtuals_security(request, payload)
-        if sec_err: 
+        if sec_err:
             return JSONResponse(content=sec_err, status_code=200)
 
-        # 1. استخراج الـ ID الخام القادم من المزود (والذي قد يحتوي على بادئة الموقع)
         raw_player_id = str(payload.get("player_id") or payload.get("user_code") or "").strip()
         currency = str(payload.get("currency") or "TND").strip()
         transaction_id = str(payload.get("transaction_id") or payload.get("txn_id") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        # 🛑 الدرع الآمن: يمتص الفراغات و null ويحولها إلى 0.0
         def safe_float(val):
             try:
-                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none": 
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
                     return 0.0
                 return float(val)
             except Exception:
@@ -2148,32 +2841,35 @@ async def eurovirtuals_bet(request: Request):
 
         amount = safe_float(payload.get("amount") or payload.get("bet_amount"))
 
-        # 🔒 بدء جدار الحماية (قفل التزامن) للعمليات المالية
         async with db_lock:
-            db = load_db()
-            
-            # 🌟 استخدام دالة العزل الجديدة للبحث عن اللاعب بدقة حسب موقعه
-            target_user, actual_user_code, user_site = find_isolated_user(db, raw_player_id)
-            
+            db_data = load_db()
+            target_user, actual_user_code, user_site = find_isolated_user(db_data, raw_player_id)
+
             if not target_user:
                 return JSONResponse(content={"status_code": 500, "status_description": "Player not found"}, status_code=200)
 
             current_balance = safe_float(target_user.get("balance", 0.0))
 
             def err_resp(code, desc):
-                return JSONResponse(content={
-                    "status_code": code,
-                    "status_description": desc,
-                    "data": {"balance": current_balance, "currency": currency, "reference_id": transaction_id, "date": current_time}
-                }, status_code=200)
+                return JSONResponse(
+                    content={
+                        "status_code": code,
+                        "status_description": desc,
+                        "data": {
+                            "balance": current_balance,
+                            "currency": currency,
+                            "reference_id": transaction_id,
+                            "date": current_time,
+                        },
+                    },
+                    status_code=200,
+                )
 
             if amount < 0:
                 return err_resp(400, "Bad Request")
-
             if current_balance < amount:
                 return err_resp(402, "Insufficient Balance")
 
-            # التحقق من عدم تكرار العملية
             db_session = SessionLocal()
             is_dup = False
             try:
@@ -2185,21 +2881,19 @@ async def eurovirtuals_bet(request: Request):
             if is_dup:
                 return err_resp(200, "Success")
 
-            # خصم الرصيد
             new_balance = round(current_balance - amount, 2)
             target_user["balance"] = new_balance
 
-            # 🌟 تسجيل العملية وحفظ الموقع التابع له اللاعب داخل القفل
             db_session = SessionLocal()
             try:
                 new_tx = Transaction(
-                    admin_username="EUROVIRTUALS_API", 
-                    target_username=target_user["username"], 
-                    action="bet", 
-                    amount=amount, 
-                    date=current_time, 
+                    admin_username="EUROVIRTUALS_API",
+                    target_username=target_user["username"],
+                    action="bet",
+                    amount=amount,
+                    date=current_time,
                     tx_id=transaction_id,
-                    site_id=user_site  # 🌟 تم ربط العملية بالموقع
+                    site_id=user_site,
                 )
                 db_session.add(new_tx)
                 db_session.commit()
@@ -2208,16 +2902,21 @@ async def eurovirtuals_bet(request: Request):
             finally:
                 db_session.close()
 
-            # حفظ التحديثات في قاعدة البيانات المركزية
-            save_db(db)
+            save_db(db_data)
 
-        # الرد بالنجاح للمزود
-        return JSONResponse(content={
-            "status_code": 200, 
-            "status_description": "Success",
-            "data": {"balance": new_balance, "currency": currency, "reference_id": transaction_id, "date": current_time}
-        }, status_code=200)
-
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "status_description": "Success",
+                "data": {
+                    "balance": new_balance,
+                    "currency": currency,
+                    "reference_id": transaction_id,
+                    "date": current_time,
+                },
+            },
+            status_code=200,
+        )
     except Exception as e:
         print(f"EUROVIRTUALS BET ERROR: {e}")
         return JSONResponse(content={"status_code": 500, "status_description": "Internal Server Error"}, status_code=200)
@@ -2234,22 +2933,20 @@ async def eurovirtuals_win(request: Request):
 
     try:
         sec_err = check_eurovirtuals_security(request, data)
-        if sec_err: 
+        if sec_err:
             return JSONResponse(content=sec_err, status_code=200)
-        
+
         tx_id = str(data.get("transaction_id") or data.get("txn_id") or "").strip()
         bet_id = str(data.get("bet_id", "")).strip()
         op_ref_id = str(data.get("operator_reference_id", "")).strip()
         action = str(data.get("action", "")).strip()
         currency = str(data.get("currency", "TND")).strip()
-        
-        # 1. استخراج الـ ID الخام القادم من المزود
         raw_player_id = str(data.get("player_id") or data.get("user_code") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
         def safe_float(val):
             try:
-                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none": 
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
                     return 0.0
                 return float(val)
             except Exception:
@@ -2257,68 +2954,70 @@ async def eurovirtuals_win(request: Request):
 
         payout_amount = safe_float(data.get("payout_amount") or data.get("amount"))
 
-        # 🔒 دمج العملية بالكامل داخل القفل لمنع تداخل الأرصدة عند الضغط العالي
         async with db_lock:
-            db = load_db()
-            
-            # 🌟 استخدام دالة العزل للبحث عن اللاعب بدقة حسب موقعه
-            target_user, actual_user_code, user_site = find_isolated_user(db, raw_player_id)
-            
+            db_data = load_db()
+            target_user, actual_user_code, user_site = find_isolated_user(db_data, raw_player_id)
+
             if not target_user:
                 return JSONResponse(content={"status_code": 500, "status_description": "Player not found"}, status_code=200)
-            
+
             curr = safe_float(target_user.get("balance", 0.0))
 
             def err_resp(code, desc):
-                return JSONResponse(content={
-                    "status_code": code,
-                    "status_description": desc,
-                    "data": {"balance": curr, "currency": currency, "reference_id": tx_id, "date": current_time}
-                }, status_code=200)
+                return JSONResponse(
+                    content={
+                        "status_code": code,
+                        "status_description": desc,
+                        "data": {
+                            "balance": curr,
+                            "currency": currency,
+                            "reference_id": tx_id,
+                            "date": current_time,
+                        },
+                    },
+                    status_code=200,
+                )
 
             if not tx_id or tx_id == "None":
                 return err_resp(404, "Not Found")
-                
             if payout_amount < 0:
                 return err_resp(400, "Bad Request")
 
             orig_bet_id = bet_id if bet_id and bet_id != "None" else op_ref_id
 
-            # فحص عدم تكرار الربح والتأكد من وجود الرهان الأصلي
             db_session = SessionLocal()
             is_dup = False
             original_bet_exists = False
             try:
                 if db_session.query(Transaction).filter(Transaction.tx_id == tx_id).first():
                     is_dup = True
-                
+
                 if action in ["result_bet", "result_lost"] and orig_bet_id and orig_bet_id != "None":
                     if db_session.query(Transaction).filter(Transaction.tx_id == orig_bet_id).first():
                         original_bet_exists = True
             finally:
                 db_session.close()
 
-            if is_dup: 
-                return err_resp(200, "Success") 
+            if is_dup:
+                return err_resp(200, "Success")
 
             if action in ["result_bet", "result_lost"]:
                 if not original_bet_exists:
                     return err_resp(404, "Not Found")
-                
+
                 if bet_id and bet_id != "None":
                     file_path = "settled_bets.txt"
                     if os.path.exists(file_path):
-                        with open(file_path, "r") as f:
+                        with open(file_path, "r", encoding="utf-8") as f:
                             if bet_id in f.read().splitlines():
                                 return err_resp(400, "Already Settled")
 
-            # 📢 بث الأرباح الضخمة في الواجهة
             if payout_amount >= 50.0:
                 safe_player = actual_user_code[:4] + "***" if len(actual_user_code) > 4 else actual_user_code + "***"
                 win_data = {
                     "player": safe_player,
                     "amount": payout_amount,
-                    "game": "Jeux Virtuels (Euro)"
+                    "game": "Jeux Virtuels (Euro)",
                 }
                 try:
                     asyncio.create_task(bigwin_manager.broadcast(json.dumps(win_data)))
@@ -2326,9 +3025,7 @@ async def eurovirtuals_win(request: Request):
                     pass
 
             new_balance = curr
-            print(f"🚨 EUROVIRTUALS WIN DETECTED: User={actual_user_code} | Site={user_site} | Amount={payout_amount}")
 
-            # 🛑 الجدار الأمني للربح الضخم (30 ألف أو أكثر)
             if payout_amount >= 30000:
                 db_session = SessionLocal()
                 try:
@@ -2339,7 +3036,7 @@ async def eurovirtuals_win(request: Request):
                         amount=payout_amount,
                         date=current_time,
                         tx_id=tx_id,
-                        site_id=user_site  # 🌟 تم ربط المعاملة بالموقع
+                        site_id=user_site,
                     )
                     db_session.add(new_tx)
                     db_session.commit()
@@ -2348,20 +3045,19 @@ async def eurovirtuals_win(request: Request):
                 finally:
                     db_session.close()
             else:
-                # تحديث الرصيد وتسجيل الربح الطبيعي
                 new_balance = round(curr + payout_amount, 2)
                 target_user["balance"] = new_balance
-                
+
                 db_session = SessionLocal()
                 try:
                     new_tx = Transaction(
-                        admin_username="EUROVIRTUALS_API", 
-                        target_username=target_user["username"], 
-                        action="win", 
-                        amount=payout_amount, 
-                        date=current_time, 
+                        admin_username="EUROVIRTUALS_API",
+                        target_username=target_user["username"],
+                        action="win",
+                        amount=payout_amount,
+                        date=current_time,
                         tx_id=tx_id,
-                        site_id=user_site  # 🌟 تم ربط المعاملة بالموقع
+                        site_id=user_site,
                     )
                     db_session.add(new_tx)
                     db_session.commit()
@@ -2370,25 +3066,30 @@ async def eurovirtuals_win(request: Request):
                 finally:
                     db_session.close()
 
-            # حفظ حالة التذكرة كمغلقة
             if action in ["result_bet", "result_lost"] and bet_id and bet_id != "None":
-                with open("settled_bets.txt", "a") as f:
+                with open("settled_bets.txt", "a", encoding="utf-8") as f:
                     f.write(bet_id + "\n")
 
-            # 🌟 حفظ الرصيد الجديد في قاعدة البيانات المركزية ضمن نفس القفل
-            save_db(db)
+            save_db(db_data)
 
-        # الرد بالنجاح للمزود
-        return JSONResponse(content={
-            "status_code": 200, 
-            "status_description": "Success", 
-            "data": {"balance": new_balance, "currency": currency, "reference_id": tx_id, "date": current_time}
-        }, status_code=200)
-
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "status_description": "Success",
+                "data": {
+                    "balance": new_balance,
+                    "currency": currency,
+                    "reference_id": tx_id,
+                    "date": current_time,
+                },
+            },
+            status_code=200,
+        )
     except Exception as e:
         print(f"EUROVIRTUALS WIN ERROR: {e}")
         return JSONResponse(content={"status_code": 500, "status_description": "Internal Server Error"}, status_code=200)
-    
+
+
 @app.post("/rollback")
 @app.post("/api/eurovirtuals/rollback")
 @app.post("/api/eurovirtuals/callback/rollback")
@@ -2400,53 +3101,56 @@ async def eurovirtuals_rollback(request: Request):
 
     try:
         sec_err = check_eurovirtuals_security(request, data)
-        if sec_err: 
+        if sec_err:
             return JSONResponse(content=sec_err, status_code=200)
-            
+
         tx_id = str(data.get("transaction_id") or data.get("txn_id") or "").strip()
         action = str(data.get("action", "")).strip()
         bet_id = str(data.get("bet_id", "")).strip()
         win_tx_id = str(data.get("win_transaction_id", "")).strip()
         op_ref_id = str(data.get("operator_reference_id", "")).strip()
         currency = str(data.get("currency", "TND")).strip()
-        
-        # 1. استخراج الـ ID الخام القادم من المزود
         raw_player_id = str(data.get("player_id") or data.get("user_code") or "").strip()
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
         def safe_float(val):
             try:
-                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none": 
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
                     return 0.0
                 return float(val)
             except Exception:
                 return 0.0
 
         payout_amount = safe_float(data.get("amount") or data.get("payout_amount"))
-        is_rollback_win = ("win" in action.lower() or "win" in str(data.get("type", "")).lower())
+        is_rollback_win = "win" in action.lower() or "win" in str(data.get("type", "")).lower()
 
-        # 🔒 دمج العملية بالكامل داخل قفل التزامن للحماية من تداخل الأرصدة
         async with db_lock:
-            db = load_db()
-            
-            # 🌟 استخدام دالة العزل
-            target_user, actual_user_code, user_site = find_isolated_user(db, raw_player_id)
-            
+            db_data = load_db()
+            target_user, actual_user_code, user_site = find_isolated_user(db_data, raw_player_id)
+
             if not target_user:
                 return JSONResponse(content={"status_code": 500, "status_description": "Player not found"}, status_code=200)
-                
+
             curr = safe_float(target_user.get("balance", 0.0))
 
             def err_resp(code, desc):
-                return JSONResponse(content={
-                    "status_code": code,
-                    "status_description": desc,
-                    "data": {"balance": curr, "currency": currency, "reference_id": tx_id, "date": current_time}
-                }, status_code=200)
+                return JSONResponse(
+                    content={
+                        "status_code": code,
+                        "status_description": desc,
+                        "data": {
+                            "balance": curr,
+                            "currency": currency,
+                            "reference_id": tx_id,
+                            "date": current_time,
+                        },
+                    },
+                    status_code=200,
+                )
 
             if not tx_id or tx_id == "None":
                 return err_resp(404, "Not Found")
-                
+
             orig_bet_id = bet_id if bet_id and bet_id != "None" else op_ref_id
             target_win_id = win_tx_id if win_tx_id and win_tx_id != "None" else op_ref_id
 
@@ -2456,7 +3160,7 @@ async def eurovirtuals_rollback(request: Request):
             try:
                 if db_session.query(Transaction).filter(Transaction.tx_id == tx_id).first():
                     is_dup = True
-                
+
                 if action == "rollback_bet" and orig_bet_id and orig_bet_id != "None":
                     if db_session.query(Transaction).filter(Transaction.tx_id == orig_bet_id).first():
                         target_exists = True
@@ -2466,27 +3170,25 @@ async def eurovirtuals_rollback(request: Request):
             finally:
                 db_session.close()
 
-            if is_dup: 
+            if is_dup:
                 return err_resp(200, "Success")
 
-            if action in ["rollback_bet", "rollback_win"]:
-                if not target_exists:
-                    return err_resp(404, "Not Found")
+            if action in ["rollback_bet", "rollback_win"] and not target_exists:
+                return err_resp(404, "Not Found")
 
-            # خصم أو إضافة الرصيد بناءً على نوع عملية الإلغاء
             new_balance = round(curr - payout_amount, 2) if is_rollback_win else round(curr + payout_amount, 2)
             target_user["balance"] = new_balance
-            
+
             db_session = SessionLocal()
             try:
                 new_tx = Transaction(
-                    admin_username="EUROVIRTUALS_API", 
-                    target_username=target_user["username"], 
-                    action="rollback", 
-                    amount=payout_amount, 
-                    date=current_time, 
+                    admin_username="EUROVIRTUALS_API",
+                    target_username=target_user["username"],
+                    action="rollback",
+                    amount=payout_amount,
+                    date=current_time,
                     tx_id=tx_id,
-                    site_id=user_site  # 🌟 تم ربط المعاملة بالموقع
+                    site_id=user_site,
                 )
                 db_session.add(new_tx)
                 db_session.commit()
@@ -2495,23 +3197,26 @@ async def eurovirtuals_rollback(request: Request):
             finally:
                 db_session.close()
 
-            # حفظ البيانات
-            save_db(db)
-                
-        print(f"🔄 EUROVIRTUALS ROLLBACK: User={actual_user_code} | Site={user_site} | Amount={payout_amount} | Type={action}")
+            save_db(db_data)
 
-        # إرجاع الرد النهائي
-        return JSONResponse(content={
-            "status_code": 200, 
-            "status_description": "Success", 
-            "data": {"balance": new_balance, "currency": currency, "reference_id": tx_id, "date": current_time}
-        }, status_code=200)
-
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "status_description": "Success",
+                "data": {
+                    "balance": new_balance,
+                    "currency": currency,
+                    "reference_id": tx_id,
+                    "date": current_time,
+                },
+            },
+            status_code=200,
+        )
     except Exception as e:
         print(f"EUROVIRTUALS ROLLBACK ERROR: {e}")
         return JSONResponse(content={"status_code": 500, "status_description": "Internal Server Error"}, status_code=200)
-     
-    
+
+
 @app.post("/api/eurovirtuals/adjustment")
 @app.post("/api/eurovirtuals/callback/adjustment")
 async def eurovirtuals_adjustment(request: Request):
@@ -2522,17 +3227,15 @@ async def eurovirtuals_adjustment(request: Request):
 
     try:
         sec_err = check_eurovirtuals_security(request, data)
-        if sec_err: 
+        if sec_err:
             return JSONResponse(content=sec_err, status_code=200)
-            
+
         tx_id = str(data.get("transaction_id", "")).strip()
-        # 1. استخراج ID اللاعب الخام للبحث المعزول
         raw_player_id = str(data.get("player_id") or data.get("user_code") or "").strip()
         amount = abs(float(data.get("amount", 0.0)))
         action = data.get("action", "")
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
-        
-        # فحص التكرار خارج القفل لتسريع الأداء
+
         db_session = SessionLocal()
         is_dup = False
         try:
@@ -2545,35 +3248,30 @@ async def eurovirtuals_adjustment(request: Request):
 
         if is_dup:
             return JSONResponse(content={"status_code": 202, "status_description": "Duplicate request"}, status_code=200)
-        
+
         new_balance = 0.0
-        
-        # 🔒 قفل قاعدة البيانات لتعديل الرصيد بأمان تام
         async with db_lock:
-            db = load_db()
-            
-            # 🌟 استخدام دالة العزل الذكية بدلاً من البحث القديم
-            target_user, actual_user_code, user_site = find_isolated_user(db, raw_player_id)
-            
+            db_data = load_db()
+            target_user, actual_user_code, user_site = find_isolated_user(db_data, raw_player_id)
+
             if not target_user:
                 return JSONResponse(content={"status_code": 500, "status_description": "Player not found"}, status_code=200)
-                
+
             curr = float(target_user.get("balance", 0.0))
             new_balance = round(curr - amount, 2) if action == "wallet_adjustment_debit" else round(curr + amount, 2)
             target_user["balance"] = new_balance
-            
-            # 🌟 توثيق العملية وحفظ موقع اللاعب
+
             db_session = SessionLocal()
             try:
                 if tx_id:
                     new_tx = Transaction(
-                        admin_username="EUROVIRTUALS_API", 
-                        target_username=target_user["username"], 
-                        action="adjustment", 
-                        amount=amount, 
-                        date=current_time, 
+                        admin_username="EUROVIRTUALS_API",
+                        target_username=target_user["username"],
+                        action="adjustment",
+                        amount=amount,
+                        date=current_time,
                         tx_id=tx_id,
-                        site_id=user_site  # 🌟 ربط المعاملة بالموقع الدقيق
+                        site_id=user_site,
                     )
                     db_session.add(new_tx)
                     db_session.commit()
@@ -2582,117 +3280,187 @@ async def eurovirtuals_adjustment(request: Request):
             finally:
                 db_session.close()
 
-            # حفظ الرصيد
-            save_db(db)
-                
-        return JSONResponse(content={
-            "status_code": 200, 
-            "status_description": "Success", 
-            "data": {"balance": new_balance, "currency": "TND", "reference_id": tx_id, "date": current_time}
-        }, status_code=200)
-        
+            save_db(db_data)
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "status_description": "Success",
+                "data": {
+                    "balance": new_balance,
+                    "currency": "TND",
+                    "reference_id": tx_id,
+                    "date": current_time,
+                },
+            },
+            status_code=200,
+        )
     except Exception as e:
         print(f"EUROVIRTUALS ADJUSTMENT ERROR: {e}")
         return JSONResponse(content={"status_code": 500, "status_description": "Internal Server Error"}, status_code=200)
 
-# ==========================================
-# 📡 دالة الهيدر المحدثة
-# ==========================================
-def get_eurovirtuals_headers(payload=None):
-    if payload is None:
-        payload = {
-            "currency": "TND",
-            
-        }
+
+@app.get("/api/eurovirtuals/studios")
+async def get_eurovirtuals_studios():
+    payload = {}
     timestamp = str(int(time.time()))
-    # 👈 استخدام دالة كلفن (hash_create) مع الـ App Key السري
     signature = hash_create(payload, EURO_APP_KEY)
-    
-    return {
+
+    headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "x-api-key": EURO_API_KEY,  # 👈 المفتاح الطويل كما طلب
-        "x-signature": signature,
-        "x-timestamp": timestamp
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp,
     }
-   
 
-# 3. دالة جلب قائمة الألعاب وعرضها في المنصة
-@app.api_route("/api/get-eurovirtuals-games", methods=["GET"])
-async def get_virtual_games():
-    try:
-        payload = {}
-        timestamp = str(int(time.time()))
-        signature = hash_create(payload, EURO_APP_KEY)
-        
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "x-api-key": EURO_API_KEY,
-            "x-signature-key": signature,
-            "x-timestamp": timestamp
-        }
-        
-        base_url_clean = str(EURO_BASE_URL).rstrip('/')
-        games_endpoint = f"{base_url_clean}/v1/games"
-        
+    base_url_clean = str(EURO_BASE_URL).rstrip("/")
+    endpoint = f"{base_url_clean}/v1/partners"
+
+    async with httpx.AsyncClient() as client:
         try:
-            response = requests.get(games_endpoint, headers=headers, timeout=20)
-            data = response.json()
-            print(f"🎮 RAW GAMES FROM PROVIDER: {data}")
-        except Exception:
-            return {"status": "error", "error": "Invalid JSON response", "details": response.text}
-        
-        if response.status_code == 200 and data.get("status_code") == 200:
-            games_list = data.get("data", {}).get("data", [])
-            
-            for game in games_list:
-                image_url = game.get("logo") or game.get("thumbnail") or ""
-                if image_url:
-                    game["image"] = image_url
-                    game["img"] = image_url
-                
-                # 💡 السطر السحري: توحيد اسم المعرف لكي يقرأه الفرونت إند بشكل صحيح
-                game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
-                    
-            return {"status": "success", "games": games_list}
-        else:
-            return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
+            response = await client.get(endpoint, headers=headers, timeout=20.0)
+            return response.json()
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-    
-    
+
+@app.get("/api/eurovirtuals/studio-games/{partner_id}")
+async def get_games_by_partner_studio(partner_id: str):
+    payload = {}
+    timestamp = str(int(time.time()))
+    signature = hash_create(payload, EURO_APP_KEY)
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp,
+    }
+
+    base_url_clean = str(EURO_BASE_URL).rstrip("/")
+    endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}&limit=5000"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(endpoint, headers=headers, timeout=20.0)
+            data = response.json()
+
+            if data.get("status_code") == 200 or response.status_code == 200:
+                games_list = (
+                    data.get("data", {}).get("data", [])
+                    if isinstance(data.get("data"), dict)
+                    else data.get("data", [])
+                )
+                return {"status": "success", "games": games_list}
+            return {"status": "error", "details": data}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+
+@app.get("/api/get-eurovirtuals-games")
+async def fetch_eurovirtuals_games(partner_id: str = None):
+    payload = {}
+    timestamp = str(int(time.time()))
+    signature = hash_create(payload, EURO_APP_KEY)
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp,
+    }
+
+    base_url_clean = str(EURO_BASE_URL).rstrip("/")
+    all_games = []
+
+    async with httpx.AsyncClient() as client:
+        try:
+            partners_list = []
+
+            if partner_id:
+                partners_list.append({"id": partner_id, "name": partner_id})
+            else:
+                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=20.0)
+                p_data = p_resp.json()
+                if p_data.get("status_code") == 200:
+                    partners_list = p_data.get("data", [])
+                else:
+                    partners_list = [{"id": "", "name": "EuroVirtuals"}]
+
+            for partner in partners_list:
+                p_id = partner.get("id")
+                p_name = partner.get("name", "Unknown")
+                page = 1
+
+                while True:
+                    endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=500"
+                    if p_id:
+                        endpoint += f"&partner_id={p_id}"
+
+                    res = await client.get(endpoint, headers=headers, timeout=20.0)
+                    data = res.json()
+
+                    if data.get("status_code") == 200:
+                        page_data = data.get("data", {})
+                        games_chunk = page_data.get("data", [])
+
+                        if not games_chunk:
+                            break
+
+                        for game in games_chunk:
+                            img = game.get("logo") or game.get("thumbnail") or ""
+                            game["image"] = game["img"] = img
+                            game["game_code"] = game.get("uuid") or game.get("id")
+                            game["provider"] = p_name
+
+                        all_games.extend(games_chunk)
+                        total_available = page_data.get("total", 0)
+
+                        if len(games_chunk) == 0 or (page * 500) >= total_available:
+                            break
+
+                        page += 1
+                    else:
+                        break
+
+            return {"status": "success", "games": all_games}
+
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
         data = await request.json()
-        
+
         game_uuid = str(data.get("game_uuid") or data.get("game_code") or data.get("id") or "")
         if not game_uuid or game_uuid == "undefined":
-            return {"error": "Game UUID is missing from frontend"}
-            
-        user_code = str(data.get("user_code", "test_user"))
+            return {"error": "UUID du jeu manquant"}
+
+        user_code = str(data.get("user_code", "test_user")).lower().strip()
         timestamp = str(int(time.time()))
 
-        # 🌟 استخراج الموقع والرابط
         current_site = get_site_id(request)
         prefix = get_site_prefix(current_site)
         dynamic_url = get_dynamic_url(request)
         prefixed_user = f"{prefix}_{user_code}"
 
         async with db_lock:
-            db = load_db()
-            target_user = next((u for u in db if str(u.get("username")) == str(user_code)), None)
+            db_data = load_db()
+            target_user, _, _ = find_isolated_user(db_data, prefixed_user)
             if not target_user or target_user.get("is_blocked") == 1:
-                return {"error": "Player not found or blocked"}
+                return {"error": "Joueur introuvable ou compte suspendu"}
             current_balance = float(target_user.get("balance", 0.0))
 
         unique_session_token = f"tok_{prefixed_user}_{int(time.time())}"
 
         payload = {
-            "player_id": prefixed_user,      # 🌟 الاسم المعزول
-            "player_name": prefixed_user,    # 🌟 الاسم المعزول
+            "player_id": prefixed_user,
+            "player_name": prefixed_user,
             "player_token": unique_session_token,
             "currency": "TND",
             "demo": 0,
@@ -2701,8 +3469,8 @@ async def launch_eurovirtuals(request: Request):
             "country": "TN",
             "language": "fr",
             "device": "desktop",
-            "return_url": dynamic_url,       # 🌟 العودة للموقع الصحيح
-            "lobby_url": dynamic_url
+            "return_url": dynamic_url,
+            "lobby_url": dynamic_url,
         }
 
         signature = hash_create(payload, EURO_APP_KEY)
@@ -2712,550 +3480,93 @@ async def launch_eurovirtuals(request: Request):
             "x-api-key": EURO_API_KEY,
             "x-signature-key": signature,
             "x-timestamp": timestamp,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
-        base_url_clean = str(EURO_BASE_URL).rstrip('/')
+        base_url_clean = str(EURO_BASE_URL).rstrip("/")
         launch_endpoint = f"{base_url_clean}/v1/launch"
-        
-        # 🚨 [بداية الرادار والطباعة] 🚨
-        print("\n" + "="*50)
-        print("🚀 [EUROVIRTUALS LAUNCH REQUEST]")
-        print(f"URL: {launch_endpoint}")
-        print(f"GAME UUID: {game_uuid}")
-        print(f"PAYLOAD: {json.dumps(payload, indent=2)}")
-        print("="*50)
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20)
-            
+            response = await client.post(launch_endpoint, json=payload, headers=headers, timeout=20.0)
             raw_response = response.text
-            
-            # طباعة الرد الخام القادم من السيرفر الخاص بهم
-            print("\n" + "="*50)
-            print(f"📥 [EUROVIRTUALS RAW RESPONSE] - Status: {response.status_code}")
-            print(raw_response)
-            print("="*50 + "\n")
 
             try:
                 response_data = response.json()
             except Exception:
-                return {"error": "المزود لم يرسل رد JSON صالح", "raw_text": raw_response}
+                return {"error": "Réponse JSON invalide du fournisseur", "raw_text": raw_response}
 
             if response_data.get("status_code") == 200:
                 game_url = response_data.get("data", {}).get("url")
                 if game_url and game_url.startswith("/"):
                     game_url = f"{base_url_clean}{game_url}"
                 return {"launch_url": game_url}
-            else:
-                # 🌟 إرجاع كل التفاصيل للفرونت إند لتقرأها في الـ Network
-                return {
-                    "error": response_data.get("status_description", "Provider rejected launch"), 
-                    "provider_details": response_data,
-                    "what_we_sent": payload # لترى هل أرسلنا الـ UUID الصحيح أم لا
-                }
 
-    except Exception as e:
-        import traceback
-        traceback.print_exc() # طباعة الخطأ في الكونسول إذا حدث انهيار داخلي
-        return {"error": str(e)}
-    
-@app.post("/api/provider/launch-sportsbook")
-async def launch_sportsbook(request: Request):
-    try:
-        data = await request.json()
-        
-        # 🌟 استخراج الموقع والبادئة
-        current_site = get_site_id(request)
-        prefix = get_site_prefix(current_site)
-        dynamic_url = get_dynamic_url(request)
-        
-        provider_code = str(data.get("provider_code", "")).lower()
-        user_code = str(data.get("user_code", "test_user"))
-        prefixed_user = f"{prefix}_{user_code}"
-        
-        print(f"DEBUG: Unified Sportsbook Launch -> Provider: {provider_code}, User: {prefixed_user}, Site: {current_site}")
-        
-        # ====================================================
-        # 1. قسم الرياضة الجديدة (SMPL)
-        # ====================================================
-        if provider_code == "smpl":
-            payload = {
-                "sportsbook_uuid": "YOUR_SPORTSBOOK_UUID_HERE", 
-                "currency": "TND",
-                "session_id": f"sess_{uuid.uuid4().hex[:10]}",
-                "player_id": prefixed_user,
-                "player_name": prefixed_user,
-                "return_url": dynamic_url
+            return {
+                "error": response_data.get("status_description", "Lancement refusé par le fournisseur"),
+                "provider_details": response_data,
             }
-            headers = get_smpl_headers_and_sign(payload)
-            headers['Content-Type'] = 'application/json'
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{SMPL_BASE_URL}/sportsbooks/init", 
-                    json=payload,
-                    headers=headers,
-                    timeout=20
-                )
-                res_data = response.json()
-                if "url" in res_data:
-                    return {"launch_url": res_data["url"]}
-                else:
-                    return {"error": "Erreur d'initialisation SMPL", "details": res_data}
 
-        # ====================================================
-        # 2. قسم الرياضة الأصلية والكازينو (Nexus)
-        # ====================================================
-        else:
-            payload = {
-                "method": "game_launch",
-                "agent_code": AGENT_CODE,
-                "agent_token": AGENT_TOKEN,
-                "provider_code": str(data.get("provider_code", "SPORTSBOOK")), 
-                "game_code": str(data.get("game_code", "SPORTSBOOK")),
-                "user_code": prefixed_user,
-                "lang": "fr",
-                "lobby_url": dynamic_url
-            }
-            
-            headers = {"Content-Type": "application/json"}
-            endpoint = PROVIDER_ENDPOINT.rstrip('/')
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.post(endpoint, json=payload, headers=headers, timeout=20)
-                try:
-                    response_data = response.json()
-                except Exception:
-                    return {"error": "المزود لم يرْسل رد JSON صالح", "details": response.text}
-                    
-                game_url = response_data.get("url") or response_data.get("launch_url") or (response_data.get("data", {}).get("url"))
-                
-                if game_url:
-                    return {"launch_url": game_url}
-                else:
-                    return {"error": "المزود رفض الطلب", "details": response_data}
-                
     except Exception as e:
-        print(f"❌ [CRITICAL ERROR IN LAUNCH SPORTSBOOK]: {str(e)}")
         return {"error": str(e)}
-    
-    @app.get("/api/get-sportsbook-uuid")
-    async def fetch_sportsbook_uuid():
-            # نستخدم دالة التشفير الجاهزة لديك
-            headers = get_smpl_headers_and_sign()
-            
-            async with httpx.AsyncClient() as client:
-                try:
-                    # نرسل الطلب لمسار الرياضات حسب التوثيق
-                    response = await client.get(
-                        f"{SMPL_BASE_URL}/sportsbooks", 
-                        headers=headers,
-                        timeout=15
-                    )
-                    data = response.json()
-                    return {"status": "success", "data_from_smpl": data}
-                except Exception as e:
-                    return {"status": "error", "details": str(e)}
-                
-class HandleHugeWinRequest(BaseModel):
-    tx_id: int
-    decision: str # 'approve' or 'reject'
 
-@app.get("/api/admin/pending-huge-wins")
-async def get_pending_huge_wins(current_user: str = Depends(get_admin_user)):
-    db_session = SessionLocal()
-    try:
-        txs = db_session.query(Transaction).filter(Transaction.admin_username == "PENDING_HUGE_WIN").all()
-        return [{"id": t.id, "target_username": t.target_username, "amount": float(t.amount), "action": t.action, "date": t.date} for t in txs]
-    finally:
-        db_session.close()
 
-@app.post("/api/admin/handle-huge-win")
-async def handle_huge_win(req: HandleHugeWinRequest, current_user: str = Depends(get_admin_user)):
-    # حماية إضافية: الأونر أو السوبر أدمن فقط من يوافق
-    db = load_db()
-    admin = next((u for u in db if u["username"] == current_user), None)
-    if not admin or admin.get("role") not in ["owner", "super_admin"]:
-        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
-
-    db_session = SessionLocal()
-    try:
-        tx = db_session.query(Transaction).filter(Transaction.id == req.tx_id).first()
-        if not tx or tx.admin_username != "PENDING_HUGE_WIN":
-            return JSONResponse(status_code=404, content={"detail": "الطلب غير موجود أو تمت معالجته"})
-
-        if req.decision == "approve":
-            async with db_lock:
-                target_user = next((u for u in db if str(u["username"]).lower() == str(tx.target_username).lower()), None)
-                if target_user:
-                    target_user["balance"] = round(float(target_user.get("balance", 0)) + tx.amount, 2)
-                    save_db(db)
-            tx.admin_username = f"APPROVED_BY_{current_user.upper()}"
-        else:
-            tx.admin_username = f"REJECTED_BY_{current_user.upper()}"
-
-        db_session.commit()
-        return {"status": "success", "message": "تمت معالجة الربح الضخم بنجاح"}
-    finally:
-        db_session.close()           
-from pydantic import BaseModel
-from datetime import datetime, timedelta
-import uuid
-
-class FreeSpinRequest(BaseModel):
-    target_username: str
-    provider_code: str
-    game_code: str
-    spin_count: int
-    amount: float
-    bet_amount: int = 1
-
-@app.post("/api/admin/grant-freespins")
-async def grant_free_spins(req: FreeSpinRequest, current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    admin = next((u for u in db if u["username"] == current_user), None)
-    if not admin or admin.get("role") not in ["owner", "super_admin"]:
-        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
-
-    # تحديد انتهاء الصلاحية (بعد 7 أيام من الآن) وتحويله لصيغة ISO المطلوبة
-    expiration = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    tour_id = f"fs_{uuid.uuid4().hex[:10]}"
-
-    payload = {
-        "method": "tour_create",
-        "agent_code": AGENT_CODE, # تأكد أن هذه المتغيرات معرفة في أعلى ملفك
-        "agent_token": AGENT_TOKEN,
-        "user_code": req.target_username,
-        "provider_code": req.provider_code,
-        "game_code": req.game_code,
-        "bet_amount": req.bet_amount,
-        "spin_count": req.spin_count,
-        "amount": req.amount,
-        "expiration_time": expiration,
-        "tour_id": tour_id
-    }
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(GOLD_API_URL, json=payload, timeout=15.0)
-            res_data = response.json()
-            
-            if res_data.get("status") == 1:
-                real_win = res_data.get("real_win", 0)
-                return {"status": "success", "message": f"تم إرسال {req.spin_count} لفة!", "real_win": real_win}
-            else:
-                error_msg = res_data.get("detail") or res_data.get("msg") or "رفض المزود الطلب"
-                return JSONResponse(status_code=400, content={"detail": f"خطأ المزود: {error_msg}"})
-        except Exception as e:
-            return JSONResponse(status_code=500, content={"detail": f"خطأ في الاتصال: {str(e)}"}) 
-        
-class CancelTourRequest(BaseModel):
-            tour_id: str
-
-@app.post("/api/admin/cancel-freespins")
-async def cancel_free_spins(req: CancelTourRequest, current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    admin = next((u for u in db if u["username"] == current_user), None)
-    if not admin or admin.get("role") not in ["owner", "super_admin"]:
-        raise HTTPException(status_code=403, detail="صلاحية الأونر مطلوبة")
-
-    payload = {
-        "method": "tour_cancel",
-        "agent_code": AGENT_CODE,
-        "agent_token": AGENT_TOKEN,
-        "tour_id": req.tour_id
-    }
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(GOLD_API_URL, json=payload, timeout=15.0)
-            res_data = response.json()
-            
-            if res_data.get("status") == 1:
-                refund = res_data.get("canceled_money", 0)
-                rest = res_data.get("rest_count", 0)
-                return {"status": "success", "message": f"تم الإلغاء! استرجاع: {refund} TND (تبقى {rest} لفة غير ملعوبة)."}
-            else:
-                error_msg = res_data.get("detail") or res_data.get("msg") or "رفض المزود الطلب"
-                return JSONResponse(status_code=400, content={"detail": f"خطأ المزود: {error_msg}"})
-        except Exception as e:
-            return JSONResponse(status_code=500, content={"detail": f"خطأ في الاتصال: {str(e)}"})   
-        
-import json
-import os
-from pydantic import BaseModel
-
-PROMO_FILE = "promo_config.json"
-
-def load_promo():
-    if os.path.exists(PROMO_FILE):
-        with open(PROMO_FILE, "r") as f: return json.load(f)
-    return {"is_active": False, "day_of_week": "Friday", "min_amount": 50, "spins": 10, "game": "vs20doghouse", "provider": "PRAGMATIC", "max_win": 10000}
-
-class PromoModel(BaseModel):
-    is_active: bool
-    day_of_week: str
-    min_amount: float
-    spins: int
-    game: str
-    provider: str
-    max_win: float
-
-@app.get("/api/admin/promo")
-async def get_promo(current_user: str = Depends(get_admin_user)):
-    return load_promo()
-
-@app.post("/api/admin/promo")
-async def set_promo(data: PromoModel, current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    admin = next((u for u in db if u["username"] == current_user), None)
-    if not admin or admin.get("role") not in ["owner", "super_admin"]:
-        raise HTTPException(status_code=403, detail="مرفوض")
-    
-    with open(PROMO_FILE, "w") as f: json.dump(data.dict(), f)
-    return {"status": "success", "message": "تم حفظ إعدادات العرض بنجاح"}    
-
-@app.get("/api/admin/fraud-detection")
-async def fraud_detection(current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    ip_map = {}
-    phone_map = {}
-    
-    for u in db:
-        ip = u.get("last_ip") or u.get("ip")
-        phone = u.get("phone")
-        uname = u.get("username")
-        
-        if ip:
-            ip_map.setdefault(ip, []).append(uname)
-        if phone and phone != "00000000" and phone != "":
-            phone_map.setdefault(phone, []).append(uname)
-            
-    # تصفية الحسابات التي تشترك في نفس الـ IP أو الهاتف (أكثر من حساب)
-    suspicious_ips = {ip: users for ip, users in ip_map.items() if len(users) > 1}
-    suspicious_phones = {phone: users for phone, users in phone_map.items() if len(users) > 1}
-    
-    return {
-        "status": "success",
-        "shared_ips": suspicious_ips,
-        "shared_phones": suspicious_phones
-    }
-    
-from typing import Optional
-
-@app.get("/api/admin/analytics/ggr")
-async def get_ggr_analytics(
-    year: Optional[int] = Query(None), 
-    month: Optional[int] = Query(None), 
-    current_user: str = Depends(get_admin_user)
-):
-    db_session = SessionLocal()
-    try:
-        txs = db_session.query(Transaction).filter(
-            Transaction.action.in_(["bet", "win", "rollback"])
-        ).all()
-        
-        filtered_txs = []
-        for t in txs:
-            if not t.date:
-                continue
-            try:
-                # استخراج السنة والشهر من تاريخ العملية (تنسيق: YYYY-MM-DD...)
-                date_part = str(t.date).split(" ")[0]
-                parts = date_part.split("-")
-                if len(parts) >= 2:
-                    t_year = int(parts[0])
-                    t_month = int(parts[1])
-                    
-                    if year and t_year != year:
-                        continue
-                    if month and t_month != month:
-                        continue
-            except Exception:
-                pass
-            filtered_txs.append(t)
-        
-        total_bets = sum(t.amount for t in filtered_txs if t.action == "bet")
-        total_wins = sum(t.amount for t in filtered_txs if t.action == "win")
-        
-        ggr = total_bets - total_wins
-        actual_rtp = (total_wins / total_bets * 100) if total_bets > 0 else 0.0
-        
-        return {
-            "status": "success",
-            "total_bets": round(total_bets, 2),
-            "total_wins": round(total_wins, 2),
-            "ggr": round(ggr, 2),
-            "actual_rtp": round(actual_rtp, 2)
-        }
-    except Exception as e:
-        print(f"Analytics Error: {e}")
-        return {"status": "error", "total_bets": 0, "total_wins": 0, "ggr": 0, "actual_rtp": 0}
-    finally:
-        db_session.close()
-        
-@app.get("/api/admin/casino-history")
-async def get_casino_history(current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    current_admin = next((u for u in db if u["username"] == current_user), None)
-    current_role = current_admin.get("role", "player")
-
-    # 1. تحديد من المسموح برؤيتهم بناءً على الرتبة وشجرة الوكلاء
-    if current_role in ["owner", "system"]:
-        allowed_users = {u["username"] for u in db}
-    else:
-        allowed_users = {current_user}
-        to_process = [current_user]
-        while to_process:
-            parent = to_process.pop(0)
-            children = [u["username"] for u in db if u.get("created_by") == parent]
-            for child in children:
-                if child not in allowed_users:
-                    allowed_users.add(child)
-                    to_process.append(child)
-
-    db_session = SessionLocal()
-    try:
-        # 2. جلب حركات الكازينو فقط (الرهانات والأرباح)
-        txs = db_session.query(Transaction).filter(
-            Transaction.action.in_(["bet", "win", "rollback"])
-        ).all()
-        
-        result = []
-        for t in txs:
-            username = t.username or t.target_username
-            # فلترة: هل اللاعب ينتمي لشبكة هذا المدير؟
-            if username in allowed_users:
-                result.append({
-                    "id": t.id,
-                    "username": username,
-                    "action": t.action,
-                    "amount": t.amount,
-                    "date": str(t.date)
-                })
-                
-        result.reverse() # الأحدث أولاً
-        return result[:500] # نكتفي بآخر 500 عملية لتسريع الأداء
-    finally:
-        db_session.close()
-        
-        
-        # نموذج جدول التدقيق والمتابعة
-class AuditLog(Base):
-    __tablename__ = "audit_logs"
-    id = Column(Integer, primary_key=True, index=True)
-    admin_username = Column(String, index=True)
-    action_type = Column(String)
-    details = Column(String)
-    date = Column(String, default=lambda: str(datetime.now()))
-
-def log_admin_action(admin_username: str, action_type: str, details: str):
-    db_session = SessionLocal()
-    try:
-        log_entry = AuditLog(
-            admin_username=admin_username,
-            action_type=action_type,
-            details=details,
-            date=str(datetime.now())
-        )
-        db_session.add(log_entry)
-        db_session.commit()
-    except Exception as e:
-        print(f"Audit Log Error: {e}")
-    finally:
-        db_session.close()
-        
-        
-@app.get("/api/admin/audit-logs")
-async def get_audit_logs(current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    current_admin = next((u for u in db if u["username"] == current_user), None)
-    current_role = current_admin.get("role", "player")
-
-    # تحديد نطاق الشبكة المسموح برؤيته
-    if current_role in ["owner", "system"]:
-        allowed_users = {u["username"] for u in db}
-    else:
-        allowed_users = {current_user}
-        to_process = [current_user]
-        while to_process:
-            parent = to_process.pop(0)
-            children = [u["username"] for u in db if u.get("created_by") == parent]
-            for child in children:
-                if child not in allowed_users:
-                    allowed_users.add(child)
-                    to_process.append(child)
-
-    db_session = SessionLocal()
-    try:
-        logs = db_session.query(AuditLog).order_by(AuditLog.id.desc()).all()
-        result = []
-        for l in logs:
-            # إظهار السجل فقط إذا كان صاحب الفعل ينتمي لشبكة هذا المدير
-            if l.admin_username in allowed_users:
-                result.append({
-                    "id": l.id,
-                    "admin_username": l.admin_username,
-                    "action_type": l.action_type,
-                    "details": l.details,
-                    "date": l.date
-                })
-        return result[:300] # أحدث 300 سجل
-    finally:
-        db_session.close()
-        
-
-import random
-from datetime import datetime, timedelta
-
-# إعدادات الجواكيب
+# ==========================================
+# 18. JACKPOTS, WEBSOCKETS & BACKGROUND TASKS
+# ==========================================
 JACKPOTS_CONFIG = {
-    "mini":  {"max": 120, "days": 1, "share": 0.40},
-    "minor": {"max": 200, "days": 7, "share": 0.30},
-    "major": {"max": 500, "days": 15, "share": 0.20},
-    "grand": {"max": 1200, "days": 30, "share": 0.10},
+    "mini": {"start": 30.0, "max": 150.0, "days": 1, "share": 0.40},
+    "minor": {"start": 80.0, "max": 300.0, "days": 7, "share": 0.30},
+    "major": {"start": 150.0, "max": 500.0, "days": 15, "share": 0.20},
+    "grand": {"start": 750.0, "max": 2500.0, "days": 30, "share": 0.10},
 }
 
-# حالة الجاكبوت في قاعدة البيانات
 jackpots_state = {
-    "mini":  {"current_amount": 10.0, "drop_threshold": random.uniform(50, 120), "deadline": datetime.now() + timedelta(days=1)},
-    "minor": {"current_amount": 20.0, "drop_threshold": random.uniform(80, 200), "deadline": datetime.now() + timedelta(days=7)},
-    "major": {"current_amount": 50.0, "drop_threshold": random.uniform(200, 500), "deadline": datetime.now() + timedelta(days=15)},
-    "grand": {"current_amount": 100.0, "drop_threshold": random.uniform(500, 1200), "deadline": datetime.now() + timedelta(days=30)},
+    "mini": {
+        "current_amount": 30.0,
+        "drop_threshold": random.uniform(80.0, 150.0),
+        "deadline": datetime.now() + timedelta(days=1),
+    },
+    "minor": {
+        "current_amount": 80.0,
+        "drop_threshold": random.uniform(150.0, 300.0),
+        "deadline": datetime.now() + timedelta(days=7),
+    },
+    "major": {
+        "current_amount": 150.0,
+        "drop_threshold": random.uniform(250.0, 500.0),
+        "deadline": datetime.now() + timedelta(days=15),
+    },
+    "grand": {
+        "current_amount": 750.0,
+        "drop_threshold": random.uniform(1200.0, 2500.0),
+        "deadline": datetime.now() + timedelta(days=30),
+    },
 }
+
 
 def process_loss_and_check_jackpot(player_id: str, loss_amount: float):
-    # نأخذ 2% من خسارة اللاعب كتمويل للجاكبوت
-    jackpot_funding = loss_amount * 0.02 
+    jackpot_funding = loss_amount * 0.02
     winners = []
 
     for level, config in JACKPOTS_CONFIG.items():
         state = jackpots_state[level]
-        
-        # إضافة التمويل للجاكبوت بدون تجاوز الحد الأقصى
+
         added_amount = jackpot_funding * config["share"]
         if state["current_amount"] + added_amount <= config["max"]:
             state["current_amount"] += added_amount
-            
-        # التحقق من شروط السقوط (تخطي المبلغ السري أو انتهاء الوقت)
+
         if state["current_amount"] >= state["drop_threshold"] or datetime.now() >= state["deadline"]:
             winners.append({"level": level, "amount": state["current_amount"]})
-            
-            # إعادة تعيين الجاكبوت لدورة جديدة
-            state["current_amount"] = config["max"] * 0.1 
-            state["drop_threshold"] = random.uniform(state["current_amount"] * 2, config["max"])
+            state["current_amount"] = config["start"]
+            state["drop_threshold"] = random.uniform(config["start"] * 1.3, config["max"])
             state["deadline"] = datetime.now() + timedelta(days=config["days"])
-            
 
     return winners
-  
 
 
-# 🛡️ مدير اتصالات WebSockets
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self.active_connections: List[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -3269,936 +3580,130 @@ class ConnectionManager:
         for connection in self.active_connections:
             try:
                 await connection.send_text(message)
-            except:
+            except Exception:
                 pass
 
+
 jackpot_manager = ConnectionManager()
-# 🌟 مدير اتصالات الأرباح الكبرى (Big Wins)
 bigwin_manager = ConnectionManager()
 
-# 🌐 مسار الـ WebSocket الخاص بالأرباح الكبرى
+
 @app.websocket("/ws/bigwins")
 async def websocket_bigwins(websocket: WebSocket):
     await bigwin_manager.connect(websocket)
     try:
         while True:
-            await websocket.receive_text() # إبقاء الاتصال مفتوحاً
+            await websocket.receive_text()
     except WebSocketDisconnect:
         bigwin_manager.disconnect(websocket)
 
-# 🌐 مسار الـ WebSocket الخاص بالجاكبوت
+
 @app.websocket("/ws/jackpot")
 async def websocket_jackpot(websocket: WebSocket):
     await jackpot_manager.connect(websocket)
     try:
         while True:
-            await websocket.receive_text() # إبقاء الاتصال مفتوحاً
+            await websocket.receive_text()
     except WebSocketDisconnect:
         jackpot_manager.disconnect(websocket)
 
-# 🔄 مهمة خلفية تبث أرقام الجاكبوت الحقيقية باستمرار
+
 async def broadcast_jackpots():
     while True:
+        # 🌟 زيادة الأرقام تلقائياً لتبدو حية أمام المستخدمين (Auto-Increment Simulator)
+        for level, config in JACKPOTS_CONFIG.items():
+            state = jackpots_state[level]
+            
+            # زيادة عشوائية مستمرة (قروش بسيطة)
+            if level == "mini": increment = random.uniform(0.01, 0.05)
+            elif level == "minor": increment = random.uniform(0.02, 0.08)
+            elif level == "major": increment = random.uniform(0.05, 0.15)
+            else: increment = random.uniform(0.10, 0.40)
+            
+            state["current_amount"] += increment
+            
+            # إذا ضرب الجاكبوت الحد الأقصى أو حد السقوط، يعود لنقطة البداية
+            if state["current_amount"] >= state["drop_threshold"]:
+                state["current_amount"] = config["start"]
+                state["drop_threshold"] = random.uniform(config["start"] * 1.3, config["max"])
+                state["deadline"] = datetime.now() + timedelta(days=config["days"])
+
         live_data = {
             "mini": jackpots_state["mini"]["current_amount"],
             "minor": jackpots_state["minor"]["current_amount"],
             "major": jackpots_state["major"]["current_amount"],
-            "grand": jackpots_state["grand"]["current_amount"]
+            "grand": jackpots_state["grand"]["current_amount"],
         }
         await jackpot_manager.broadcast(json.dumps(live_data))
-        await asyncio.sleep(2) # بث التحديث كل ثانيتين للواجهة
+        await asyncio.sleep(2.5)
 
-# تشغيل البث تلقائياً عند إقلاع السيرفر
+
+async def auto_settle_tickets():
+    await asyncio.sleep(10)
+    while True:
+        try:
+            async with db_lock:
+                tickets_db = load_tickets_db()
+                db_data = load_db()
+                changes_made = False
+                pending_tickets = [t for t in tickets_db if t.get("status") == "encours"]
+
+                for ticket in pending_tickets:
+                    simulated_result = random.choice(["gagne", "perdu"])
+                    ticket["status"] = simulated_result
+                    changes_made = True
+                    if simulated_result == "gagne":
+                        target_username = ticket.get("username")
+                        win_amount = float(ticket.get("gain", 0))
+                        for u in db_data:
+                            if u.get("username") == target_username:
+                                u["balance"] = round(float(u.get("balance", 0)) + win_amount, 2)
+                                break
+                if changes_made:
+                    save_tickets_db(tickets_db)
+                    save_db(db_data)
+        except Exception as e:
+            print(f"❌ [Auto-Settler] Error: {e}")
+        await asyncio.sleep(60)
+
+
+async def daily_cashback_system():
+    await asyncio.sleep(15)
+    while True:
+        try:
+            now = datetime.now()
+            if now.hour == 0 and now.minute < 10:
+                async with db_lock:
+                    db_data = load_db()
+                    changes_made = False
+
+                    for u in db_data:
+                        current_balance = float(u.get("balance", 0.0))
+                        daily_deps = float(u.get("daily_deposits", 0.0))
+                        net_loss = daily_deps - current_balance
+
+                        if daily_deps > 0:
+                            if current_balance < 1.0 and net_loss > 0:
+                                cashback_amount = daily_deps * 0.10
+                                current_vault = float(u.get("available_cashback", 0.0))
+                                u["available_cashback"] = round(current_vault + cashback_amount, 2)
+
+                            u["daily_deposits"] = 0.0
+                            changes_made = True
+
+                    if changes_made:
+                        save_db(db_data)
+
+                await asyncio.sleep(3600)
+            else:
+                await asyncio.sleep(300)
+        except Exception as e:
+            print(f"❌ [Cashback] Error: {e}")
+            await asyncio.sleep(300)
+
+
 @app.on_event("startup")
-async def startup_event():
+async def start_background_tasks():
+    asyncio.create_task(auto_settle_tickets())
+    asyncio.create_task(daily_cashback_system())
     asyncio.create_task(broadcast_jackpots())
-    
-class NotificationModel(BaseModel):
-    target_user: str  # اكتب 'all' لإرسالها للجميع، أو اسم المستخدم لشخص محدد
-    title: str
-    message: str
-    icon: str = "fa-bell" # fa-gift, fa-wallet, fa-trophy
-
-@app.post("/api/admin/send-notification")
-async def send_notification(req: NotificationModel, current_user: str = Depends(get_admin_user)):
-    db = load_db()
-    if "notifications" not in db.full_data:
-        db.full_data["notifications"] = []
-    
-    new_notif = {
-        "id": str(uuid.uuid4())[:8],
-        "target": req.target_user.lower().strip(),
-        "title": req.title,
-        "message": req.message,
-        "icon": req.icon,
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "read_by": []
-    }
-    db.full_data["notifications"].append(new_notif)
-    save_db(db)
-    return {"status": "success", "message": "تم إرسال الإشعار بنجاح"}
-
-@app.get("/api/user/notifications")
-async def get_user_notifications(current_user: str = Depends(get_current_user)):
-    db = load_db()
-    notifs = db.full_data.get("notifications", [])
-    user_notifs = []
-    unread_count = 0
-    
-    for n in notifs:
-        # 🛡️ تخطي الإشعار إذا قام هذا اللاعب بحذفه مسبقاً
-        if current_user.lower() in n.get("deleted_by", []):
-            continue
-            
-        if n.get("target") == "all" or n.get("target") == current_user.lower():
-            is_read = current_user.lower() in n.get("read_by", [])
-            if not is_read:
-                unread_count += 1
-            user_notifs.append({**n, "is_read": is_read})
-            
-    # إرجاع آخر 15 إشعار من الأحدث للأقدم
-    return {"unread": unread_count, "notifications": user_notifs[::-1][:15]}
-
-class MarkReadModel(BaseModel):
-    notif_id: str
-
-@app.post("/api/user/read-notification")
-async def mark_notif_read(req: MarkReadModel, current_user: str = Depends(get_current_user)):
-    db = load_db()
-    notifs = db.full_data.get("notifications", [])
-    for n in notifs:
-        if n["id"] == req.notif_id:
-            if current_user.lower() not in n.get("read_by", []):
-                n.setdefault("read_by", []).append(current_user.lower())
-            break
-    save_db(db)
-    return {"status": "success"}
-
-class DeleteNotifModel(BaseModel):
-    notif_id: str
-
-@app.post("/api/user/delete-notification")
-async def delete_notification(req: DeleteNotifModel, current_user: str = Depends(get_current_user)):
-    db = load_db()
-    notifs = db.full_data.get("notifications", [])
-    
-    for n in notifs:
-        # إذا طلب مسح الكل
-        if req.notif_id == "all":
-            if n.get("target") in ["all", current_user.lower()]:
-                if current_user.lower() not in n.get("deleted_by", []):
-                    n.setdefault("deleted_by", []).append(current_user.lower())
-        # إذا طلب مسح إشعار محدد
-        else:
-            if n["id"] == req.notif_id:
-                if current_user.lower() not in n.get("deleted_by", []):
-                    n.setdefault("deleted_by", []).append(current_user.lower())
-                break
-                
-    save_db(db)
-    return {"status": "success"}
-
-import hashlib
-import hmac
-import json
-import uuid
-from fastapi import Header, HTTPException, Request
-from typing import Optional
-
-# ... (rest of your app setup) ...
-
-# ======================================================================
-# 🌟 01.TECH AGGREGATOR - منطقة اختبار معزولة تماماً (محدثة حسب فاديم) 🌟
-# ======================================================================
-# 🛑 فرض القيم المباشرة لمنع سيرفر رندر من استخدام متغيرات بيئية خاطئة
-ZEROONE_AUTH_TOKEN = "S3dqpz5cUrBj7Cd36ziPHSoimjqVLZospYuw/MRb0p0="
-ZEROONE_BASE_URL = "https://alphabet1.casino.preprod.avegas.games"
-ZEROONE_CASINO_ID = "alphabet1"
-
-# 🛡️ القائمة البيضاء الرسمية لعناوين IP الخاصة بـ 01.Tech (شاملة Stage و Prod)
-ZEROONE_WHITELISTED_IPS = {
-    "94.242.199.8",
-    "82.198.41.5",
-    "82.198.40.5",
-    "82.198.40.4",
-    "82.198.41.4",
-    "82.198.42.6",
-    "82.198.42.7",
-    "63.177.29.165",  # Stage IP
-    "3.65.110.141"    # Prod IP
-}
-
-def get_real_client_ip(request: Request) -> str:
-    """ استخراج الـ IP الحقيقي للطلب خلف بروكسي Render / Cloudflare """
-    cf_ip = request.headers.get("cf-connecting-ip")
-    if cf_ip:
-        return cf_ip.strip()
-        
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        # أول IP في القائمة هو دائماً عنوان المرسل الحقيقي
-        return forwarded_for.split(",")[0].strip()
-        
-    return request.client.host if request.client else ""
-
-def verify_01tech_signature(body: bytes, signature: Optional[str]) -> bool:
-    if not signature: return False
-    computed_sig = hmac.new(ZEROONE_AUTH_TOKEN.encode('utf-8'), body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(computed_sig, signature)
-
-from decimal import Decimal
-from fastapi.responses import JSONResponse
-
-# --- دوال الأخطاء القياسية التي يطلبها المزود ---
-def sig_error():
-    return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Forbidden.", "meta": {"api_code": "403", "api_message": "Forbidden."}})
-
-# 🛡️ جدار الحماية التلقائي (Middleware) لجميع مسارات محفظة 01.Tech
-@app.middleware("http")
-async def zeroone_ip_whitelist_middleware(request: Request, call_next):
-    if request.url.path.startswith("/v2/a8r_casino."):
-        client_ip = get_real_client_ip(request)
-        if client_ip not in ZEROONE_WHITELISTED_IPS:
-            print(f"🚨 [SECURITY BLOCK] Unauthorized 01Tech callback from IP: {client_ip} on path: {request.url.path}")
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "code": "permission_denied",
-                    "msg": "Forbidden: IP not whitelisted.",
-                    "meta": {"api_code": "403", "api_message": "Forbidden."}
-                }
-            )
-    return await call_next(request)
-
-def arg_error(api_code="400"):
-    return JSONResponse(status_code=400, content={"code": "invalid_argument", "msg": "Invalid argument.", "meta": {"api_code": str(api_code), "api_message": "Invalid argument."}})
-import os
-import time
-
-# ---------------------------------------------------------
-# 1. مسار جلب الرصيد
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Player/Balance")
-async def balance_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    body_bytes = await request.body()
-    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    data = await request.json()
-    if data.get("currency") != "TND": return arg_error("154")
-    player_id = str(data.get("player_id", ""))
-    
-    # 🛡️ قفل الملفات الذري (يمنع تداخل العمال في Render)
-    lock_dir = "db_json.lock"
-    while True:
-        try: os.mkdir(lock_dir); break
-        except FileExistsError:
-            if os.path.getmtime(lock_dir) < time.time() - 3:
-                try: os.rmdir(lock_dir)
-                except: pass
-            await asyncio.sleep(0.05)
-            
-    try:
-        db_data = load_db()
-        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error("101")
-        current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-        return {"balance": f"{reported_balance:.2f}"}
-    finally:
-        try: os.rmdir(lock_dir)
-        except: pass
-
-# ---------------------------------------------------------
-# 2. مسار المعاملات المزدوجة (رهان وربح)
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Round/BetWin")
-async def bet_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    body_bytes = await request.body()
-    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    data = await request.json()
-    if data.get("currency") != "TND": return arg_error("154")
-    
-    transactions = data.get("transactions", [])
-    if not transactions or len(transactions) == 0: return arg_error()
-    
-    player_id = str(data.get("player_id", ""))
-    round_id_casino = str(uuid.uuid4())
-    
-    lock_dir = "db_json.lock"
-    while True:
-        try: os.mkdir(lock_dir); break
-        except FileExistsError:
-            if os.path.getmtime(lock_dir) < time.time() - 3:
-                try: os.rmdir(lock_dir)
-                except: pass
-            await asyncio.sleep(0.05)
-            
-    try:
-        db_data = load_db()
-        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error("101")
-        
-        current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        if "transactions_log" not in target_user:
-            target_user["transactions_log"] = []
-            
-        req_tx_ids = set()
-        temp_balance = current_balance
-        
-        for tx in transactions:
-            tx_id = tx.get("id")
-            tx_type = tx.get("type")
-            if not tx_id: return arg_error()
-            if tx_id in req_tx_ids: return arg_error()
-            req_tx_ids.add(tx_id)
-            if tx_type not in ["bet", "win"]: return arg_error()
-            
-            amount = Decimal(str(tx.get("amount", "0")))
-            if amount < 0: return arg_error()
-            
-            if "jackpot_contribution" in tx and Decimal(str(tx["jackpot_contribution"])) > amount: return arg_error()
-            if "jackpot_win" in tx and Decimal(str(tx["jackpot_win"])) > amount: return arg_error()
-            if "jackpot_details" in tx:
-                j_details = tx["jackpot_details"]
-                if not j_details: return arg_error()
-                if "total_contribution" in j_details and Decimal(str(j_details["total_contribution"])) > amount: return arg_error()
-                if "total_win" in j_details and Decimal(str(j_details["total_win"])) > amount: return arg_error()
-                if "breakdown" in j_details:
-                    for b in j_details["breakdown"]:
-                        if "id" in b and len(str(b["id"])) > 255: return arg_error()
-                        # السماح بمرور الحقول الاختيارية 
-                        if "contribution" not in b and "win" not in b and "bet_id" not in tx: return arg_error()
-
-            existing_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == tx_id), None)
-            if existing_tx:
-                if existing_tx["action"] not in [tx_type, "canceled"] and "rolledback" not in existing_tx["action"]:
-                    return arg_error("409")
-                continue 
-                
-            if tx_type == "bet":
-                temp_balance -= amount
-                if temp_balance < 0: return arg_error("100")
-            elif tx_type == "win":
-                temp_balance += amount
-
-        processed_transactions = []
-        for tx in transactions:
-            req_tx_id = tx.get("id")
-            amount = Decimal(str(tx.get("amount", "0")))
-            tx_type = tx.get("type")
-            
-            existing_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
-            if existing_tx:
-                processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": existing_tx["id_casino"]})
-                continue
-            
-            if tx_type == "bet": current_balance -= amount
-            elif tx_type == "win": current_balance += amount
-                
-            casino_tx_id = str(uuid.uuid4())
-            target_user["transactions_log"].append({
-                "id_casino": casino_tx_id, "tx_id": req_tx_id, "action": tx_type, "amount": str(amount)
-            })
-            processed_transactions.append({"bonus_amount": "0.00", "id": req_tx_id, "id_casino": casino_tx_id})
-        
-        target_user["balance"] = str(current_balance)
-        save_db(db_data)
-        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-        return {"balance": f"{reported_balance:.2f}", "round_id_casino": data.get("round_id", round_id_casino), "transactions": processed_transactions}
-    except Exception as e:
-        return arg_error()
-    finally:
-        try: os.rmdir(lock_dir)
-        except: pass
-
-# ---------------------------------------------------------
-# 3. مسار الرهان المنفصل
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Round/Bet")
-async def round_bet_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    return await bet_win_01tech(request, x_request_sign)
-
-# ---------------------------------------------------------
-# 4. مسار الربح المنفصل
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Round/Win")
-async def round_win_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    return await bet_win_01tech(request, x_request_sign)
-
-# ---------------------------------------------------------
-# 5. مسار إنهاء الجولة
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Round/Finish")
-async def finish_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    body_bytes = await request.body()
-    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    data = await request.json()
-    if data.get("currency") != "TND": return arg_error("154")
-    player_id = str(data.get("player_id", ""))
-    
-    lock_dir = "db_json.lock"
-    while True:
-        try: os.mkdir(lock_dir); break
-        except FileExistsError:
-            if os.path.getmtime(lock_dir) < time.time() - 3:
-                try: os.rmdir(lock_dir)
-                except: pass
-            await asyncio.sleep(0.05)
-            
-    try:
-        db_data = load_db()
-        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error("101")
-        current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-        return {"balance": f"{reported_balance:.2f}"} 
-    finally:
-        try: os.rmdir(lock_dir)
-        except: pass
-
-# ---------------------------------------------------------
-# 6. مسار الإلغاء الاسترجاعي (Rollback)
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Round/Rollback")
-async def rollback_round_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    body_bytes = await request.body()
-    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    data = await request.json()
-    if data.get("currency") != "TND": return arg_error("154")
-    
-    transactions = data.get("transactions", [])
-    if not transactions or len(transactions) == 0: return arg_error()
-    
-    req_tx_ids = set()
-    req_orig_ids = set()
-    for tx in transactions:
-        req_tx_id = tx.get("id")
-        orig_tx_id = tx.get("original_id")
-        if not req_tx_id: return arg_error()
-        if req_tx_id in req_tx_ids: return arg_error()
-        req_tx_ids.add(req_tx_id)
-        if orig_tx_id:
-            if orig_tx_id in req_orig_ids: return arg_error()
-            req_orig_ids.add(orig_tx_id)
-            
-    player_id = str(data.get("player_id", ""))
-    
-    lock_dir = "db_json.lock"
-    while True:
-        try: os.mkdir(lock_dir); break
-        except FileExistsError:
-            if os.path.getmtime(lock_dir) < time.time() - 3:
-                try: os.rmdir(lock_dir)
-                except: pass
-            await asyncio.sleep(0.05)
-            
-    try:
-        db_data = load_db()
-        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error("101")
-        
-        current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        if "transactions_log" not in target_user:
-            target_user["transactions_log"] = []
-            
-        processed_transactions = []
-        for tx in transactions:
-            req_tx_id = tx.get("id")
-            original_id = tx.get("original_id")
-            
-            existing_rollback = next((t for t in target_user["transactions_log"] if t["tx_id"] == req_tx_id), None)
-            if existing_rollback:
-                if existing_rollback.get("original_id") != original_id:
-                    return arg_error("409")
-                processed_transactions.append({"id": req_tx_id, "id_casino": existing_rollback["id_casino"]})
-                continue
-            
-            orig_tx = next((t for t in target_user["transactions_log"] if t["tx_id"] == original_id), None)
-            
-            if orig_tx:
-                if "rolledback" not in orig_tx["action"] and orig_tx["action"] != "canceled":
-                    amount = Decimal(orig_tx["amount"])
-                    if orig_tx["action"] == "bet": current_balance += amount 
-                    elif orig_tx["action"] == "win": current_balance -= amount 
-                    orig_tx["action"] = f"{orig_tx['action']}_rolledback"
-            else:
-                 dummy_tx_id = str(uuid.uuid4())
-                 target_user["transactions_log"].append({
-                     "id_casino": dummy_tx_id, "tx_id": original_id, "action": "canceled", "amount": "0.0"
-                 })
-
-            new_rollback_id = str(uuid.uuid4())
-            target_user["transactions_log"].append({
-                "id_casino": new_rollback_id, "tx_id": req_tx_id, "action": "rollback", "amount": "0.0", "original_id": original_id
-            })
-            processed_transactions.append({"id": req_tx_id, "id_casino": new_rollback_id})
-
-        target_user["balance"] = str(current_balance)
-        save_db(db_data)
-        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-        return {"balance": f"{reported_balance:.2f}", "round_id_casino": data.get("round_id", str(uuid.uuid4())), "transactions": processed_transactions}
-    except Exception as e:
-        return arg_error()
-    finally:
-        try: os.rmdir(lock_dir)
-        except: pass
-        
-# ---------------------------------------------------------
-# 7. مسار اللفات المجانية (Freespins)
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Freespins/Issue")
-async def freespins_issue_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    body_bytes = await request.body()
-    # 1. فحص التوقيع (التشفير)
-    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    
-    data = await request.json()
-    player_data = data.get("player", {})
-    
-    # 2. الفحص الاستباقي للبيانات (Validation)
-    if player_data.get("currency") != "TND": return arg_error("154")
-    
-    games = data.get("games", [])
-    if not games or len(games) == 0: return arg_error("602")
-    # فحص الألعاب الوهمية (نقبل فقط اللعبة الاختبارية المعتمدة)
-    for game in games:
-        if game != "test-provider:test_game":
-            return arg_error()
-    
-    # 01Tech يسمح بـ bet_amount و freespins_quantity، لكننا نرفض أي طلب لا يحتوي على bet_amount
-    if "bet_amount" not in data: 
-        return arg_error()
-    
-    casino_id = data.get("casino_id")
-    # تأكد أن ZEROONE_CASINO_ID تم تعريفه مسبقاً في ملفك (أو استخدم "alphabet1" مؤقتاً)
-    expected_casino_id = "alphabet1" 
-    if casino_id != expected_casino_id: return arg_error()
-    
-    issue_id = data.get("issue_id")
-    if issue_id and len(str(issue_id)) > 255: return arg_error()
-    
-    player_id = str(player_data.get("id", ""))
-    
-    # 3. قفل الملف الذري لضمان عدم تعارض العمال (Workers)
-    lock_dir = "db_json.lock"
-    while True:
-        try: os.mkdir(lock_dir); break
-        except FileExistsError:
-            if os.path.getmtime(lock_dir) < time.time() - 3:
-                try: os.rmdir(lock_dir)
-                except: pass
-            await asyncio.sleep(0.05)
-            
-    try:
-        db_data = load_db()
-        target_user = next((u for u in db_data if str(u.get("username", "")).lower() == player_id.lower()), None)
-        if not target_user: return arg_error("101")
-        
-        # 4. منع تكرار نفس الحملة (Idempotency) أو تعديلها
-        if "freespins_log" not in target_user:
-            target_user["freespins_log"] = []
-            
-        existing_issue = next((f for f in target_user["freespins_log"] if f["issue_id"] == issue_id), None)
-        if existing_issue:
-            # إذا أرسل نفس الـ issue_id ولكن مع عدد لفات مختلف (تلاعب)، نرفضه بـ 409
-            if str(existing_issue.get("quantity")) != str(data.get("freespins_quantity")):
-                return arg_error("409")
-            # إذا كان الطلب متطابقاً تماماً، نعيد 200 (Idempotent)
-            return JSONResponse(status_code=200, content={})
-        
-        # 5. حفظ حملة اللفات المجانية للمستخدم
-        target_user["freespins_log"].append({
-            "issue_id": issue_id,
-            "quantity": str(data.get("freespins_quantity", 0)),
-            "valid_until": data.get("valid_until", "")
-        })
-        
-        save_db(db_data)
-        return JSONResponse(status_code=200, content={})
-        
-    except Exception as e:
-        return arg_error()
-    finally:
-        try: os.rmdir(lock_dir)
-        except: pass   
-        
-# ---------------------------------------------------------
-# 8. مسار إنهاء اللفات المجانية وإضافة الأرباح (Freespins Finish)
-# ---------------------------------------------------------
-@app.post("/v2/a8r_casino.Freespins/Finish")
-async def freespins_finish_01tech(request: Request, x_request_sign: Optional[str] = Header(None)):
-    body_bytes = await request.body()
-    if not verify_01tech_signature(body_bytes, x_request_sign): return sig_error()
-    
-    data = await request.json()
-    issue_id = data.get("issue_id")
-    amount = data.get("amount")
-    
-    if issue_id is None or amount is None: return arg_error()
-    
-    # قفل الملفات لتنظيم العمال (Workers) ومنع تداخل العمليات
-    lock_dir = "db_json.lock"
-    while True:
-        try: os.mkdir(lock_dir); break
-        except FileExistsError:
-            if os.path.getmtime(lock_dir) < time.time() - 3:
-                try: os.rmdir(lock_dir)
-                except: pass
-            await asyncio.sleep(0.05)
-            
-    try:
-        db_data = load_db()
-        target_user = None
-        target_issue = None
-        
-        # البحث في قاعدة البيانات عن اللاعب صاحب الـ issue_id
-        for u in db_data:
-            if "freespins_log" in u:
-                for f in u["freespins_log"]:
-                    if f["issue_id"] == issue_id:
-                        target_user = u
-                        target_issue = f
-                        break
-            if target_user: break
-            
-        # إذا لم نجد الحملة (مما يعني أن المزود يرسل معرفاً وهمياً) نرفض الطلب بـ 400
-        if not target_user or not target_issue:
-            return arg_error("400")
-            
-        current_balance = Decimal(str(target_user.get("balance", 0.0)))
-        
-        # التحقق من التكرار الآمن (Idempotency): إذا كانت الحملة منتهية مسبقاً
-        if target_issue.get("status") == "finished":
-            # إذا اختلفت قيمة الربح عما هو مسجل لدينا، فهذا تلاعب نرفضه بـ 409
-            if target_issue.get("finished_amount") != str(amount):
-                return arg_error("409")
-            
-            reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-            return {"balance": f"{reported_balance:.2f}"}
-            
-        # إذا كانت الحملة جديدة، نقوم بإضافة الأرباح للرصيد
-        win_amount = Decimal(str(amount))
-        if win_amount < 0: return arg_error()
-        
-        current_balance += win_amount
-        
-        # توثيق الإغلاق لمنع إضافة المبلغ مرة أخرى مستقبلاً
-        target_issue["status"] = "finished"
-        target_issue["finished_amount"] = str(amount)
-        target_user["balance"] = str(current_balance)
-        
-        save_db(db_data)
-        
-        reported_balance = current_balance if current_balance >= 0 else Decimal('0.00')
-        return {"balance": f"{reported_balance:.2f}"}
-        
-    except Exception as e:
-        return arg_error()
-    finally:
-        try: os.rmdir(lock_dir)
-        except: pass             
-        
-@app.get("/api/01tech/games/{category}")
-async def fetch_01tech_games_isolated(category: str):
-    url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Game/List" 
-    clean_casino_id = ZEROONE_CASINO_ID.lower().strip().replace("-", "_")
-    payload = {"casino_id": clean_casino_id}
-    
-    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    clean_auth_token = ZEROONE_AUTH_TOKEN.strip()
-    signature = hmac.new(clean_auth_token.encode('utf-8'), body, hashlib.sha256).hexdigest()
-    
-    headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
-
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, content=body, headers=headers)
-            if response.status_code != 200:
-                return {"error": response.text, "games": []}
-                
-            data = response.json()
-            all_games = []
-            base_image_url = data.get("image_assets", {}).get("base_url", "")
-            
-            # كلمات مفتاحية تدل على الكازينو المباشر أو ألعاب الطاولة
-            live_keywords = ["live", "table", "roulette", "blackjack", "baccarat", "poker"]
-            
-            if "providers" in data:
-                for provider in data["providers"]:
-                    provider_name = provider.get("name", "01TECH")
-                    for game in provider.get("games", []):
-                        
-                        game_type = str(game.get("type", "")).lower()
-                        game_category = str(game.get("category", "")).lower()
-                        
-                        # التحقق مما إذا كانت اللعبة تحتوي على أي من الكلمات المفتاحية
-                        is_live = any(kw in game_type for kw in live_keywords) or \
-                                  any(kw in game_category for kw in live_keywords) or \
-                                  "live" in provider_name.lower()
-                        
-                        if category == "live" and not is_live:
-                            continue
-                        if category == "slots" and is_live:
-                            continue
-                            
-                        # 💡 كود استخراج الصورة المحدث لالتقاط كافة الصيغ
-                        img_url = ""
-                        img_path = game.get("image") or game.get("icon")
-                        
-                        if not img_path and "images" in game:
-                            img_path = game["images"].get("square") or game["images"].get("horizontal") or game["images"].get("main")
-                            
-                        if img_path:
-                            # إذا كان الرابط كاملاً نأخذه، وإلا ندمجه مع base_url
-                            if str(img_path).startswith("http"):
-                                img_url = img_path
-                            else:
-                                clean_base = base_image_url.rstrip('/')
-                                clean_path = str(img_path).lstrip('/')
-                                img_url = f"{clean_base}/{clean_path}" if clean_base else f"https://{clean_path}"
-                        
-                        all_games.append({
-                            "game_code": game.get("id"),
-                            "game_name": game.get("title"),
-                            "provider": provider_name,
-                            "banner": img_url
-                        })
-            return {"games": all_games}
-        except Exception as e:
-            return {"error": str(e), "games": []}
-# 3. مسار إطلاق اللعبة 
-@app.post("/api/01tech/launch")
-async def launch_01tech_isolated(request: Request):
-    data = await request.json()
-    
-    # Get player details from your DB or session. 
-    # Using defaults here as placeholders based on the provided docs.
-    # In a real scenario, fetch these from your DB using data.get("account_id")
-    player_id = str(data.get("account_id"))
-    
-    payload = {
-        "casino_id": ZEROONE_CASINO_ID.lower().strip().replace("-", "_"),
-        "client_type": "desktop",
-        "game": data.get("game_id"), # Uses 'game' as per docs
-        "ip": "8.8.8.8", 
-        "jurisdiction": "UK",
-        "locale": "en",
-        "player": {
-            "country": "UK", 
-            "currency": "TND",
-            "date_of_birth": "1987-02-03T00:00:00Z", # Hardcoded birth date
-            "email": "test@alphabet216.com",
-            "firstname": "Fethi", # Hardcoded name
-            "gender": "m",
-            "id": player_id,
-            "lastname": "Chalouati", # Hardcoded lastname
-            "nickname": player_id,
-            "registered_at": "2026-08-01T00:00:00Z",
-            "tags": []
-        },
-        "session_payload": str(uuid.uuid4()),
-        "urls": {
-            "deposit_url": "https://alphabet216.com/#deposit",
-            "return_url": "https://alphabet216.com/"
-        }
-    }
-    
-    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    clean_auth_token = ZEROONE_AUTH_TOKEN.strip()
-    signature = hmac.new(clean_auth_token.encode('utf-8'), body, hashlib.sha256).hexdigest()
-    
-    headers = {"Content-Type": "application/json", "X-REQUEST-SIGN": signature}
-
-    async with httpx.AsyncClient() as client:
-        try:
-            url = f"{ZEROONE_BASE_URL}/v2/casino_a8r.Launcher/Real"
-            response = await client.post(url, content=body, headers=headers)
-            if response.status_code != 200: return {"error": response.text}
-            
-            # The response schema states 'launch_url' is the key
-            return {"game_url": response.json().get("launch_url")} 
-        except Exception as e:
-            return {"error": str(e)}
-        
- # ==========================================
-# 🎮 دوال جلب الألعاب والاستوديوهات (EuroVirtuals)
-# ==========================================
-
-# تأكد من وجود هذه المتغيرات في أعلى الملف
-EURO_APP_KEY = os.getenv("EURO_APP_KEY", "YOUR_APP_KEY")
-EURO_API_KEY = os.getenv("EURO_API_KEY", "YOUR_API_KEY")
-EURO_BASE_URL = os.getenv("EURO_BASE_URL", "https://api.betkraft.co.uk")
-
-@app.get("/api/eurovirtuals/studios")
-async def get_eurovirtuals_studios():
-    """ جلب قائمة الاستوديوهات والمزودين المتاحين من المزود (Partners API) """
-    payload = {}
-    timestamp = str(int(time.time()))
-    signature = hash_create(payload, EURO_APP_KEY)
-    
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "x-api-key": EURO_API_KEY,
-        "x-signature-key": signature,
-        "x-timestamp": timestamp
-    }
-    
-    base_url_clean = str(EURO_BASE_URL).rstrip('/')
-    endpoint = f"{base_url_clean}/v1/partners"
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(endpoint, headers=headers, timeout=20.0)
-            return response.json()
-        except Exception as e:
-            return {"status": "error", "error": str(e)}
-
-@app.get("/api/eurovirtuals/studio-games/{partner_id}")
-async def get_games_by_partner_studio(partner_id: str):
-    """ جلب ألعاب استوديو أو مزود محدد عبر الـ partner_id الخاص به """
-    payload = {}
-    timestamp = str(int(time.time()))
-    signature = hash_create(payload, EURO_APP_KEY)
-    
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "x-api-key": EURO_API_KEY,
-        "x-signature-key": signature,
-        "x-timestamp": timestamp
-    }
-    
-    base_url_clean = str(EURO_BASE_URL).rstrip('/')
-    endpoint = f"{base_url_clean}/v1/games?partner_id={partner_id}&limit=5000"
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(endpoint, headers=headers, timeout=20.0)
-            data = response.json()
-            
-            if data.get("status_code") == 200 or response.status_code == 200:
-                games_list = data.get("data", {}).get("data", []) if isinstance(data.get("data"), dict) else data.get("data", [])
-                return {"status": "success", "games": games_list}
-            else:
-                return {"status": "error", "details": data}
-        except Exception as e:
-            return {"status": "error", "error": str(e)}
-        
-import asyncio
-
-@app.get("/api/get-eurovirtuals-games")
-async def fetch_eurovirtuals_games(partner_id: str = None):
-    """ محرك السحب الشامل: يمر على كل المزودين (الاستوديوهات) ويسحب صفحاتهم بالكامل """
-    payload = {}
-    timestamp = str(int(time.time()))
-    signature = hash_create(payload, EURO_APP_KEY)
-    
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "x-api-key": EURO_API_KEY,
-        "x-signature-key": signature,
-        "x-timestamp": timestamp
-    }
-    
-    base_url_clean = str(EURO_BASE_URL).rstrip('/')
-    all_games = []
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            partners_list = []
-            
-            # الخطوة 1: تحديد من هم المزودين الذين سنسحب ألعابهم
-            if partner_id:
-                # إذا تم طلب مزود معين من الواجهة، نضعه فقط في القائمة
-                partners_list.append({"id": partner_id, "name": partner_id})
-            else:
-                # إذا طلبنا كل الألعاب، يجب أن نجلب قائمة كل المزودين المتاحين في حسابك
-                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=20.0)
-                p_data = p_resp.json()
-                if p_data.get("status_code") == 200:
-                    partners_list = p_data.get("data", [])
-                else:
-                    # في حال فشل جلب الشركاء، نضع عنصراً فارغاً لجلب الحزمة الأساسية
-                    partners_list = [{"id": "", "name": "EuroVirtuals"}]
-
-            # الخطوة 2: المرور على كل مزود (Pragmatic, Evolution, etc...)
-            for partner in partners_list:
-                p_id = partner.get("id")
-                p_name = partner.get("name", "Unknown")
-                page = 1
-                
-                # الخطوة 3: سحب كل صفحات هذا المزود (حلقة تكرار للصفحات)
-                while True:
-                    endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=500"
-                    if p_id:
-                        endpoint += f"&partner_id={p_id}"
-                        
-                    res = await client.get(endpoint, headers=headers, timeout=20.0)
-                    data = res.json()
-                    
-                    if data.get("status_code") == 200:
-                        page_data = data.get("data", {})
-                        games_chunk = page_data.get("data", [])
-                        
-                        # إذا كانت الصفحة فارغة، انتهت ألعاب هذا المزود
-                        if not games_chunk:
-                            break  
-                            
-                        # ترتيب الألعاب المضافة
-                        for game in games_chunk:
-                            img = game.get("logo") or game.get("thumbnail") or ""
-                            game["image"] = game["img"] = img
-                            game["game_code"] = game.get("uuid") or game.get("id")
-                            game["provider"] = p_name  # ربط اللعبة باسم المزود الحقيقي
-                            
-                        # إضافتها للسلة الكبرى
-                        all_games.extend(games_chunk)
-                        
-                        total_available = page_data.get("total", 0)
-                        
-                        # إذا سحبنا كل الألعاب، أو العدد الإجمالي انتهى، نكسر الحلقة للمزود التالي
-                        if len(games_chunk) == 0 or (page * 500) >= total_available:
-                            break
-                            
-                        page += 1
-                    else:
-                        break # فشل سحب هذا المزود، ننتقل للتالي
-                        
-            return {"status": "success", "games": all_games}
-            
-        except Exception as e:
-            return {"status": "error", "error": str(e)}
-        
-@app.get("/api/user/bet-history")
-async def get_user_bet_history(current_user: str = Depends(get_current_user)):
-    db_session = SessionLocal()
-    try:
-        # جلب آخر 50 عملية رهان أو ربح للاعب
-        txs = db_session.query(Transaction).filter(
-            Transaction.target_username == current_user.lower(),
-            Transaction.action.in_(["bet", "win"])
-        ).order_by(Transaction.id.desc()).limit(50).all()
-        
-        history = []
-        for t in txs:
-            is_win = (t.action == "win")
-            # ترتيب اسم المزود (لأننا حفظناه في admin_username)
-            provider_name = t.admin_username if t.admin_username and t.admin_username not in ["EUROVIRTUALS_API", "PENDING_HUGE_WIN"] else "Casino"
-            if t.admin_username == "EUROVIRTUALS_API": provider_name = "Jeux Virtuels"
-            
-            history.append({
-                "date": str(t.date)[:16],
-                "game": "Jeu de Casino", 
-                "provider": provider_name,
-                "amount": float(t.amount),
-                "type": "win" if is_win else "bet"
-            })
-            
-        return {"status": "success", "data": history}
-    except Exception as e:
-        return {"status": "error", "data": []}
-    finally:
-        db_session.close()
-        
-     
