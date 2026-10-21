@@ -3361,12 +3361,14 @@ async def get_games_by_partner_studio(partner_id: str):
 
 EURO_GAMES_CACHE = {"time": 0, "games": []}
 
+EURO_GAMES_CACHE = {"time": 0, "games": []}
+
 @app.get("/api/get-eurovirtuals-games")
 async def fetch_eurovirtuals_games(partner_id: str = None):
     current_time = time.time()
     
-    # 1. إذا كانت الألعاب محفوظة في الكاش (أقل من ساعة)، نرسلها فوراً بدون انتظار
-    if not partner_id and EURO_GAMES_CACHE["games"] and (current_time - EURO_GAMES_CACHE["time"]) < 3600:
+    # إرجاع الألعاب من الكاش السريع إذا كانت محملة مسبقاً
+    if EURO_GAMES_CACHE["games"] and (current_time - EURO_GAMES_CACHE["time"]) < 1800:
         return {"status": "success", "games": EURO_GAMES_CACHE["games"]}
 
     payload = {}
@@ -3378,64 +3380,58 @@ async def fetch_eurovirtuals_games(partner_id: str = None):
         "Content-Type": "application/json",
         "x-api-key": EURO_API_KEY,
         "x-signature-key": signature,
+        "x-signature": signature,  # دعم الاسمين معاً لضمان القبول
         "x-timestamp": timestamp,
     }
 
     base_url_clean = str(EURO_BASE_URL).rstrip("/")
-    all_games = []
+    # ⚠️ مهم جداً: طلب المسار النظيف بدون أي (?page=) لكي يطابق التوقيع الفارغ {}
+    games_endpoint = f"{base_url_clean}/v1/games"
 
     async with httpx.AsyncClient() as client:
         try:
-            # 2. الجلب المباشر والسريع من مسار الألعاب الأساسي أولاً
-            direct_endpoint = f"{base_url_clean}/v1/games?per_page=1000"
-            if partner_id:
-                direct_endpoint += f"&partner_id={partner_id}"
+            response = await client.get(games_endpoint, headers=headers, timeout=20.0)
+            data = response.json()
+            print(f"🎮 [EUROVIRTUALS STATUS]: {response.status_code} | API Status: {data.get('status_code')}")
 
-            res = await client.get(direct_endpoint, headers=headers, timeout=20.0)
-            data = res.json()
+            # استخراج قائمة الألعاب أياً كان شكل الرد من المزود
+            raw_data = data.get("data", {})
+            if isinstance(raw_data, dict):
+                games_list = raw_data.get("data", []) or raw_data.get("games", []) or []
+            elif isinstance(raw_data, list):
+                games_list = raw_data
+            else:
+                games_list = data.get("games", []) or []
 
-            if res.status_code == 200 and data.get("status_code") == 200:
-                raw_data = data.get("data", {})
-                games_list = raw_data.get("data", []) if isinstance(raw_data, dict) else (raw_data if isinstance(raw_data, list) else [])
-
+            if games_list:
                 for game in games_list:
-                    img = game.get("logo") or game.get("thumbnail") or game.get("image") or ""
-                    game["image"] = game["img"] = game["banner"] = img
+                    image_url = game.get("logo") or game.get("thumbnail") or game.get("image") or game.get("banner") or ""
+                    if image_url:
+                        game["image"] = image_url
+                        game["img"] = image_url
+                        game["banner"] = image_url
+
                     game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
-                    game["provider"] = game.get("provider") or game.get("partner_name") or "EuroVirtuals"
-                    all_games.append(game)
+                    game["game_name"] = game.get("name") or game.get("game_name") or game.get("title") or "Virtual Game"
+                    
+                    # 🌟 حيلة ذكية: إذا لم يرسل المزود اسم الشركة، نضع 'eurovirtuals' لكي يمر من فلتر الفابات وكوتابات!
+                    orig_prov = game.get("provider") or game.get("partner_name") or game.get("studio") or ""
+                    game["provider"] = f"{orig_prov} EuroVirtuals".strip()
+                    game["partner_name"] = game["provider"]
 
-            # 3. إذا لم يرجع المسار المباشر ألعاباً، نحاول عبر الشركاء (Partners) كخطة بديلة
-            if not all_games and not partner_id:
-                p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=15.0)
-                p_data = p_resp.json()
-                if p_data.get("status_code") == 200:
-                    for partner in p_data.get("data", []):
-                        p_id = partner.get("id")
-                        p_name = partner.get("name", "EuroVirtuals")
-                        g_res = await client.get(f"{base_url_clean}/v1/games?partner_id={p_id}&per_page=500", headers=headers, timeout=15.0)
-                        g_data = g_res.json()
-                        if g_data.get("status_code") == 200:
-                            chunk = g_data.get("data", {}).get("data", [])
-                            for game in chunk:
-                                img = game.get("logo") or game.get("thumbnail") or ""
-                                game["image"] = game["img"] = game["banner"] = img
-                                game["game_code"] = game.get("uuid") or game.get("id")
-                                game["provider"] = p_name
-                                all_games.append(game)
-
-            if all_games and not partner_id:
                 EURO_GAMES_CACHE["time"] = current_time
-                EURO_GAMES_CACHE["games"] = all_games
-
-            return {"status": "success", "games": all_games}
+                EURO_GAMES_CACHE["games"] = games_list
+                return {"status": "success", "games": games_list}
+            else:
+                print(f"⚠️ [EUROVIRTUALS EMPTY]: {data}")
+                return {"status": "error", "error": data.get("status_description", "Empty list"), "details": data, "games": []}
 
         except Exception as e:
-            print(f"EUROVIRTUALS FETCH ERROR: {e}")
+            print(f"❌ [EUROVIRTUALS ERROR]: {e}")
             if EURO_GAMES_CACHE["games"]:
                 return {"status": "success", "games": EURO_GAMES_CACHE["games"]}
             return {"status": "error", "error": str(e), "games": []}
-
+        
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
     try:
