@@ -2400,51 +2400,75 @@ def get_eurovirtuals_headers(payload=None):
     }
    
 
-# 3. دالة جلب قائمة الألعاب وعرضها في المنصة
 @app.api_route("/api/get-eurovirtuals-games", methods=["GET"])
 async def get_virtual_games():
-    try:
-        payload = {}
-        timestamp = str(int(time.time()))
-        signature = hash_create(payload, EURO_APP_KEY)
-        
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "x-api-key": EURO_API_KEY,
-            "x-signature-key": signature,
-            "x-timestamp": timestamp
-        }
-        
-        base_url_clean = str(EURO_BASE_URL).rstrip('/')
-        games_endpoint = f"{base_url_clean}/v1/games"
-        
-        try:
-            response = requests.get(games_endpoint, headers=headers, timeout=20)
-            data = response.json()
-            print(f"🎮 RAW GAMES FROM PROVIDER: {data}")
-        except Exception:
-            return {"status": "error", "error": "Invalid JSON response", "details": response.text}
-        
-        if response.status_code == 200 and data.get("status_code") == 200:
-            games_list = data.get("data", {}).get("data", [])
-            
-            for game in games_list:
-                image_url = game.get("logo") or game.get("thumbnail") or ""
-                if image_url:
-                    game["image"] = image_url
-                    game["img"] = image_url
-                
-                # 💡 السطر السحري: توحيد اسم المعرف لكي يقرأه الفرونت إند بشكل صحيح
-                game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
-                    
-            return {"status": "success", "games": games_list}
-        else:
-            return {"status": "error", "error": data.get("status_description", "Unknown Error"), "full_data": data}
+    payload = {}
+    timestamp = str(int(time.time()))
+    signature = hash_create(payload, EURO_APP_KEY)
 
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": EURO_API_KEY,
+        "x-signature-key": signature,
+        "x-timestamp": timestamp,
+    }
+
+    base_url_clean = str(EURO_BASE_URL).rstrip("/")
+    all_games = []
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # 1. جلب جميع المزودين (Partners) من EuroVirtuals
+            partners_list = []
+            p_resp = await client.get(f"{base_url_clean}/v1/partners", headers=headers, timeout=20.0)
+            p_data = p_resp.json()
+            if p_data.get("status_code") == 200:
+                partners_list = p_data.get("data", [])
+            else:
+                partners_list = [{"id": "", "name": "EuroVirtuals"}]
+
+            # 2. جلب جميع ألعاب كل مزود وربطها باسمه
+            for partner in partners_list:
+                p_id = partner.get("id")
+                p_name = partner.get("name", "EuroVirtuals")
+                page = 1
+
+                while True:
+                    endpoint = f"{base_url_clean}/v1/games?page={page}&per_page=500"
+                    if p_id:
+                        endpoint += f"&partner_id={p_id}"
+
+                    res = await client.get(endpoint, headers=headers, timeout=20.0)
+                    data = res.json()
+
+                    if data.get("status_code") == 200:
+                        page_data = data.get("data", {})
+                        games_chunk = page_data.get("data", []) if isinstance(page_data, dict) else []
+
+                        if not games_chunk:
+                            break
+
+                        for game in games_chunk:
+                            img = game.get("logo") or game.get("thumbnail") or ""
+                            game["image"] = game["img"] = img
+                            game["game_code"] = game.get("uuid") or game.get("game_uuid") or game.get("id")
+                            game["provider"] = p_name
+                            game["partner_name"] = p_name
+
+                        all_games.extend(games_chunk)
+                        total_available = page_data.get("total", 0) if isinstance(page_data, dict) else 0
+
+                        if len(games_chunk) == 0 or (page * 500) >= total_available:
+                            break
+                        page += 1
+                    else:
+                        break
+
+            return {"status": "success", "games": all_games}
+
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
     
 @app.post("/api/provider/launch-eurovirtuals")
 async def launch_eurovirtuals(request: Request):
